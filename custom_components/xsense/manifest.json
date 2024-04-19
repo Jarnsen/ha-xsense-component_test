@@ -11,4 +11,5 @@
   "requirements": ["python-xsense==0.0.3"],
   "ssdp": [],
   "zeroconf": []
+  "version":"0.9.0"
 }
