@@ -27,5 +27,6 @@
 
 
 # bestätigte Geräte
+- Basisstation
 - Rauchmelder
 - Wassermelder
