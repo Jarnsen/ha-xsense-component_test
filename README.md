@@ -1,15 +1,14 @@
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
-
 # Home Assistant integration for X-sense devices/
-
+![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
 
 # Preparation
 - Create a second account (for Home Assistant) in the X-Sense app
 - share devices from main account devices with Home Assistant account
 
 
-![Download (1)](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
 # Installation via hacs
+![Download (1)](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/7492696d-caa4-44b0-ad8f-402fb7f5369c)
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
