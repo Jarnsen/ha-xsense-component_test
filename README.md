@@ -44,6 +44,9 @@ ____________________________________________________________
 
 ____________________________________________________________
 # confirmed devices
-- base station (SBS50)
-- smoke detectors
-- waterleak sensors (SWS51)
+ - base station (SBS50)
+ - heat alarm (XH02-M) 
+ - carbon monoxide alarm (XC01-M)
+ - smoke detector (XS01-M)
+ - waterleak detector (SWS51)
+ - hygrometer-thermometer (STH51)
