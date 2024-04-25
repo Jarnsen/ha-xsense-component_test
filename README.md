@@ -1,5 +1,4 @@
-# Home Assistant integration for X-sense devices/
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+# Home Assistant integration for X-sense devices ![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
 
 ____________________________________________________________
 # Preparation
