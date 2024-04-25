@@ -9,19 +9,17 @@
 
 # Installation via hacs
 ![Download (1)](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
-
 open HACS
-
+____________________________________________________________
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 
 go to custom repositories
-
 add: https://github.com/Elwinmage/ha-xsense-component
-
+____________________________________________________________
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/7492696d-caa4-44b0-ad8f-402fb7f5369c)
 
 download and install it
-
+____________________________________________________________
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
 
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
