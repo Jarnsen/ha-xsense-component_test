@@ -23,7 +23,7 @@ add: https://github.com/Elwinmage/ha-xsense-component
 
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 
-____________________________________________________________
+
 
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/7492696d-caa4-44b0-ad8f-402fb7f5369c)
 
