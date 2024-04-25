@@ -10,6 +10,7 @@ ____________________________________________________________
 
 # Installation via hacs 
 open HACS
+
 ![Download (1)](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
 
 
