@@ -1,10 +1,12 @@
 # Home Assistant integration for X-sense devices/
 ![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
 
+____________________________________________________________
 # Preparation
 - Create a second account (for Home Assistant) in the X-Sense app
 - share devices from main account devices with Home Assistant account
 
+____________________________________________________________
 
 
 # Installation via hacs
@@ -32,9 +34,12 @@ download and install it
 
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
 
+____________________________________________________________
 # View in Home Assistant
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/50bbafde-c94b-445e-9aa3-9c33d5f151d6)
 
+
+____________________________________________________________
 # confirmed devices
 - base station (SBS50)
 - smoke detectors
