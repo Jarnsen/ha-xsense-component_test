@@ -8,6 +8,8 @@ ____________________________________________________________
 - Create a second account (for Home Assistant) in the X-Sense app
 - share devices from main account devices with Home Assistant account
 
+![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
 ____________________________________________________________
 
 
