@@ -16,5 +16,44 @@
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "alarm_status": {
+        "name": "Alarm Status"
+      },
+      "is_life_end": {
+        "name": "Is life end"
+      },
+      "mute_status": {
+        "name": "Mute Status"
+      }
+    },
+    "sensor": {
+      "alarm_vol": {
+        "name": "Alarm Volume"
+      },
+      "ip_address": {
+        "name": "IP Address"
+      },
+      "rf_level": {
+        "name": "RF Level",
+        "state": {
+          "no_signal": "No Signal",
+          "weak": "Weak",
+          "moderate": "Moderate",
+          "good": "Good"
+        }
+      },
+      "serial_number": {
+        "name": "Serial Number"
+      },
+      "sw_version": {
+        "name": "Software Version"
+      },
+      "voice_vol": {
+        "name": "Voice Volume"
+      }
+    }
   }
 }
