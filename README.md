@@ -1,28 +1,62 @@
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+This code is based on 
+https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense
 
-# Home Assistant Integration für X-sense Geräte/ 
-# Home Assistant integration for X-sense devices/
+# Home Assistant integration for X-sense devices                                          ![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+
+____________________________________________________________
+# Preparation
+- Create a second account (for Home Assistant) in the X-Sense app
+- share devices from main account devices with Home Assistant account
+
+![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+____________________________________________________________
+
+
+# Installation via hacs 
+open HACS
+
 ![Download (1)](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
 
-# Vorbereitung/ 
-# Preparation
-- Zweiten Account (für Home Assistant) in X-Sense App erstellen/ 
-Create a second account (for Home Assistant) in the X-Sense app
-- Geräte von Haupaccount an Home Assistant Account freigebn/ share devices from main account devices with Home Assistant account
 
-# Installation via hacs
+
+
+
+____________________________________________________________
+go to custom repositories
+add: https://github.com/Elwinmage/ha-xsense-component
+
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+
+
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/7492696d-caa4-44b0-ad8f-402fb7f5369c)
+
+
+____________________________________________________________
+download and install it
+
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
+
+![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
 
-# Ansicht in Home Assistant/ 
+____________________________________________________________
 # View in Home Assistant
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/50bbafde-c94b-445e-9aa3-9c33d5f151d6)
 
-# bestätigte Geräte/ 
+
+____________________________________________________________
 # confirmed devices
-- Basisstation/ base station
-- Rauchmelder/ smoke detectors
-- Wassermelder/ waterleak sensors
+ - base station (SBS50)
+ - heat alarm (XH02-M) 
+ - carbon monoxide alarm (XC01-M)
+ - smoke detector (XS01-M)
+ - waterleak detector (SWS51)
+ - hygrometer-thermometer (STH51)
