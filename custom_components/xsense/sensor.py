@@ -20,7 +20,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, STATE_SIGNAL
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import XSenseEntity, XSenseSensorEntityDescription
 
@@ -32,40 +32,50 @@ STATION_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
-        exists_fn=lambda device: "wifiRSSI" in device.data,
-        value_fn=lambda station: station.data["wifiRSSI"],
+        exists_fn=lambda entity: "wifiRSSI" in entity.data,
+        value_fn=lambda entity: entity.data["wifiRSSI"],
     ),
     XSenseSensorEntityDescription(
         key="sw_version",
+        translation_key="sw_version",
         entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:chip",
         exists_fn=lambda device: "sw" in device.data,
         value_fn=lambda station: station.data["sw"],
     ),
     XSenseSensorEntityDescription(
         key="serial_number",
+        translation_key="serial_number",
+        icon="mdi:numeric",
         entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         value_fn=lambda station: station.sn,
     ),
     XSenseSensorEntityDescription(
         key="ip",
-        translation_key="ip",
+        translation_key="ip_address",
+        icon="mdi:ip-network-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
         exists_fn=lambda device: "ip" in device.data,
         value_fn=lambda device: device.data["ip"],
     ),
     XSenseSensorEntityDescription(
         key="alarm_vol",
+        translation_key="alarm_vol",
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement=PERCENTAGE,
+        icon="mdi:volume-high",
         state_class=SensorStateClass.MEASUREMENT,
         exists_fn=lambda device: "alarmVol" in device.data,
         value_fn=lambda device: device.data["alarmVol"],
     ),
     XSenseSensorEntityDescription(
         key="voice_vol",
+        translation_key="voice_vol",
         entity_category=EntityCategory.DIAGNOSTIC,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:volume-high",
         exists_fn=lambda device: "voiceVol" in device.data,
         value_fn=lambda device: device.data["voiceVol"],
     ),
@@ -101,16 +111,20 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda device: (int(device.data["batInfo"]) * 100) / 3,
+        value_fn=lambda device: (device.data["batInfo"] * 100) / 3,
         exists_fn=lambda device: "batInfo" in device.data,
     ),
+    XSenseSensorEntityDescription(
+        key="rf_level",
+        translation_key="rf_level",
+        device_class=SensorDeviceClass.ENUM,
+        icon="mdi:signal",
+        name="Signal strength",
+        options=STATE_SIGNAL,
+        value_fn=lambda device: STATE_SIGNAL[int(device.data["rfLevel"])],
+        exists_fn=lambda device: "rfLevel" in device.data,
+    ),
 )
-
-# BINARY_SENSORS = tuple[XSenseSensorEntityDescription, ...] = (
-#     XSenseSensorEntityDescription(
-#         key=
-#     )
-# )
 
 
 async def async_setup_entry(
