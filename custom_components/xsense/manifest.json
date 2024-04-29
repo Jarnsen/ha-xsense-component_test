@@ -11,5 +11,5 @@
   "requirements": ["python-xsense[async]==0.0.5"],
   "ssdp": [],
   "zeroconf": [],
-  "version": "0.9.5"
+  "version": "0.9.6"
 }
