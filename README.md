@@ -67,4 +67,11 @@ ____________________________________________________________
  - smoke detector (XS01-M)
  - waterleak detector (SWS51)
  - hygrometer-thermometer (STH51)
+____________________________________________________________
+# we need help 
 
+1.: who has a different device running with the integration
+2.: who has different devices and need support fort it
+3.: best way for testing is to share the device
+
+Discord: https://discord.gg/5phHHgGb3V
