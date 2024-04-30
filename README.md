@@ -6,6 +6,10 @@ https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/compone
 
 # Home Assistant integration for X-sense devices                                          ![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
 
+# How to Video
+[![X-Sense Home Assistant Integration](https://img.youtube.com/vi/3CCKK-qX-YA/0.jpg)](https://www.youtube.com/watch?v=3CCKK-qX-YA)
+
+
 ____________________________________________________________
 # Preparation
 - Create a second account (for Home Assistant) in the X-Sense app
@@ -63,3 +67,4 @@ ____________________________________________________________
  - smoke detector (XS01-M)
  - waterleak detector (SWS51)
  - hygrometer-thermometer (STH51)
+
