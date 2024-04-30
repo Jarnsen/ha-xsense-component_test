@@ -24,7 +24,7 @@ open HACS
 
 ____________________________________________________________
 go to custom repositories
-add: https://github.com/Elwinmage/ha-xsense-component
+add: https://github.com/Jarnsen/ha-xsense-component_test
 
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 
