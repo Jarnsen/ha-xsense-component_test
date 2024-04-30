@@ -1,5 +1,8 @@
 This code is based on 
+
 https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense
+
+#### The codeowner is @theosnel, this repo was created with his permission and with his cooperation. Until there is an official Home Assistant integration from Theo, we will solve the integration and update via this custom HACS integration.
 
 # Home Assistant integration for X-sense devices                                          ![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
 
@@ -24,7 +27,7 @@ open HACS
 
 ____________________________________________________________
 go to custom repositories
-add: https://github.com/Elwinmage/ha-xsense-component
+add: https://github.com/Jarnsen/ha-xsense-component_test
 
 ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 
