@@ -70,10 +70,11 @@ ____________________________________________________________
 ____________________________________________________________
 # we need help 
 
-1.: who has a different device running with the integration
+1.: who has another device running with the integration
 
-2.: who has different devices and need support fort it
+2.: who has another device that doesn‘t work with the integration and needs support fort it
 
-3.: best way for testing is to share the device
+3.: best way for testing is to share the device via the X-Sense app
+
 
 Discord: https://discord.gg/5phHHgGb3V
