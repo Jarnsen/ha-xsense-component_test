@@ -78,3 +78,4 @@ ____________________________________________________________
 
 
 Discord: https://discord.gg/5phHHgGb3V
+Forum: https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110
