@@ -57,6 +57,12 @@ async def async_setup_entry(
     devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
+    for _, station in coordinator.data["stations"].items():
+        devices.extend(
+            XSenseBinarySensorEntity(coordinator, station, description)
+            for description in SENSORS
+            if description.exists_fn(station)
+        )
     for _, dev in coordinator.data["devices"].items():
         devices.extend(
             XSenseBinarySensorEntity(
@@ -91,5 +97,9 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return the state of the sensor."""
-        device = self.coordinator.data["devices"][self._dev_id]
+        if self._station_id:
+            device = self.coordinator.data["devices"][self._dev_id]
+        else:
+            device = self.coordinator.data["stations"][self._dev_id]
+
         return self.entity_description.value_fn(device)
