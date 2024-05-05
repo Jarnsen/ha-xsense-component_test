@@ -8,8 +8,8 @@
   "homekit": {},
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "requirements": ["python-xsense==0.0.5"],
+  "requirements": ["python-xsense==0.0.7"],
   "ssdp": [],
   "zeroconf": [],
-  "version": "1.0.0"
+  "version": "1.0.7"
 }
