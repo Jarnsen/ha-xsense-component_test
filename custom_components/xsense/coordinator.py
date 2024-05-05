@@ -1,11 +1,12 @@
 """DataUpdateCoordinator for the XSense integration."""
 from __future__ import annotations
 
+from contextlib import suppress
 from datetime import timedelta
 from typing import Any
 
 from xsense import AsyncXSense
-from xsense.exceptions import APIFailure, AuthFailed, SessionExpired
+from xsense.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
@@ -109,6 +110,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             for _, h in self.xsense.houses.items():
                 stations.update(h.stations.items())
+                with suppress(NotFoundError):
+                    await self.xsense.get_house_state(h)
                 for _, s in h.stations.items():
                     await self.xsense.get_station_state(s)
                     await self.xsense.get_state(s)
