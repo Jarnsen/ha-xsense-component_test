@@ -36,6 +36,9 @@
       "ip_address": {
         "name": "IP Address"
       },
+      "mcu_sw_version": {
+        "name": "MCU Software Version"
+      },
       "rf_level": {
         "name": "RF Level",
         "state": {
@@ -53,6 +56,12 @@
       },
       "voice_vol": {
         "name": "Voice Volume"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Wifi Module Firmware"
       }
     }
   }
