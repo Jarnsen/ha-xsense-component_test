@@ -64,7 +64,7 @@ ____________________________________________________________
  - base station (SBS50)
  - heat alarm (XH02-M) 
  - carbon monoxide alarm (XC01-M)
- - smoke detector (XS01-M,WX)
+ - smoke detector (XS01-M,WX; XS03-WX)
  - carbon and smoke (SC07-WX)
  - waterleak detector (SWS51)
  - hygrometer-thermometer (STH51)
