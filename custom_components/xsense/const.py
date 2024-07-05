@@ -1,11 +1,13 @@
 """Constants for the X-Sense Home Security integration."""
+
 import logging
 
 DOMAIN = "xsense"
 MANUFACTURER = "X-Sense"
 COORDINATOR = "coordinator"
 
-DEFAULT_SCAN_INTERVAL = 60
+DEFAULT_SCAN_INTERVAL = 300
+POLL_INTERVAL_MIN = 5
 
 LOGGER = logging.getLogger(__package__)
 
