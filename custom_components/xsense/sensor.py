@@ -1,4 +1,5 @@
 """Support for xsense sensors."""
+
 from __future__ import annotations
 
 from xsense.device import Device
@@ -24,7 +25,7 @@ from .const import DOMAIN, STATE_SIGNAL
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import XSenseEntity, XSenseSensorEntityDescription
 
-STATION_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
+SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="wifi_rssi",
         translation_key="wifi_rssi",
@@ -36,6 +37,14 @@ STATION_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         value_fn=lambda entity: entity.data["wifiRSSI"],
     ),
     XSenseSensorEntityDescription(
+        key="wifi_ssid",
+        translation_key="wifi_ssid",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:access-point-network",
+        exists_fn=lambda entity: "ssid" in entity.data,
+        value_fn=lambda entity: entity.data["ssid"],
+    ),
+    XSenseSensorEntityDescription(
         key="sw_version",
         translation_key="sw_version",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -44,13 +53,22 @@ STATION_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         value_fn=lambda station: station.data["sw"],
     ),
     XSenseSensorEntityDescription(
-        key="serial_number",
-        translation_key="serial_number",
-        icon="mdi:numeric",
+        key="wifi_sw",
+        translation_key="wifi_sw",
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
-        value_fn=lambda station: station.sn,
+        icon="mdi:chip",
+        exists_fn=lambda device: "wifi_sw" in device.data,
+        value_fn=lambda station: station.data["wifi_sw"],
     ),
+    # XSenseSensorEntityDescription(
+    #     key="serial_number",
+    #     translation_key="serial_number",
+    #     icon="mdi:numeric",
+    #     entity_category=EntityCategory.DIAGNOSTIC,
+    #     entity_registry_enabled_default=False,
+    #     exists_fn=lambda device: "deviceSN" in device.data,
+    #     value_fn=lambda station: station.data["deviceSN"],
+    # ),
     XSenseSensorEntityDescription(
         key="ip",
         translation_key="ip_address",
@@ -79,9 +97,6 @@ STATION_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         exists_fn=lambda device: "voiceVol" in device.data,
         value_fn=lambda device: device.data["voiceVol"],
     ),
-)
-
-SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="co",
         native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
@@ -136,13 +151,13 @@ async def async_setup_entry(
     devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    for _, station in coordinator.data["stations"].items():
+    for station in coordinator.data["stations"].values():
         devices.extend(
             XSenseSensorEntity(coordinator, station, description)
-            for description in STATION_SENSORS
+            for description in SENSORS
             if description.exists_fn(station)
         )
-    for _, dev in coordinator.data["devices"].items():
+    for dev in coordinator.data["devices"].values():
         devices.extend(
             XSenseSensorEntity(
                 coordinator, dev, description, station_id=dev.station.entity_id
