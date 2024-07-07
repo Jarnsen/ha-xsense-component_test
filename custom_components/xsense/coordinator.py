@@ -3,18 +3,11 @@
 from __future__ import annotations
 
 from contextlib import suppress
-<<<<<<< HEAD
 from datetime import datetime, timedelta
 import json
 from typing import Any
 
 from xsense import AsyncXSense, House
-=======
-from datetime import timedelta
-from typing import Any
-
-from xsense import AsyncXSense
->>>>>>> ab1c48b7f13c71a02fb9c465b03915b1c04637a3
 from xsense.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
 
 from homeassistant.config_entries import ConfigEntry
@@ -142,11 +135,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 stations.update(h.stations.items())
                 with suppress(NotFoundError):
                     await self.xsense.get_house_state(h)
-<<<<<<< HEAD
                 for s in h.stations.values():
-=======
-                for _, s in h.stations.items():
->>>>>>> ab1c48b7f13c71a02fb9c465b03915b1c04637a3
                     await self.xsense.get_station_state(s)
                     await self.xsense.get_state(s)
                     devices.update(s.devices.items())
