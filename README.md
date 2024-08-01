@@ -63,9 +63,9 @@ ____________________________________________________________
 # confirmed devices
  - base station (SBS50)
  - heat alarm (XH02-M) 
- - carbon monoxide alarm (XC01-M, XC04-WX, XS0B-MR)
- - smoke detector (XS01-M,WX; XS03-WX)
- - carbon and smoke (SC07-WX, XP0A-MR (partly supported))
+ - carbon monoxide alarm (XC01-M; XC04-WX)
+ - smoke detector (XS01-M,WX; XS03-WX; XS0B-MR)
+ - carbon and smoke (SC07-WX; XP0A-MR (partly supported))
  - waterleak detector (SWS51)
  - hygrometer-thermometer (STH51)
 ____________________________________________________________
