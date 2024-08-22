@@ -4,12 +4,11 @@
   "codeowners": ["@theosnel"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/Jarnsen/ha-xsense-component_test/tree/main",
+  "documentation": "https://www.home-assistant.io/integrations/xsense",
   "homekit": {},
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "requirements": ["python-xsense==0.0.9", "paho-mqtt"],
+  "requirements": ["python-xsense[async]==0.0.9", "paho-mqtt==1.6.1"],
   "ssdp": [],
-  "zeroconf": [],
-  "version": "1.0.9 Alpha"
+  "zeroconf": []
 }

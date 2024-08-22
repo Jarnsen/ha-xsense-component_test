@@ -1,4 +1,5 @@
 """Support for xsense binary sensors."""
+
 from __future__ import annotations
 
 from xsense.device import Device
@@ -45,6 +46,13 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         exists_fn=lambda entity: "muteStatus" in entity.data,
         value_fn=lambda entity: entity.data["muteStatus"],
     ),
+    XSenseBinarySensorEntityDescription(
+        key="activate",
+        translation_key="activate",
+        icon="mdi:bell-ring",
+        exists_fn=lambda entity: "activate" in entity.data,
+        value_fn=lambda entity: entity.data["activate"],
+    ),
 )
 
 
@@ -57,13 +65,13 @@ async def async_setup_entry(
     devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    for _, station in coordinator.data["stations"].items():
+    for station in coordinator.data["stations"].values():
         devices.extend(
             XSenseBinarySensorEntity(coordinator, station, description)
             for description in SENSORS
             if description.exists_fn(station)
         )
-    for _, dev in coordinator.data["devices"].items():
+    for dev in coordinator.data["devices"].values():
         devices.extend(
             XSenseBinarySensorEntity(
                 coordinator, dev, description, station_id=dev.station.entity_id

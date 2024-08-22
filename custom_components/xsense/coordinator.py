@@ -37,7 +37,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             always_update=True,
         )
         self.mqtt_servers: dict[str, XSenseMQTT] = {}
-        self.client_available = hass.loop.create_future()
+        # self.client_available = hass.loop.create_future()
 
     def mqtt_server(self, host: str):
         """Get mqtt server instance for specific host."""
@@ -53,7 +53,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             await self.xsense.login(email, password)
         except AuthFailed as ex:
-            raise ConfigEntryAuthFailed(f"Login failed: {str(ex)}") from ex
+            raise ConfigEntryAuthFailed(f"Login failed: {ex!s}") from ex
 
     async def _async_update_data(self) -> dict[str, Any]:
         if self.xsense is None:
@@ -65,7 +65,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 mqtt = self.mqtt_server(h.mqtt_server)
                 if not mqtt:
                     mqtt = self.setup_mqtt(h)
-                    await mqtt.async_connect(self.client_available)
+                    await mqtt.async_connect()
 
                 await self.assure_subscriptions(h)
 
@@ -154,8 +154,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def setup_mqtt(self, h: House) -> XSenseMQTT:
         """Create and configure MQTT object for specific house."""
+        LOGGER.info(f"setup_mqtt: {h.mqtt_server}")
         if not self.mqtt_server(h.mqtt_server):
-            mqtt = XSenseMQTT(self.hass, self.entry, {}, h.mqtt)
+            mqtt = XSenseMQTT(self.hass, self.entry, h.mqtt)
             mqtt.on_data = self.async_event_received
             mqtt.init_client()
             self.mqtt_servers[h.mqtt_server] = mqtt
