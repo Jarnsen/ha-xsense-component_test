@@ -11,4 +11,5 @@
   "requirements": ["python-xsense[async]==0.0.9", "paho-mqtt==1.6.1"],
   "ssdp": [],
   "zeroconf": []
+  "version": "1.0.9_beta_3"
 }
