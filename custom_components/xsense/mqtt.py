@@ -273,7 +273,7 @@ class XSenseMQTT:
         )
         await self._async_wait_for_mid_or_raise(msg_info.mid, msg_info.rc)
 
-    # updated call
+    # updated call, added exception handler
     async def async_connect(self) -> None:
         """Connect to the host. Does not process messages yet."""
 
@@ -288,6 +288,9 @@ class XSenseMQTT:
                 )
         except OSError as err:
             _LOGGER.error("Failed to connect to MQTT server due to exception: %s", err)
+            self._async_connection_result(False)
+        except mqtt.WebsocketConnectionError as err:
+            _LOGGER.error("Error while connecting to XSense MQTT: %s", err)
             self._async_connection_result(False)
         finally:
             if result is not None and result != 0:
@@ -320,7 +323,7 @@ class XSenseMQTT:
             self._reconnect_task.cancel()
             self._reconnect_task = None
 
-    # unchanged
+    # Added Websocket Exception handler
     async def _reconnect_loop(self) -> None:
         """Reconnect to the MQTT server."""
         while True:
@@ -333,6 +336,8 @@ class XSenseMQTT:
                     _LOGGER.debug(
                         "Error re-connecting to MQTT server due to exception: %s", err
                     )
+                except mqtt.WebsocketConnectionError as err:
+                    _LOGGER.error("Error while re-connecting to XSense MQTT: %s", err)
 
             await asyncio.sleep(RECONNECT_INTERVAL_SECONDS)
 
