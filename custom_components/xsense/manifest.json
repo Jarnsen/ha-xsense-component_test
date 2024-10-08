@@ -8,7 +8,7 @@
   "homekit": {},
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "requirements": ["python-xsense==0.0.10", "paho-mqtt==2.1.0"],
+  "requirements": ["python-xsense==0.0.10", "paho-mqtt"],
   "ssdp": [],
   "zeroconf": [],
   "version": "1.0.10"
