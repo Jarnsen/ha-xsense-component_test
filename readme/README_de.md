@@ -1,6 +1,6 @@
 # ha-xsense-component_test
 
-## Übersicht
+## Überblick
 Diese Integration für Home Assistant ermöglicht die Verwendung von Xsense-Geräten innerhalb des Smart-Home-Systems. Sie wurde basierend auf dem Originalcode von [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) erstellt und mit seiner Erlaubnis und in Zusammenarbeit mit ihm veröffentlicht.
 
 Bis es eine offizielle Home Assistant-Integration von Theo gibt, wird diese HACS-Integration verwendet und regelmäßig aktualisiert, um neue Funktionen hinzuzufügen und bestehende Probleme zu beheben. Diese Integration ermöglicht es Nutzern, ihre Xsense-Geräte einfach in Home Assistant zu integrieren und für verschiedene Automationen und Überwachungen zu nutzen.
@@ -46,7 +46,7 @@ ____________________________________________________________
    Navigiere im HACS-Dashboard zu den Einstellungen und füge das Repository als benutzerdefinierte Quelle hinzu.
 
 3. **Füge das Repository hinzu**:
-   Gib die URL des Repositories ein: `https://github.com/Jarnsen/ha-xsense-component_test`
+   Gib die URL des Repositories ein: https://github.com/Jarnsen/ha-xsense-component_test
 
    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 
@@ -61,8 +61,12 @@ ____________________________________________________________
 ## Konfiguration
 Nach der Installation ist eine grundlegende Konfiguration notwendig, um die Integration korrekt einzurichten:
 - **Benutzername und Passwort**: Verwende die Zugangsdaten des neu erstellten X-Sense-Kontos, um die Verbindung herzustellen.
+
+    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+  
 - **Geräteübersicht**: Nach erfolgreicher Einrichtung werden die geteilten Geräte in Home Assistant verfügbar und können dort für Automationen genutzt werden.
 
+    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
 ## Ansicht in Home Assistant
 Nach erfolgreicher Installation und Konfiguration wird die Integration in Home Assistant sichtbar sein. Die Geräte sind dann im Dashboard sichtbar und können für Automationen, Benachrichtigungen und andere Anwendungsfälle verwendet werden.
 
@@ -89,6 +93,7 @@ Mit dieser Integration lassen sich verschiedene Automationen erstellen. Hier sin
 
 ### Beispiel 1: Temperaturwarnung
 Wenn die Temperatur von einem Xsense-Thermometer zu hoch ist, wird eine Benachrichtigung gesendet:
+
 ```yaml
 automation:
   - alias: "Xsense Temperaturwarnung"
@@ -104,6 +109,7 @@ automation:
 
 ### Beispiel 2: Wassermelder-Alarm
 Wenn der Wassermelder Wasser erkennt, wird eine Warnmeldung ausgelöst:
+
 ```yaml
 automation:
   - alias: "Wassermelder Alarm"
@@ -122,11 +128,13 @@ ____________________________________________________________
 ## Wir brauchen Hilfe
 Wir sind immer auf der Suche nach Unterstützung, um diese Integration weiterzuentwickeln und zu verbessern. Hier sind einige Möglichkeiten, wie du helfen kannst:
 
-1. **Testen von Geräten**: Wenn du ein Xsense-Gerät besitzt, das mit der Integration funktioniert, lass uns das wissen, damit wir es zur Liste der unterstützten Geräte hinzufügen können.
+1. **Testen von Geräten**: Wenn du ein Xsense-Gerät besitzt, das mit der Integration funktioniert, lass es uns wissen, damit wir es zur Liste der unterstützten Geräte hinzufügen können.
 
-2. **Unterstützung für nicht funktionierende Geräte**: Falls ein Gerät nicht funktioniert, melde dies bitte, damit wir Unterstützung bieten oder es in zukünftigen Versionen integrieren können.
+2. **Feedback zu nicht unterstützten Geräten**: Falls ein Gerät nicht funktioniert, gib uns bitte Rückmeldung, damit wir Unterstützung bieten oder das Gerät in zukünftigen Versionen der Integration einbinden können.
 
-3. **Teilen von Geräten**: Die beste Möglichkeit zum Testen neuer Geräte ist das Teilen des Geräts über die X-Sense-App.
+3. **Teilen von Geräten zum Testen**: Die beste Möglichkeit, neue Geräte zu testen, besteht darin, das Gerät über die X-Sense-App zu teilen. So können wir sicherstellen, dass möglichst viele Geräte unterstützt werden.
+
+4. **Community-Unterstützung**: Beteilige dich an Diskussionen in unserer Community. Ob du Vorschläge für Verbesserungen hast oder anderen Nutzern mit ihrer Einrichtung hilfst – jede Hilfe ist willkommen!
 
 Für Diskussionen und Unterstützung kannst du uns auf unserem Discord-Server oder im Home Assistant Forum erreichen:
 
