@@ -46,7 +46,7 @@ ____________________________________________________________
    Navigiere im HACS-Dashboard zu den Einstellungen und füge das Repository als benutzerdefinierte Quelle hinzu.
 
 3. **Füge das Repository hinzu**:
-   Gib die URL des Repositories ein: https://github.com/Jarnsen/ha-xsense-component_test
+   Gib die URL des Repositories ein: `https://github.com/Jarnsen/ha-xsense-component_test`
 
    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 
