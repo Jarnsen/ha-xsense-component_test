@@ -1,83 +1,33 @@
-This code is based on 
+# ha-xsense-component_test
 
-https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense
+![Home Assistant Logo](https://github.com/your_repo_path/ha-xsense-component/assets/ha_logo.png)
+![X-Sense Logo](https://github.com/your_repo_path/ha-xsense-component/assets/xsense_logo.png)
 
-#### The codeowner is @theosnel, this repo was created with his permission and with his cooperation. Until there is an official Home Assistant integration from Theo, we will solve the integration and update via this custom HACS integration.
+## Overview (English) / Überblick (Deutsch)
 
-# Home Assistant integration for X-sense devices                                          ![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+This repository contains the Home Assistant integration for X-Sense devices. This repository is available in multiple languages to help users worldwide understand and use the integration easily.
 
-# How to Video
-[![X-Sense Home Assistant Integration](https://img.youtube.com/vi/3CCKK-qX-YA/0.jpg)](https://www.youtube.com/watch?v=3CCKK-qX-YA)
+Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. Dieses Repository ist in mehreren Sprachen verfügbar, damit Nutzer weltweit die Integration einfach verstehen und nutzen können.
 
+### Available Languages / Verfügbare Sprachen:
 
-____________________________________________________________
-# Preparation
-- Create a second account (for Home Assistant) in the X-Sense app
-- share **only from the integration supportet** devices, from the main account to the Home Assistant account
+- [English (en)](./README_en.md)
+- [German (deutsch) (de)](./README_de.md)
+- [Dutch (nederlands) (nl)](./README_nl.md)
+- [Spanish (español) (es)](./README_es.md)
+- [French (français) (fr)](./README_fr.md)
+- [Italian (italiano) (it)](./README_it.md)
+- [Portuguese (português) (pt)](./README_pt.md)
+- [Russian (русский) (ru)](./README_ru.md)
+- [Simplified Chinese (中文) (cn)](./README_cn.md)
+- [Japanese (日本語) (ja)](./README_ja.md)
+- [Arabic (العربية) (ar)](./README_ar.md)
+- [Greek (Ελληνικά) (el)](./README_el.md)
+- [Hindi (हिन्दी) (hi)](./README_hi.md)
+- [Polish (polski) (pl)](./README_pl.md)
+- [Turkish (türkçe) (tr)](./README_tr.md)
 
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+If a language is missing, please let us know, and we will do our best to add it.
 
-____________________________________________________________
+Falls eine Sprache fehlt, lassen Sie es uns wissen, und wir bemühen uns, diese hinzuzufügen.
 
-
-# Installation via hacs 
-open HACS
-
-![Download (1)](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
-
-
-
-
-
-____________________________________________________________
-go to custom repositories
-add: https://github.com/Jarnsen/ha-xsense-component_test
-
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
-
-
-
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/7492696d-caa4-44b0-ad8f-402fb7f5369c)
-
-
-____________________________________________________________
-download and install it
-
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
-
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
-
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
-
-
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
-
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
-
-____________________________________________________________
-# View in Home Assistant
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/50bbafde-c94b-445e-9aa3-9c33d5f151d6)
-
-
-____________________________________________________________
-# confirmed devices
- - base station (SBS50)
- - heat alarm (XH02-M) 
- - carbon monoxide alarm (XC01-M; XC04-WX)
- - smoke detector (XS01-M,WX; XS03-WX; XS0B-MR)
- - carbon and smoke (SC07-WX; XP0A-MR (partly supported))
- - waterleak detector (SWS51)
- - hygrometer-thermometer (STH51)
-____________________________________________________________
-# we need help 
-
-1.: who has another device running with the integration
-
-2.: who has another device that doesn‘t work with the integration and needs support fort it
-
-3.: best way for testing is to share the device via the X-Sense app
-
-
-[Discord]( https://discord.gg/5phHHgGb3V)
-
-[Forum](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
