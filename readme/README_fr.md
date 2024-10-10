@@ -71,7 +71,8 @@ Après l'installation, une configuration de base est nécessaire pour configurer
 ## Affichage dans Home Assistant
 Après une installation et une configuration réussies, l'intégration sera visible dans Home Assistant. Les appareils seront disponibles sur le tableau de bord et pourront être utilisés pour les automatisations, les notifications et d'autres applications.
 
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/50bbafde-c94b-445e-9aa3-9c33d5f151d6)
+
+![Форум](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
 
 ____________________________________________________________
 
