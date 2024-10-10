@@ -12,9 +12,9 @@
 
 ### Available Languages / Verfügbare Sprachen:
 
-- [English (en)](./readmes/README_en.md)
-- [German (deutsch) (de)](./readmes/README_de.md)
-- [Dutch (nederlands) (nl)](./readmes/README_nl.md)
+- [English (en)](./readme/README_en.md)
+- [German (deutsch) (de)](./readme/README_de.md)
+- [Dutch (nederlands) (nl)](./readme/README_nl.md)
 
 
 
