@@ -1,5 +1,6 @@
 # ha-xsense-component_test
 
+https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_de.md
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
