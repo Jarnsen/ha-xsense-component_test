@@ -84,4 +84,41 @@ If a language is missing, please let us know, and we will do our best to add it.
 
 Falls eine Sprache fehlt, lassen Sie es uns wissen, und wir bemühen uns, diese hinzuzufügen.
 
+# ha-xsense-component_test
+
+<div align="center">
+<img src="https://github.com/your_repo_path/ha-xsense-component/assets/ha_logo.png" alt="Home Assistant Logo">
+</div>
+<div align="center">
+<img src="https://github.com/your_repo_path/ha-xsense-component/assets/xsense_logo.png" alt="X-Sense Logo">
+</div>
+
+## Overview (English) / Überblick (Deutsch)
+
+This repository contains the Home Assistant integration for X-Sense devices. This repository is available in multiple languages to help users worldwide understand and use the integration easily.
+
+Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. Dieses Repository ist in mehreren Sprachen verfügbar, damit Nutzer weltweit die Integration einfach verstehen und nutzen können.
+
+### Available Languages / Verfügbare Sprachen:
+
+- [English (en)](./readme/README_en.md)
+- [German (deutsch) (de)](./readme/README_de.md)
+- [Dutch (nederlands) (nl)](./readme/README_nl.md)
+- [Spanish (español) (es)](./readme/README_es.md)
+- [French (français) (fr)](./readme/README_fr.md)
+- [Italian (italiano) (it)](./readme/README_it.md)
+- [Portuguese (português) (pt)](./readme/README_pt.md)
+- [Russian (русский) (ru)](./readme/README_ru.md)
+- [Simplified Chinese (中文) (cn)](./readme/README_cn.md)
+- [Japanese (日本語) (ja)](./readme/README_ja.md)
+- [Arabic (العربية) (ar)](./readme/README_ar.md)
+- [Greek (Ελληνικά) (el)](./readme/README_el.md)
+- [Hindi (हिन्दी) (hi)](./readme/README_hi.md)
+- [Polish (polski) (pl)](./readme/README_pl.md)
+- [Turkish (türkçe) (tr)](./readme/README_tr.md)
+
+If a language is missing, please let us know, and we will do our best to add it.
+
+Falls eine Sprache fehlt, lassen Sie es uns wissen, und wir bemühen uns, diese hinzuzufügen.
+
 
