@@ -54,6 +54,7 @@ ____________________________________________________________
    Suche die Integration in HACS, lade sie herunter und installiere sie. Nach der Installation kann die Konfiguration über die Home Assistant-Benutzeroberfläche vorgenommen werden.
 
    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
+   
    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
 
 ____________________________________________________________
