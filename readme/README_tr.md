@@ -71,7 +71,7 @@ Kurulumdan sonra entegrasyonu doğru bir şekilde ayarlamak için temel bir yap�
 ## Home Assistant'ta Görünüm
 Başarılı bir kurulum ve yapılandırma sonrasında entegrasyon Home Assistant'ta görünür olacaktır。Cihazlar kontrol panelinde görüntülenebilir ve otomasyonlar, bildirimler ve diğer uygulamalar için kullanılabilir。
 
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/50bbafde-c94b-445e-9aa3-9c33d5f151d6)
+![Форум](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
 
 ____________________________________________________________
 
