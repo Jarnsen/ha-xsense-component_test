@@ -10,6 +10,11 @@
   <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>
 
+### Available Languages / Verfügbare Sprachen:
+
+- [English (en)](./readmes/README_en.md)
+- [German (deutsch) (de)](./readmes/README_de.md)
+- [Dutch (nederlands) (nl)](./readmes/README_nl.md)
 
 
 
