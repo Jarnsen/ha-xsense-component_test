@@ -1,6 +1,7 @@
 # ha-xsense-component_test
 
 ![Home Assistant Logo](https://github.com/your_repo_path/ha-xsense-component/assets/ha_logo.png)
+
 ![X-Sense Logo](https://github.com/your_repo_path/ha-xsense-component/assets/xsense_logo.png)
 
 ## Overview (English) / Überblick (Deutsch)
