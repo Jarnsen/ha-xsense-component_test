@@ -71,7 +71,8 @@ ____________________________________________________________
 ## Просмотр в Home Assistant
 После успешной установки и настройки интеграция будет видна в Home Assistant. Устройства будут доступны на панели и могут быть использованы для автоматизаций, уведомлений и других случаев использования.
 
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/50bbafde-c94b-445e-9aa3-9c33d5f151d6)
+
+![Форум](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
 
 ____________________________________________________________
 
@@ -142,7 +143,3 @@ ____________________________________________________________
 [Discord](https://discord.gg/5phHHgGb3V)
 
 [Форум](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
-
-![Discord](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
-
-![Форум](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
