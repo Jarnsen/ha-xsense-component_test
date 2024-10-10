@@ -54,6 +54,7 @@ ____________________________________________________________
    Recherchez l'intégration dans HACS, téléchargez-la et installez-la. Après l'installation, la configuration peut être effectuée via l'interface Home Assistant.
 
    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
+   
    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
 
 ____________________________________________________________
@@ -133,7 +134,3 @@ Pour des discussions et du support, vous pouvez nous rejoindre sur notre serveur
 [Discord](https://discord.gg/5phHHgGb3V)
 
 [Forum](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
-
-![Discord](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
-
-![Forum](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
