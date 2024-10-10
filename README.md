@@ -12,7 +12,7 @@ Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. 
 
 ### Available Languages / Verfügbare Sprachen:
 
-- [English (en)]([readme/README_en.md](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_ar.md))
+- [English (en)]((https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_en.md)
 - [German (deutsch) (de)](./README_de.md)
 - [Dutch (nederlands) (nl)](./README_nl.md)
 - [Spanish (español) (es)](./README_es.md)
