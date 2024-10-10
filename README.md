@@ -20,21 +20,21 @@ Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. 
 
 ### Available Languages / Verfügbare Sprachen:
 
-- [English (en)](https://github.com/Jarnsen/ha-xsense-component_test/tree/main/readme/README_en.md)
+- [English (en)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_en.md)
 - [German (deutsch) (de)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_de.md)
-- [Dutch (nederlands) (nl)](./README_nl.md)
-- [Spanish (español) (es)](./README_es.md)
-- [French (français) (fr)](./README_fr.md)
-- [Italian (italiano) (it)](./README_it.md)
-- [Portuguese (português) (pt)](./README_pt.md)
-- [Russian (русский) (ru)](./README_ru.md)
-- [Simplified Chinese (中文) (cn)](./README_cn.md)
-- [Japanese (日本語) (ja)](./README_ja.md)
-- [Arabic (العربية) (ar)](./README_ar.md)
-- [Greek (Ελληνικά) (el)](./README_el.md)
-- [Hindi (हिन्दी) (hi)](./README_hi.md)
-- [Polish (polski) (pl)](./README_pl.md)
-- [Turkish (türkçe) (tr)](./README_tr.md)
+- [Dutch (nederlands) (nl)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_nl.md)
+- [Spanish (español) (es)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_es.md)
+- [French (français) (fr)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_fr.md)
+- [Italian (italiano) (it)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_it.md)
+- [Portuguese (português) (pt)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_pt.md)
+- [Russian (русский) (ru)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_ru.md)
+- [Simplified Chinese (中文) (cn)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_cn.md)
+- [Japanese (日本語) (ja)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_ja.md)
+- [Arabic (العربية) (ar)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_ar.md)
+- [Greek (Ελληνικά) (el)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_el.md)
+- [Hindi (हिन्दी) (hi)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_hi.md)
+- [Polish (polski) (pl)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_pl.md)
+- [Turkish (türkçe) (tr)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_tr.md)
 
 If a language is missing, please let us know, and we will do our best to add it.
 
