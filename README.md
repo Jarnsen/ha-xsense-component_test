@@ -1,8 +1,15 @@
 # ha-xsense-component_test
 
-![image](https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630)
 
-![image](https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+</p>
+
 
 
 
