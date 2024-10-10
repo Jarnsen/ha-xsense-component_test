@@ -71,7 +71,8 @@ Después de la instalación, se requiere una configuración básica para configu
 ## Vista en Home Assistant
 Después de una instalación y configuración exitosa, la integración será visible en Home Assistant. Los dispositivos estarán disponibles en el panel de control y se podrán utilizar para automatizaciones, notificaciones y otros casos de uso.
 
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/50bbafde-c94b-445e-9aa3-9c33d5f151d6)
+
+![Форум](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
 
 ____________________________________________________________
 
