@@ -9,7 +9,9 @@
 
 Theo による公式な Home Assistant 統合が提供されるまで、この HACS 統合を使用します。この統合は、新機能の追加や既存の問題の解決を目的として定期的に更新されます。この統合により、ユーザーは簡単に Xsense デバイスを Home Assistant に統合し、さまざまな自動化や監視に利用することができます。
 
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+</p>
 
 ## 機能
 - Xsense デバイスを Home Assistant に統合します。
