@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## अवलोकन
 यह होम असिस्टेंट के लिए इंटीग्रेशन आपको स्मार्ट होम सिस्टम में Xsense उपकरणों का उपयोग करने की अनुमति देता है। इसे [थियो स्नेल](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) के मूल कोड के आधार पर बनाया गया है और उनकी अनुमति और सहयोग से प्रकाशित किया गया है।
 
