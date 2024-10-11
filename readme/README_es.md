@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Resumen
 Esta integración para Home Assistant permite el uso de dispositivos Xsense dentro del sistema de hogar inteligente. Fue creada basándose en el código original de [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) y se publicó con su permiso y en colaboración con él.
 
