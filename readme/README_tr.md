@@ -9,7 +9,9 @@ Bu Home Assistant entegrasyonu, Xsense cihazlarının akıllı ev sistemine ente
 
 Theo tarafından resmi bir Home Assistant entegrasyonu sunulana kadar, bu HACS entegrasyonu kullanılacak ve mevcut sorunları çözmek ve yeni özellikler eklemek için düzenli olarak güncellenecektir. Bu entegrasyon, kullanıcıların Xsense cihazlarını Home Assistant'a kolayca entegre etmelerini ve çeşitli otomasyonlar ve izleme amaçlarıyla kullanmalarını sağlar.
 
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+</p>
 
 ## Özellikler
 - Çeşitli Xsense cihazlarını Home Assistant'a entegre eder.
