@@ -16,8 +16,9 @@
 
 حتى يتم إصدار تكامل رسمي لـ Home Assistant من قبل Theo، سيتم استخدام هذا التكامل من HACS، والذي يتم تحديثه بانتظام لإضافة ميزات جديدة وحل المشاكل الحالية. يتيح هذا التكامل للمستخدمين دمج أجهزة Xsense بسهولة في Home Assistant واستخدامها في مختلف عمليات الأتمتة والمراقبة.
 
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
-
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+</p>
 ## الميزات
 - تكامل مختلف أجهزة Xsense مع Home Assistant.
 - دعم الأتمتة بناءً على بيانات أجهزة الاستشعار من Xsense.
