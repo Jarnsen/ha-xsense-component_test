@@ -9,7 +9,9 @@ This integration for Home Assistant allows the use of X-Sense devices within a s
 
 Until an official Home Assistant integration from Theo becomes available, this HACS integration will be used and regularly updated to add new functionalities and resolve existing issues. This integration allows users to easily integrate their X-Sense devices into Home Assistant and use them for various automations and monitoring.
 
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+</p>
 
 ## Features
 - Integration of various X-Sense devices into Home Assistant.
