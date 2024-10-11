@@ -1,11 +1,18 @@
-# ha-xsense-component_test
+# ha-xsense-component_test 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
+
 
 ## Überblick
 Diese Integration für Home Assistant ermöglicht die Verwendung von Xsense-Geräten innerhalb des Smart-Home-Systems. Sie wurde basierend auf dem Originalcode von [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) erstellt und mit seiner Erlaubnis und in Zusammenarbeit mit ihm veröffentlicht.
 
 Bis es eine offizielle Home Assistant-Integration von Theo gibt, wird diese HACS-Integration verwendet und regelmäßig aktualisiert, um neue Funktionen hinzuzufügen und bestehende Probleme zu beheben. Diese Integration ermöglicht es Nutzern, ihre Xsense-Geräte einfach in Home Assistant zu integrieren und für verschiedene Automationen und Überwachungen zu nutzen.
 
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+</p>
 
 ## Funktionen
 - Integration verschiedener Xsense-Geräte in Home Assistant.
