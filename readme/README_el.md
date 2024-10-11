@@ -9,7 +9,9 @@
 
 Μέχρι να διατεθεί επίσημη ενσωμάτωση του Home Assistant από τον Theo, θα χρησιμοποιείται αυτή η ενσωμάτωση HACS, η οποία ενημερώνεται τακτικά για την προσθήκη νέων λειτουργιών και την επίλυση υφιστάμενων προβλημάτων. Αυτή η ενσωμάτωση επιτρέπει στους χρήστες να ενσωματώσουν εύκολα τις συσκευές Xsense στο Home Assistant και να τις χρησιμοποιούν για διάφορες αυτοματοποιήσεις και παρακολούθηση.
 
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+</p>
 
 ## Λειτουργίες
 - Ενσωμάτωση διαφόρων συσκευών Xsense στο Home Assistant.
