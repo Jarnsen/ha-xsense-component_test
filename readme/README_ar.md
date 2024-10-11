@@ -3,7 +3,14 @@
 
 <div dir="rtl">
 ## نظرة عامة
-تتيح لك هذه التكاملية مع Home Assistant استخدام أجهزة Xsense داخل نظام المنزل الذكي. تم إنشاؤها استنادًا إلى الكود الأصلي لـ [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) ونُشرت بإذنه وبالتعاون معه.
+
+   
+تتيح لك هذه التكاملية مع Home Assistant استخدام أجهزة Xsense داخل نظام المنزل الذكي. تم إنشاؤها استنادًا إلى الكود الأصلي لـ
+
+   
+   [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) 
+   ونُشرت بإذنه وبالتعاون معه.
+   
 
 حتى يتم إصدار تكامل رسمي لـ Home Assistant من قبل Theo، سيتم استخدام هذا التكامل من HACS، والذي يتم تحديثه بانتظام لإضافة ميزات جديدة وحل المشاكل الحالية. يتيح هذا التكامل للمستخدمين دمج أجهزة Xsense بسهولة في Home Assistant واستخدامها في مختلف عمليات الأتمتة والمراقبة.
 
