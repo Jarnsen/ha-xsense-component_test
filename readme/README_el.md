@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Επισκόπηση
 Αυτή η ενσωμάτωση για το Home Assistant επιτρέπει τη χρήση συσκευών Xsense μέσα στο σύστημα έξυπνου σπιτιού. Δημιουργήθηκε βάσει του αρχικού κώδικα του [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) και δημοσιεύθηκε με την άδειά του και σε συνεργασία με αυτόν.
 
