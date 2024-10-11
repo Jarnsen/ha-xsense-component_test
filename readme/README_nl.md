@@ -9,7 +9,9 @@ Deze integratie voor Home Assistant maakt het gebruik van Xsense-apparaten binne
 
 Totdat een officiële Home Assistant-integratie van Theo beschikbaar is, zal deze HACS-integratie worden gebruikt en regelmatig worden bijgewerkt om nieuwe functies toe te voegen en bestaande problemen op te lossen. Deze integratie stelt gebruikers in staat om hun Xsense-apparaten eenvoudig in Home Assistant te integreren en te gebruiken voor verschillende automatiseringen en bewaking.
 
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+</p>
 
 ## Functies
 - Integratie van verschillende Xsense-apparaten in Home Assistant.
