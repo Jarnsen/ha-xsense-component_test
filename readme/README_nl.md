@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Overzicht
 Deze integratie voor Home Assistant maakt het gebruik van Xsense-apparaten binnen het slimme huis mogelijk. Het is gebaseerd op de originele code van [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) en is gepubliceerd met zijn toestemming en in samenwerking met hem.
 
