@@ -9,7 +9,9 @@ Ta integracja z Home Assistant umożliwia korzystanie z urządzeń Xsense w syst
 
 Do czasu, gdy dostępna będzie oficjalna integracja Home Assistant od Theo, będzie używana ta integracja HACS, która jest regularnie aktualizowana, aby dodawać nowe funkcje i rozwiązywać istniejące problemy. Ta integracja umożliwia użytkownikom łatwą integrację urządzeń Xsense z Home Assistant oraz ich używanie do różnych automatyzacji i monitorowania.
 
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+</p>
 
 ## Funkcje
 - Integracja różnych urządzeń Xsense z Home Assistant.
