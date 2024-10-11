@@ -9,7 +9,9 @@
 
 在 Theo 的官方 Home Assistant 集成发布之前，将使用此 HACS 集成，并定期更新以添加新功能和解决现有问题。此集成使用户可以轻松地将 Xsense 设备集成到 Home Assistant 中，并用于各种自动化和监控。
 
-![images](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/c49a97f2-5e10-4129-82bc-1d647adc0895)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+</p>
 
 ## 功能
 - 将各种 Xsense 设备集成到 Home Assistant 中。
