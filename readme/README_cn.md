@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## 概览
 此 Home Assistant 集成允许在智能家居系统中使用 Xsense 设备。它基于 [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) 的原始代码创建，并在他的许可和合作下发布。
 
