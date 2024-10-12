@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from xsense.device import Device
 from xsense.entity import Entity
+from xsense.station import Station
 
 from homeassistant import config_entries
 from homeassistant.components.binary_sensor import (
@@ -55,6 +56,15 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
 )
 
+MQTTSensor = XSenseBinarySensorEntityDescription(
+    key="connected",
+    translation_key="connected",
+    entity_category=EntityCategory.DIAGNOSTIC,
+    icon="mdi:connection",
+    exists_fn=lambda entity: isinstance(entity, Station),
+    value_fn=lambda entity: False,
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -71,6 +81,8 @@ async def async_setup_entry(
             for description in SENSORS
             if description.exists_fn(station)
         )
+        devices.append(XSenseMQTTConnectedEntity(coordinator, station, MQTTSensor))
+
     for dev in coordinator.data["devices"].values():
         devices.extend(
             XSenseBinarySensorEntity(
@@ -111,3 +123,15 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
             device = self.coordinator.data["stations"][self._dev_id]
 
         return self.entity_description.value_fn(device)
+
+
+class XSenseMQTTConnectedEntity(XSenseBinarySensorEntity):
+    """Binary sensors for MQTT connectivity."""
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return the state of the sensor."""
+
+        device = self.coordinator.data["stations"][self._dev_id]
+        mqtt_server = self.coordinator.mqtt_server(device.house.mqtt_server)
+        return mqtt_server.connected
