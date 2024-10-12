@@ -326,6 +326,8 @@ class XSenseMQTT:
     # Added Websocket Exception handler
     async def _reconnect_loop(self) -> None:
         """Reconnect to the MQTT server."""
+        await asyncio.sleep(1)
+
         while True:
             if not self.connected:
                 try:
