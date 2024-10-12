@@ -154,7 +154,6 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def setup_mqtt(self, h: House) -> XSenseMQTT:
         """Create and configure MQTT object for specific house."""
-        LOGGER.info(f"setup_mqtt: {h.mqtt_server}")
         if not self.mqtt_server(h.mqtt_server):
             mqtt = XSenseMQTT(self.hass, self.entry, h.mqtt)
             mqtt.on_data = self.async_event_received
