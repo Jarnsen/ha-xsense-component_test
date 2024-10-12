@@ -22,6 +22,9 @@
       "alarm_status": {
         "name": "Alarm Status"
       },
+      "connected": {
+        "name": "Connected"
+      },
       "is_life_end": {
         "name": "Is life end"
       },
@@ -30,6 +33,14 @@
       },
       "activate": {
         "name": "Activate"
+      }
+    },
+    "button": {
+      "test": {
+        "name": "Test"
+      },
+      "mute": {
+        "name": "Mute"
       }
     },
     "sensor": {
