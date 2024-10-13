@@ -1,6 +1,5 @@
-# ha-xsense-component_test
-
-
+# ha-xsense-component_test 
+<img src="https://discord.com/api/guilds/1118894710027731025/widget.png?style=shield" alt="Discord Shield"/>
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
