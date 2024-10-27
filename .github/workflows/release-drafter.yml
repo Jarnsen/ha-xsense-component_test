@@ -1,0 +1,17 @@
+template: |
+  ## Changes
+  $CHANGES
+
+  ## Contributors
+  $CONTRIBUTORS
+
+categories:
+  - title: 🚀 Features
+    labels:
+      - feature
+  - title: 🐛 Bug Fixes
+    labels:
+      - bug
+  - title: 🧰 Maintenance
+    labels:
+      - maintenance
