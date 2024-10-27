@@ -1,0 +1,33 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Reagiert auf Tags wie v1.0.0
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+
+    steps:
+      # Repository auschecken
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Release Notes generieren (optional)
+      - name: Generate Release Notes
+        id: generate_notes
+        uses: actions/generate-release-notes@v2
+
+      # GitHub Release erstellen
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: ${{ steps.generate_notes.outputs.notes }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
