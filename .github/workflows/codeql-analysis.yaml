@@ -1,0 +1,38 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  analyze:
+    name: Analyze Code
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['python']
+    steps:
+      # Repository auschecken
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # CodeQL initialisieren
+      # Initialize CodeQL
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: ${{ matrix.language }}
+
+      # Autobuild ausführen
+      # Run autobuild
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      # CodeQL Analyse durchführen
+      # Perform CodeQL analysis
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
