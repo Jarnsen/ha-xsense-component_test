@@ -1,0 +1,52 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test Integration
+    runs-on: ubuntu-latest
+
+    steps:
+      # Repository auschecken
+      # Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Python-Umgebung einrichten
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      # Abhängigkeiten installieren
+      # Install dependencies
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Code mit flake8 prüfen
+      # Lint code with flake8
+      - name: Lint with flake8
+        run: flake8 custom_components/xsense
+
+      # Code-Formatierung mit black überprüfen
+      # Check code formatting with black
+      - name: Check formatting with black
+        run: black --check custom_components/xsense
+
+      # Importreihenfolge mit isort überprüfen
+      # Check import order with isort
+      - name: Check import order with isort
+        run: isort --check-only custom_components/xsense
+
+      # Tests ausführen
+      # Run tests
+      - name: Run Tests
+        run: pytest tests
