@@ -12,15 +12,18 @@ jobs:
 
     steps:
       # Repository auschecken
+      # Checkout the repository
       - name: Checkout Code
         uses: actions/checkout@v3
 
       # Release Notes generieren (optional)
+      # Generate release notes (optional)
       - name: Generate Release Notes
         id: generate_notes
         uses: actions/generate-release-notes@v2
 
       # GitHub Release erstellen
+      # Create GitHub release
       - name: Create GitHub Release
         uses: actions/create-release@v1
         with:
