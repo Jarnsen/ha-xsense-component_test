@@ -2,50 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
-
-from xsense import AsyncXSense
 from xsense.entity import Entity
 
-from homeassistant.components.binary_sensor import BinarySensorEntityDescription
-from homeassistant.components.button import ButtonEntityDescription
-from homeassistant.components.sensor import SensorEntityDescription
-from homeassistant.const import ATTR_VIA_DEVICE, CONF_EMAIL
+from homeassistant.const import ATTR_VIA_DEVICE
 from homeassistant.helpers.device_registry import (
     CONNECTION_BLUETOOTH,
     CONNECTION_NETWORK_MAC,
     DeviceInfo,
 )
-from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import XSenseDataUpdateCoordinator
-
-
-@dataclass(kw_only=True, frozen=True)
-class XSenseSensorEntityDescription(SensorEntityDescription):
-    """Describes XSense sensor entity."""
-
-    exists_fn: Callable[[Entity], bool] = lambda _: True
-    value_fn: Callable[[Entity], StateType]
-
-
-@dataclass(kw_only=True, frozen=True)
-class XSenseBinarySensorEntityDescription(BinarySensorEntityDescription):
-    """Describes XSense binary-sensor entity."""
-
-    exists_fn: Callable[[Entity], bool] = lambda _: True
-    value_fn: Callable[[Entity], bool]
-
-
-@dataclass(kw_only=True, frozen=True)
-class XSenseButtonEntityDescription(ButtonEntityDescription):
-    """Describes XSense button entity."""
-
-    exists_fn: Callable[[Entity, AsyncXSense], bool] = lambda entity, api: True
-    press_fn: Callable[[Entity, AsyncXSense], Awaitable[bool]]
 
 
 class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
@@ -86,10 +54,7 @@ class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
         )
         if station_id:
             parent = (DOMAIN, station_id)
-        else:
-            parent = (DOMAIN, coordinator.entry.data[CONF_EMAIL])
-
-        self._attr_device_info.update({ATTR_VIA_DEVICE: parent})
+            self._attr_device_info.update({ATTR_VIA_DEVICE: parent})
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to updates."""
