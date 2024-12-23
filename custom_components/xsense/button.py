@@ -2,25 +2,35 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from functools import partial
 
 from xsense.device import Device
 from xsense.entity import Entity
 
 from homeassistant import config_entries
-from homeassistant.components.button import ButtonEntity
+from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import AsyncXSense, XSenseDataUpdateCoordinator
-from .entity import XSenseButtonEntityDescription, XSenseEntity
+from .entity import XSenseEntity
 
 
 async def run_action(entity: Entity, xsense: AsyncXSense, action: str):
     """Wrap xsense method in a async callable."""
     return await xsense.action(entity, action)
+
+
+@dataclass(kw_only=True, frozen=True)
+class XSenseButtonEntityDescription(ButtonEntityDescription):
+    """Describes XSense button entity."""
+
+    exists_fn: Callable[[Entity, AsyncXSense], bool] = lambda entity, api: True
+    press_fn: Callable[[Entity, AsyncXSense], Awaitable[bool]]
 
 
 SENSORS: tuple[XSenseButtonEntityDescription, ...] = (
