@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
+
 from xsense.device import Device
 from xsense.entity import Entity
 from xsense.station import Station
@@ -10,6 +13,7 @@ from homeassistant import config_entries
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
+    BinarySensorEntityDescription,
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
@@ -17,7 +21,16 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
-from .entity import XSenseBinarySensorEntityDescription, XSenseEntity
+from .entity import XSenseEntity
+
+
+@dataclass(kw_only=True, frozen=True)
+class XSenseBinarySensorEntityDescription(BinarySensorEntityDescription):
+    """Describes XSense binary-sensor entity."""
+
+    exists_fn: Callable[[Entity], bool] = lambda _: True
+    value_fn: Callable[[Entity], bool]
+
 
 SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
@@ -53,6 +66,14 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         icon="mdi:bell-ring",
         exists_fn=lambda entity: "activate" in entity.data,
         value_fn=lambda entity: entity.data["activate"],
+    ),
+    XSenseBinarySensorEntityDescription(
+        key="door",
+        translation_key="door",
+        device_class=BinarySensorDeviceClass.DOOR,
+        name="Door Sensor",
+        value_fn=lambda device: device.data["isOpen"] == "1",
+        exists_fn=lambda device: "isOpen" in device.data,
     ),
 )
 
