@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
+
 from xsense.device import Device
 from xsense.entity import Entity
 
@@ -9,6 +12,7 @@ from homeassistant import config_entries
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
 from homeassistant.const import (
@@ -20,10 +24,19 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import StateType
 
 from .const import DOMAIN, STATE_SIGNAL
-from .coordinator import XSenseDataUpdateCoordinator
-from .entity import XSenseEntity, XSenseSensorEntityDescription
+from .entity import XSenseDataUpdateCoordinator, XSenseEntity
+
+
+@dataclass(kw_only=True, frozen=True)
+class XSenseSensorEntityDescription(SensorEntityDescription):
+    """Describes XSense sensor entity."""
+
+    exists_fn: Callable[[Entity], bool] = lambda _: True
+    value_fn: Callable[[Entity], StateType]
+
 
 SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
