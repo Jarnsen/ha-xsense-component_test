@@ -221,7 +221,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Ask MQTT server for updates for all realtime devices, such as temperature sensor."""
         for s in house.stations.values():
             updatable_devices = [
-                dev.sn for dev in s.devices.values() if dev.type in ["STH51"]
+                dev.sn for dev in s.devices.values() if dev.type in ["STH51", "STH0A"]
             ]
 
             if not updatable_devices:
