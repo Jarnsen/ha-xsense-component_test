@@ -8,9 +8,9 @@
   "homekit": {},
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "requirements": ["python-xsense==0.0.14", "paho-mqtt==1.6.1"],
+  "requirements": ["python-xsense==0.0.15", "paho-mqtt==1.6.1"],
   "homeassistant": "2024.10.1",
   "ssdp": [],
   "zeroconf": [],
-  "version": "1.0.14"
+  "version": "1.0.15"
 }
