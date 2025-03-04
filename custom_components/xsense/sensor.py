@@ -1,3 +1,4 @@
+
 """Support for xsense sensors."""
 
 from __future__ import annotations
