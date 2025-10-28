@@ -23,5 +23,10 @@ async def async_get_config_entry_diagnostics(
 
     return {
         "entry": async_redact_data(entry.as_dict(), TO_REDACT),
-        "data": coordinator.data,
+        "data": {
+            "stations": [
+                station.data
+                for station in coordinator.data["stations"].values()
+            ],
+        },
     }
