@@ -22,6 +22,9 @@
             "alarm_status": {
                 "name": "Alarm Status"
             },
+            "connected": {
+                "name": "Connected"
+            },
             "is_life_end": {
                 "name": "Is life end"
             },
@@ -40,9 +43,6 @@
         "sensor": {
             "alarm_vol": {
                 "name": "Alarm Volume"
-            },
-            "connected": {
-                "name": "Connected"
             },
             "ip_address": {
                 "name": "IP Address"
