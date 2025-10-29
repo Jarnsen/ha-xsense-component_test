@@ -29,6 +29,14 @@
                 "name": "Mute Status"
             }
         },
+        "button": {
+            "test": {
+                "name": "Test"
+            },
+            "mute": {
+                "name": "Mute"
+            }
+        },
         "sensor": {
             "alarm_vol": {
                 "name": "Alarm Volume"
