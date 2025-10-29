@@ -44,7 +44,6 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="alarm_status",
         device_class=BinarySensorDeviceClass.SMOKE,
-        icon="mdi:alarm-light-outline",
         exists_fn=lambda entity: "alarmStatus" in entity.data,
         value_fn=lambda entity: entity.data["alarmStatus"],
     ),
