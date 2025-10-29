@@ -1,0 +1,23 @@
+{
+    "entity": {
+        "binary_sensor": {
+            "connected": {
+                "default": "mdi:connection"
+            },
+            "activate": {
+                "default": "mdi:bell-ring"
+            },
+            "is_life_end": {
+                "default": "mdi:timelapse"
+            },
+            "mute_status": {
+                "default": "mdi:alarm-light-off"
+            }
+        },
+        "sensor": {
+            "wifi_ssid": {
+                "default": "mdi:access-point-network"
+            }
+        }
+    }
+}
