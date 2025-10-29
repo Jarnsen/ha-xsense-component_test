@@ -1,8 +1,11 @@
 {
     "entity": {
         "binary_sensor": {
-            "connected": {
-                "default": "mdi:connection"
+            "mute_status": {
+                "default": "mdi:alarm-light-off"
+            },
+            "alarm_status": {
+                "default": "mdi:alarm-light-outline"
             },
             "activate": {
                 "default": "mdi:bell-ring"
@@ -10,8 +13,8 @@
             "is_life_end": {
                 "default": "mdi:timelapse"
             },
-            "mute_status": {
-                "default": "mdi:alarm-light-off"
+            "connected": {
+                "default": "mdi:connection"
             }
         },
         "sensor": {
