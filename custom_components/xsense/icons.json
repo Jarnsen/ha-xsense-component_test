@@ -20,6 +20,24 @@
         "sensor": {
             "wifi_ssid": {
                 "default": "mdi:access-point-network"
+            },
+            "sw_version": {
+                "default": "mdi:chip"
+            },
+            "wifi_sw": {
+                "default": "mdi:chip"
+            },
+            "ip_address": {
+                "default": "mdi:ip-network-outline"
+            },
+            "alarm_vol": {
+                "default": "mdi:volume-high"
+            },
+            "voice_vol": {
+                "default": "mdi:volume-high"
+            },
+            "rf_level": {
+                "default": "mdi:signal"
             }
         }
     }
