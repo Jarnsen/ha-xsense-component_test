@@ -41,6 +41,9 @@
             "alarm_vol": {
                 "name": "Alarm Volume"
             },
+            "connected": {
+                "name": "Connected"
+            },
             "ip_address": {
                 "name": "IP Address"
             },
