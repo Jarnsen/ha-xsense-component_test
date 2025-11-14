@@ -52,6 +52,8 @@ class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
             model=entity.type,
             name=entity.name,
         )
+        if "sw" in entity.data and entity.data["sw"]:
+            self._attr_device_info["sw_version"] = entity.data["sw"].removeprefix("v")
         if station_id:
             parent = (DOMAIN, station_id)
             self._attr_device_info.update({ATTR_VIA_DEVICE: parent})
