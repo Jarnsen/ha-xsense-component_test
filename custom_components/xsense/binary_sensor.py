@@ -37,7 +37,6 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="is_life_end",
         translation_key="is_life_end",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        icon="mdi:timelapse",
         exists_fn=lambda entity: "isLifeEnd" in entity.data,
         value_fn=lambda entity: entity.data["isLifeEnd"] == 1,
     ),
@@ -50,14 +49,12 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="mute_status",
         translation_key="mute_status",
-        icon="mdi:alarm-light-off",
         exists_fn=lambda entity: "muteStatus" in entity.data,
         value_fn=lambda entity: entity.data["muteStatus"],
     ),
     XSenseBinarySensorEntityDescription(
         key="activate",
         translation_key="activate",
-        icon="mdi:bell-ring",
         exists_fn=lambda entity: "activate" in entity.data,
         value_fn=lambda entity: entity.data["activate"],
     ),
@@ -75,7 +72,6 @@ MQTTSensor = XSenseBinarySensorEntityDescription(
     key="connected",
     translation_key="connected",
     entity_category=EntityCategory.DIAGNOSTIC,
-    icon="mdi:connection",
     exists_fn=lambda entity: isinstance(entity, Station),
     value_fn=lambda entity: False,
 )
