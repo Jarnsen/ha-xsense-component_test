@@ -39,9 +39,9 @@ class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
         )
 
         connections = set()
-        if "mac" in entity.data:
+        if "mac" in entity.data and entity.data["mac"]:
             connections.add((CONNECTION_NETWORK_MAC, entity.data["mac"]))
-        if "macBT" in entity.data:
+        if "macBT" in entity.data and entity.data["macBT"]:
             connections.add((CONNECTION_BLUETOOTH, entity.data["macBT"]))
 
         self._attr_device_info = DeviceInfo(
@@ -52,6 +52,8 @@ class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
             model=entity.type,
             name=entity.name,
         )
+        if "sw" in entity.data and entity.data["sw"]:
+            self._attr_device_info["sw_version"] = entity.data["sw"].removeprefix("v")
         if station_id:
             parent = (DOMAIN, station_id)
             self._attr_device_info.update({ATTR_VIA_DEVICE: parent})

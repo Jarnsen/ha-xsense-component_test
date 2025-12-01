@@ -19,9 +19,6 @@
   },
   "entity": {
     "binary_sensor": {
-      "alarm_status": {
-        "name": "Alarm Status"
-      },
       "connected": {
         "name": "Connected"
       },
