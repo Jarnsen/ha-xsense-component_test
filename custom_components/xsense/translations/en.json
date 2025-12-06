@@ -19,11 +19,25 @@
     },
     "entity": {
         "binary_sensor": {
+            "alarm_status": {
+                "name": "Alarm Status"
+            },
+            "connected": {
+                "name": "Connected"
+            },
             "is_life_end": {
                 "name": "Is life end"
             },
             "mute_status": {
                 "name": "Mute Status"
+            }
+        },
+        "button": {
+            "test": {
+                "name": "Test"
+            },
+            "mute": {
+                "name": "Mute"
             }
         },
         "sensor": {
