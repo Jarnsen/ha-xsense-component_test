@@ -30,6 +30,9 @@
       },
       "activate": {
         "name": "Activate"
+      },
+      "alarm_status": {
+        "name": "Alarm"
       }
     },
     "button": {

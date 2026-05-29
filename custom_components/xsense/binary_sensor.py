@@ -32,6 +32,39 @@ class XSenseBinarySensorEntityDescription(BinarySensorEntityDescription):
     value_fn: Callable[[Entity], bool]
 
 
+ALARM_DEVICE_CLASS_BY_TYPE = {
+    "SC": BinarySensorDeviceClass.SMOKE,
+    "XP": BinarySensorDeviceClass.SMOKE,
+    "XS": BinarySensorDeviceClass.SMOKE,
+    "XC": BinarySensorDeviceClass.CO,
+    "SWS": BinarySensorDeviceClass.MOISTURE,
+    "SDS": BinarySensorDeviceClass.DOOR,
+    "SMS": BinarySensorDeviceClass.MOTION,
+    "XH": BinarySensorDeviceClass.HEAT,
+}
+
+
+def alarm_device_class(entity: Entity) -> BinarySensorDeviceClass | None:
+    """Return the Home Assistant device class for an XSense alarm state."""
+    for model_prefix, device_class in ALARM_DEVICE_CLASS_BY_TYPE.items():
+        if entity.type.startswith(model_prefix):
+            return device_class
+    return None
+
+
+def has_alarm_status(entity: Entity) -> bool:
+    """Return if an XSense entity should expose an alarm status sensor."""
+    return "alarmStatus" in entity.data or alarm_device_class(entity) is not None
+
+
+def alarm_status(entity: Entity) -> bool:
+    """Return the alarm status, defaulting to clear before the first report."""
+    status = entity.data.get("alarmStatus", False)
+    if isinstance(status, str):
+        return status == "1"
+    return bool(status)
+
+
 SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="is_life_end",
@@ -43,9 +76,9 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="alarm_status",
-        device_class=BinarySensorDeviceClass.SMOKE,
-        exists_fn=lambda entity: "alarmStatus" in entity.data,
-        value_fn=lambda entity: entity.data["alarmStatus"],
+        translation_key="alarm_status",
+        exists_fn=has_alarm_status,
+        value_fn=alarm_status,
     ),
     XSenseBinarySensorEntityDescription(
         key="mute_status",
@@ -138,6 +171,19 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
             device = self.coordinator.data["stations"][self._dev_id]
 
         return self.entity_description.value_fn(device)
+
+    @property
+    def device_class(self) -> BinarySensorDeviceClass | None:
+        """Return the device class of the binary sensor."""
+        if self.entity_description.key != "alarm_status":
+            return self.entity_description.device_class
+
+        if self._station_id:
+            entity = self.coordinator.data["devices"][self._dev_id]
+        else:
+            entity = self.coordinator.data["stations"][self._dev_id]
+
+        return alarm_device_class(entity)
 
 
 class XSenseMQTTConnectedEntity(XSenseBinarySensorEntity):
