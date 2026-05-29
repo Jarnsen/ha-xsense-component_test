@@ -147,6 +147,6 @@ Zawsze szukamy wsparcia, aby dalej rozwijać i ulepszać tę integrację。Oto k
 
 W celu uzyskania wsparcia i uczestniczenia w dyskusji możesz dołączyć do naszego serwera Discord lub odwiedzić forum Home Assistant：
 
-[Discord](https：//discord.gg/5phHHgGb3V)
+[Discord](https://discord.gg/5phHHgGb3V)
 
-[Forum](https：//community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
+[Forum](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
