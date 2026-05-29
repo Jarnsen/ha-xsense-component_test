@@ -28,6 +28,9 @@
             "connected": {
                 "name": "Connected"
             },
+            "door": {
+                "name": "Door"
+            },
             "is_life_end": {
                 "name": "Is life end"
             },
@@ -36,6 +39,9 @@
             }
         },
         "button": {
+            "fire_drill": {
+                "name": "Fire Drill"
+            },
             "mute": {
                 "name": "Mute"
             },

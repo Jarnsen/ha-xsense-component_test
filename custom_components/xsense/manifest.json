@@ -12,5 +12,5 @@
   "homeassistant": "2025.3.0",
   "ssdp": [],
   "zeroconf": [],
-  "version": "1.0.20"
+  "version": "1.0.23"
 }
