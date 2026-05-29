@@ -39,8 +39,14 @@ async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+    if unload_ok:
+        coordinator: XSenseDataUpdateCoordinator | None = hass.data[DOMAIN].pop(
+            entry.entry_id, None
+        )
+        if coordinator is not None:
+            await coordinator.async_shutdown()
 
     return unload_ok
 

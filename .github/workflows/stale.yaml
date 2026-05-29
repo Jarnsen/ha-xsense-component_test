@@ -2,13 +2,19 @@ name: Mark and Close Stale Issues
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Täglich um Mitternacht
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v7
+      - uses: actions/stale@v10.3.0
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           stale-issue-message: 'Dieses Issue wurde als inaktiv markiert, da es seit 30 Tagen keine Aktivität gab.'
