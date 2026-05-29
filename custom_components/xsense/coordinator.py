@@ -45,6 +45,17 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Get mqtt server instance for specific host."""
         return self.mqtt_servers.get(host)
 
+    async def async_shutdown(self) -> None:
+        """Disconnect all MQTT clients owned by this coordinator."""
+        mqtt_servers = list(self.mqtt_servers.values())
+        self.mqtt_servers.clear()
+
+        for mqtt in mqtt_servers:
+            try:
+                await mqtt.async_disconnect(disconnect_paho_client=True)
+            except Exception as ex:  # noqa: BLE001
+                LOGGER.warning("Could not disconnect XSense MQTT client: %s", ex)
+
     async def _connect(self) -> None:
         email = self.entry.data[CONF_EMAIL]
         password = self.entry.data[CONF_PASSWORD]

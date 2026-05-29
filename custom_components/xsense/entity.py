@@ -50,7 +50,7 @@ class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
             identifiers={(DOMAIN, entity.entity_id)},
             connections=connections,
             manufacturer=MANUFACTURER,
-            serial_number=entity.data.get("stationSN"),
+            serial_number=entity.sn,
             model=entity.type,
             name=entity.name,
         )
