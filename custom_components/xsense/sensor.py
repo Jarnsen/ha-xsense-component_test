@@ -38,6 +38,11 @@ class XSenseSensorEntityDescription(SensorEntityDescription):
     value_fn: Callable[[Entity], StateType]
 
 
+def battery_percentage(device: Entity) -> int:
+    """Return the X-Sense battery level as a whole Home Assistant percentage."""
+    return min(max(round((int(device.data["batInfo"]) * 100) / 3), 0), 100)
+
+
 SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="wifi_rssi",
@@ -129,7 +134,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
-        value_fn=lambda device: (device.data["batInfo"] * 100) / 3,
+        value_fn=battery_percentage,
         exists_fn=lambda device: "batInfo" in device.data,
     ),
     XSenseSensorEntityDescription(

@@ -40,6 +40,7 @@ ALARM_DEVICE_CLASS_BY_TYPE = {
     "SWS": BinarySensorDeviceClass.MOISTURE,
     "SDS": BinarySensorDeviceClass.DOOR,
     "SMS": BinarySensorDeviceClass.MOTION,
+    "SMA": BinarySensorDeviceClass.OPENING,
     "XH": BinarySensorDeviceClass.HEAT,
 }
 
@@ -59,10 +60,14 @@ def has_alarm_status(entity: Entity) -> bool:
 
 def alarm_status(entity: Entity) -> bool:
     """Return the alarm status, defaulting to clear before the first report."""
-    status = entity.data.get("alarmStatus", False)
-    if isinstance(status, str):
-        return status == "1"
-    return bool(status)
+    return boolean_state(entity.data.get("alarmStatus", False))
+
+
+def boolean_state(value) -> bool:
+    """Return the normalized bool for common X-Sense boolean payload values."""
+    if isinstance(value, str):
+        return value == "1"
+    return bool(value)
 
 
 SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
@@ -85,21 +90,21 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         translation_key="mute_status",
         icon="mdi:alarm-light-off",
         exists_fn=lambda entity: "muteStatus" in entity.data,
-        value_fn=lambda entity: entity.data["muteStatus"],
+        value_fn=lambda entity: boolean_state(entity.data["muteStatus"]),
     ),
     XSenseBinarySensorEntityDescription(
         key="activate",
         translation_key="activate",
         icon="mdi:bell-ring",
         exists_fn=lambda entity: "activate" in entity.data,
-        value_fn=lambda entity: entity.data["activate"],
+        value_fn=lambda entity: boolean_state(entity.data["activate"]),
     ),
     XSenseBinarySensorEntityDescription(
         key="door",
         translation_key="door",
         device_class=BinarySensorDeviceClass.DOOR,
         name="Door Sensor",
-        value_fn=lambda device: device.data["isOpen"] == "1",
+        value_fn=lambda device: boolean_state(device.data["isOpen"]),
         exists_fn=lambda device: "isOpen" in device.data,
     ),
 )
