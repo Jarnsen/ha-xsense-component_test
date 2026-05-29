@@ -41,13 +41,13 @@ SENSORS: tuple[XSenseButtonEntityDescription, ...] = (
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "test"),
         press_fn=partial(run_action, action="test"),
     ),
-    # XSenseButtonEntityDescription(
-    #     key="mute",
-    #     translation_key="mute",
-    #     entity_category=EntityCategory.CONFIG,
-    #     exists_fn=lambda entity, xsense: xsense.has_action(entity, "mute"),
-    #     press_fn=partial(run_action, action="mute"),
-    # ),
+    XSenseButtonEntityDescription(
+        key="mute",
+        translation_key="mute",
+        entity_category=EntityCategory.CONFIG,
+        exists_fn=lambda entity, xsense: xsense.has_action(entity, "mute"),
+        press_fn=partial(run_action, action="mute"),
+    ),
 )
 
 
