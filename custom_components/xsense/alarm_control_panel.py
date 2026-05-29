@@ -1,7 +1,8 @@
-"""Alarm control panel platform voor X-Sense burglar alarm (SBS50)."""
+"""Alarm control panel platform for X-Sense SBS50 burglar alarm mode."""
 
 from __future__ import annotations
 
+import json
 import logging
 
 from homeassistant.components.alarm_control_panel import (
@@ -15,22 +16,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
-from .coordinator import XSenseDataUpdateCoordinator
+from .coordinator import XSenseDataUpdateCoordinator, _apply_safe_mode
 
 LOGGER = logging.getLogger(__name__)
 
-# Mapping X-Sense safeMode → HA AlarmControlPanelState
 SAFEMODE_TO_STATE: dict[str, AlarmControlPanelState] = {
     "Disarmed": AlarmControlPanelState.DISARMED,
-    "Home":     AlarmControlPanelState.ARMED_HOME,
-    "Away":     AlarmControlPanelState.ARMED_AWAY,
-}
-
-# Mapping HA AlarmControlPanelState → X-Sense safeMode
-STATE_TO_SAFEMODE: dict[str, str] = {
-    "disarm":    "Disarmed",
-    "arm_home":  "Home",
-    "arm_away":  "Away",
+    "Home": AlarmControlPanelState.ARMED_HOME,
+    "Away": AlarmControlPanelState.ARMED_AWAY,
 }
 
 
@@ -39,7 +32,7 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Zet het alarm control panel op vanuit een config entry."""
+    """Set up XSense alarm control panel entities from a config entry."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = []
@@ -47,7 +40,7 @@ async def async_setup_entry(
         for station in house.stations.values():
             if station.type == "SBS50":
                 LOGGER.debug(
-                    "Alarm control panel aanmaken voor station %s (%s)",
+                    "Creating alarm control panel for station %s (%s)",
                     station.sn,
                     station.type,
                 )
@@ -63,20 +56,16 @@ class XSenseAlarmControlPanel(
     CoordinatorEntity[XSenseDataUpdateCoordinator],
     AlarmControlPanelEntity,
 ):
-    """Alarm control panel voor de X-Sense SBS50.
+    """Alarm control panel for the X-Sense SBS50.
 
-    Leest én schrijft de safeMode (Disarmed/Home/Away) via het AWS IoT
-    Shadow endpoint '2nd_safemode'. Arm/disarm vanuit HA stuurt een
-    'desired' state naar de SBS50, net zoals de X-Sense app dat doet.
+    The X-Sense app writes desired state to the `2nd_appmode` AWS IoT shadow.
+    The base station confirms the resulting state through `2nd_safemode`.
     """
 
-    # Arm home, arm away en disarm worden ondersteund
     _attr_supported_features = (
         AlarmControlPanelEntityFeature.ARM_HOME
         | AlarmControlPanelEntityFeature.ARM_AWAY
     )
-    # Geen pincode vereist vanuit HA — de SBS50 accepteert cloud-commando's
-    # zonder pincode (die validatie gebeurt alleen op het keypad zelf)
     _attr_code_arm_required = False
     _attr_has_entity_name = True
     _attr_name = "Alarm"
@@ -86,7 +75,7 @@ class XSenseAlarmControlPanel(
         coordinator: XSenseDataUpdateCoordinator,
         station,
     ) -> None:
-        """Initialiseer de entiteit."""
+        """Initialize the entity."""
         super().__init__(coordinator)
         self._station = station
         self._attr_unique_id = f"{station.sn}_alarm"
@@ -100,19 +89,19 @@ class XSenseAlarmControlPanel(
 
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
-        """Geef de huidige alarmstatus terug."""
+        """Return the current alarm state."""
         return SAFEMODE_TO_STATE.get(self._safemode)
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        """Verwerk een update van de coordinator."""
+        """Handle updated coordinator data."""
         safemode = getattr(self._station, "safe_mode", None)
         if safemode is None:
             safemode = self._station.data.get("safeMode")
 
         if safemode != self._safemode:
             LOGGER.debug(
-                "Station %s: safeMode gewijzigd van %s naar %s",
+                "Station %s safeMode changed from %s to %s",
                 self._station.sn,
                 self._safemode,
                 safemode,
@@ -122,56 +111,32 @@ class XSenseAlarmControlPanel(
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
-        """Registreer bij de coordinator en haal initiële state op."""
+        """Subscribe to coordinator updates and read initial state."""
         await super().async_added_to_hass()
         self._handle_coordinator_update()
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
-        """Ontwapen het alarm."""
+        """Disarm the alarm."""
         await self._set_safe_mode("Disarmed")
 
     async def async_alarm_arm_home(self, code: str | None = None) -> None:
-        """Wapen in Home modus."""
+        """Arm in home mode."""
         await self._set_safe_mode("Home")
 
     async def async_alarm_arm_away(self, code: str | None = None) -> None:
-        """Wapen in Away modus."""
+        """Arm in away mode."""
         await self._set_safe_mode("Away")
 
     async def _set_safe_mode(self, safe_mode: str) -> None:
-        """Stuur een safeMode wijziging naar de X-Sense SBS50 via MQTT.
-
-        Via reverse engineering is vastgesteld dat de X-Sense app een
-        'desired' state publiceert naar het shadow topic '2nd_appmode'.
-        De SBS50 luistert hierop, voert de modewissel uit, en bevestigt
-        daarna via '2nd_safemode'.
-
-        Topic:
-            $aws/things/SBS50{sn}/shadow/name/2nd_appmode/update
-        Payload:
-            {
-                "state": {
-                    "desired": {
-                        "shadow": "appMode",
-                        "safeMode": "Away",
-                        "stationSN": "161965C2",
-                        "source": "1",
-                        "forceArm": "0",
-                        "userId": "<uuid>",
-                        "userParam": "source=1"
-                    }
-                }
-            }
-        """
+        """Request a safeMode change through the X-Sense MQTT shadow."""
         LOGGER.debug(
-            "Station %s: safeMode instellen op %s via MQTT appMode",
+            "Station %s requesting safeMode %s via MQTT appMode",
             self._station.sn, safe_mode,
         )
 
         coordinator: XSenseDataUpdateCoordinator = self.coordinator
         api = coordinator.xsense
 
-        # Bouw de MQTT payload exact zoals de app dat doet
         payload = {
             "state": {
                 "desired": {
@@ -186,37 +151,32 @@ class XSenseAlarmControlPanel(
             }
         }
 
-        # Topic waarop de SBS50 luistert voor mode-commando's
         topic = (
             f"$aws/things/{self._station.shadow_name}"
             f"/shadow/name/2nd_appmode/update"
         )
 
-        # Zoek de MQTT verbinding voor dit huis
         mqtt = coordinator.mqtt_server(self._station.house.mqtt_server)
 
         if mqtt is None or not mqtt.connected:
             LOGGER.error(
-                "Station %s: MQTT niet verbonden, kan safeMode niet instellen",
+                "Station %s cannot set safeMode because MQTT is not connected",
                 self._station.sn,
             )
             return
 
         try:
-            import json
             await mqtt.async_publish(topic, json.dumps(payload), qos=0, retain=False)
             LOGGER.debug(
-                "Station %s: appMode commando '%s' gepubliceerd op %s",
+                "Station %s published appMode command %s on %s",
                 self._station.sn, safe_mode, topic,
             )
 
-            # Optimistisch de UI alvast bijwerken — MQTT bevestiging volgt
-            from .coordinator import _apply_safe_mode
             _apply_safe_mode(self._station, safe_mode)
             self.async_write_ha_state()
 
         except Exception as ex:  # noqa: BLE001
-            LOGGER.error(
-                "Kon safeMode niet instellen op %s voor station %s: %s",
+            LOGGER.exception(
+                "Could not set safeMode %s for station %s: %s",
                 safe_mode, self._station.sn, ex,
             )
