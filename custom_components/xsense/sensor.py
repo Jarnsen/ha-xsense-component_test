@@ -200,9 +200,8 @@ class XSenseSensorEntity(XSenseEntity, SensorEntity):
     @property
     def native_value(self) -> str | int | float | None:
         """Return the state of the sensor."""
-        if self._station_id:
-            device = self.coordinator.data["devices"][self._dev_id]
-        else:
-            device = self.coordinator.data["stations"][self._dev_id]
+        device = self._current_entity()
+        if device is None:
+            return None
 
         return self.entity_description.value_fn(device)

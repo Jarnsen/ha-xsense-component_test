@@ -170,10 +170,9 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return the state of the sensor."""
-        if self._station_id:
-            device = self.coordinator.data["devices"][self._dev_id]
-        else:
-            device = self.coordinator.data["stations"][self._dev_id]
+        device = self._current_entity()
+        if device is None:
+            return None
 
         return self.entity_description.value_fn(device)
 
@@ -183,10 +182,9 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
         if self.entity_description.key != "alarm_status":
             return self.entity_description.device_class
 
-        if self._station_id:
-            entity = self.coordinator.data["devices"][self._dev_id]
-        else:
-            entity = self.coordinator.data["stations"][self._dev_id]
+        entity = self._current_entity()
+        if entity is None:
+            return None
 
         return alarm_device_class(entity)
 
@@ -198,6 +196,9 @@ class XSenseMQTTConnectedEntity(XSenseBinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return the state of the sensor."""
 
-        device = self.coordinator.data["stations"][self._dev_id]
+        device = self._current_entity()
+        if device is None:
+            return None
+
         mqtt_server = self.coordinator.mqtt_server(device.house.mqtt_server)
         return bool(mqtt_server and mqtt_server.connected)

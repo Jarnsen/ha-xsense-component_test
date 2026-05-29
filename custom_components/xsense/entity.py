@@ -60,6 +60,12 @@ class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
             parent = (DOMAIN, station_id)
             self._attr_device_info.update({ATTR_VIA_DEVICE: parent})
 
+    def _current_entity(self) -> Entity | None:
+        """Return the current coordinator entity for this Home Assistant entity."""
+        if self._station_id:
+            return self.coordinator.data["devices"].get(self._dev_id)
+        return self.coordinator.data["stations"].get(self._dev_id)
+
     async def async_added_to_hass(self) -> None:
         """Subscribe to updates."""
         self._handle_coordinator_update()
@@ -68,9 +74,8 @@ class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        if self._station_id:
-            entity = self.coordinator.data["devices"][self._dev_id]
-        else:
-            entity = self.coordinator.data["stations"][self._dev_id]
+        entity = self._current_entity()
+        if entity is None:
+            return False
 
         return entity.online not in OFFLINE_STATES and super().available

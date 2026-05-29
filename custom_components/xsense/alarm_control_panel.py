@@ -12,6 +12,7 @@ from homeassistant.components.alarm_control_panel import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -77,7 +78,7 @@ class XSenseAlarmControlPanel(
     ) -> None:
         """Initialize the entity."""
         super().__init__(coordinator)
-        self._station = station
+        self._station_id = station.entity_id
         self._attr_unique_id = f"{station.sn}_alarm"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, station.entity_id)},
@@ -89,6 +90,16 @@ class XSenseAlarmControlPanel(
         self._safemode: str | None = None
 
     @property
+    def _station(self):
+        """Return the current station object from coordinator data."""
+        return self.coordinator.data["stations"].get(self._station_id)
+
+    @property
+    def available(self) -> bool:
+        """Return if the alarm control panel is available."""
+        return self._station is not None and super().available
+
+    @property
     def alarm_state(self) -> AlarmControlPanelState | None:
         """Return the current alarm state."""
         return SAFEMODE_TO_STATE.get(self._safemode)
@@ -96,14 +107,20 @@ class XSenseAlarmControlPanel(
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated coordinator data."""
-        safemode = getattr(self._station, "safe_mode", None)
+        station = self._station
+        if station is None:
+            self._safemode = None
+            self.async_write_ha_state()
+            return
+
+        safemode = getattr(station, "safe_mode", None)
         if safemode is None:
-            safemode = self._station.data.get("safeMode")
+            safemode = station.data.get("safeMode")
 
         if safemode != self._safemode:
             LOGGER.debug(
                 "Station %s safeMode changed from %s to %s",
-                self._station.sn,
+                station.sn,
                 self._safemode,
                 safemode,
             )
@@ -130,9 +147,13 @@ class XSenseAlarmControlPanel(
 
     async def _set_safe_mode(self, safe_mode: str) -> None:
         """Request a safeMode change through the X-Sense MQTT shadow."""
+        station = self._station
+        if station is None:
+            raise HomeAssistantError("X-Sense station is no longer available")
+
         LOGGER.debug(
             "Station %s requesting safeMode %s via MQTT appMode",
-            self._station.sn, safe_mode,
+            station.sn, safe_mode,
         )
 
         coordinator: XSenseDataUpdateCoordinator = self.coordinator
@@ -143,7 +164,7 @@ class XSenseAlarmControlPanel(
                 "desired": {
                     "shadow": "appMode",
                     "safeMode": safe_mode,
-                    "stationSN": self._station.sn,
+                    "stationSN": station.sn,
                     "source": "1",
                     "forceArm": "0",
                     "userId": api.userid,
@@ -153,16 +174,16 @@ class XSenseAlarmControlPanel(
         }
 
         topic = (
-            f"$aws/things/{self._station.shadow_name}"
+            f"$aws/things/{station.shadow_name}"
             f"/shadow/name/2nd_appmode/update"
         )
 
-        mqtt = coordinator.mqtt_server(self._station.house.mqtt_server)
+        mqtt = coordinator.mqtt_server(station.house.mqtt_server)
 
         if mqtt is None or not mqtt.connected:
             LOGGER.error(
                 "Station %s cannot set safeMode because MQTT is not connected",
-                self._station.sn,
+                station.sn,
             )
             return
 
@@ -170,14 +191,14 @@ class XSenseAlarmControlPanel(
             await mqtt.async_publish(topic, json.dumps(payload), qos=0, retain=False)
             LOGGER.debug(
                 "Station %s published appMode command %s on %s",
-                self._station.sn, safe_mode, topic,
+                station.sn, safe_mode, topic,
             )
 
-            _apply_safe_mode(self._station, safe_mode)
+            _apply_safe_mode(station, safe_mode)
             self.async_write_ha_state()
 
         except Exception as ex:  # noqa: BLE001
             LOGGER.exception(
                 "Could not set safeMode %s for station %s: %s",
-                safe_mode, self._station.sn, ex,
+                safe_mode, station.sn, ex,
             )
