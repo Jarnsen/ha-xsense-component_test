@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import suppress
 from datetime import datetime, timedelta
 import json
@@ -17,10 +18,24 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.logging import catch_log_exception
 
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, LOGGER, POLL_INTERVAL_MIN
+from .const import (
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    LOGGER,
+    LOGIN_TIMEOUT,
+    POLL_INTERVAL_MIN,
+)
 from .mqtt import DEFAULT_ENCODING, DEFAULT_QOS, XSenseMQTT
 
 _IGNORED_TOPIC_SUFFIXES = ("/update/accepted", "/update/documents", "/update/rejected")
+
+
+async def _async_init_and_login(
+    xsense: AsyncXSense, email: str, password: str
+) -> None:
+    """Initialize the X-Sense client and log in."""
+    await xsense.init()
+    await xsense.login(email, password)
 
 
 class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -60,14 +75,20 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         email = self.entry.data[CONF_EMAIL]
         password = self.entry.data[CONF_PASSWORD]
 
-        self.xsense = AsyncXSense()
-        await self.xsense.init()
+        xsense = AsyncXSense()
 
         try:
-            await self.xsense.login(email, password)
+            await asyncio.wait_for(
+                _async_init_and_login(xsense, email, password), timeout=LOGIN_TIMEOUT
+            )
         except AuthFailed as ex:
             raise ConfigEntryAuthFailed(f"Login failed: {ex!s}") from ex
+        except APIFailure as ex:
+            raise UpdateFailed(f"XSense API Issue: {ex}") from ex
+        except TimeoutError as ex:
+            raise UpdateFailed("Timed out connecting to X-Sense") from ex
 
+        self.xsense = xsense
         self._initialized = False
 
     async def _async_update_data(self) -> dict[str, Any]:
@@ -199,7 +220,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             if safe_mode is not None:
                 _apply_safe_mode(station, safe_mode)
-                LOGGER.debug("HTTP poll: station %s safeMode = %s", station.sn, safe_mode)
+                LOGGER.debug(
+                    "HTTP poll: station %s safeMode = %s", station.sn, safe_mode
+                )
             else:
                 LOGGER.warning(
                     "Station %s has no safeMode in 2nd_safemode shadow: %s",

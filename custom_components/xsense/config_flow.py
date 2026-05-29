@@ -1,6 +1,7 @@
 """Config flow for X-Sense Home Security integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -14,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import DOMAIN
+from .const import DOMAIN, LOGIN_TIMEOUT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,6 +27,12 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
 )
 
 
+async def _async_init_and_login(session: xsense.AsyncXSense, email, password) -> None:
+    """Initialize the X-Sense client and log in."""
+    await session.init()
+    await session.login(email, password)
+
+
 async def validate_input(hass: HomeAssistant, email, password) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
@@ -33,12 +40,15 @@ async def validate_input(hass: HomeAssistant, email, password) -> dict[str, Any]
     """
 
     session = xsense.AsyncXSense()
-    await session.init()
 
     try:
-        await session.login(email, password)
+        await asyncio.wait_for(
+            _async_init_and_login(session, email, password), timeout=LOGIN_TIMEOUT
+        )
     except xsense.exceptions.AuthFailed as ex:
         raise InvalidAuth(f"Login failed: {str(ex)}") from ex
+    except (TimeoutError, xsense.exceptions.APIFailure) as ex:
+        raise CannotConnect from ex
     if not session.access_token:
         raise InvalidAuth
 

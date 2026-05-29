@@ -8,6 +8,7 @@ COORDINATOR = "coordinator"
 
 DEFAULT_SCAN_INTERVAL = 300
 POLL_INTERVAL_MIN = 5
+LOGIN_TIMEOUT = 45
 
 LOGGER = logging.getLogger(__package__)
 
