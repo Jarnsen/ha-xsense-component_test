@@ -9,7 +9,12 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
 
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.BUTTON, Platform.SENSOR]
+PLATFORMS: list[Platform] = [
+    Platform.ALARM_CONTROL_PANEL,  # ── NIEUW: burglar alarm safeMode ──
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.SENSOR,
+]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
