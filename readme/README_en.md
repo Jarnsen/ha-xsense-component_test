@@ -90,7 +90,7 @@ This integration supports a variety of X-Sense devices. Here is a list of the cu
 - **Smoke detector (XS01-M, WX; XS03-WX; XS0B-MR)**: Early detection of smoke.
 - **Carbon monoxide and smoke combination detector (SC07-WX; XP0A-MR (partially supported))**: Combined devices for detecting carbon monoxide and smoke.
 - **Water leak detector (SWS51)**: Detects the presence of water in unwanted areas.
-- **Hygrometer-thermometer (STH51)**: Monitors temperature and humidity.
+- **Hygrometer-thermometer (STH51, STH0B)**: Monitors temperature and humidity.
 
 These devices can be used to create automations and alerts after being integrated into Home Assistant.
 
