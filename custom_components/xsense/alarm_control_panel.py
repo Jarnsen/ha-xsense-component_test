@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
@@ -15,7 +14,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, MANUFACTURER
 from .coordinator import XSenseDataUpdateCoordinator
 
 LOGGER = logging.getLogger(__name__)
@@ -57,9 +56,7 @@ async def async_setup_entry(
     if entities:
         async_add_entities(entities)
     else:
-        LOGGER.warning(
-            "Geen SBS50 base station gevonden — alarm control panel niet aangemaakt."
-        )
+        LOGGER.debug("No SBS50 base station found; alarm control panel skipped")
 
 
 class XSenseAlarmControlPanel(
@@ -94,9 +91,9 @@ class XSenseAlarmControlPanel(
         self._station = station
         self._attr_unique_id = f"{station.sn}_alarm"
         self._attr_device_info = {
-            "identifiers": {(DOMAIN, station.sn)},
-            "name": f"X-Sense {station.type} {station.sn}",
-            "manufacturer": "X-Sense",
+            "identifiers": {(DOMAIN, station.entity_id)},
+            "name": station.name,
+            "manufacturer": MANUFACTURER,
             "model": station.type,
         }
         self._safemode: str | None = None
