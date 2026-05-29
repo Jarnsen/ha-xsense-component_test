@@ -16,6 +16,7 @@ from homeassistant import config_entries
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
@@ -148,10 +149,8 @@ class XSenseButtonEntity(XSenseEntity, ButtonEntity):
         """Press the button."""
 
         xsense = self.coordinator.xsense
-
-        if self._station_id:
-            device = self.coordinator.data["devices"][self._dev_id]
-        else:
-            device = self.coordinator.data["stations"][self._dev_id]
+        device = self._current_entity()
+        if device is None:
+            raise HomeAssistantError("X-Sense entity is no longer available")
 
         await self.entity_description.press_fn(device, xsense)

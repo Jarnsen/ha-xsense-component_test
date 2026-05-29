@@ -12,6 +12,7 @@ from homeassistant.components.alarm_control_panel import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -91,7 +92,12 @@ class XSenseAlarmControlPanel(
     @property
     def _station(self):
         """Return the current station object from coordinator data."""
-        return self.coordinator.data["stations"][self._station_id]
+        return self.coordinator.data["stations"].get(self._station_id)
+
+    @property
+    def available(self) -> bool:
+        """Return if the alarm control panel is available."""
+        return self._station is not None and super().available
 
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
@@ -102,6 +108,11 @@ class XSenseAlarmControlPanel(
     def _handle_coordinator_update(self) -> None:
         """Handle updated coordinator data."""
         station = self._station
+        if station is None:
+            self._safemode = None
+            self.async_write_ha_state()
+            return
+
         safemode = getattr(station, "safe_mode", None)
         if safemode is None:
             safemode = station.data.get("safeMode")
@@ -137,6 +148,9 @@ class XSenseAlarmControlPanel(
     async def _set_safe_mode(self, safe_mode: str) -> None:
         """Request a safeMode change through the X-Sense MQTT shadow."""
         station = self._station
+        if station is None:
+            raise HomeAssistantError("X-Sense station is no longer available")
+
         LOGGER.debug(
             "Station %s requesting safeMode %s via MQTT appMode",
             station.sn, safe_mode,
