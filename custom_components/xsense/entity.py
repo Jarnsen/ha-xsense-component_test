@@ -15,6 +15,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import XSenseDataUpdateCoordinator
 
+OFFLINE_STATES = {False, 0, "0", "false", "False", "offline", "Offline"}
+
 
 class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
     """Represent a XSense Entity."""
@@ -71,4 +73,4 @@ class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
         else:
             entity = self.coordinator.data["stations"][self._dev_id]
 
-        return entity.online not in ("0", False) and super().available
+        return entity.online not in OFFLINE_STATES and super().available

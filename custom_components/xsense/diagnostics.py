@@ -15,6 +15,14 @@ from .coordinator import XSenseDataUpdateCoordinator
 TO_REDACT = {CONF_EMAIL, CONF_PASSWORD, "title", "unique_id"}
 
 
+def entity_diagnostics(entity) -> dict[str, Any]:
+    """Return diagnostic data for an X-Sense entity."""
+    return {
+        "type": entity.type,
+        "data": entity.data,
+    }
+
+
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
@@ -26,8 +34,12 @@ async def async_get_config_entry_diagnostics(
         "entry": async_redact_data(entry.as_dict(), TO_REDACT),
         "data": {
             "stations": [
-                station.data
+                entity_diagnostics(station)
                 for station in coordinator.data["stations"].values()
+            ],
+            "devices": [
+                entity_diagnostics(device)
+                for device in coordinator.data["devices"].values()
             ],
         },
     }
