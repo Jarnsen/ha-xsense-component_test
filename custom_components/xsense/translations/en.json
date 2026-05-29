@@ -23,7 +23,7 @@
                 "name": "Activate"
             },
             "alarm_status": {
-                "name": "Alarm"
+                "name": "Alarm Status"
             },
             "connected": {
                 "name": "Connected"
