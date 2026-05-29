@@ -74,15 +74,6 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         exists_fn=lambda device: "wifi_sw" in device.data,
         value_fn=lambda station: station.data["wifi_sw"],
     ),
-    # XSenseSensorEntityDescription(
-    #     key="serial_number",
-    #     translation_key="serial_number",
-    #     icon="mdi:numeric",
-    #     entity_category=EntityCategory.DIAGNOSTIC,
-    #     entity_registry_enabled_default=False,
-    #     exists_fn=lambda device: "deviceSN" in device.data,
-    #     value_fn=lambda station: station.data["deviceSN"],
-    # ),
     XSenseSensorEntityDescription(
         key="ip",
         translation_key="ip_address",

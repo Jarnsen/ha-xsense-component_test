@@ -32,7 +32,7 @@ _LOGGER = logging.getLogger(__name__)
 INITIAL_SUBSCRIBE_COOLDOWN = 0.5
 UNSUBSCRIBE_COOLDOWN = 0.1
 TIMEOUT_ACK = 10
-RECONNECT_INTERVAL_SECONDS = 15  # was 300 — 5 minuten is veel te lang na disconnect
+RECONNECT_INTERVAL_SECONDS = 15
 DEFAULT_ENCODING = "utf-8"
 DEFAULT_OPTIMISTIC = False
 DEFAULT_QOS = 0
@@ -228,7 +228,6 @@ class XSenseMQTT:
             self._async_on_socket_register_write, client, None, sock
         )
 
-    # Uunchanged
     @callback
     def _async_on_socket_register_write(
         self, client: mqtt.Client, userdata: Any, sock: SocketType
@@ -323,33 +322,27 @@ class XSenseMQTT:
             self._reconnect_task.cancel()
             self._reconnect_task = None
 
-    # Updated: exponentiële backoff zodat reconnect snel is maar niet spamt
     async def _reconnect_loop(self) -> None:
         """Reconnect to the MQTT server with exponential backoff."""
-        delay = 1  # begin met 1 seconde
+        delay = 1
         while True:
             await asyncio.sleep(delay)
 
             if self.connected:
-                # Al opnieuw verbonden (bv. door een andere code path)
                 delay = 1
                 continue
 
-            _LOGGER.debug("Herverbinden met MQTT server (volgende poging in %ss)...", delay)
+            _LOGGER.debug("Reconnecting to XSense MQTT server")
             try:
                 async with self._connection_lock, self._async_connect_in_executor():
                     self.mqtt_helper.prepare_connect()
                     await self.hass.async_add_executor_job(self._mqttc.reconnect)
-                # Reconnect gelukt — reset delay
                 delay = 1
             except OSError as err:
-                _LOGGER.debug(
-                    "Fout bij herverbinden met MQTT server: %s", err
-                )
-                # Exponentieel verhogen tot max RECONNECT_INTERVAL_SECONDS
+                _LOGGER.debug("Error reconnecting to XSense MQTT server: %s", err)
                 delay = min(delay * 2, RECONNECT_INTERVAL_SECONDS)
             except mqtt.WebsocketConnectionError as err:
-                _LOGGER.error("WebSocket fout bij herverbinden met X-Sense MQTT: %s", err)
+                _LOGGER.error("WebSocket error reconnecting to XSense MQTT: %s", err)
                 delay = min(delay * 2, RECONNECT_INTERVAL_SECONDS)
 
     async def async_disconnect(self, disconnect_paho_client: bool = False) -> None:
@@ -641,19 +634,12 @@ class XSenseMQTT:
         )
         return subscriptions
 
-    # updated: filter duplicaat AWS IoT topics weg aan de bron
     @callback
     def _async_mqtt_on_message(
         self, _mqttc: mqtt.Client, _userdata: None, msg: mqtt.MQTTMessage
     ) -> None:
         topic = msg.topic
 
-        # AWS IoT stuurt elke shadow update drie keer:
-        #   .../update           ← de echte update, die willen we
-        #   .../update/accepted  ← bevestiging van AWS (duplicaat)
-        #   .../update/documents ← vorige + nieuwe state gecombineerd (duplicaat)
-        # Door hier te filteren vermijden we dat de coordinator dezelfde
-        # state 3x verwerkt, wat race conditions en traagte veroorzaakt.
         if (
             topic.endswith("/update/accepted")
             or topic.endswith("/update/documents")
@@ -664,7 +650,6 @@ class XSenseMQTT:
         if self.on_data is not None:
             self.on_data(topic, msg.payload)
 
-    # unchanged
     @callback
     def _async_mqtt_on_callback(
         self,
