@@ -195,4 +195,4 @@ class XSenseMQTTConnectedEntity(XSenseBinarySensorEntity):
 
         device = self.coordinator.data["stations"][self._dev_id]
         mqtt_server = self.coordinator.mqtt_server(device.house.mqtt_server)
-        return mqtt_server.connected
+        return bool(mqtt_server and mqtt_server.connected)

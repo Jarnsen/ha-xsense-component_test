@@ -33,9 +33,15 @@
       },
       "alarm_status": {
         "name": "Alarm"
+      },
+      "door": {
+        "name": "Door"
       }
     },
     "button": {
+      "fire_drill": {
+        "name": "Fire Drill"
+      },
       "test": {
         "name": "Test"
       },
