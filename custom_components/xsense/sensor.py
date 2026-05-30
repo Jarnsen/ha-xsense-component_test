@@ -133,6 +133,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
         suggested_display_precision=0,
         value_fn=battery_percentage,
         exists_fn=lambda device: "batInfo" in device.data,
