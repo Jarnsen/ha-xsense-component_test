@@ -1,3 +1,11 @@
+<div align="right">
+  <details>
+    <summary>Language</summary>
+
+    [English](readme/README_en.md) | [Deutsch](readme/README_de.md) | [Nederlands](readme/README_nl.md) | [Español](readme/README_es.md) | [Français](readme/README_fr.md) | [Italiano](readme/README_it.md) | [Português](readme/README_pt.md) | [Русский](readme/README_ru.md) | [中文](readme/README_cn.md) | [日本語](readme/README_ja.md) | [العربية](readme/README_ar.md) | [Ελληνικά](readme/README_el.md) | [हिन्दी](readme/README_hi.md) | [Polski](readme/README_pl.md) | [Türkçe](readme/README_tr.md)
+  </details>
+</div>
+
 # ha-xsense-component_test 
  ![GitHub Release](https://img.shields.io/github/release/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![GitHub issues](https://img.shields.io/github/issues/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![GitHub Stars](https://img.shields.io/github/stars/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![GitHub Last Commit](https://img.shields.io/github/last-commit/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![Documentation](https://img.shields.io/badge/docs-excellent-brightgreen.svg?style=plastic) ![HACS Status](https://img.shields.io/badge/HACS-Default-blue.svg?style=plastic) ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-%3E%3D%202025.3.0-brightgreen.svg?style=plastic) [![Discord](https://img.shields.io/discord/1118894710027731025.svg?style=plastic&logo=discord&label=Discord)](https://discord.com/invite/5phHHgGb3V) [![YouTube Channel](https://img.shields.io/youtube/channel/subscribers/UCXao3LZhkhYyGybSl3yCxwQ.svg?style=plastic&logo=youtube&label=Subscribers)](https://www.youtube.com/channel/UCXao3LZhkhYyGybSl3yCxwQ) [![YouTube Video](https://img.shields.io/badge/Watch%20on-YouTube-red.svg?style=plastic&logo=youtube)](https://www.youtube.com/watch?v=3CCKK-qX-YA)
 ---
