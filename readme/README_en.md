@@ -16,7 +16,8 @@ Until an official Home Assistant integration from Theo becomes available, this H
 ## Features
 - Integration of various X-Sense devices into Home Assistant.
 - Support for automations based on X-Sense sensor data.
-- Support for the following device types: base stations, smoke detectors, carbon monoxide detectors, heat alarms, water leak detectors, and hygrometers.
+- Support for the following device types: base stations, smoke detectors, carbon monoxide detectors, heat alarms, water leak detectors, hygrometers, door sensors, motion sensors, lights, keypads, mailbox sensors, and listener devices when they are available in the X-Sense account.
+- Real-time updates through X-Sense MQTT shadows, with periodic cloud polling as a fallback.
 - Easy setup through HACS (Home Assistant Community Store).
 
 ## Requirements
@@ -83,18 +84,28 @@ After successful installation and configuration, the integration will be visible
 ____________________________________________________________
 
 ## Supported Devices
-This integration supports a variety of X-Sense devices. Here is a list of the currently confirmed and tested devices:
+This integration supports a variety of X-Sense devices. Supported entities depend on the data fields reported by each device and account. Here is a list of currently supported device families and confirmed models:
 - **Base station (SBS50)**: Central hub for X-Sense devices.
 - **Heat alarm (XH02-M)**: Detects unusually high temperatures.
 - **Carbon monoxide detector (XC01-M; XC04-WX)**: Detects dangerous concentrations of carbon monoxide.
-- **Smoke detector (XS01-M, WX; XS03-WX; XS0B-MR)**: Early detection of smoke.
-- **Carbon monoxide and smoke combination detector (SC07-WX; XP0A-MR (partially supported))**: Combined devices for detecting carbon monoxide and smoke.
+- **Smoke detector (XS01-M; XS01-WX; XS03-WX; XS0B-MR and related RF/iR models)**: Early detection of smoke.
+- **Carbon monoxide and smoke combination detector (SC07-WX; XP0A-MR and related XP/SC models)**: Combined devices for detecting carbon monoxide and smoke.
 - **Water leak detector (SWS51)**: Detects the presence of water in unwanted areas.
-- **Hygrometer-thermometer (STH51, STH0B)**: Monitors temperature and humidity.
+- **Hygrometer-thermometer (STH51, STH0A, STH0B, STH0C)**: Monitors temperature and humidity.
 - **Door sensor (SDS0A)**: Exposes door state when provided by the X-Sense account.
 - **Motion detector (SMS0A)**: Exposes motion alarm state when provided by the X-Sense account.
+- **Other station-connected devices**: Light, keypad, mailbox, listener, driveway alarm, smart drop, remote, and radon device data is exposed when the X-Sense API reports supported fields.
 
 These devices can be used to create automations and alerts after being integrated into Home Assistant.
+
+### Available Entities and Actions
+The integration creates Home Assistant entities only for fields that are present in the X-Sense cloud or MQTT shadow payloads. Depending on the device, this can include:
+
+- Alarm, mute, end-of-life, AC-break, water-alarm, temperature-alarm, charging, motion, door, armed, warning, reminder, light, PIR, and keypad status binary sensors.
+- Battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, timezone, serial number, MAC address, and other diagnostic sensors.
+- Test, mute, and fire-drill buttons for device models where the X-Sense app exposes the matching action.
+
+Some entities are diagnostic or configuration-related and are grouped that way in Home Assistant. If a device does not report a specific field, the matching entity is not created.
 
 ____________________________________________________________
 

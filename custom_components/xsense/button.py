@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
 
-from xsense.device import Device
-from xsense.entity import Entity
-from xsense.entity_map import entities
-from xsense.exceptions import XSenseError
+from .api.device import Device
+from .api.entity import Entity
+from .api.entity_map import entities
+from .api.exceptions import XSenseError
 
 from homeassistant import config_entries
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
