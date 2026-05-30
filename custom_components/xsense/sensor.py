@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from .api.device import Device
 from .api.entity import Entity
@@ -35,7 +36,7 @@ class XSenseSensorEntityDescription(SensorEntityDescription):
     """Describes XSense sensor entity."""
 
     exists_fn: Callable[[Entity], bool] = lambda _: True
-    value_fn: Callable[[Entity], StateType]
+    value_fn: Callable[[Entity], StateType | datetime]
 
 
 def battery_percentage(device: Entity) -> int | None:
@@ -60,6 +61,36 @@ def rf_level(device: Entity) -> str | None:
 def data_value(key: str) -> Callable[[Entity], StateType]:
     """Return a value function for a X-Sense data key."""
     return lambda entity: entity.data[key]
+
+
+def timestamp_value(value) -> datetime | None:
+    """Return an aware datetime for X-Sense timestamp payload values."""
+    if value in (None, ""):
+        return None
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value, tz=timezone.utc)
+
+    text = str(value)
+    if text.isdigit():
+        if len(text) == 14:
+            return datetime.strptime(text, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+        if len(text) == 13:
+            return datetime.fromtimestamp(int(text) / 1000, tz=timezone.utc)
+        if len(text) == 10:
+            return datetime.fromtimestamp(int(text), tz=timezone.utc)
+
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def data_timestamp(key: str) -> Callable[[Entity], datetime | None]:
+    """Return a value function for a X-Sense timestamp data key."""
+    return lambda entity: timestamp_value(entity.data[key])
 
 
 def has_data(key: str) -> Callable[[Entity], bool]:
@@ -584,41 +615,41 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="time",
         name="Report Time",
+        device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:clock-outline",
-        value_fn=data_value("time"),
+        value_fn=data_timestamp("time"),
         exists_fn=has_data("time"),
     ),
     XSenseSensorEntityDescription(
         key="online_time",
         name="Online Time",
+        device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:clock-check-outline",
-        value_fn=data_value("onlineTime"),
+        value_fn=data_timestamp("onlineTime"),
         exists_fn=has_data("onlineTime"),
     ),
     XSenseSensorEntityDescription(
         key="utc_time",
         name="UTC Time",
+        device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:clock-outline",
-        value_fn=data_value("utcTime"),
+        value_fn=data_timestamp("utcTime"),
         exists_fn=has_data("utcTime"),
     ),
     XSenseSensorEntityDescription(
         key="app_time",
         name="App Time",
+        device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:clock-outline",
-        value_fn=data_value("appTime"),
+        value_fn=data_timestamp("appTime"),
         exists_fn=has_data("appTime"),
     ),
     XSenseSensorEntityDescription(
         key="test_time",
         name="Test Time",
+        device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:clock-check-outline",
-        value_fn=data_value("testTime"),
+        value_fn=data_timestamp("testTime"),
         exists_fn=has_data("testTime"),
     ),
     XSenseSensorEntityDescription(
@@ -799,7 +830,7 @@ class XSenseSensorEntity(XSenseEntity, SensorEntity):
         super().__init__(coordinator, entity, station_id)
 
     @property
-    def native_value(self) -> str | int | float | None:
+    def native_value(self) -> str | int | float | datetime | None:
         """Return the state of the sensor."""
         device = self._current_entity()
         if device is None:
