@@ -21,15 +21,39 @@ Sampai integrasi resmi Home Assistant tersedia, integrasi HACS ini akan terus di
 - Akun X-Sense dengan perangkat yang didukung.
 - HACS harus terpasang di Home Assistant.
 
+## Video Panduan
+Untuk panduan rinci tentang instalasi dan konfigurasi integrasi, Anda dapat menonton video berikut:
+
+[![X-Sense Home Assistant Integration](https://img.youtube.com/vi/3CCKK-qX-YA/0.jpg)](https://www.youtube.com/watch?v=3CCKK-qX-YA)
+
+____________________________________________________________
+
 ## Persiapan
 - **Buat akun X-Sense kedua untuk Home Assistant**: Akun terpisah disarankan karena satu akun mungkin tidak stabil jika digunakan bersamaan di aplikasi dan Home Assistant.
 - **Bagikan perangkat yang didukung dari akun utama ke akun Home Assistant**: Pengelolaan tetap dilakukan di akun utama, sementara Home Assistant memakai perangkat yang dibagikan.
 
-## Instalasi dan konfigurasi
-1. Buka HACS di Home Assistant.
-2. Tambahkan `https://github.com/Jarnsen/ha-xsense-component_test` sebagai custom repository.
-3. Unduh dan pasang integrasi.
-4. Konfigurasikan dengan nama pengguna dan kata sandi X-Sense di halaman Integrations Home Assistant.
+## Instalasi melalui HACS
+1. **Buka HACS di Home Assistant**:
+   HACS adalah ekstensi penting untuk Home Assistant yang memudahkan pemasangan integrasi kustom.
+
+2. **Buka custom repositories**:
+   Masuk ke pengaturan HACS dan tambahkan repositori sebagai sumber kustom.
+
+3. **Tambahkan repositori**:
+   Masukkan URL repositori: `https://github.com/Jarnsen/ha-xsense-component_test`
+
+4. **Unduh dan pasang integrasi**:
+   Cari integrasi di HACS, unduh, lalu pasang. Setelah itu konfigurasi dilakukan dari antarmuka Home Assistant.
+
+____________________________________________________________
+
+## Konfigurasi
+Setelah pemasangan, konfigurasi dasar diperlukan agar integrasi dapat digunakan:
+- **Nama pengguna dan kata sandi**: Gunakan kredensial akun X-Sense baru yang dibuat untuk Home Assistant.
+- **Ikhtisar perangkat**: Setelah konfigurasi berhasil, perangkat yang dibagikan akan tersedia di Home Assistant dan dapat digunakan untuk otomasi.
+
+## Tampilan di Home Assistant
+Setelah instalasi dan konfigurasi berhasil, integrasi akan terlihat di Home Assistant. Perangkat tersedia di dashboard dan dapat digunakan untuk otomasi, notifikasi, dan kebutuhan lain.
 
 ## Perangkat yang didukung
 Integrasi ini mendukung berbagai perangkat X-Sense. Entity yang tersedia bergantung pada field data yang dilaporkan perangkat dan akun. Keluarga dan model yang dikonfirmasi meliputi:
@@ -44,17 +68,43 @@ Integrasi ini mendukung berbagai perangkat X-Sense. Entity yang tersedia bergant
 - **Kamera (SSC0A, SSC0B)**: Menampilkan entity kamera, thumbnail, URL live stream, diagnostik, dan pengaturan berbasis aplikasi Android saat didukung perangkat dan akun.
 - **Perangkat lain yang terhubung ke station**: Lampu, keypad, mailbox, listener, alarm driveway, smart drop, remote, dan data radon ditampilkan saat API melaporkan field yang didukung.
 
-## Entity dan aksi
-Integrasi hanya membuat entity untuk field yang ada di cloud X-Sense, MQTT shadow, atau API kamera yang didukung aplikasi. Ini dapat mencakup binary sensor, sensor diagnostik, switch, select, number, dan tombol seperti test, mute, fire drill, serta wake camera.
+### Entity dan aksi yang tersedia
+Integrasi hanya membuat entity Home Assistant untuk field yang benar-benar ada di cloud X-Sense, payload MQTT shadow, atau API kamera yang selaras dengan aplikasi Android. Bergantung pada perangkat, ini dapat mencakup:
 
-Jika field tidak dilaporkan atau aplikasi X-Sense menandai fitur tidak didukung untuk perangkat/akun tersebut, entity tidak dibuat. Bind, hapus, bagikan, akun, pembayaran, firmware, format SD card, dan tindakan manajemen lain tetap berada di aplikasi X-Sense.
+- Binary sensor untuk alarm, mute, end-of-life, AC-break, alarm air, alarm suhu, pengisian daya, gerakan, pintu, status armed, peringatan, pengingat, lampu, PIR, dan status keypad.
+- Sensor baterai, sinyal RF, sinyal Wi-Fi, firmware, suhu, kelembapan, level CO, puncak CO, volume alarm, volume suara, volume chirp, volume pengingat, ambang peringatan, timer mute, timestamp yang mudah dibaca, zona waktu, nomor seri, alamat MAC, dan data diagnostik lain.
+- Switch untuk pengaturan tulis yang didukung X-Sense, seperti lampu LED, pengaktifan alarm, continued alarm, nada chirp, pengingat, PIR, sunshine/white light, await, suara keypad, deteksi gerakan kamera, perekaman, night vision, audio, cooldown, lampu, dan kontrol doorbell.
+- Select dan number untuk pengaturan kamera yang didukung seperti bahasa, resolusi rekaman, codec, anti-flicker, sensitivitas gerakan, durasi video, volume, durasi alarm, cooldown, ambang malam, dan tombol dering doorbell.
+- Tombol test, mute, fire-drill, dan wake camera untuk model perangkat yang menyediakan aksi tersebut di aplikasi X-Sense.
 
+Beberapa entity bersifat diagnostik atau konfigurasi dan dikelompokkan seperti itu di Home Assistant. Jika perangkat tidak melaporkan field tertentu, atau aplikasi X-Sense menandai fitur tidak didukung untuk perangkat/akun tersebut, entity terkait tidak dibuat. Binding perangkat, penghapusan, berbagi, akun, pembayaran, pembaruan firmware, format kartu SD, dan tindakan manajemen lain tetap dilakukan di aplikasi X-Sense.
 ____________________________________________________________
 
-## Contoh Automation
+## Contoh Otomasi
+Dengan integrasi ini, berbagai otomasi dapat dibuat. Berikut beberapa contoh:
+
+### Contoh 1: Peringatan suhu
+Ketika suhu dari termometer X-Sense terlalu tinggi, notifikasi dikirim:
+
 ```yaml
 automation:
-  - alias: "X-Sense Water Leak Alarm"
+  - alias: "Xsense Temperature Alert"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.xsense_temperature
+      above: 30
+    action:
+      service: notify.notify
+      data:
+        message: "Suhu melebihi 30 derajat!"
+```
+
+### Contoh 2: Alarm kebocoran air
+Ketika detektor kebocoran air mendeteksi air, peringatan dipicu:
+
+```yaml
+automation:
+  - alias: "Water Leak Alarm"
     trigger:
       platform: state
       entity_id: binary_sensor.xsense_waterleak

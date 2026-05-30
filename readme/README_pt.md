@@ -96,10 +96,15 @@ Esta integração suporta vários dispositivos X-Sense. As entidades disponívei
 - **Outros dispositivos conectados à estação**: Luz, teclado, caixa de correio, listener, alarme de entrada, smart drop, controle remoto e dados de radônio são expostos quando a API relata campos suportados.
 
 ### Entidades e ações disponíveis
-A integração cria entidades apenas para campos presentes na nuvem X-Sense, em payloads MQTT shadow ou nas APIs de câmera apoiadas pelo app. Isso pode incluir sensores binários, sensores de diagnóstico, switches, seletores, números e botões para funções suportadas, como teste, silenciar, simulado de incêndio e acordar câmera.
+A integração cria entidades do Home Assistant apenas para campos presentes na nuvem X-Sense, nos payloads MQTT shadow ou nas APIs de câmera alinhadas ao app Android. Dependendo do dispositivo, isso pode incluir:
 
-Se um campo não for relatado ou o app X-Sense marcar a função como não suportada para esse dispositivo/conta, a entidade não será criada. Vincular, remover, compartilhar, conta, pagamentos, firmware, formatação de cartão SD e outras ações administrativas permanecem no app X-Sense.
+- Sensores binários de alarme, silenciar, fim de vida, falha de CA, alarme de água, alarme de temperatura, carregamento, movimento, porta, armado, aviso, lembrete, luz, PIR e estado do teclado.
+- Sensores de bateria, sinal RF, sinal Wi-Fi, firmware, temperatura, umidade, nível de CO, pico de CO, volume de alarme, volume de voz, volume de chirp, volume de lembrete, limites de aviso, temporizadores de silêncio, timestamps legíveis, fuso horário, número de série, endereço MAC e outros dados de diagnóstico.
+- Switches para configurações graváveis suportadas, como luz LED, habilitação de alarme, alarme contínuo, tom chirp, lembretes, PIR, sunshine/white light, espera, som do teclado, detecção de movimento da câmera, gravação, visão noturna, áudio, cooldown, luz e controles de campainha.
+- Seletores e números para configurações de câmera suportadas, como idioma, resolução de gravação, codec, anti-flicker, sensibilidade de movimento, duração de vídeo, volume, duração do alarme, cooldown, limite noturno e tecla da campainha.
+- Botões de teste, silenciar, simulado de incêndio e despertar câmera para modelos em que o app X-Sense expõe a ação correspondente.
 
+Algumas entidades são de diagnóstico ou configuração e aparecem agrupadas assim no Home Assistant. Se um dispositivo não relatar um campo específico, ou se o app X-Sense marcar a função como não suportada para esse dispositivo/conta, a entidade correspondente não será criada. Vincular, remover, compartilhar, conta, pagamentos, atualização de firmware, formatação de cartão SD e outras ações administrativas permanecem no app X-Sense.
 ____________________________________________________________
 
 ## Exemplos de Automação

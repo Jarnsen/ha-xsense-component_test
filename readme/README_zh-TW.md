@@ -21,15 +21,39 @@
 - 具有受支援裝置的 X-Sense 帳戶。
 - 已安裝 HACS。
 
+## 教學影片
+如需安裝與設定整合的詳細指南，可以觀看以下影片：
+
+[![X-Sense Home Assistant Integration](https://img.youtube.com/vi/3CCKK-qX-YA/0.jpg)](https://www.youtube.com/watch?v=3CCKK-qX-YA)
+
+____________________________________________________________
+
 ## 準備
 - **建立第二個 X-Sense 帳戶供 Home Assistant 使用**：同一帳戶通常無法同時穩定登入 X-Sense App 與 Home Assistant，因此建議使用獨立帳戶。
 - **從主要帳戶分享受支援裝置給 Home Assistant 帳戶**：用主要帳戶管理裝置，並將要整合的裝置分享給 Home Assistant 帳戶。
 
-## 安裝與設定
-1. 在 Home Assistant 中開啟 HACS。
-2. 將 `https://github.com/Jarnsen/ha-xsense-component_test` 加入 HACS 自訂存放庫。
-3. 下載並安裝整合。
-4. 在 Home Assistant 的整合頁面中使用 X-Sense 帳號密碼完成設定。
+## 透過 HACS 安裝
+1. **在 Home Assistant 中開啟 HACS**：
+   HACS 是 Home Assistant 的重要擴充，可讓你輕鬆安裝自訂整合。
+
+2. **前往自訂儲存庫**：
+   在 HACS 儀表板設定中，將此儲存庫新增為自訂來源。
+
+3. **新增儲存庫**：
+   輸入儲存庫 URL：`https://github.com/Jarnsen/ha-xsense-component_test`
+
+4. **下載並安裝整合**：
+   在 HACS 中找到此整合、下載並安裝。安裝後即可透過 Home Assistant 介面設定。
+
+____________________________________________________________
+
+## 設定
+安裝後需要基本設定才能正常使用整合：
+- **使用者名稱與密碼**：使用新建立的 X-Sense 帳號登入資訊建立連線。
+- **裝置概覽**：設定成功後，共享的裝置會出現在 Home Assistant 中，並可用於自動化。
+
+## 在 Home Assistant 中檢視
+成功安裝與設定後，整合會顯示在 Home Assistant 中。裝置可在儀表板使用，並可用於自動化、通知與其他用途。
 
 ## 支援的裝置
 此整合支援多種 X-Sense 裝置。可用實體取決於裝置與帳號實際回報的資料欄位。目前確認的裝置系列與型號包括：
@@ -46,16 +70,42 @@
 - **其他連接至基地台的裝置**：燈、鍵盤、信箱感測器、listener、車道警報、smart drop、遙控器與氡資料會在 API 回報支援欄位時顯示。
 
 ### 可用實體與動作
-整合只會為 X-Sense 雲端、MQTT shadow 或 App 支援的攝影機 API 中存在的欄位建立實體。依裝置不同，可能包含二元感測器、診斷感測器、開關、選擇項、數值與按鈕，例如測試、靜音、消防演練與喚醒攝影機。
+整合只會針對 X-Sense 雲端、MQTT shadow payload 或與 Android App 行為一致的攝影機 API 中實際存在的欄位建立 Home Assistant 實體。依裝置不同，可能包含：
 
-如果裝置未回報某個欄位，或 X-Sense App 標示該裝置/帳號不支援該功能，就不會建立對應實體。裝置綁定、移除、分享、帳號、付款、韌體更新、SD 卡格式化與其他管理操作仍保留在 X-Sense App 中。
+- 警報、靜音、壽命結束、AC 斷電、漏水警報、溫度警報、充電、動作、門、設防狀態、警告、提醒、燈光、PIR 與鍵盤狀態等二元感測器。
+- 電池、RF 訊號、Wi-Fi 訊號、韌體、溫度、濕度、CO 濃度、CO 峰值、警報音量、語音音量、啁啾音量、提醒音量、警告門檻、靜音計時、可讀時間戳記、時區、序號、MAC 位址與其他診斷感測器。
+- X-Sense 回報支援且可寫入的設定開關，例如 LED 燈、警報啟用、持續警報、啁啾音、提醒、PIR、日光/白光、等待狀態、鍵盤聲音、攝影機動作偵測、錄影、夜視、音訊、冷卻時間、燈光與門鈴控制。
+- 支援的攝影機設定用選擇項與數值，例如語言、錄影解析度、編碼器、防閃爍頻率、動作靈敏度、影片長度、音量、警報持續時間、冷卻時間、夜間門檻與門鈴按鍵。
+- 當 X-Sense App 對該型號提供對應動作時，建立測試、靜音、消防演練與喚醒攝影機按鈕。
 
+部分實體屬於診斷或設定類別，Home Assistant 會依此分組。如果裝置沒有回報特定欄位，或 X-Sense App 標示該裝置/帳號不支援該功能，就不會建立對應實體。裝置綁定、移除、分享、帳號、付款、韌體更新、SD 卡格式化與其他管理操作仍保留在 X-Sense App 中。
 ____________________________________________________________
 
 ## 自動化範例
+透過此整合可以建立多種自動化。以下是一些範例：
+
+### 範例 1：溫度警示
+當 X-Sense 溫度計的溫度過高時傳送通知：
+
 ```yaml
 automation:
-  - alias: "X-Sense Water Leak Alarm"
+  - alias: "Xsense Temperature Alert"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.xsense_temperature
+      above: 30
+    action:
+      service: notify.notify
+      data:
+        message: "溫度超過 30 度！"
+```
+
+### 範例 2：漏水警報
+當漏水偵測器偵測到水時觸發警報：
+
+```yaml
+automation:
+  - alias: "Water Leak Alarm"
     trigger:
       platform: state
       entity_id: binary_sensor.xsense_waterleak

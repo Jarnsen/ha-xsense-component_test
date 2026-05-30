@@ -97,10 +97,15 @@ ____________________________________________________________
 - **其他连接到基站的设备**：灯、键盘、邮箱传感器、监听器、车道报警、smart drop、遥控器和氡数据会在 API 上报支持字段时显示。
 
 ### 可用实体和操作
-集成只会为 X-Sense 云端、MQTT shadow 或应用支持的摄像机 API 中存在的字段创建实体。根据设备不同，可能包括二进制传感器、诊断传感器、开关、选择项、数值和按钮，例如测试、静音、消防演练和唤醒摄像机。
+集成只会为 X-Sense 云端、MQTT shadow payload 或与 Android 应用行为一致的摄像机 API 中实际存在的字段创建 Home Assistant 实体。根据设备不同，可能包括：
 
-如果设备未上报某个字段，或 X-Sense 应用标记该设备/账号不支持该功能，则不会创建对应实体。设备绑定、删除、共享、账号、支付、固件更新、SD 卡格式化以及其他管理操作仍保留在 X-Sense 应用中。
+- 用于 alarm、mute、end-of-life、AC-break、水浸报警、温度报警、充电、运动、门、布防状态、warning、reminder、light、PIR 和 keypad 状态的二进制传感器。
+- 电池、RF 信号、Wi-Fi 信号、firmware、温度、湿度、CO 浓度、CO 峰值、alarm 音量、voice 音量、chirp 音量、reminder 音量、warning 阈值、mute 计时器、可读 timestamp、timezone、serial number、MAC address 以及其他诊断传感器。
+- X-Sense 报告支持的可写设置开关，例如 LED light、alarm enablement、continued alarm、chirp tone、reminders、PIR、sunshine/white light、await、keypad sound、camera motion detection、recording、night vision、audio、cooldown、light 和 doorbell 控制。
+- 用于受支持摄像机设置的 select 和 number，例如 language、recording resolution、codec、anti-flicker rate、motion sensitivity、video length、volume、alarm duration、cooldown、night threshold 和 doorbell ring key。
+- 当 X-Sense 应用为该型号提供相应操作时，创建 test、mute、fire-drill 和 camera wake 按钮。
 
+部分实体属于诊断或配置类，会在 Home Assistant 中按相应类别分组。如果设备未上报某个字段，或 X-Sense 应用标记该设备/账号不支持该功能，则不会创建对应实体。设备绑定、删除、共享、账号、支付、firmware 更新、SD 卡格式化以及其他管理操作仍保留在 X-Sense 应用中。
 ____________________________________________________________
 
 ## 自动化示例

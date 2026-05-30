@@ -96,10 +96,15 @@ ____________________________________________________________
 - **अन्य स्टेशन से जुड़े उपकरण**: लाइट, कीपैड, मेलबॉक्स, listener, ड्राइववे अलार्म, smart drop, रिमोट और रेडॉन डेटा API द्वारा समर्थित फ़ील्ड रिपोर्ट होने पर दिखते हैं।
 
 ### उपलब्ध एंटिटी और कार्य
-इंटीग्रेशन केवल X-Sense क्लाउड, MQTT shadow या ऐप समर्थित कैमरा API में मौजूद फ़ील्ड के लिए एंटिटी बनाता है। इसमें बाइनरी सेंसर, डायग्नोस्टिक सेंसर, स्विच, चयन, नंबर और टेस्ट, म्यूट, फायर ड्रिल तथा कैमरा वेक जैसे बटन शामिल हो सकते हैं।
+यह इंटीग्रेशन केवल उन फ़ील्ड के लिए Home Assistant एंटिटी बनाता है जो वास्तव में X-Sense cloud, MQTT shadow payloads या Android ऐप के व्यवहार से मेल खाने वाली camera APIs में मौजूद हों। डिवाइस के अनुसार इसमें शामिल हो सकते हैं:
 
-यदि कोई फ़ील्ड रिपोर्ट नहीं होती या X-Sense ऐप उस उपकरण/खाते के लिए सुविधा को असमर्थित बताता है, तो एंटिटी नहीं बनाई जाती। डिवाइस जोड़ना/हटाना/शेयर करना, खाता, भुगतान, फर्मवेयर, SD कार्ड फॉर्मेट और अन्य प्रबंधन कार्य X-Sense ऐप में ही रहते हैं।
+- alarm, mute, end-of-life, AC-break, water alarm, temperature alarm, charging, motion, door, armed, warning, reminder, light, PIR और keypad status के लिए binary sensors।
+- battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, readable timestamps, timezone, serial number, MAC address और अन्य diagnostic sensors।
+- X-Sense द्वारा रिपोर्ट की गई writable settings के switches, जैसे LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light और doorbell controls।
+- समर्थित camera settings के लिए select और number entities, जैसे language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold और doorbell ring key।
+- जिन मॉडलों में X-Sense ऐप संबंधित action दिखाता है, उनके लिए test, mute, fire-drill और camera wake buttons।
 
+कुछ एंटिटी diagnostic या configuration-related होती हैं और Home Assistant में उसी तरह group की जाती हैं। यदि डिवाइस कोई खास field report नहीं करता, या X-Sense ऐप उस device/account के लिए feature unsupported बताता है, तो संबंधित entity नहीं बनाई जाती। Device binding, removal, sharing, account, payment, firmware update, SD-card format और अन्य management actions X-Sense ऐप में ही रहते हैं।
 ____________________________________________________________
 
 ## ऑटोमेशन के उदाहरण

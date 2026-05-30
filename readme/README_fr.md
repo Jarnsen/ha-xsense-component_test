@@ -97,10 +97,15 @@ Cette intégration prend en charge plusieurs appareils X-Sense. Les entités dis
 - **Autres appareils reliés à une station** : Lumière, clavier, boîte aux lettres, listener, alarme d'allée, smart drop, télécommande et données radon sont exposés lorsque l'API signale les champs compatibles.
 
 ### Entités et actions disponibles
-L'intégration crée des entités uniquement pour les champs présents dans le cloud X-Sense, les payloads MQTT shadow ou les APIs caméra basées sur l'app. Cela peut inclure des capteurs binaires, capteurs de diagnostic, interrupteurs, sélecteurs, nombres et boutons pour les fonctions prises en charge, comme test, silence, exercice incendie et réveil caméra.
+L'intégration crée des entités Home Assistant uniquement pour les champs présents dans le cloud X-Sense, les payloads MQTT shadow ou les API caméra alignées sur l'application Android. Selon l'appareil, cela peut inclure :
 
-Si un champ n'existe pas ou si l'app X-Sense marque une fonction comme non prise en charge pour cet appareil/compte, l'entité n'est pas créée. La liaison, suppression, partage, compte, paiement, firmware, formatage de carte SD et autres actions d'administration restent dans l'app X-Sense.
+- Des capteurs binaires pour l'alarme, le silence, la fin de vie, la coupure secteur, l'alarme eau, l'alarme température, la charge, le mouvement, la porte, l'armement, les avertissements, les rappels, la lumière, le PIR et l'état du clavier.
+- Des capteurs de batterie, signal RF, signal Wi-Fi, firmware, température, humidité, niveau CO, pic CO, volume d'alarme, volume vocal, volume chirp, volume de rappel, seuils d'avertissement, minuteries de silence, horodatages lisibles, fuseau horaire, numéro de série, adresse MAC et autres données de diagnostic.
+- Des interrupteurs pour les réglages modifiables pris en charge, comme la LED, l'activation d'alarme, l'alarme continue, le ton chirp, les rappels, le PIR, sunshine/white light, l'attente, le son du clavier, la détection de mouvement caméra, l'enregistrement, la vision nocturne, l'audio, le cooldown, la lumière et les contrôles de sonnette.
+- Des sélecteurs et nombres pour les réglages caméra pris en charge, comme la langue, la résolution d'enregistrement, le codec, l'anti-scintillement, la sensibilité de mouvement, la durée vidéo, le volume, la durée d'alarme, le cooldown, le seuil de nuit et la touche de sonnette.
+- Des boutons test, silence, exercice incendie et réveil caméra pour les modèles où l'application X-Sense expose l'action correspondante.
 
+Certaines entités sont de diagnostic ou de configuration et sont regroupées ainsi dans Home Assistant. Si un appareil ne signale pas un champ précis, ou si l'application X-Sense marque la fonction comme non prise en charge pour cet appareil/compte, l'entité correspondante n'est pas créée. La liaison, suppression, partage, compte, paiement, mise à jour firmware, formatage de carte SD et autres actions d'administration restent dans l'application X-Sense.
 ____________________________________________________________
 
 ## Exemples d'automatisations

@@ -96,10 +96,15 @@ Questa integrazione supporta diversi dispositivi X-Sense. Le entità disponibili
 - **Altri dispositivi collegati alla stazione**: Luce, tastiera, cassetta postale, listener, allarme vialetto, smart drop, telecomando e dati radon sono esposti quando l'API riporta campi supportati.
 
 ### Entità e azioni disponibili
-L'integrazione crea entità solo per campi presenti nel cloud X-Sense, nei payload MQTT shadow o nelle API camera supportate dall'app. Può includere sensori binari, sensori diagnostici, switch, selettori, numeri e pulsanti per funzioni supportate come test, silenzia, esercitazione antincendio e risveglio camera.
+L'integrazione crea entità Home Assistant solo per i campi realmente presenti nel cloud X-Sense, nei payload MQTT shadow o nelle API camera allineate al comportamento dell'app Android. A seconda del dispositivo, può includere:
 
-Se un campo non è riportato o l'app X-Sense indica che la funzione non è supportata per quel dispositivo/account, l'entità non viene creata. Associazione, rimozione, condivisione, account, pagamenti, firmware, formattazione SD e altre azioni amministrative restano nell'app X-Sense.
+- Sensori binari per alarm, mute, end-of-life, AC-break, allarme acqua, allarme temperatura, ricarica, movimento, porta, stato armed, warning, reminder, light, PIR e stato keypad.
+- Sensori per batteria, segnale RF, segnale Wi-Fi, firmware, temperatura, umidità, livello CO, picco CO, volume alarm, volume voice, volume chirp, volume reminder, soglie warning, timer mute, timestamp leggibili, timezone, serial number, MAC address e altri dati diagnostici.
+- Switch per impostazioni scrivibili segnalate da X-Sense, come LED light, abilitazione alarm, continued alarm, chirp tone, reminder, PIR, sunshine/white light, await, suono keypad, camera motion detection, recording, night vision, audio, cooldown, light e controlli doorbell.
+- Select e number per impostazioni camera supportate come language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold e doorbell ring key.
+- Pulsanti test, mute, fire-drill e camera wake per i modelli in cui l'app X-Sense espone l'azione corrispondente.
 
+Alcune entità sono diagnostiche o di configurazione e vengono raggruppate così in Home Assistant. Se un dispositivo non segnala un campo specifico, o se l'app X-Sense indica che la funzione non è supportata per quel dispositivo/account, l'entità corrispondente non viene creata. Associazione, rimozione, condivisione, account, pagamenti, aggiornamento firmware, formattazione SD e altre azioni di gestione restano nell'app X-Sense.
 ____________________________________________________________
 
 ## Esempi di automazioni
