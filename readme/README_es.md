@@ -97,10 +97,15 @@ Esta integración admite varios dispositivos X-Sense. Las entidades disponibles 
 - **Otros dispositivos conectados a estación**: Luz, teclado, buzón, listener, alarma de entrada, smart drop, control remoto y datos de radón se exponen cuando la API informa campos compatibles.
 
 ### Entidades y acciones disponibles
-La integración crea entidades solo para campos presentes en la nube de X-Sense, MQTT shadow o APIs de cámara respaldadas por la app. Puede incluir sensores binarios, sensores de diagnóstico, interruptores, selectores, números y botones para funciones admitidas, como prueba, silencio, simulacro de incendio y despertar cámara.
+La integración crea entidades de Home Assistant solo para campos que existen en la nube de X-Sense, en los payloads MQTT shadow o en las APIs de cámara alineadas con la app Android. Según el dispositivo, esto puede incluir:
 
-Si un campo no existe o la app X-Sense marca una función como no compatible para ese dispositivo/cuenta, la entidad no se crea. La vinculación, eliminación, uso compartido, cuenta, pagos, firmware, formato de tarjeta SD y otras acciones de administración permanecen en la app X-Sense.
+- Sensores binarios de alarma, silencio, fin de vida, corte de CA, alarma de agua, alarma de temperatura, carga, movimiento, puerta, armado, advertencia, recordatorio, luz, PIR y estado del teclado.
+- Sensores de batería, señal RF, señal Wi-Fi, firmware, temperatura, humedad, nivel de CO, pico de CO, volumen de alarma, volumen de voz, volumen de chirp, volumen de recordatorio, umbrales de advertencia, temporizadores de silencio, marcas de tiempo legibles, zona horaria, número de serie, dirección MAC y otros datos de diagnóstico.
+- Interruptores para ajustes escribibles compatibles, como luz LED, habilitación de alarma, alarma continua, tono chirp, recordatorios, PIR, sunshine/white light, espera, sonido del teclado, detección de movimiento de cámara, grabación, visión nocturna, audio, cooldown, luz y controles de timbre.
+- Selectores y números para ajustes de cámara compatibles, como idioma, resolución de grabación, códec, frecuencia anti-parpadeo, sensibilidad de movimiento, duración de vídeo, volumen, duración de alarma, cooldown, umbral nocturno y tecla de timbre.
+- Botones de prueba, silencio, simulacro de incendio y despertar cámara para los modelos donde la app X-Sense expone esa acción.
 
+Algunas entidades son de diagnóstico o configuración y se agrupan así en Home Assistant. Si un dispositivo no informa un campo concreto, o si la app X-Sense marca la función como no compatible para ese dispositivo/cuenta, no se crea la entidad correspondiente. La vinculación, eliminación, uso compartido, cuenta, pagos, actualización de firmware, formateo de tarjeta SD y otras acciones de administración permanecen en la app X-Sense.
 ____________________________________________________________
 
 ## Ejemplos de automatizaciones

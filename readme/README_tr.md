@@ -95,10 +95,15 @@ Bu entegrasyon çeşitli X-Sense cihazlarını destekler. Oluşturulan varlıkla
 - **Diğer istasyon cihazları**: Işık, tuş takımı, posta kutusu, listener, araç yolu alarmı, smart drop, kumanda ve radon verileri API desteklenen alanları bildirdiğinde gösterilir.
 
 ### Kullanılabilir varlıklar ve eylemler
-Entegrasyon yalnızca X-Sense bulutu, MQTT shadow payload'ları veya uygulama destekli kamera API'lerinde bulunan alanlar için varlık oluşturur. Bu; ikili sensörler, tanı sensörleri, anahtarlar, seçimler, sayılar ve test, sessize alma, yangın tatbikatı ve kamera uyandırma gibi desteklenen eylem düğmelerini içerebilir.
+Entegrasyon yalnızca X-Sense bulutunda, MQTT shadow payload'larında veya Android uygulamasıyla uyumlu kamera API'lerinde gerçekten bulunan alanlar için Home Assistant varlıkları oluşturur. Cihaza bağlı olarak şunları içerebilir:
 
-Bir alan bildirilmezse veya X-Sense uygulaması özelliği bu cihaz/hesap için desteklenmiyor olarak işaretlerse varlık oluşturulmaz. Cihaz bağlama, kaldırma, paylaşma, hesap, ödeme, firmware, SD kart biçimlendirme ve diğer yönetim işlemleri X-Sense uygulamasında kalır.
+- Alarm, sessize alma, kullanım ömrü sonu, AC kesintisi, su alarmı, sıcaklık alarmı, şarj, hareket, kapı, kurulu durum, uyarı, hatırlatıcı, ışık, PIR ve tuş takımı durumu için ikili sensörler.
+- Pil, RF sinyali, Wi-Fi sinyali, firmware, sıcaklık, nem, CO seviyesi, CO tepe değeri, alarm/konuşma/chirp/hatırlatıcı ses seviyesi, uyarı eşikleri, sessize alma sayaçları, okunabilir zaman damgaları, saat dilimi, seri numarası, MAC adresi ve diğer tanılama sensörleri.
+- LED ışık, alarm etkinleştirme, devam eden alarm, chirp tonu, hatırlatıcılar, PIR, sunshine/white light, bekleme, tuş takımı sesi, kamera hareket algılama, kayıt, gece görüşü, ses, cooldown, ışık ve kapı zili kontrolleri gibi X-Sense tarafından bildirilen yazılabilir ayarlar için anahtarlar.
+- Dil, kayıt çözünürlüğü, codec, anti-flicker oranı, hareket hassasiyeti, video süresi, ses seviyesi, alarm süresi, cooldown, gece eşiği ve kapı zili tuşu gibi desteklenen kamera ayarları için seçimler ve sayı varlıkları.
+- X-Sense uygulamasının ilgili modeli desteklediği durumlarda test, sessize alma, yangın tatbikatı ve kamera uyandırma düğmeleri.
 
+Bazı varlıklar tanılama veya yapılandırma ile ilgilidir ve Home Assistant içinde buna göre gruplandırılır. Cihaz belirli bir alanı bildirmezse veya X-Sense uygulaması bu cihaz/hesap için özelliği desteklenmiyor olarak işaretlerse ilgili varlık oluşturulmaz. Cihaz bağlama, kaldırma, paylaşma, hesap, ödeme, firmware güncelleme, SD kart biçimlendirme ve diğer yönetim işlemleri X-Sense uygulamasında kalır.
 ____________________________________________________________
 
 ## Otomasyon Örnekleri

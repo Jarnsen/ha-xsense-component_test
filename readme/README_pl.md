@@ -97,10 +97,15 @@ Integracja obsługuje różne urządzenia X-Sense. Dostępne encje zależą od p
 - **Inne urządzenia stacji**: Światło, klawiatura, skrzynka pocztowa, listener, alarm podjazdu, smart drop, pilot i dane radonu są pokazywane, gdy API zgłasza obsługiwane pola.
 
 ### Dostępne encje i akcje
-Integracja tworzy encje tylko dla pól obecnych w chmurze X-Sense, payloadach MQTT shadow lub API kamery wspieranym przez aplikację. Może to obejmować czujniki binarne, diagnostyczne, przełączniki, listy wyboru, liczby i przyciski dla obsługiwanych funkcji, takich jak test, wyciszenie, próba pożarowa i wybudzenie kamery.
+Integracja tworzy encje Home Assistant tylko dla pól faktycznie obecnych w chmurze X-Sense, payloadach MQTT shadow albo API kamer zgodnych z zachowaniem aplikacji Android. W zależności od urządzenia może to obejmować:
 
-Jeśli pole nie jest zgłaszane albo aplikacja X-Sense oznacza funkcję jako nieobsługiwaną dla danego urządzenia/konta, encja nie zostanie utworzona. Parowanie, usuwanie, udostępnianie, konto, płatności, firmware, formatowanie karty SD i inne działania administracyjne pozostają w aplikacji X-Sense.
+- Czujniki binarne dla alarm, mute, end-of-life, AC-break, alarmu wody, alarmu temperatury, ładowania, ruchu, drzwi, stanu armed, warning, reminder, light, PIR i stanu keypad.
+- Czujniki baterii, sygnału RF, sygnału Wi-Fi, firmware, temperatury, wilgotności, poziomu CO, szczytu CO, głośności alarmu, voice volume, chirp volume, reminder volume, progów warning, timerów mute, czytelnych timestampów, timezone, serial number, MAC address i innych danych diagnostycznych.
+- Przełączniki dla zapisywalnych ustawień zgłaszanych przez X-Sense, takich jak LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light i doorbell controls.
+- Select i number dla obsługiwanych ustawień kamery, takich jak language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold i doorbell ring key.
+- Przyciski test, mute, fire-drill i camera wake dla modeli, w których aplikacja X-Sense udostępnia odpowiednią akcję.
 
+Część encji jest diagnostyczna lub konfiguracyjna i tak jest grupowana w Home Assistant. Jeśli urządzenie nie zgłasza konkretnego pola albo aplikacja X-Sense oznacza funkcję jako nieobsługiwaną dla danego urządzenia/konta, odpowiednia encja nie jest tworzona. Parowanie, usuwanie, udostępnianie urządzeń, konto, płatności, aktualizacja firmware, formatowanie karty SD i inne akcje administracyjne pozostają w aplikacji X-Sense.
 ____________________________________________________________
 
 ## Przykłady automatyzacji

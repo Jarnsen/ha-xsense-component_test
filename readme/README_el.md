@@ -96,10 +96,15 @@ ____________________________________________________________
 - **Άλλες συσκευές σταθμού**: Φως, πληκτρολόγιο, γραμματοκιβώτιο, listener, συναγερμός εισόδου, smart drop, τηλεχειριστήριο και δεδομένα ραδονίου εμφανίζονται όταν το API αναφέρει υποστηριζόμενα πεδία.
 
 ### Διαθέσιμες οντότητες και ενέργειες
-Η ενσωμάτωση δημιουργεί οντότητες μόνο για πεδία που υπάρχουν στο cloud X-Sense, στα MQTT shadow payloads ή στα API κάμερας που υποστηρίζονται από την εφαρμογή. Μπορεί να περιλαμβάνει δυαδικούς αισθητήρες, διαγνωστικούς αισθητήρες, διακόπτες, επιλογές, αριθμούς και κουμπιά για test, σίγαση, άσκηση πυρκαγιάς και αφύπνιση κάμερας.
+Η ενσωμάτωση δημιουργεί οντότητες Home Assistant μόνο για πεδία που υπάρχουν πραγματικά στο X-Sense cloud, στα MQTT shadow payloads ή στα API κάμερας που ακολουθούν τη συμπεριφορά της εφαρμογής Android. Ανάλογα με τη συσκευή, μπορεί να περιλαμβάνει:
 
-Αν ένα πεδίο δεν αναφέρεται ή η εφαρμογή X-Sense σημειώνει τη λειτουργία ως μη υποστηριζόμενη για τη συσκευή/λογαριασμό, η οντότητα δεν δημιουργείται. Σύνδεση, αφαίρεση, κοινή χρήση, λογαριασμός, πληρωμές, firmware, μορφοποίηση SD και άλλες διαχειριστικές ενέργειες παραμένουν στην εφαρμογή X-Sense.
+- Δυαδικούς αισθητήρες για alarm, mute, end-of-life, AC-break, water alarm, temperature alarm, charging, motion, door, armed, warning, reminder, light, PIR και κατάσταση keypad.
+- Αισθητήρες για μπαταρία, RF signal, Wi-Fi signal, firmware, θερμοκρασία, υγρασία, επίπεδο CO, κορυφή CO, alarm volume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, αναγνώσιμα timestamps, timezone, serial number, MAC address και άλλα διαγνωστικά δεδομένα.
+- Διακόπτες για εγγράψιμες ρυθμίσεις που αναφέρει το X-Sense, όπως LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light και doorbell controls.
+- Select και number οντότητες για υποστηριζόμενες ρυθμίσεις κάμερας όπως language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold και doorbell ring key.
+- Κουμπιά test, mute, fire-drill και camera wake για μοντέλα όπου η εφαρμογή X-Sense παρέχει την αντίστοιχη ενέργεια.
 
+Ορισμένες οντότητες είναι διαγνωστικές ή σχετικές με διαμόρφωση και ομαδοποιούνται έτσι στο Home Assistant. Αν μια συσκευή δεν αναφέρει συγκεκριμένο πεδίο, ή αν η εφαρμογή X-Sense σημειώνει τη λειτουργία ως μη υποστηριζόμενη για αυτή τη συσκευή/λογαριασμό, η αντίστοιχη οντότητα δεν δημιουργείται. Σύνδεση συσκευής, αφαίρεση, κοινή χρήση, λογαριασμός, πληρωμές, ενημέρωση firmware, μορφοποίηση SD και άλλες διαχειριστικές ενέργειες παραμένουν στην εφαρμογή X-Sense.
 ____________________________________________________________
 
 ## Παραδείγματα αυτοματισμών

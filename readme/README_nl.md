@@ -95,10 +95,15 @@ Deze integratie ondersteunt meerdere X-Sense-apparaten. Beschikbare entiteiten h
 - **Andere station-apparaten**: Licht, toetsenpaneel, brievenbus, listener, oprit-alarm, smart drop, afstandsbediening en radongegevens worden getoond wanneer ondersteunde velden worden gemeld.
 
 ### Beschikbare entiteiten en acties
-De integratie maakt alleen entiteiten voor velden uit de X-Sense-cloud, MQTT shadow of app-ondersteunde camera-API's. Dit kan binaire sensoren, diagnostische sensoren, schakelaars, keuzelijsten, getallen en knoppen omvatten, zoals test, dempen, brandoefening en camera wekken.
+De integratie maakt Home Assistant-entiteiten alleen voor velden die echt aanwezig zijn in de X-Sense-cloud, MQTT shadow-payloads of camera-API's die aansluiten op het gedrag van de Android-app. Afhankelijk van het apparaat kan dit omvatten:
 
-Als een veld ontbreekt of de X-Sense-app de functie niet ondersteunt voor dit apparaat/account, wordt de entiteit niet gemaakt. Koppelen, verwijderen, delen, accountbeheer, betalingen, firmware-updates, SD-kaart formatteren en andere beheeracties blijven in de X-Sense-app.
+- Binaire sensoren voor alarm, mute, end-of-life, AC-break, wateralarm, temperatuuralarm, laden, beweging, deur, armed status, warning, reminder, light, PIR en keypad-status.
+- Sensoren voor batterij, RF-signaal, Wi-Fi-signaal, firmware, temperatuur, luchtvochtigheid, CO-niveau, CO-piek, alarmvolume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, leesbare timestamps, timezone, serial number, MAC address en andere diagnostische gegevens.
+- Schakelaars voor door X-Sense gemelde schrijfbare instellingen, zoals LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light en doorbell controls.
+- Select- en number-entiteiten voor ondersteunde camera-instellingen zoals language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold en doorbell ring key.
+- Test-, mute-, fire-drill- en camera wake-knoppen voor modellen waarbij de X-Sense-app de bijbehorende actie aanbiedt.
 
+Sommige entiteiten zijn diagnostisch of configuratiegerelateerd en worden zo gegroepeerd in Home Assistant. Als een apparaat een bepaald veld niet rapporteert, of als de X-Sense-app de functie als niet ondersteund markeert voor dat apparaat/account, wordt de bijbehorende entiteit niet aangemaakt. Apparaat koppelen, verwijderen, delen, account, betaling, firmware-update, SD-kaart formatteren en andere beheeracties blijven in de X-Sense-app.
 ____________________________________________________________
 
 ## Voorbeelden van automatiseringen

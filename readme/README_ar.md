@@ -103,10 +103,15 @@ ____________________________________________________________
 - **أجهزة أخرى متصلة بالمحطة**: الضوء ولوحة المفاتيح وصندوق البريد و listener وإنذار الممر و smart drop والريموت وبيانات الرادون تظهر عندما ترسل API حقولًا مدعومة.
 
 ### الكيانات والإجراءات المتاحة
-ينشئ التكامل كيانات فقط للحقول الموجودة في سحابة X-Sense أو MQTT shadow أو واجهات كاميرا مدعومة من التطبيق. قد يشمل ذلك حساسات ثنائية وحساسات تشخيص ومفاتيح وخيارات وأرقامًا وأزرارًا مثل الاختبار والكتم وتدريب الحريق وإيقاظ الكاميرا.
+ينشئ التكامل كيانات Home Assistant فقط للحقول الموجودة فعليًا في سحابة X-Sense أو MQTT shadow payloads أو واجهات الكاميرا المتوافقة مع سلوك تطبيق Android. حسب الجهاز، قد يشمل ذلك:
 
-إذا لم يرسل الجهاز حقلًا معينًا أو وضع تطبيق X-Sense الميزة كغير مدعومة لهذا الجهاز/الحساب، فلن يتم إنشاء الكيان. تبقى إجراءات الربط والإزالة والمشاركة والحساب والدفع والبرامج الثابتة وتهيئة بطاقة SD والإدارة الأخرى داخل تطبيق X-Sense.
+- حساسات ثنائية لحالة alarm و mute و end-of-life و AC-break و water alarm و temperature alarm و charging و motion و door و armed و warning و reminder و light و PIR وحالة keypad.
+- حساسات للبطارية، إشارة RF، إشارة Wi-Fi، firmware، درجة الحرارة، الرطوبة، مستوى CO، ذروة CO، حجم alarm، حجم voice، حجم chirp، حجم reminder، حدود warning، مؤقتات mute، timestamps مقروءة، timezone، serial number، MAC address وبيانات تشخيص أخرى.
+- مفاتيح للإعدادات القابلة للكتابة التي يعلن X-Sense دعمها، مثل LED light، تفعيل alarm، continued alarm، chirp tone، reminders، PIR، sunshine/white light، await، صوت keypad، كشف حركة camera، recording، night vision، audio، cooldown، light وتحكم doorbell.
+- عناصر select و number لإعدادات الكاميرا المدعومة مثل language، recording resolution، codec، anti-flicker rate، motion sensitivity، video length، volume، alarm duration، cooldown، night threshold و doorbell ring key.
+- أزرار test و mute و fire-drill و camera wake للطرازات التي يعرض تطبيق X-Sense الإجراء المطابق لها.
 
+بعض الكيانات تشخيصية أو متعلقة بالإعدادات ويتم تجميعها كذلك في Home Assistant. إذا لم يرسل الجهاز حقلًا معينًا، أو وضع تطبيق X-Sense الميزة كغير مدعومة لهذا الجهاز/الحساب، فلن يتم إنشاء الكيان المقابل. تبقى إجراءات ربط الجهاز، إزالته، مشاركته، الحساب، الدفع، تحديث firmware، تهيئة بطاقة SD، والإدارة الأخرى داخل تطبيق X-Sense.
 ____________________________________________________________
 
 ## أمثلة على الأتمتة

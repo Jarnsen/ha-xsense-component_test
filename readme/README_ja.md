@@ -95,10 +95,15 @@ ____________________________________________________________
 - **その他のステーション接続デバイス**: ライト、キーパッド、メールボックス、listener、 driveway alarm、smart drop、リモコン、ラドンデータは、API が対応フィールドを報告する場合に表示されます。
 
 ### 利用可能なエンティティと操作
-統合は、X-Sense クラウド、MQTT shadow、またはアプリ準拠のカメラ API に存在するフィールドに対してのみエンティティを作成します。バイナリセンサー、診断センサー、スイッチ、選択、数値、テスト、ミュート、消防訓練、カメラ起動などのボタンが含まれる場合があります。
+この統合は、X-Sense クラウド、MQTT shadow payload、または Android アプリの挙動に合わせたカメラ API に実際に存在するフィールドに対してのみ Home Assistant エンティティを作成します。デバイスによって、次のようなものが含まれます。
 
-フィールドが報告されない場合、または X-Sense アプリがそのデバイス/アカウントで機能非対応と示す場合、対応するエンティティは作成されません。デバイスの追加・削除・共有、アカウント、支払い、ファームウェア、SD カード初期化などの管理操作は X-Sense アプリに残ります。
+- alarm、mute、end-of-life、AC-break、水漏れアラーム、温度アラーム、充電、モーション、ドア、armed 状態、warning、reminder、light、PIR、keypad 状態のバイナリセンサー。
+- battery、RF signal、Wi-Fi signal、firmware、temperature、humidity、CO level、CO peak、alarm volume、voice volume、chirp volume、reminder volume、warning thresholds、mute timers、読みやすい timestamps、timezone、serial number、MAC address、その他の診断センサー。
+- X-Sense が対応を報告する書き込み可能な設定用スイッチ。例: LED light、alarm enablement、continued alarm、chirp tone、reminders、PIR、sunshine/white light、await、keypad sound、camera motion detection、recording、night vision、audio、cooldown、light、doorbell controls。
+- language、recording resolution、codec、anti-flicker rate、motion sensitivity、video length、volume、alarm duration、cooldown、night threshold、doorbell ring key など、対応するカメラ設定用の select と number エンティティ。
+- X-Sense アプリが該当モデルで対応操作を提供している場合の test、mute、fire-drill、camera wake ボタン。
 
+一部のエンティティは診断または設定関連であり、Home Assistant でもそのように分類されます。デバイスが特定のフィールドを報告しない場合、または X-Sense アプリがそのデバイス/アカウントで機能非対応と示す場合、対応するエンティティは作成されません。デバイスの追加、削除、共有、アカウント、支払い、firmware 更新、SD カード初期化、その他の管理操作は X-Sense アプリ側に残ります。
 ____________________________________________________________
 
 ## 自動化の例
