@@ -10,7 +10,7 @@ import logging
 from typing import Any
 
 import paho.mqtt.client as mqtt
-from xsense.mqtt_helper import MQTTHelper
+from .api.mqtt_helper import MQTTHelper
 
 from homeassistant.components.mqtt.client import Subscription, _matcher_for_topic
 from homeassistant.components.mqtt.models import ReceiveMessage

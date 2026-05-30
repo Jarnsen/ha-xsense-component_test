@@ -8,16 +8,16 @@ from datetime import datetime, timedelta
 import json
 from typing import Any
 
-from xsense import AsyncXSense, House
-from xsense.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.logging import catch_log_exception
 
+from .api import AsyncXSense, House
+from .api.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
 from .const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -71,11 +71,17 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except Exception as ex:  # noqa: BLE001
                 LOGGER.warning("Could not disconnect XSense MQTT client: %s", ex)
 
+        if self.xsense is not None:
+            await self.xsense.close()
+
     async def _connect(self) -> None:
         email = self.entry.data[CONF_EMAIL]
         password = self.entry.data[CONF_PASSWORD]
 
-        xsense = AsyncXSense()
+        if self.xsense is not None:
+            await self.xsense.close()
+
+        xsense = AsyncXSense(async_get_clientsession(self.hass))
 
         try:
             await asyncio.wait_for(

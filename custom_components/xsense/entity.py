@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from xsense.entity import Entity
+from .api.entity import Entity
 
 from homeassistant.const import ATTR_VIA_DEVICE
 from homeassistant.helpers.device_registry import (
