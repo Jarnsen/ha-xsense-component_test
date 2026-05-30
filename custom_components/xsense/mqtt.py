@@ -486,9 +486,13 @@ class XSenseMQTT:
         matcher = None if is_simple_match else _matcher_for_topic(topic)
 
         try:
-            subscription = Subscription(topic, is_simple_match, matcher, job, qos, encoding, 1)
+            subscription = Subscription(
+                topic, is_simple_match, matcher, job, qos, encoding, 1
+            )
         except TypeError:
-            subscription = Subscription(topic, is_simple_match, matcher, job, qos, encoding)
+            subscription = Subscription(
+                topic, is_simple_match, matcher, job, qos, encoding
+            )
 
         self._async_track_subscription(subscription)
         self._matching_subscriptions.cache_clear()

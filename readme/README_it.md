@@ -16,7 +16,7 @@ Fino a quando non sarà disponibile un'integrazione ufficiale per Home Assistant
 ## Funzionalità
 - Integrazione di diversi dispositivi Xsense in Home Assistant.
 - Supporto per automazioni basate sui dati dei sensori Xsense.
-- Supporto per i seguenti tipi di dispositivi: stazioni base, rilevatori di fumo, rilevatori di monossido di carbonio, rilevatori di calore, rilevatori di perdite d'acqua e igrometri.
+- Supporto per stazioni base, rilevatori di fumo, rilevatori di monossido di carbonio, allarmi di calore, rilevatori di perdite d'acqua, igrometri, sensori porta, sensori movimento, luci, tastiere, cassette postali, listener, camere e altri dispositivi supportati quando disponibili nell'account X-Sense.
 - Configurazione semplice tramite HACS (Home Assistant Community Store).
 
 ## Requisiti
@@ -83,16 +83,22 @@ Dopo una corretta installazione e configurazione, l'integrazione sarà visibile 
 ____________________________________________________________
 
 ## Dispositivi supportati
-Questa integrazione supporta diversi dispositivi Xsense. Ecco un elenco dei dispositivi attualmente confermati e testati:
-- **Stazione base (SBS50)**: Hub centrale per i dispositivi Xsense.
-- **Rilevatore di calore (XH02-M)**: Rilevamento di temperature insolitamente elevate.
-- **Rilevatore di monossido di carbonio (XC01-M; XC04-WX)**: Rileva concentrazioni pericolose di monossido di carbonio.
-- **Rilevatore di fumo (XS01-M, WX; XS03-WX; XS0B-MR)**: Rilevamento precoce del fumo.
-- **Rilevatore combinato di monossido di carbonio e fumo (SC07-WX; XP0A-MR (parzialmente supportato))**: Dispositivi combinati per rilevare sia il monossido di carbonio che il fumo.
-- **Rilevatore di perdite d'acqua (SWS51)**: Rileva la presenza di acqua in luoghi indesiderati.
-- **Igrometro-termometro (STH51)**: Monitoraggio della temperatura e dell'umidità.
+Questa integrazione supporta diversi dispositivi X-Sense. Le entità disponibili dipendono dai campi dati riportati dal dispositivo e dall'account. Famiglie e modelli confermati includono:
+- **Stazione base (SBS50)**: Hub centrale per i dispositivi X-Sense.
+- **Rilevatore di calore (XH02-M)**: Rileva temperature anomale elevate.
+- **Rilevatore di monossido di carbonio (XC01-M; XC04-WX)**: Rileva concentrazioni pericolose di CO.
+- **Rilevatore di fumo (XS01-M; XS01-WX; XS03-WX; XS0B-MR e modelli RF/iR correlati)**: Rilevamento precoce del fumo.
+- **Rilevatore combinato CO e fumo (SC07-WX; XP0A-MR e modelli XP/SC correlati)**: Rileva CO e fumo.
+- **Rilevatore di perdite d'acqua (SWS51)**: Rileva acqua in punti indesiderati.
+- **Igrometro-termometro (STH51, STH0A, STH0B, STH0C)**: Monitora temperatura e umidità.
+- **Sensore porta (SDS0A)** e **sensore movimento (SMS0A)**: Esposti quando X-Sense fornisce lo stato.
+- **Camera (SSC0A, SSC0B)**: Espone entità camera, miniature, URL live stream, diagnostica e impostazioni basate sull'app Android quando supportate da dispositivo e account.
+- **Altri dispositivi collegati alla stazione**: Luce, tastiera, cassetta postale, listener, allarme vialetto, smart drop, telecomando e dati radon sono esposti quando l'API riporta campi supportati.
 
-Questi dispositivi possono essere utilizzati per creare automazioni e avvisi una volta integrati in Home Assistant.
+### Entità e azioni disponibili
+L'integrazione crea entità solo per campi presenti nel cloud X-Sense, nei payload MQTT shadow o nelle API camera supportate dall'app. Può includere sensori binari, sensori diagnostici, switch, selettori, numeri e pulsanti per funzioni supportate come test, silenzia, esercitazione antincendio e risveglio camera.
+
+Se un campo non è riportato o l'app X-Sense indica che la funzione non è supportata per quel dispositivo/account, l'entità non viene creata. Associazione, rimozione, condivisione, account, pagamenti, firmware, formattazione SD e altre azioni amministrative restano nell'app X-Sense.
 
 ____________________________________________________________
 

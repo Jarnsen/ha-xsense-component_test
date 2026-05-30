@@ -12,14 +12,33 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
 
-TO_REDACT = {CONF_EMAIL, CONF_PASSWORD, "title", "unique_id"}
+TO_REDACT = {
+    CONF_EMAIL,
+    CONF_PASSWORD,
+    "adminId",
+    "cameraAudioUrl",
+    "cameraLiveId",
+    "cameraLiveUrl",
+    "deviceId",
+    "mac",
+    "macAddress",
+    "macBT",
+    "networkName",
+    "serialNumber",
+    "sn",
+    "thumbImgUrl",
+    "title",
+    "unique_id",
+    "userId",
+    "wiredMacAddress",
+}
 
 
 def entity_diagnostics(entity) -> dict[str, Any]:
     """Return diagnostic data for an X-Sense entity."""
     return {
         "type": entity.type,
-        "data": entity.data,
+        "data": async_redact_data(entity.data, TO_REDACT),
     }
 
 

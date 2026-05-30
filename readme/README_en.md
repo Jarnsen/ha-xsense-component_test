@@ -16,7 +16,7 @@ Until an official Home Assistant integration from Theo becomes available, this H
 ## Features
 - Integration of various X-Sense devices into Home Assistant.
 - Support for automations based on X-Sense sensor data.
-- Support for the following device types: base stations, smoke detectors, carbon monoxide detectors, heat alarms, water leak detectors, hygrometers, door sensors, motion sensors, lights, keypads, mailbox sensors, and listener devices when they are available in the X-Sense account.
+- Support for the following device types: base stations, smoke detectors, carbon monoxide detectors, heat alarms, water leak detectors, hygrometers, door sensors, motion sensors, lights, keypads, mailbox sensors, listener devices, and supported cameras when they are available in the X-Sense account.
 - Real-time updates through X-Sense MQTT shadows, with periodic cloud polling as a fallback.
 - Easy setup through HACS (Home Assistant Community Store).
 
@@ -94,19 +94,21 @@ This integration supports a variety of X-Sense devices. Supported entities depen
 - **Hygrometer-thermometer (STH51, STH0A, STH0B, STH0C)**: Monitors temperature and humidity.
 - **Door sensor (SDS0A)**: Exposes door state when provided by the X-Sense account.
 - **Motion detector (SMS0A)**: Exposes motion alarm state when provided by the X-Sense account.
+- **Camera (SSC0A, SSC0B)**: Exposes camera entities, thumbnails, live stream URLs, status diagnostics, and Android-app-backed settings when supported by the device and account.
 - **Other station-connected devices**: Light, keypad, mailbox, listener, driveway alarm, smart drop, remote, and radon device data is exposed when the X-Sense API reports supported fields.
 
 These devices can be used to create automations and alerts after being integrated into Home Assistant.
 
 ### Available Entities and Actions
-The integration creates Home Assistant entities only for fields that are present in the X-Sense cloud or MQTT shadow payloads. Depending on the device, this can include:
+The integration creates Home Assistant entities only for fields that are present in the X-Sense cloud, MQTT shadow payloads, or Android-app-aligned camera APIs. Depending on the device, this can include:
 
 - Alarm, mute, end-of-life, AC-break, water-alarm, temperature-alarm, charging, motion, door, armed, warning, reminder, light, PIR, and keypad status binary sensors.
 - Battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, readable timestamp fields, timezone, serial number, MAC address, and other diagnostic sensors.
-- Switches for supported writable settings reported by X-Sense, such as LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine, await, and keypad sound controls.
-- Test, mute, and fire-drill buttons for device models where the X-Sense app exposes the matching action.
+- Switches for supported writable settings reported by X-Sense, such as LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light, and doorbell controls.
+- Selects and numbers for supported camera settings such as language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold, and doorbell ring key.
+- Test, mute, fire-drill, and camera wake buttons for device models where the X-Sense app exposes the matching action.
 
-Some entities are diagnostic or configuration-related and are grouped that way in Home Assistant. If a device does not report a specific field, the matching entity is not created.
+Some entities are diagnostic or configuration-related and are grouped that way in Home Assistant. If a device does not report a specific field, or the X-Sense app marks the feature unsupported for that device/account, the matching entity is not created. Device binding, removal, sharing, account, payment, firmware update, SD-card format, and other management actions remain in the X-Sense app.
 
 ____________________________________________________________
 

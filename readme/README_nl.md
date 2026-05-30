@@ -16,7 +16,7 @@ Totdat een officiële Home Assistant-integratie van Theo beschikbaar is, zal dez
 ## Functies
 - Integratie van verschillende Xsense-apparaten in Home Assistant.
 - Ondersteuning voor automatiseringen op basis van Xsense-sensorgegevens.
-- Ondersteuning voor de volgende apparaattype: basisstations, rookmelders, koolmonoxidemelders, hittealarmen, waterlekdetectoren en hygrometers.
+- Ondersteuning voor basisstations, rookmelders, koolmonoxidemelders, hittemelders, waterleksensoren, hygrometers, deursensoren, bewegingssensoren, lampen, keypads, brievenbussensoren, listeners, camera's en andere ondersteunde apparaten wanneer ze beschikbaar zijn in het X-Sense-account.
 - Eenvoudige installatie via HACS (Home Assistant Community Store).
 
 ## Vereisten
@@ -82,16 +82,22 @@ Na een succesvolle installatie en configuratie is de integratie zichtbaar in Hom
 ____________________________________________________________
 
 ## Ondersteunde apparaten
-Deze integratie ondersteunt verschillende Xsense-apparaten. Hieronder staat een lijst met de momenteel bevestigde en geteste apparaten:
-- **Basisstation (SBS50)**: Centraal knooppunt voor de Xsense-apparaten.
-- **Hittealarm (XH02-M)**: Detectie van ongewoon hoge temperaturen.
-- **Koolmonoxidemelder (XC01-M; XC04-WX)**: Meldt gevaarlijke concentraties koolmonoxide.
-- **Rookmelder (XS01-M, WX; XS03-WX; XS0B-MR)**: Vroege detectie van rookontwikkeling.
-- **Combi-melder voor koolmonoxide en rook (SC07-WX; XP0A-MR (gedeeltelijk ondersteund))**: Gecombineerde apparaten voor de detectie van koolmonoxide en rook.
-- **Waterlekdetector (SWS51)**: Meldt de aanwezigheid van water op ongewenste plaatsen.
-- **Hygrometer-thermometer (STH51)**: Monitoring van temperatuur en luchtvochtigheid.
+Deze integratie ondersteunt meerdere X-Sense-apparaten. Beschikbare entiteiten hangen af van de velden die het apparaat en account melden. Bevestigde families en modellen zijn onder andere:
+- **Basisstation (SBS50)**: Centrale hub voor X-Sense-apparaten.
+- **Hittemelder (XH02-M)**: Detecteert ongewoon hoge temperaturen.
+- **Koolmonoxidemelder (XC01-M; XC04-WX)**: Detecteert gevaarlijke CO-concentraties.
+- **Rookmelder (XS01-M; XS01-WX; XS03-WX; XS0B-MR en verwante RF/iR-modellen)**: Vroege rookdetectie.
+- **Combinatiemelder voor CO en rook (SC07-WX; XP0A-MR en verwante XP/SC-modellen)**: Detecteert CO en rook.
+- **Waterleksensor (SWS51)**: Detecteert water op ongewenste plaatsen.
+- **Hygrometer-thermometer (STH51, STH0A, STH0B, STH0C)**: Meet temperatuur en luchtvochtigheid.
+- **Deursensor (SDS0A)** en **bewegingssensor (SMS0A)**: Worden getoond wanneer X-Sense deze status meldt.
+- **Camera (SSC0A, SSC0B)**: Toont camera-entiteiten, miniaturen, livestream-URL's, statusdiagnose en app-ondersteunde instellingen wanneer apparaat en account dit ondersteunen.
+- **Andere station-apparaten**: Licht, toetsenpaneel, brievenbus, listener, oprit-alarm, smart drop, afstandsbediening en radongegevens worden getoond wanneer ondersteunde velden worden gemeld.
 
-Deze apparaten kunnen na integratie in Home Assistant worden gebruikt voor het maken van automatiseringen en waarschuwingen.
+### Beschikbare entiteiten en acties
+De integratie maakt alleen entiteiten voor velden uit de X-Sense-cloud, MQTT shadow of app-ondersteunde camera-API's. Dit kan binaire sensoren, diagnostische sensoren, schakelaars, keuzelijsten, getallen en knoppen omvatten, zoals test, dempen, brandoefening en camera wekken.
+
+Als een veld ontbreekt of de X-Sense-app de functie niet ondersteunt voor dit apparaat/account, wordt de entiteit niet gemaakt. Koppelen, verwijderen, delen, accountbeheer, betalingen, firmware-updates, SD-kaart formatteren en andere beheeracties blijven in de X-Sense-app.
 
 ____________________________________________________________
 

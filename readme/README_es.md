@@ -16,7 +16,7 @@ Hasta que haya una integración oficial para Home Assistant de Theo, se utilizar
 ## Características
 - Integración de varios dispositivos Xsense en Home Assistant.
 - Soporte para automatizaciones basadas en los datos de los sensores Xsense.
-- Soporte para los siguientes tipos de dispositivos: estaciones base, detectores de humo, detectores de monóxido de carbono, sensores de calor, detectores de agua e higrómetros.
+- Soporte para estaciones base, detectores de humo, detectores de monóxido de carbono, alarmas de calor, detectores de agua, higrómetros, sensores de puerta, sensores de movimiento, luces, teclados, buzones, listeners, cámaras y otros dispositivos compatibles cuando estén disponibles en la cuenta X-Sense.
 - Configuración fácil a través de HACS (Home Assistant Community Store).
 
 ## Requisitos
@@ -83,16 +83,23 @@ Después de una instalación y configuración exitosa, la integración será vis
 ____________________________________________________________
 
 ## Dispositivos compatibles
-Esta integración admite una variedad de dispositivos Xsense. A continuación se muestra una lista de los dispositivos confirmados y probados:
-- **Estación base (SBS50)**: Concentrador central para los dispositivos Xsense.
-- **Sensor de calor (XH02-M)**: Detección de temperaturas inusualmente altas.
+Esta integración admite varios dispositivos X-Sense. Las entidades disponibles dependen de los campos de datos que informe cada dispositivo y cuenta. Familias y modelos confirmados:
+- **Estación base (SBS50)**: Concentrador central para dispositivos X-Sense.
+- **Alarma de calor (XH02-M)**: Detecta temperaturas inusualmente altas.
 - **Detector de monóxido de carbono (XC01-M; XC04-WX)**: Detecta concentraciones peligrosas de monóxido de carbono.
-- **Detector de humo (XS01-M, WX; XS03-WX; XS0B-MR)**: Detección temprana de desarrollo de humo.
-- **Detector combinado de monóxido de carbono y humo (SC07-WX; XP0A-MR (parcialmente compatible))**: Dispositivos combinados para la detección de monóxido de carbono y humo.
-- **Detector de agua (SWS51)**: Detecta la presencia de agua en lugares no deseados.
-- **Higrómetro-termómetro (STH51)**: Supervisión de la temperatura y la humedad.
+- **Detector de humo (XS01-M; XS01-WX; XS03-WX; XS0B-MR y modelos RF/iR relacionados)**: Detección temprana de humo.
+- **Detector combinado de monóxido de carbono y humo (SC07-WX; XP0A-MR y modelos XP/SC relacionados)**: Detecta monóxido de carbono y humo.
+- **Detector de fuga de agua (SWS51)**: Detecta agua en lugares no deseados.
+- **Higrómetro-termómetro (STH51, STH0A, STH0B, STH0C)**: Supervisa temperatura y humedad.
+- **Sensor de puerta (SDS0A)**: Expone el estado de la puerta cuando X-Sense lo proporciona.
+- **Detector de movimiento (SMS0A)**: Expone el estado de alarma de movimiento cuando X-Sense lo proporciona.
+- **Cámara (SSC0A, SSC0B)**: Expone entidades de cámara, miniaturas, URLs de transmisión en vivo, diagnósticos y ajustes respaldados por la app de Android cuando el dispositivo y la cuenta lo admiten.
+- **Otros dispositivos conectados a estación**: Luz, teclado, buzón, listener, alarma de entrada, smart drop, control remoto y datos de radón se exponen cuando la API informa campos compatibles.
 
-Estos dispositivos se pueden usar para crear automatizaciones y alertas después de la integración en Home Assistant.
+### Entidades y acciones disponibles
+La integración crea entidades solo para campos presentes en la nube de X-Sense, MQTT shadow o APIs de cámara respaldadas por la app. Puede incluir sensores binarios, sensores de diagnóstico, interruptores, selectores, números y botones para funciones admitidas, como prueba, silencio, simulacro de incendio y despertar cámara.
+
+Si un campo no existe o la app X-Sense marca una función como no compatible para ese dispositivo/cuenta, la entidad no se crea. La vinculación, eliminación, uso compartido, cuenta, pagos, firmware, formato de tarjeta SD y otras acciones de administración permanecen en la app X-Sense.
 
 ____________________________________________________________
 

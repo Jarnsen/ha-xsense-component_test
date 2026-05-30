@@ -1,32 +1,8 @@
 <div align="right">
   <details>
-    <summary>🌐 Language</summary>
-    <div>
-      <div align="center">
-        <a href="readme/README_en.md">English</a>
-        | <a href="readme/README_de.md">Deutsch</a>
-        | <a href="readme/README_nl.md">Nederlands</a>
-        | <a href="readme/README_es.md">Español</a>
-        | <a href="readme/README_fr.md">Français</a>
-        | <a href="readme/README_it.md">Italiano</a>
-        | <a href="readme/README_pt.md">Português</a>
-        | <a href="readme/README_ru.md">Русский</a>
-        | <a href="readme/README_cn.md">中文</a>
-        | <a href="readme/README_zh-TW.md">繁體中文</a>
-        | <a href="readme/README_ja.md">日本語</a>
-        | <a href="readme/README_ko.md">한국어</a>
-        | <a href="readme/README_ar.md">العربية</a>
-        | <a href="readme/README_fa.md">فارسی</a>
-        | <a href="readme/README_el.md">Ελληνικά</a>
-        | <a href="readme/README_hi.md">हिन्दी</a>
-        | <a href="readme/README_th.md">ไทย</a>
-        | <a href="readme/README_pl.md">Polski</a>
-        | <a href="readme/README_tr.md">Türkçe</a>
-        | <a href="readme/README_vi.md">Tiếng Việt</a>
-        | <a href="readme/README_id.md">Bahasa Indonesia</a>
-        | <a href="readme/README_as.md">অসমীয়া</a>
-      </div>
-    </div>
+    <summary>Language</summary>
+
+    [English](readme/README_en.md) | [Deutsch](readme/README_de.md) | [Nederlands](readme/README_nl.md) | [Español](readme/README_es.md) | [Français](readme/README_fr.md) | [Italiano](readme/README_it.md) | [Português](readme/README_pt.md) | [Русский](readme/README_ru.md) | [中文](readme/README_cn.md) | [繁體中文](readme/README_zh-TW.md) | [日本語](readme/README_ja.md) | [한국어](readme/README_ko.md) | [العربية](readme/README_ar.md) | [فارسی](readme/README_fa.md) | [Ελληνικά](readme/README_el.md) | [हिन्दी](readme/README_hi.md) | [ไทย](readme/README_th.md) | [Polski](readme/README_pl.md) | [Türkçe](readme/README_tr.md) | [Tiếng Việt](readme/README_vi.md) | [Bahasa Indonesia](readme/README_id.md) | [অসমীয়া](readme/README_as.md)
   </details>
 </div>
 
@@ -54,6 +30,7 @@ Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. 
 
 - The integration now includes its X-Sense API client directly, removing the external `python-xsense` dependency.
 - MQTT shadow updates and polling have been improved to reduce unnecessary cloud requests while keeping device state current.
+- X-Sense camera support has been expanded using the Android app API behavior as a guide, including camera entities, thumbnails/live streams, readable status fields, and supported camera settings such as motion detection, recording, night vision, audio, cooldown, light, doorbell, wake, and codec controls.
 - More X-Sense-reported entities are exposed, including additional smoke, CO, water, temperature, humidity, light, keypad, mailbox, motion, door, reminder, warning, and diagnostic fields when devices report them.
 - Device actions such as test, mute, and fire drill are available for supported models, and supported device settings such as LED light, reminders, alarm, PIR, and related toggles are exposed as switches.
 - X-Sense timestamp fields are shown as readable Home Assistant date/time sensors instead of raw compact values.

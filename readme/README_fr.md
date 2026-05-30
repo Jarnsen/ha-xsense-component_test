@@ -16,7 +16,7 @@ Jusqu'à ce qu'une intégration officielle pour Home Assistant soit disponible d
 ## Fonctionnalités
 - Intégration de divers appareils Xsense dans Home Assistant.
 - Prise en charge des automatisations basées sur les données des capteurs Xsense.
-- Prise en charge des types d'appareils suivants : stations de base, détecteurs de fumée, détecteurs de monoxyde de carbone, capteurs de chaleur, détecteurs de fuite d'eau et hygromètres.
+- Prise en charge des stations de base, détecteurs de fumée, détecteurs de monoxyde de carbone, détecteurs de chaleur, détecteurs de fuite d'eau, hygromètres, capteurs de porte, capteurs de mouvement, lumières, claviers, boîtes aux lettres, listeners, caméras et autres appareils compatibles lorsqu'ils sont disponibles dans le compte X-Sense.
 - Installation simple via HACS (Home Assistant Community Store).
 
 ## Conditions préalables
@@ -83,16 +83,23 @@ Après une installation et une configuration réussies, l'intégration sera visi
 ____________________________________________________________
 
 ## Appareils pris en charge
-Cette intégration est compatible avec divers appareils Xsense. Voici une liste des appareils confirmés et testés :
-- **Station de base (SBS50)** : Hub central pour les appareils Xsense.
-- **Capteur de chaleur (XH02-M)** : Détection de températures anormalement élevées.
+Cette intégration prend en charge plusieurs appareils X-Sense. Les entités disponibles dépendent des champs de données signalés par chaque appareil et compte. Familles et modèles confirmés :
+- **Station de base (SBS50)** : Hub central pour les appareils X-Sense.
+- **Détecteur de chaleur (XH02-M)** : Détecte les températures anormalement élevées.
 - **Détecteur de monoxyde de carbone (XC01-M; XC04-WX)** : Détecte les concentrations dangereuses de monoxyde de carbone.
-- **Détecteur de fumée (XS01-M, WX; XS03-WX; XS0B-MR)** : Détection précoce de fumée.
-- **Détecteur combiné de monoxyde de carbone et de fumée (SC07-WX; XP0A-MR (partiellement pris en charge))** : Détecte à la fois le monoxyde de carbone et la fumée.
-- **Détecteur de fuite d'eau (SWS51)** : Détecte la présence d'eau dans des endroits indésirables.
-- **Hygromètre-thermomètre (STH51)** : Surveillance de la température et de l'humidité.
+- **Détecteur de fumée (XS01-M; XS01-WX; XS03-WX; XS0B-MR et modèles RF/iR associés)** : Détection précoce de fumée.
+- **Détecteur combiné monoxyde de carbone et fumée (SC07-WX; XP0A-MR et modèles XP/SC associés)** : Détecte le monoxyde de carbone et la fumée.
+- **Détecteur de fuite d'eau (SWS51)** : Détecte l'eau dans les endroits indésirables.
+- **Hygromètre-thermomètre (STH51, STH0A, STH0B, STH0C)** : Surveille température et humidité.
+- **Capteur de porte (SDS0A)** : Expose l'état de porte lorsque X-Sense le fournit.
+- **Détecteur de mouvement (SMS0A)** : Expose l'état d'alarme de mouvement lorsque X-Sense le fournit.
+- **Caméra (SSC0A, SSC0B)** : Expose les entités caméra, miniatures, URLs de flux en direct, diagnostics et réglages basés sur l'app Android lorsque l'appareil et le compte les prennent en charge.
+- **Autres appareils reliés à une station** : Lumière, clavier, boîte aux lettres, listener, alarme d'allée, smart drop, télécommande et données radon sont exposés lorsque l'API signale les champs compatibles.
 
-Ces appareils, une fois intégrés dans Home Assistant, peuvent être utilisés pour les automatisations et les alertes.
+### Entités et actions disponibles
+L'intégration crée des entités uniquement pour les champs présents dans le cloud X-Sense, les payloads MQTT shadow ou les APIs caméra basées sur l'app. Cela peut inclure des capteurs binaires, capteurs de diagnostic, interrupteurs, sélecteurs, nombres et boutons pour les fonctions prises en charge, comme test, silence, exercice incendie et réveil caméra.
+
+Si un champ n'existe pas ou si l'app X-Sense marque une fonction comme non prise en charge pour cet appareil/compte, l'entité n'est pas créée. La liaison, suppression, partage, compte, paiement, firmware, formatage de carte SD et autres actions d'administration restent dans l'app X-Sense.
 
 ____________________________________________________________
 

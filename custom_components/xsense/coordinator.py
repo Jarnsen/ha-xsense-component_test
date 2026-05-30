@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 from typing import Any
 
@@ -20,6 +20,7 @@ from .api import AsyncXSense, House
 from .api.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
 from .const import (
     DEFAULT_SCAN_INTERVAL,
+    CAMERA_SCAN_INTERVAL,
     DOMAIN,
     LOGGER,
     LOGIN_TIMEOUT,
@@ -30,9 +31,7 @@ from .mqtt import DEFAULT_ENCODING, DEFAULT_QOS, XSenseMQTT
 _IGNORED_TOPIC_SUFFIXES = ("/update/accepted", "/update/documents", "/update/rejected")
 
 
-async def _async_init_and_login(
-    xsense: AsyncXSense, email: str, password: str
-) -> None:
+async def _async_init_and_login(xsense: AsyncXSense, email: str, password: str) -> None:
     """Initialize the X-Sense client and log in."""
     await xsense.init()
     await xsense.login(email, password)
@@ -47,6 +46,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.entry = entry
         self.xsense: AsyncXSense = None
         self._initialized: bool = False
+        self._camera_initialized: bool = False
+        self._last_camera_update_attempt: datetime | None = None
         super().__init__(
             hass,
             LOGGER,
@@ -96,6 +97,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self.xsense = xsense
         self._initialized = False
+        self._camera_initialized = False
+        self._last_camera_update_attempt = None
 
     async def _async_update_data(self) -> dict[str, Any]:
         if self.xsense is None:
@@ -155,6 +158,16 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     return s
         return None
 
+    def _get_station_by_device_sn(self, device_sn: str | None):
+        """Return the station containing the device serial number."""
+        if not self.xsense or not device_sn:
+            return None
+        for h in self.xsense.houses.values():
+            for s in h.stations.values():
+                if s.sn == device_sn or s.get_device_by_sn(device_sn):
+                    return s
+        return None
+
     async def get_stations(self, retry=False):
         """Retrieve all stations."""
         stations = []
@@ -193,6 +206,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._initialized = True
                 LOGGER.debug("Initial XSense discovery complete")
 
+            await self._update_cameras()
+
             for h in self.xsense.houses.values():
                 stations.update(h.stations.items())
                 with suppress(NotFoundError):
@@ -217,6 +232,24 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             return {"stations": stations, "devices": devices}
 
+    async def _update_cameras(self) -> None:
+        """Fetch camera metadata from the Android app IPC/ADDX APIs when present."""
+        now = datetime.now(timezone.utc)
+        if (
+            self._camera_initialized
+            and self._last_camera_update_attempt is not None
+            and now - self._last_camera_update_attempt
+            < timedelta(seconds=CAMERA_SCAN_INTERVAL)
+        ):
+            return
+
+        self._camera_initialized = True
+        self._last_camera_update_attempt = now
+        try:
+            await self.xsense.update_camera_data()
+        except APIFailure as ex:
+            LOGGER.warning("Could not update X-Sense camera data: %s", ex)
+
     async def _update_safe_mode(self, station) -> None:
         """Fetch safeMode from the 2nd_safemode AWS IoT shadow as a fallback."""
         try:
@@ -232,12 +265,14 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             else:
                 LOGGER.warning(
                     "Station %s has no safeMode in 2nd_safemode shadow: %s",
-                    station.sn, res,
+                    station.sn,
+                    res,
                 )
         except Exception as ex:  # noqa: BLE001
             LOGGER.warning(
                 "Could not fetch 2nd_safemode for station %s: %s",
-                station.sn, ex,
+                station.sn,
+                ex,
             )
 
     def setup_mqtt(self, h: House) -> XSenseMQTT:
@@ -266,9 +301,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             LOGGER.warning("Could not parse MQTT message: %s", ex)
             return
 
-        station_data = data.get("state", {}).get("reported", {})
+        station_data = _mqtt_reported_data(data)
 
         station = self._get_station_by_id(station_data.get("stationSN"))
+        if station is None:
+            station = self._get_station_by_device_sn(station_data.get("deviceSN"))
 
         if station is None and isinstance(topic, str):
             parts = topic.split("/")
@@ -285,11 +322,17 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _apply_safe_mode(station, safe_mode)
             LOGGER.debug(
                 "MQTT: station %s safeMode -> %s (topic: %s)",
-                station.sn, safe_mode, topic,
+                station.sn,
+                safe_mode,
+                topic,
             )
 
         children = station_data.pop("devs", {})
-        self.xsense.parse_get_state(station, station_data)
+        target_device_sn = station_data.get("deviceSN")
+        if target_device_sn and (dev := station.get_device_by_sn(target_device_sn)):
+            dev.set_data(station_data)
+        else:
+            self.xsense.parse_get_state(station, station_data)
         for k, v in children.items():
             if dev := station.get_device_by_sn(k):
                 dev.set_data(v)
@@ -379,3 +422,21 @@ def _apply_safe_mode(station, safe_mode: str) -> None:
     """Store safeMode consistently for HTTP polling and MQTT updates."""
     station.safe_mode = safe_mode
     station._data["safeMode"] = safe_mode
+
+
+def _mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Return device data from either shadow reports or X-Sense event payloads."""
+    reported = data.get("state", {}).get("reported")
+    if isinstance(reported, dict):
+        return reported.copy()
+
+    event_data = data.get("eventData")
+    if isinstance(event_data, dict):
+        result = event_data.copy()
+        if event_time := data.get("eventTime"):
+            result.setdefault("time", event_time)
+        if event_type := data.get("eventType"):
+            result.setdefault("eventType", event_type)
+        return result
+
+    return {}

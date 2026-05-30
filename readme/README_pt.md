@@ -83,16 +83,22 @@ Após uma instalação e configuração bem-sucedidas, a integração será vis�
 ____________________________________________________________
 
 ## Dispositivos Suportados
-Esta integração suporta vários dispositivos Xsense. Aqui está uma lista dos dispositivos atualmente confirmados e testados:
-- **Estação-base (SBS50)**: Hub central para dispositivos Xsense.
+Esta integração suporta vários dispositivos X-Sense. As entidades disponíveis dependem dos campos relatados por cada dispositivo e conta. Famílias e modelos confirmados incluem:
+- **Estação base (SBS50)**: Hub central para dispositivos X-Sense.
 - **Alarme de calor (XH02-M)**: Detecta temperaturas anormalmente altas.
-- **Detector de monóxido de carbono (XC01-M; XC04-WX)**: Detecta concentrações perigosas de monóxido de carbono.
-- **Detector de fumaça (XS01-M, WX; XS03-WX; XS0B-MR)**: Detecta fumaça em estágios iniciais.
-- **Detector combinado de monóxido de carbono e fumaça (SC07-WX; XP0A-MR (parcialmente suportado))**: Dispositivos combinados para detectar monóxido de carbono e fumaça.
-- **Detector de vazamento de água (SWS51)**: Detecta a presença de água em locais indesejados.
-- **Higrômetro-termômetro (STH51)**: Monitoramento de temperatura e umidade.
+- **Detector de monóxido de carbono (XC01-M; XC04-WX)**: Detecta concentrações perigosas de CO.
+- **Detector de fumaça (XS01-M; XS01-WX; XS03-WX; XS0B-MR e modelos RF/iR relacionados)**: Detecção precoce de fumaça.
+- **Detector combinado de CO e fumaça (SC07-WX; XP0A-MR e modelos XP/SC relacionados)**: Detecta CO e fumaça.
+- **Detector de vazamento de água (SWS51)**: Detecta água em locais indesejados.
+- **Higrômetro-termômetro (STH51, STH0A, STH0B, STH0C)**: Monitora temperatura e umidade.
+- **Sensor de porta (SDS0A)** e **sensor de movimento (SMS0A)**: Expostos quando a X-Sense fornece o estado.
+- **Câmera (SSC0A, SSC0B)**: Expõe entidades de câmera, miniaturas, URLs de transmissão ao vivo, diagnósticos e configurações baseadas no app Android quando suportadas pelo dispositivo e pela conta.
+- **Outros dispositivos conectados à estação**: Luz, teclado, caixa de correio, listener, alarme de entrada, smart drop, controle remoto e dados de radônio são expostos quando a API relata campos suportados.
 
-Esses dispositivos podem ser usados para criar automações e alertas após serem integrados ao Home Assistant.
+### Entidades e ações disponíveis
+A integração cria entidades apenas para campos presentes na nuvem X-Sense, em payloads MQTT shadow ou nas APIs de câmera apoiadas pelo app. Isso pode incluir sensores binários, sensores de diagnóstico, switches, seletores, números e botões para funções suportadas, como teste, silenciar, simulado de incêndio e acordar câmera.
+
+Se um campo não for relatado ou o app X-Sense marcar a função como não suportada para esse dispositivo/conta, a entidade não será criada. Vincular, remover, compartilhar, conta, pagamentos, firmware, formatação de cartão SD e outras ações administrativas permanecem no app X-Sense.
 
 ____________________________________________________________
 
