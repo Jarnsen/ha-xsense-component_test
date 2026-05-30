@@ -1,8 +1,32 @@
 <div align="right">
   <details>
-    <summary>Language</summary>
-
-    [English](readme/README_en.md) | [Deutsch](readme/README_de.md) | [Nederlands](readme/README_nl.md) | [Español](readme/README_es.md) | [Français](readme/README_fr.md) | [Italiano](readme/README_it.md) | [Português](readme/README_pt.md) | [Русский](readme/README_ru.md) | [中文](readme/README_cn.md) | [日本語](readme/README_ja.md) | [العربية](readme/README_ar.md) | [Ελληνικά](readme/README_el.md) | [हिन्दी](readme/README_hi.md) | [Polski](readme/README_pl.md) | [Türkçe](readme/README_tr.md)
+    <summary>🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="readme/README_en.md">English</a>
+        | <a href="readme/README_de.md">Deutsch</a>
+        | <a href="readme/README_nl.md">Nederlands</a>
+        | <a href="readme/README_es.md">Español</a>
+        | <a href="readme/README_fr.md">Français</a>
+        | <a href="readme/README_it.md">Italiano</a>
+        | <a href="readme/README_pt.md">Português</a>
+        | <a href="readme/README_ru.md">Русский</a>
+        | <a href="readme/README_cn.md">中文</a>
+        | <a href="readme/README_zh-TW.md">繁體中文</a>
+        | <a href="readme/README_ja.md">日本語</a>
+        | <a href="readme/README_ko.md">한국어</a>
+        | <a href="readme/README_ar.md">العربية</a>
+        | <a href="readme/README_fa.md">فارسی</a>
+        | <a href="readme/README_el.md">Ελληνικά</a>
+        | <a href="readme/README_hi.md">हिन्दी</a>
+        | <a href="readme/README_th.md">ไทย</a>
+        | <a href="readme/README_pl.md">Polski</a>
+        | <a href="readme/README_tr.md">Türkçe</a>
+        | <a href="readme/README_vi.md">Tiếng Việt</a>
+        | <a href="readme/README_id.md">Bahasa Indonesia</a>
+        | <a href="readme/README_as.md">অসমীয়া</a>
+      </div>
+    </div>
   </details>
 </div>
 
@@ -45,12 +69,19 @@ Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. 
 - [Portuguese (português) (pt)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_pt.md)
 - [Russian (русский) (ru)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_ru.md)
 - [Simplified Chinese (中文) (cn)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_cn.md)
+- [Traditional Chinese (繁體中文) (zh-TW)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_zh-TW.md)
 - [Japanese (日本語) (ja)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_ja.md)
+- [Korean (한국어) (ko)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_ko.md)
 - [Arabic (العربية) (ar)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_ar.md)
+- [Persian (فارسی) (fa)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_fa.md)
 - [Greek (Ελληνικά) (el)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_el.md)
 - [Hindi (हिन्दी) (hi)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_hi.md)
+- [Thai (ไทย) (th)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_th.md)
 - [Polish (polski) (pl)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_pl.md)
 - [Turkish (türkçe) (tr)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_tr.md)
+- [Vietnamese (Tiếng Việt) (vi)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_vi.md)
+- [Indonesian (Bahasa Indonesia) (id)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_id.md)
+- [Assamese (অসমীয়া) (as)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_as.md)
 
 If a language is missing, please let us know, and we will do our best to add it.
 
