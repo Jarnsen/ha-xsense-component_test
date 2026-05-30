@@ -18,6 +18,14 @@ This repository contains the Home Assistant integration for X-Sense devices. Thi
 
 Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. Dieses Repository ist in mehreren Sprachen verfügbar, damit Nutzer weltweit die Integration einfach verstehen und nutzen können.
 
+### Recent Improvements / Aktuelle Verbesserungen
+
+- The integration now includes its X-Sense API client directly, removing the external `python-xsense` dependency.
+- MQTT shadow updates and polling have been improved to reduce unnecessary cloud requests while keeping device state current.
+- More X-Sense-reported entities are exposed, including additional smoke, CO, water, temperature, humidity, light, keypad, mailbox, motion, door, reminder, warning, and diagnostic fields when devices report them.
+- Device actions such as test, mute, and fire drill are available for supported models, and supported device settings such as LED light, reminders, alarm, PIR, and related toggles are exposed as switches.
+- X-Sense timestamp fields are shown as readable Home Assistant date/time sensors instead of raw compact values.
+
 ### Available Languages / Verfügbare Sprachen:
 
 - [English (en)](https://github.com/Jarnsen/ha-xsense-component_test/blob/main/readme/README_en.md)

@@ -102,7 +102,8 @@ These devices can be used to create automations and alerts after being integrate
 The integration creates Home Assistant entities only for fields that are present in the X-Sense cloud or MQTT shadow payloads. Depending on the device, this can include:
 
 - Alarm, mute, end-of-life, AC-break, water-alarm, temperature-alarm, charging, motion, door, armed, warning, reminder, light, PIR, and keypad status binary sensors.
-- Battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, timezone, serial number, MAC address, and other diagnostic sensors.
+- Battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, readable timestamp fields, timezone, serial number, MAC address, and other diagnostic sensors.
+- Switches for supported writable settings reported by X-Sense, such as LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine, await, and keypad sound controls.
 - Test, mute, and fire-drill buttons for device models where the X-Sense app exposes the matching action.
 
 Some entities are diagnostic or configuration-related and are grouped that way in Home Assistant. If a device does not report a specific field, the matching entity is not created.

@@ -77,6 +77,7 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     XSenseButtonEntityDescription(
         key="test",
         translation_key="test",
+        name="Test",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "test"),
         press_fn=partial(run_action, action="test"),
@@ -84,6 +85,7 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     XSenseButtonEntityDescription(
         key="mute",
         translation_key="mute",
+        name="Mute",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "mute"),
         press_fn=partial(run_action, action="mute"),
@@ -91,6 +93,7 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     XSenseButtonEntityDescription(
         key="fire_drill",
         translation_key="fire_drill",
+        name="Fire Drill",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "firedrill"),
         press_fn=partial(run_action, action="firedrill"),
