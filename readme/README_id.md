@@ -32,13 +32,24 @@ Sampai integrasi resmi Home Assistant tersedia, integrasi HACS ini akan terus di
 4. Konfigurasikan dengan nama pengguna dan kata sandi X-Sense di halaman Integrations Home Assistant.
 
 ## Perangkat yang didukung
-Entity yang dibuat bergantung pada field yang dilaporkan oleh X-Sense cloud atau MQTT shadow. Perangkat umum mencakup SBS50 base station, perangkat asap dan CO seri XS/SC/XP/XC, alarm panas XH, detektor air SWS, termohigrometer STH, sensor pintu SDS, sensor gerak SMS, lampu, keypad, kotak surat, driveway alarm, dan perangkat lain yang melaporkan field yang didukung.
+Integrasi ini mendukung berbagai perangkat X-Sense. Entity yang tersedia bergantung pada field data yang dilaporkan perangkat dan akun. Keluarga dan model yang dikonfirmasi meliputi:
+- **Base station (SBS50)**: Hub pusat untuk perangkat X-Sense.
+- **Alarm panas (XH02-M)**: Mendeteksi suhu yang sangat tinggi.
+- **Detektor karbon monoksida (XC01-M; XC04-WX)**: Mendeteksi konsentrasi CO berbahaya.
+- **Detektor asap (XS01-M; XS01-WX; XS03-WX; XS0B-MR dan model RF/iR terkait)**: Deteksi asap dini.
+- **Detektor gabungan CO dan asap (SC07-WX; XP0A-MR dan model XP/SC terkait)**: Mendeteksi CO dan asap.
+- **Detektor kebocoran air (SWS51)**: Mendeteksi air di tempat yang tidak diinginkan.
+- **Higrometer-termometer (STH51, STH0A, STH0B, STH0C)**: Memantau suhu dan kelembapan.
+- **Sensor pintu (SDS0A)** dan **sensor gerak (SMS0A)**: Ditampilkan saat X-Sense menyediakan status.
+- **Kamera (SSC0A, SSC0B)**: Menampilkan entity kamera, thumbnail, URL live stream, diagnostik, dan pengaturan berbasis aplikasi Android saat didukung perangkat dan akun.
+- **Perangkat lain yang terhubung ke station**: Lampu, keypad, mailbox, listener, alarm driveway, smart drop, remote, dan data radon ditampilkan saat API melaporkan field yang didukung.
 
 ## Entity dan aksi
-- Binary sensor untuk alarm, mute, end-of-life, AC break, water alarm, temperature alarm, charging, motion, door, armed, reminder, light, dan diagnostics.
-- Sensor untuk battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO, volume, timestamp yang mudah dibaca, serial number, MAC address, dan diagnostics lain.
-- Switch untuk pengaturan yang dapat ditulis seperti LED light, alarm, reminders, PIR, sunshine, await, dan keypad sound jika didukung perangkat.
-- Tombol test, mute, dan fire drill untuk model yang didukung.
+Integrasi hanya membuat entity untuk field yang ada di cloud X-Sense, MQTT shadow, atau API kamera yang didukung aplikasi. Ini dapat mencakup binary sensor, sensor diagnostik, switch, select, number, dan tombol seperti test, mute, fire drill, serta wake camera.
+
+Jika field tidak dilaporkan atau aplikasi X-Sense menandai fitur tidak didukung untuk perangkat/akun tersebut, entity tidak dibuat. Bind, hapus, bagikan, akun, pembayaran, firmware, format SD card, dan tindakan manajemen lain tetap berada di aplikasi X-Sense.
+
+____________________________________________________________
 
 ## Contoh Automation
 ```yaml

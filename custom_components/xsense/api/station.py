@@ -23,10 +23,10 @@ class Station(Entity):
         super().__init__(**kwargs)
 
     def set_devices(self, data):
-        self.device_order = data.get("deviceSort")
+        self.device_order = data.get("deviceSort") or []
         result = {}
         result_sn = {}
-        for i in data.get("devices"):
+        for i in data.get("devices") or []:
             d = Device(self, **i)
             result[i["deviceId"]] = d
             result_sn[i["deviceSn"]] = i["deviceId"]

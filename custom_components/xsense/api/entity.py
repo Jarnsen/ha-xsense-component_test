@@ -18,7 +18,7 @@ class Entity:
     def set_data(self, values: dict):
         data = values.copy()
         if "online" in data:
-            self.online = data.pop("online") != "0"
+            self.online = str(data.pop("online")) != "0"
         if data.get("onlineTime"):
             self.online = True
         status_data = data.pop("status", {}) or {}

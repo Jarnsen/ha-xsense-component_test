@@ -25,7 +25,7 @@ class EntityType(Enum):
 
 
 def MuteAction(
-    shadow: str = "appMute",
+    shadow: Union[str, Callable] = "appMute",
     topic: Union[str, Callable, None] = "2nd_appmute",
     extra: Optional[Dict] = None,
     mute_type: Optional[str] = None,
@@ -43,12 +43,29 @@ def MuteAction(
     return data
 
 
-def TestAction(shadow="appSelfTest"):
-    return {
+def TestAction(shadow="appSelfTest", extra: Optional[Dict] = None):
+    data = {
         "action": "test",
         "topic": lambda x: f"2nd_selftest_{x.sn}",
         "shadow": shadow,
     }
+    if extra:
+        data["extra"] = extra
+    return data
+
+
+def SBS50SecondGenTestAction():
+    return TestAction("app2ndSelfTest", extra={"userParam": "source=1"})
+
+
+def WifiSelfTestAction():
+    return TestAction("appSelfTest", extra={"userParam": "source=1"})
+
+
+def _fire_drill_alarm_type(entity) -> str:
+    if entity.type in ("XC01-M", "XC0C-MR"):
+        return "2"
+    return "1"
 
 
 def FireDrillAction():
@@ -56,7 +73,14 @@ def FireDrillAction():
         "action": "firedrill",
         "topic": "2nd_firedrill",
         "shadow": "appFireDrill",
-        "data": {"drill": "1"},
+        "data": lambda entity: {
+            "alarmTone": "1",
+            "alarmType": _fire_drill_alarm_type(entity),
+            "alarmVol": "75",
+            "drill": "1",
+            "drillTime": "30",
+            "location": "17",
+        },
     }
 
 
@@ -80,6 +104,14 @@ def XS01WXMuteAction():
     return MuteAction(
         topic=lambda entity: "2nd_appmute" if _is_smoke_v9(entity) else "appmute",
         mute_type="0",
+    )
+
+
+def SC07MRMuteAction():
+    return MuteAction(
+        shadow=lambda entity: "app2ndMute" if _is_smoke_v9(entity) else "appSc07mrMute",
+        mute_type="1",
+        extra={"userParam": "source=1"},
     )
 
 
@@ -111,11 +143,18 @@ entities = {
     },
     "SC01-MN": {
         "type": EntityType.COMBI,
+        "actions": [
+            SBS50SecondGenTestAction(),
+            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            FireDrillAction(),
+        ],
     },
     "SC01-MR": {
         "type": EntityType.COMBI,
         "actions": [
-            MuteAction("appSc07mrMute", mute_type="1"),
+            SBS50SecondGenTestAction(),
+            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            FireDrillAction(),
         ],
     },
     "SC06-WX": {
@@ -129,7 +168,9 @@ entities = {
         "identifier": lambda entity: f"SC07-MR-{entity.sn}",
         "type": EntityType.COMBI,
         "actions": [
-            MuteAction("appSc07mrMute", mute_type="1"),
+            SBS50SecondGenTestAction(),
+            SC07MRMuteAction(),
+            FireDrillAction(),
         ],
     },
     "SC07-WX": {
@@ -141,12 +182,14 @@ entities = {
         "type": EntityType.SMOKE,
         "actions": [
             TestAction(),
+            FireDrillAction(),
         ],
     },
     "SD19-MN": {
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(),
+            SBS50SecondGenTestAction(),
+            FireDrillAction(),
         ],
     },
     "SD19-MR": {
@@ -175,7 +218,8 @@ entities = {
     "SK0Z-3S": {
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(),
+            SBS50SecondGenTestAction(),
+            FireDrillAction(),
         ],
     },
     "SKP01": {
@@ -262,15 +306,26 @@ entities = {
     },
     "CB0Z-3S": {
         "type": EntityType.COMBI,
+        "actions": [
+            SBS50SecondGenTestAction(),
+            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            FireDrillAction(),
+        ],
     },
     "LP/N-SA-0B": {
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(),
+            SBS50SecondGenTestAction(),
+            FireDrillAction(),
         ],
     },
     "LP/N-SCA-0A": {
         "type": EntityType.COMBI,
+        "actions": [
+            SBS50SecondGenTestAction(),
+            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            FireDrillAction(),
+        ],
     },
     "XC0C-iA": {
         "type": EntityType.CO,
@@ -287,6 +342,7 @@ entities = {
         "actions": [
             TestAction(shadow="appCoSelfTest"),
             MuteAction("appCoMute", mute_type="1"),
+            FireDrillAction(),
         ],
     },
     "XC04-WX": {
@@ -297,14 +353,15 @@ entities = {
     "XH02-M": {
         "type": EntityType.HEAT,
         "actions": [
-            TestAction(shadow="appXh02mSelfTest"),
+            TestAction(shadow="appXh02mSelfTest", extra={"userParam": "source=1"}),
             MuteAction("appXh02mMute", mute_type="1", extra={"userParam": "source=1"}),
+            FireDrillAction(),
         ],
     },
     "XP0A-MR": {
         "type": EntityType.COMBI,
         "actions": [
-            TestAction(shadow="app2ndSelfTest"),
+            SBS50SecondGenTestAction(),
             MuteAction("appXp0amrMute", mute_type="1", extra={"userParam": "source=1"}),
             FireDrillAction(),
         ],
@@ -315,7 +372,8 @@ entities = {
     "XP02S-MR": {
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(shadow="app2ndSelfTest"),
+            SBS50SecondGenTestAction(),
+            FireDrillAction(),
         ],
     },
     "XS01-M": {
@@ -323,6 +381,7 @@ entities = {
         "actions": [
             TestAction(),
             MuteAction(),
+            FireDrillAction(),
         ],
     },
     "XS01-WX": {
@@ -335,8 +394,8 @@ entities = {
     "XS0B-MR": {
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(),
-            MuteAction("app2ndMute", mute_type="1"),
+            SBS50SecondGenTestAction(),
+            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
             FireDrillAction(),
         ],
     },
@@ -354,6 +413,7 @@ entities = {
         "type": EntityType.SMOKE,
         "actions": [
             TestAction(),
+            FireDrillAction(),
         ],
     },
     "XS0D-MR61": {
@@ -361,6 +421,10 @@ entities = {
     },
     "XC0C-MR": {
         "type": EntityType.CO,
+        "actions": [
+            SBS50SecondGenTestAction(),
+            FireDrillAction(),
+        ],
     },
     "XP0A-iR": {
         "type": EntityType.COMBI,
@@ -371,7 +435,9 @@ entities = {
     "XP0H-MR": {
         "type": EntityType.COMBI,
         "actions": [
-            MuteAction("appSc07mrMute", mute_type="1"),
+            SBS50SecondGenTestAction(),
+            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            FireDrillAction(),
         ],
     },
     "XP0H-iR": {
@@ -379,11 +445,16 @@ entities = {
     },
     "XP0J-iA": {
         "type": EntityType.COMBI,
+        "actions": [
+            FireDrillAction(),
+        ],
     },
     "XP0P-MR": {
         "type": EntityType.COMBI,
         "actions": [
-            MuteAction("appSc07mrMute", mute_type="1"),
+            SBS50SecondGenTestAction(),
+            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            FireDrillAction(),
         ],
     },
     "XS0B-iR": {
@@ -395,11 +466,16 @@ entities = {
     "XS0F-PMA": {
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(),
-            MuteAction("app2ndMute", mute_type="1"),
+            SBS50SecondGenTestAction(),
+            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            FireDrillAction(),
         ],
     },
     "XS0R-iA": {
         "type": EntityType.SMOKE,
+        "actions": [
+            WifiSelfTestAction(),
+            FireDrillAction(),
+        ],
     },
 }

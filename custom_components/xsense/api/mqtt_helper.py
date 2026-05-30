@@ -91,8 +91,7 @@ class MQTTHelper:
         )
 
         self.client.username_pw_set(USERNAME, "")
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-        ssl_context.verify_mode = ssl.CERT_NONE
+        ssl_context = ssl.create_default_context()
         self.client.tls_set_context(ssl_context)
 
     def prepare_connect(self):

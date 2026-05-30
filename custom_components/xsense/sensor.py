@@ -28,7 +28,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
 from .const import DOMAIN, STATE_SIGNAL
-from .entity import XSenseDataUpdateCoordinator, XSenseEntity
+from .coordinator import XSenseDataUpdateCoordinator
+from .entity import XSenseEntity
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -67,17 +68,25 @@ def timestamp_value(value) -> datetime | None:
     """Return an aware datetime for X-Sense timestamp payload values."""
     if value in (None, ""):
         return None
-    if isinstance(value, (int, float)):
-        return datetime.fromtimestamp(value, tz=timezone.utc)
 
     text = str(value)
     if text.isdigit():
-        if len(text) == 14:
-            return datetime.strptime(text, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
-        if len(text) == 13:
-            return datetime.fromtimestamp(int(text) / 1000, tz=timezone.utc)
-        if len(text) == 10:
-            return datetime.fromtimestamp(int(text), tz=timezone.utc)
+        try:
+            if len(text) == 14:
+                return datetime.strptime(text, "%Y%m%d%H%M%S").replace(
+                    tzinfo=timezone.utc
+                )
+            if len(text) == 13:
+                return datetime.fromtimestamp(int(text) / 1000, tz=timezone.utc)
+            if len(text) == 10:
+                return datetime.fromtimestamp(int(text), tz=timezone.utc)
+        except (OSError, ValueError):
+            return None
+    if isinstance(value, (int, float)):
+        try:
+            return datetime.fromtimestamp(value, tz=timezone.utc)
+        except (OSError, ValueError):
+            return None
 
     try:
         parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
@@ -370,6 +379,17 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         exists_fn=lambda device: "batInfo" in device.data,
     ),
     XSenseSensorEntityDescription(
+        key="camera_battery",
+        name="Camera Battery",
+        native_unit_of_measurement=PERCENTAGE,
+        device_class=SensorDeviceClass.BATTERY,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        suggested_display_precision=0,
+        value_fn=data_value("batteryLevel"),
+        exists_fn=has_data("batteryLevel"),
+    ),
+    XSenseSensorEntityDescription(
         key="rf_level",
         translation_key="rf_level",
         device_class=SensorDeviceClass.ENUM,
@@ -388,6 +408,16 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         icon="mdi:wifi-strength-2",
         value_fn=data_value("wifiRssiLevel"),
         exists_fn=has_data("wifiRssiLevel"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_signal_strength",
+        name="Camera Signal Strength",
+        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=data_value("signalStrength"),
+        exists_fn=has_data("signalStrength"),
     ),
     XSenseSensorEntityDescription(
         key="serial_number",
@@ -621,14 +651,6 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         exists_fn=has_data("time"),
     ),
     XSenseSensorEntityDescription(
-        key="online_time",
-        name="Online Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=data_timestamp("onlineTime"),
-        exists_fn=has_data("onlineTime"),
-    ),
-    XSenseSensorEntityDescription(
         key="utc_time",
         name="UTC Time",
         device_class=SensorDeviceClass.TIMESTAMP,
@@ -779,6 +801,191 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         icon="mdi:chip",
         value_fn=data_value("sbs50Sw"),
         exists_fn=has_data("sbs50Sw"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_model",
+        name="Camera Model",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:cctv",
+        value_fn=data_value("cameraModel"),
+        exists_fn=has_data("cameraModel"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_status_code",
+        name="Camera Status Code",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:cctv",
+        value_fn=data_value("cameraStatusCode"),
+        exists_fn=has_data("cameraStatusCode"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_device_status",
+        name="Camera Device Status",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:cctv",
+        value_fn=data_value("deviceStatus"),
+        exists_fn=has_data("deviceStatus"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_sleep_message",
+        name="Camera Sleep Message",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:power-sleep",
+        value_fn=data_value("deviceDormancyMessage"),
+        exists_fn=has_data("deviceDormancyMessage"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_wake_time",
+        name="Camera Wake Time",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:alarm",
+        value_fn=data_timestamp("deviceDormancyWakeTime"),
+        exists_fn=has_data("deviceDormancyWakeTime"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_firmware_status",
+        name="Camera Firmware Status",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:update",
+        value_fn=data_value("firmwareStatus"),
+        exists_fn=has_data("firmwareStatus"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_firmware_version",
+        name="Camera Firmware Version",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:chip",
+        value_fn=data_value("firmwareVersion"),
+        exists_fn=has_data("firmwareVersion"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_network_name",
+        name="Camera Network Name",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:wifi",
+        value_fn=data_value("networkName"),
+        exists_fn=has_data("networkName"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_recording_resolution",
+        name="Recording Resolution",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:video",
+        value_fn=data_value("recResolution"),
+        exists_fn=has_data("recResolution"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_stream_protocol",
+        name="Stream Protocol",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:video-wireless-outline",
+        value_fn=data_value("streamProtocol"),
+        exists_fn=has_data("streamProtocol"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_codec",
+        name="Camera Codec",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:video-settings",
+        value_fn=data_value("codec"),
+        exists_fn=has_data("codec"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_default_codec",
+        name="Camera Default Codec",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:video-settings",
+        value_fn=data_value("defaultCodec"),
+        exists_fn=has_data("defaultCodec"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_thumbnail_url",
+        name="Thumbnail URL",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:image",
+        value_fn=data_value("thumbImgUrl"),
+        exists_fn=has_data("thumbImgUrl"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_live_url",
+        name="Live URL",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:video-wireless-outline",
+        value_fn=data_value("cameraLiveUrl"),
+        exists_fn=has_data("cameraLiveUrl"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_video_seconds",
+        name="Video Seconds",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:timer-outline",
+        value_fn=data_value("videoSeconds"),
+        exists_fn=has_data("videoSeconds"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_alarm_seconds",
+        name="Alarm Seconds",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:timer-outline",
+        value_fn=data_value("alarmSeconds"),
+        exists_fn=has_data("alarmSeconds"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_motion_sensitivity",
+        name="Motion Sensitivity",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:motion-sensor",
+        value_fn=data_value("motionSensitivity"),
+        exists_fn=has_data("motionSensitivity"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_night_vision_mode",
+        name="Night Vision Mode",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:weather-night",
+        value_fn=data_value("nightVisionMode"),
+        exists_fn=has_data("nightVisionMode"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_time_zone",
+        name="Time Zone",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:map-clock",
+        value_fn=data_value("timeZone"),
+        exists_fn=has_data("timeZone"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_time_zone_area",
+        name="Time Zone Area",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:map-clock",
+        value_fn=data_value("timeZoneArea"),
+        exists_fn=has_data("timeZoneArea"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_sd_card_used",
+        name="SD Card Used",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:micro-sd",
+        value_fn=data_value("sdCardUsed"),
+        exists_fn=has_data("sdCardUsed"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_sd_card_total",
+        name="SD Card Total",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:micro-sd",
+        value_fn=data_value("sdCardTotal"),
+        exists_fn=has_data("sdCardTotal"),
+    ),
+    XSenseSensorEntityDescription(
+        key="camera_sd_card_format_status",
+        name="SD Card Format Status",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:micro-sd",
+        value_fn=data_value("sdCardFormatStatus"),
+        exists_fn=has_data("sdCardFormatStatus"),
     ),
 )
 

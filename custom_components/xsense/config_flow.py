@@ -1,4 +1,5 @@
 """Config flow for X-Sense Home Security integration."""
+
 from __future__ import annotations
 
 import asyncio

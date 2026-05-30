@@ -18,9 +18,18 @@ from .house import House
 
 class XSenseBase:
     API = "https://api.x-sense-iot.com"
+    IPC_API = "https://ipc.x-sense-iot.com"
+    ADDX_API_BY_NODE = {
+        "CN": "https://api.addx.live",
+        "EU": "https://api-eu.vicohome.io",
+        "US": "https://api-us.vicohome.io",
+    }
     VERSION = "v1.22.0_20240914.1"
     APPCODE = "1220"
     CLIENTYPE = "1"
+    IPC_VERSION = "v1.36.0_20260130"
+    IPC_APPCODE = "1360"
+    IPC_CLIENTTYPE = "2"
 
     userid = None
     username = None
@@ -45,6 +54,7 @@ class XSenseBase:
 
     def __init__(self):
         self.houses: Dict[str, House] = {}
+        self._addx_session = None
 
     def _parse_client_error(self, e: ClientError):
         return e.response.get("Error", {}).get("Message") or str(e)
@@ -145,6 +155,15 @@ class XSenseBase:
         mac_data = concatenated_string.encode("utf-8") + self.clientsecret
         return hashlib.md5(mac_data).hexdigest()
 
+    def _signed_body(self, data: Dict | None, code: str, *, ipc: bool = False) -> Dict:
+        data = dict(data or {})
+        data["mac"] = self._calculate_mac(data)
+        data["bizCode"] = code
+        data["appCode"] = self.IPC_APPCODE if ipc else self.APPCODE
+        data["appVersion"] = self.IPC_VERSION if ipc else self.VERSION
+        data["clientType"] = self.IPC_CLIENTTYPE if ipc else self.CLIENTYPE
+        return data
+
     def generate_hash(self, data):
         return base64.b64encode(
             hmac.new(
@@ -196,14 +215,10 @@ class XSenseBase:
             "X-Amz-Security-Token": self.aws_session_token,
         }
 
-        typename = station.type
-        if typename in ["SBS10"]:
-            typename = ""
-        if typename in ("XC04-WX", "SC07-WX"):
-            typename += "-"
+        thing_name = _thing_name(station)
 
         host = f"{station.house.mqtt_region}.x-sense-iot.com"
-        uri = f"/things/{typename}{station.sn}/shadow?name={page}"
+        uri = f"/things/{thing_name}/shadow?name={page}"
 
         url = f"https://{host}{uri}"
 
@@ -248,3 +263,39 @@ class XSenseBase:
                 a for a in entity_def.get("actions", []) if a.get("action") == action
             )
         return False
+
+
+def _is_smoke_v9(station: Station) -> bool:
+    try:
+        return int(station.data.get("smokeEdition", 0)) >= 9
+    except (TypeError, ValueError):
+        return False
+
+
+def _thing_name(station: Station) -> str:
+    """Return the AWS IoT thing name used by the X-Sense app."""
+    if station.type == "SBS10":
+        return station.sn
+    if station.type == "XS01-WX":
+        separator = "-" if _is_smoke_v9(station) else ""
+        return f"{station.type}{separator}{station.sn}"
+    if station.type in _DASHED_WIFI_THING_TYPES:
+        return f"{station.type}-{station.sn}"
+    return f"{station.type}{station.sn}"
+
+
+_DASHED_WIFI_THING_TYPES = {
+    "SC06-WX",
+    "SC07-WX",
+    "STH0C",
+    "SWS0A",
+    "SWS0B",
+    "XC04-WX",
+    "XC0C-iA",
+    "XC0C-iR",
+    "XC0M-iR",
+    "XP0A-iR",
+    "XP0H-iR",
+    "XP0J-iA",
+    "XS0R-iA",
+}

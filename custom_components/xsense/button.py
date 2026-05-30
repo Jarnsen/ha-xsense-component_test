@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
 
+from .api.async_xsense import CAMERA_TYPES
 from .api.device import Device
 from .api.entity import Entity
 from .api.entity_map import entities
@@ -20,7 +21,8 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .coordinator import AsyncXSense, XSenseDataUpdateCoordinator
+from .api.async_xsense import AsyncXSense
+from .coordinator import XSenseDataUpdateCoordinator
 from .entity import XSenseEntity
 
 
@@ -51,18 +53,30 @@ async def run_action(entity: Entity, xsense: AsyncXSense, action: str) -> None:
     if not topic:
         raise XSenseError(f"Action {action} for entity type {entity.type} has no topic")
 
+    shadow = action_def["shadow"]
+    if callable(shadow):
+        shadow = shadow(entity)
+
     station = getattr(entity, "station", entity)
     desired = {
         "deviceSN": entity.sn,
-        "shadow": action_def["shadow"],
+        "shadow": shadow,
         "stationSN": station.sn,
         "time": datetime.now().strftime("%Y%m%d%H%M%S"),
         "userId": xsense.userid,
     }
     desired.update(action_def.get("extra", {}))
-    desired.update(action_def.get("data", {}))
+    action_data = action_def.get("data", {})
+    if callable(action_data):
+        action_data = action_data(entity)
+    desired.update(action_data)
 
     await xsense.do_thing(station, topic, {"state": {"desired": desired}})
+
+
+async def wake_camera(entity: Entity, xsense: AsyncXSense) -> None:
+    """Wake a sleeping camera through the Android app endpoint."""
+    await xsense.wake_camera(entity)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -97,6 +111,16 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "firedrill"),
         press_fn=partial(run_action, action="firedrill"),
+    ),
+    XSenseButtonEntityDescription(
+        key="camera_wake",
+        name="Wake Camera",
+        icon="mdi:power-sleep",
+        entity_category=EntityCategory.CONFIG,
+        exists_fn=lambda entity, xsense: (
+            entity.type in CAMERA_TYPES and entity.data.get("supportSleep", False)
+        ),
+        press_fn=wake_camera,
     ),
 )
 

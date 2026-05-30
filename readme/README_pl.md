@@ -16,7 +16,7 @@ Do czasu, gdy dostępna będzie oficjalna integracja Home Assistant od Theo, bę
 ## Funkcje
 - Integracja różnych urządzeń Xsense z Home Assistant.
 - Obsługa automatyzacji na podstawie danych z czujników Xsense.
-- Obsługa następujących typów urządzeń: stacje bazowe, czujniki dymu, czujniki tlenku węgla, alarmy ciepła, czujniki wycieku wody oraz higrometry.
+- Obsługa stacji bazowych, czujników dymu, czujników tlenku węgla, alarmów ciepła, czujników zalania, higrometrów, czujników drzwi, czujników ruchu, świateł, klawiatur, skrzynek pocztowych, listenerów, kamer i innych obsługiwanych urządzeń, gdy są dostępne na koncie X-Sense.
 - Prosta konfiguracja przez HACS (Home Assistant Community Store).
 
 ## Wymagania
@@ -84,16 +84,22 @@ Po pomyślnej instalacji i konfiguracji integracja będzie widoczna w Home Assis
 ____________________________________________________________
 
 ## Obsługiwane urządzenia
-Ta integracja obsługuje różne urządzenia Xsense。Poniżej znajduje się lista aktualnie potwierdzonych i przetestowanych urządzeń：
-- **Stacja bazowa (SBS50)**：Centralny hub dla urządzeń Xsense。
-- **Alarm ciepła (XH02-M)**：Wykrywanie nienormalnie wysokich temperatur。
-- **Czujnik tlenku węgla (XC01-M; XC04-WX)**：Wykrywanie niebezpiecznych stężeń tlenku węgla。
-- **Czujnik dymu (XS01-M, WX; XS03-WX; XS0B-MR)**：Wczesne wykrywanie dymu。
-- **Kombinowany czujnik tlenku węgla i dymu (SC07-WX; XP0A-MR (częściowo obsługiwany))**：Urządzenia kombinowane do wykrywania tlenku węgla i dymu。
-- **Czujnik wycieku wody (SWS51)**：Wykrywanie obecności wody w niepożądanych miejscach。
-- **Higrometr-termometr (STH51)**：Monitorowanie temperatury i wilgotności。
+Integracja obsługuje różne urządzenia X-Sense. Dostępne encje zależą od pól zgłaszanych przez urządzenie i konto. Potwierdzone rodziny i modele obejmują:
+- **Stacja bazowa (SBS50)**: Centralny hub dla urządzeń X-Sense.
+- **Czujnik ciepła (XH02-M)**: Wykrywa nietypowo wysoką temperaturę.
+- **Czujnik tlenku węgla (XC01-M; XC04-WX)**: Wykrywa niebezpieczne stężenia CO.
+- **Czujnik dymu (XS01-M; XS01-WX; XS03-WX; XS0B-MR i powiązane modele RF/iR)**: Wczesne wykrywanie dymu.
+- **Czujnik łączony CO i dymu (SC07-WX; XP0A-MR i powiązane modele XP/SC)**: Wykrywa CO i dym.
+- **Czujnik zalania (SWS51)**: Wykrywa wodę w niepożądanych miejscach.
+- **Higrometr-termometr (STH51, STH0A, STH0B, STH0C)**: Monitoruje temperaturę i wilgotność.
+- **Czujnik drzwi (SDS0A)** i **czujnik ruchu (SMS0A)**: Widoczne, gdy X-Sense zgłasza stan.
+- **Kamera (SSC0A, SSC0B)**: Udostępnia encje kamery, miniatury, URL transmisji na żywo, diagnostykę i ustawienia zgodne z aplikacją Android, gdy urządzenie i konto je obsługują.
+- **Inne urządzenia stacji**: Światło, klawiatura, skrzynka pocztowa, listener, alarm podjazdu, smart drop, pilot i dane radonu są pokazywane, gdy API zgłasza obsługiwane pola.
 
-Te urządzenia mogą być używane do tworzenia automatyzacji i alertów po ich zintegrowaniu z Home Assistant。
+### Dostępne encje i akcje
+Integracja tworzy encje tylko dla pól obecnych w chmurze X-Sense, payloadach MQTT shadow lub API kamery wspieranym przez aplikację. Może to obejmować czujniki binarne, diagnostyczne, przełączniki, listy wyboru, liczby i przyciski dla obsługiwanych funkcji, takich jak test, wyciszenie, próba pożarowa i wybudzenie kamery.
+
+Jeśli pole nie jest zgłaszane albo aplikacja X-Sense oznacza funkcję jako nieobsługiwaną dla danego urządzenia/konta, encja nie zostanie utworzona. Parowanie, usuwanie, udostępnianie, konto, płatności, firmware, formatowanie karty SD i inne działania administracyjne pozostają w aplikacji X-Sense.
 
 ____________________________________________________________
 

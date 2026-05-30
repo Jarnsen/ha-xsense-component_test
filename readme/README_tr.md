@@ -82,16 +82,22 @@ Başarılı bir kurulum ve yapılandırma sonrasında entegrasyon Home Assistant
 ____________________________________________________________
 
 ## Desteklenen Cihazlar
-Bu entegrasyon çeşitli Xsense cihazlarını destekler。Aşağıda şu anda onaylanmış ve test edilmiş cihazların bir listesi bulunmaktadır：
-- **Ana İstasyon (SBS50)**：Xsense cihazlarının merkezi hub'ı。
-- **Isı Alarmı (XH02-M)**：Olağandışı yüksek sıcaklıkları algılar。
-- **Karbonmonoksit Dedektörü (XC01-M; XC04-WX)**：Tehlikeli karbonmonoksit konsantrasyonlarını algılar。
-- **Duman Dedektörü (XS01-M, WX; XS03-WX; XS0B-MR)**：Erken aşamada duman tespit eder。
-- **Karbonmonoksit ve Duman Kombinasyonu Alarmı (SC07-WX; XP0A-MR (kısmen desteklenir))**：Karbonmonoksit ve dumanı algılayan kombinasyon cihazı。
-- **Su Sızıntısı Dedektörü (SWS51)**：İstenmeyen yerlerdeki suyu algılar。
-- **Higrometre-Termometre (STH51)**：Sıcaklık ve nemi izler。
+Bu entegrasyon çeşitli X-Sense cihazlarını destekler. Oluşturulan varlıklar, cihazın ve hesabın bildirdiği veri alanlarına bağlıdır. Onaylanan aileler ve modeller şunları içerir:
+- **Baz istasyonu (SBS50)**: X-Sense cihazları için merkezi hub.
+- **Isı alarmı (XH02-M)**: Olağandışı yüksek sıcaklıkları algılar.
+- **Karbon monoksit dedektörü (XC01-M; XC04-WX)**: Tehlikeli CO yoğunluklarını algılar.
+- **Duman dedektörü (XS01-M; XS01-WX; XS03-WX; XS0B-MR ve ilgili RF/iR modelleri)**: Erken duman algılama.
+- **CO ve duman kombine dedektörü (SC07-WX; XP0A-MR ve ilgili XP/SC modelleri)**: CO ve dumanı algılar.
+- **Su sızıntı dedektörü (SWS51)**: İstenmeyen yerlerde suyu algılar.
+- **Higrometre-termometre (STH51, STH0A, STH0B, STH0C)**: Sıcaklık ve nemi izler.
+- **Kapı sensörü (SDS0A)** ve **hareket sensörü (SMS0A)**: X-Sense durum bildirdiğinde gösterilir.
+- **Kamera (SSC0A, SSC0B)**: Cihaz ve hesap desteklediğinde kamera varlıkları, küçük resimler, canlı yayın URL'leri, durum tanıları ve Android uygulamasına dayalı ayarları sağlar.
+- **Diğer istasyon cihazları**: Işık, tuş takımı, posta kutusu, listener, araç yolu alarmı, smart drop, kumanda ve radon verileri API desteklenen alanları bildirdiğinde gösterilir.
 
-Bu cihazlar Home Assistant'a entegre edildikten sonra otomasyonlar ve alarmlar oluşturmak için kullanılabilir。
+### Kullanılabilir varlıklar ve eylemler
+Entegrasyon yalnızca X-Sense bulutu, MQTT shadow payload'ları veya uygulama destekli kamera API'lerinde bulunan alanlar için varlık oluşturur. Bu; ikili sensörler, tanı sensörleri, anahtarlar, seçimler, sayılar ve test, sessize alma, yangın tatbikatı ve kamera uyandırma gibi desteklenen eylem düğmelerini içerebilir.
+
+Bir alan bildirilmezse veya X-Sense uygulaması özelliği bu cihaz/hesap için desteklenmiyor olarak işaretlerse varlık oluşturulmaz. Cihaz bağlama, kaldırma, paylaşma, hesap, ödeme, firmware, SD kart biçimlendirme ve diğer yönetim işlemleri X-Sense uygulamasında kalır.
 
 ____________________________________________________________
 

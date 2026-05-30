@@ -17,7 +17,7 @@ Bis es eine offizielle Home Assistant-Integration von Theo gibt, wird diese HACS
 ## Funktionen
 - Integration verschiedener Xsense-Geräte in Home Assistant.
 - Unterstützung für Automationen auf Basis der Xsense-Sensordaten.
-- Unterstützung für folgende Gerätetypen: Basisstationen, Rauchmelder, Kohlenmonoxidmelder, Hitzemelder, Wassermelder und Hygrometer.
+- Unterstützung für Basisstationen, Rauchmelder, Kohlenmonoxidmelder, Hitzemelder, Wassermelder, Hygrometer, Türsensoren, Bewegungssensoren, Licht, Tastatur, Briefkastensensoren, Listener, Kameras und weitere unterstützte Geräte, wenn sie im X-Sense-Konto verfügbar sind.
 - Einfache Einrichtung über HACS (Home Assistant Community Store).
 
 ## Voraussetzungen
@@ -84,16 +84,31 @@ Nach erfolgreicher Installation und Konfiguration wird die Integration in Home A
 ____________________________________________________________
 
 ## Unterstützte Geräte
-Diese Integration unterstützt eine Vielzahl von Xsense-Geräten. Hier ist eine Liste der aktuell bestätigten und getesteten Geräte:
-- **Basisstation (SBS50)**: Zentraler Hub für die Xsense-Geräte.
-- **Hitzewarnmelder (XH02-M)**: Erkennung von ungewöhnlich hohen Temperaturen.
-- **Kohlenmonoxidmelder (XC01-M; XC04-WX)**: Meldet gefährliche Kohlenmonoxidkonzentrationen.
-- **Rauchmelder (XS01-M, WX; XS03-WX; XS0B-MR)**: Frühzeitige Erkennung von Rauchentwicklung.
-- **Kohlenmonoxid- und Rauchkombimelder (SC07-WX; XP0A-MR (teilweise unterstützt))**: Kombinierte Geräte zur Erkennung von Kohlenmonoxid und Rauch.
-- **Wassermelder (SWS51)**: Meldet das Vorhandensein von Wasser an unerwünschten Stellen.
-- **Hygrometer-Thermometer (STH51)**: Überwachung von Temperatur und Luftfeuchtigkeit.
+Diese Integration unterstützt verschiedene X-Sense-Geräte. Die verfügbaren Entitäten hängen davon ab, welche Datenfelder das jeweilige Gerät und Konto meldet. Zu den derzeit unterstützten Gerätefamilien und bestätigten Modellen gehören:
+- **Basisstation (SBS50)**: Zentraler Hub für X-Sense-Geräte.
+- **Hitzemelder (XH02-M)**: Erkennt ungewöhnlich hohe Temperaturen.
+- **Kohlenmonoxidmelder (XC01-M; XC04-WX)**: Erkennt gefährliche Kohlenmonoxidkonzentrationen.
+- **Rauchmelder (XS01-M; XS01-WX; XS03-WX; XS0B-MR und verwandte RF/iR-Modelle)**: Früherkennung von Rauch.
+- **Kombinierte Kohlenmonoxid- und Rauchmelder (SC07-WX; XP0A-MR und verwandte XP/SC-Modelle)**: Kombigeräte zur Erkennung von Kohlenmonoxid und Rauch.
+- **Wassermelder (SWS51)**: Erkennt Wasser an unerwünschten Stellen.
+- **Hygrometer-Thermometer (STH51, STH0A, STH0B, STH0C)**: Überwacht Temperatur und Luftfeuchtigkeit.
+- **Türsensor (SDS0A)**: Stellt den Türstatus bereit, wenn er vom X-Sense-Konto gemeldet wird.
+- **Bewegungsmelder (SMS0A)**: Stellt den Bewegungsalarmstatus bereit, wenn er vom X-Sense-Konto gemeldet wird.
+- **Kamera (SSC0A, SSC0B)**: Stellt Kameraentitäten, Vorschaubilder, Livestream-URLs, Statusdiagnosen und appgestützte Einstellungen bereit, wenn Gerät und Konto dies unterstützen.
+- **Weitere über Stationen verbundene Geräte**: Licht, Tastatur, Briefkastensensor, Listener, Einfahrtsalarm, Smart Drop, Fernbedienung und Radondaten werden angezeigt, wenn die X-Sense-API unterstützte Felder meldet.
 
-Diese Geräte können nach der Integration in Home Assistant für die Erstellung von Automationen und Warnmeldungen genutzt werden.
+Nach der Einbindung in Home Assistant können diese Geräte für Automationen und Warnungen genutzt werden.
+
+### Verfügbare Entitäten und Aktionen
+Die Integration erstellt Home-Assistant-Entitäten nur für Felder, die in der X-Sense-Cloud, in MQTT-Shadow-Daten oder über die appgestützten Kamera-APIs vorhanden sind. Je nach Gerät kann dies Folgendes umfassen:
+
+- Binärsensoren für Alarm, Stummschaltung, Lebensdauerende, AC-Unterbrechung, Wasseralarm, Temperaturalarm, Laden, Bewegung, Tür, Scharfstatus, Warnungen, Erinnerungen, Licht, PIR und Tastaturstatus.
+- Sensoren für Batterie, RF-Signal, WLAN-Signal, Firmware, Temperatur, Luftfeuchtigkeit, CO-Wert, CO-Spitzenwert, Alarm-, Sprach-, Chirp- und Erinnerungslautstärke, Warnschwellen, Stummschaltzeiten, lesbare Zeitstempel, Zeitzone, Seriennummer, MAC-Adresse und weitere Diagnosedaten.
+- Schalter für unterstützte beschreibbare Einstellungen wie LED-Licht, Alarmaktivierung, fortgesetzten Alarm, Chirp-Ton, Erinnerungen, PIR, Sonnenschein, Wartezustand, Tastenton, Kamera-Bewegungserkennung, Aufnahme, Nachtsicht, Audio, Cooldown, Licht und Türklingelsteuerung.
+- Auswahlfelder und Zahlenwerte für unterstützte Kameraeinstellungen wie Sprache, Aufnahmeauflösung, Codec, Anti-Flicker-Rate, Bewegungsempfindlichkeit, Videolänge, Lautstärke, Alarmdauer, Cooldown, Nachtschwelle und Türklingelton.
+- Test-, Stumm-, Feueralarm- und Kamera-Weckschaltflächen für Modelle, bei denen die X-Sense-App die passende Aktion anbietet.
+
+Einige Entitäten sind Diagnose- oder Konfigurationseinheiten und werden in Home Assistant entsprechend gruppiert. Wenn ein Gerät ein Feld nicht meldet oder die X-Sense-App die Funktion für dieses Gerät/Konto als nicht unterstützt markiert, wird keine passende Entität erstellt. Gerätebindung, Entfernen, Teilen, Konto-, Zahlungs-, Firmware-Update-, SD-Kartenformatierungs- und andere Verwaltungsaktionen bleiben in der X-Sense-App.
 
 ____________________________________________________________
 

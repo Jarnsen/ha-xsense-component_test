@@ -153,7 +153,8 @@ class XSenseAlarmControlPanel(
 
         LOGGER.debug(
             "Station %s requesting safeMode %s via MQTT appMode",
-            station.sn, safe_mode,
+            station.sn,
+            safe_mode,
         )
 
         coordinator: XSenseDataUpdateCoordinator = self.coordinator
@@ -173,10 +174,7 @@ class XSenseAlarmControlPanel(
             }
         }
 
-        topic = (
-            f"$aws/things/{station.shadow_name}"
-            f"/shadow/name/2nd_appmode/update"
-        )
+        topic = f"$aws/things/{station.shadow_name}/shadow/name/2nd_appmode/update"
 
         mqtt = coordinator.mqtt_server(station.house.mqtt_server)
 
@@ -191,7 +189,9 @@ class XSenseAlarmControlPanel(
             await mqtt.async_publish(topic, json.dumps(payload), qos=0, retain=False)
             LOGGER.debug(
                 "Station %s published appMode command %s on %s",
-                station.sn, safe_mode, topic,
+                station.sn,
+                safe_mode,
+                topic,
             )
 
             _apply_safe_mode(station, safe_mode)
@@ -200,5 +200,7 @@ class XSenseAlarmControlPanel(
         except Exception as ex:  # noqa: BLE001
             LOGGER.exception(
                 "Could not set safeMode %s for station %s: %s",
-                safe_mode, station.sn, ex,
+                safe_mode,
+                station.sn,
+                ex,
             )

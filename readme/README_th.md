@@ -32,13 +32,24 @@
 4. ตั้งค่าด้วยชื่อผู้ใช้และรหัสผ่าน X-Sense ในหน้า Integrations ของ Home Assistant
 
 ## อุปกรณ์ที่รองรับ
-เอนทิตีที่สร้างขึ้นขึ้นอยู่กับฟิลด์ที่ X-Sense cloud หรือ MQTT shadow รายงาน อุปกรณ์ที่พบได้บ่อยได้แก่ SBS50 base station, อุปกรณ์ควันและคาร์บอนมอนอกไซด์ตระกูล XS/SC/XP/XC, XH heat alarm, SWS water leak detector, STH thermo-hygrometer, SDS door sensor, SMS motion sensor, ไฟ, คีย์แพด, กล่องจดหมาย, driveway alarm และอุปกรณ์อื่นที่รายงานฟิลด์ที่รองรับ
+อินทิเกรชันนี้รองรับอุปกรณ์ X-Sense หลายประเภท เอนทิตีที่มีขึ้นอยู่กับฟิลด์ข้อมูลที่อุปกรณ์และบัญชีรายงาน รุ่นและกลุ่มที่ยืนยันแล้วได้แก่:
+- **สถานีฐาน (SBS50)**: ฮับกลางสำหรับอุปกรณ์ X-Sense.
+- **สัญญาณเตือนความร้อน (XH02-M)**: ตรวจจับอุณหภูมิสูงผิดปกติ.
+- **เครื่องตรวจจับคาร์บอนมอนอกไซด์ (XC01-M; XC04-WX)**: ตรวจจับระดับ CO ที่เป็นอันตราย.
+- **เครื่องตรวจจับควัน (XS01-M; XS01-WX; XS03-WX; XS0B-MR และรุ่น RF/iR ที่เกี่ยวข้อง)**: ตรวจจับควันตั้งแต่เนิ่นๆ.
+- **เครื่องตรวจจับ CO และควันแบบรวม (SC07-WX; XP0A-MR และรุ่น XP/SC ที่เกี่ยวข้อง)**: ตรวจจับ CO และควัน.
+- **เครื่องตรวจจับน้ำรั่ว (SWS51)**: ตรวจจับน้ำในตำแหน่งที่ไม่ต้องการ.
+- **ไฮโกรมิเตอร์-เทอร์โมมิเตอร์ (STH51, STH0A, STH0B, STH0C)**: ตรวจวัดอุณหภูมิและความชื้น.
+- **เซ็นเซอร์ประตู (SDS0A)** และ **เซ็นเซอร์การเคลื่อนไหว (SMS0A)**: แสดงเมื่อ X-Sense รายงานสถานะ.
+- **กล้อง (SSC0A, SSC0B)**: แสดงเอนทิตีกล้อง ภาพย่อ URL สตรีมสด การวินิจฉัย และการตั้งค่าตามแอป Android เมื่ออุปกรณ์และบัญชีรองรับ.
+- **อุปกรณ์อื่นที่เชื่อมกับสถานี**: ไฟ แป้นกด กล่องจดหมาย listener สัญญาณทางเข้า smart drop รีโมต และข้อมูลเรดอนจะแสดงเมื่อ API รายงานฟิลด์ที่รองรับ.
 
 ## เอนทิตีและคำสั่ง
-- Binary sensor สำหรับ alarm, mute, end-of-life, AC break, water alarm, temperature alarm, charging, motion, door, armed, reminder, light และ diagnostics
-- Sensor สำหรับ battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO, volume, timestamp ที่อ่านง่าย, serial number, MAC address และ diagnostics อื่น ๆ
-- Switch สำหรับการตั้งค่าที่อุปกรณ์รองรับ เช่น LED light, alarm, reminders, PIR, sunshine, await และ keypad sound
-- ปุ่ม test, mute และ fire drill สำหรับรุ่นที่รองรับ
+อินทิเกรชันจะสร้างเอนทิตีเฉพาะฟิลด์ที่มีอยู่ใน X-Sense cloud, MQTT shadow หรือ API กล้องที่แอปรองรับเท่านั้น อาจรวมถึง binary sensor, diagnostic sensor, switch, select, number และปุ่ม เช่น test, mute, fire drill และ wake camera.
+
+หากไม่มีฟิลด์ หรือแอป X-Sense ระบุว่าฟีเจอร์ไม่รองรับสำหรับอุปกรณ์/บัญชีนั้น เอนทิตีจะไม่ถูกสร้าง การผูก ลบ แชร์ บัญชี การชำระเงิน firmware การฟอร์แมต SD card และงานจัดการอื่นยังอยู่ในแอป X-Sense.
+
+____________________________________________________________
 
 ## ตัวอย่าง Automation
 ```yaml
