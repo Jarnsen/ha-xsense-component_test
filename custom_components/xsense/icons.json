@@ -1,0 +1,41 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "default": "mdi:bell-ring"
+      },
+      "connected": {
+        "default": "mdi:connection"
+      },
+      "is_life_end": {
+        "default": "mdi:timelapse"
+      },
+      "mute_status": {
+        "default": "mdi:alarm-light-off"
+      }
+    },
+    "sensor": {
+      "alarm_vol": {
+        "default": "mdi:volume-high"
+      },
+      "ip_address": {
+        "default": "mdi:ip-network-outline"
+      },
+      "rf_level": {
+        "default": "mdi:signal"
+      },
+      "sw_version": {
+        "default": "mdi:chip"
+      },
+      "voice_vol": {
+        "default": "mdi:volume-high"
+      },
+      "wifi_ssid": {
+        "default": "mdi:access-point-network"
+      },
+      "wifi_sw": {
+        "default": "mdi:chip"
+      }
+    }
+  }
+}
