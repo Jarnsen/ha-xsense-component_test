@@ -5,23 +5,23 @@
 </p>
 
 ## Overzicht
-Deze integratie voor Home Assistant maakt het gebruik van Xsense-apparaten binnen het slimme huis mogelijk. Het is gebaseerd op de originele code van [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) en is gepubliceerd met zijn toestemming en in samenwerking met hem.
+Deze integratie voor Home Assistant maakt het gebruik van X-Sense-apparaten binnen het slimme huis mogelijk. Het is gebaseerd op de originele code van [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) en is gepubliceerd met zijn toestemming en in samenwerking met hem.
 
-Totdat een officiële Home Assistant-integratie van Theo beschikbaar is, zal deze HACS-integratie worden gebruikt en regelmatig worden bijgewerkt om nieuwe functies toe te voegen en bestaande problemen op te lossen. Deze integratie stelt gebruikers in staat om hun Xsense-apparaten eenvoudig in Home Assistant te integreren en te gebruiken voor verschillende automatiseringen en bewaking.
+Totdat een officiële Home Assistant-integratie van Theo beschikbaar is, zal deze HACS-integratie worden gebruikt en regelmatig worden bijgewerkt om nieuwe functies toe te voegen en bestaande problemen op te lossen. Deze integratie stelt gebruikers in staat om hun X-Sense-apparaten eenvoudig in Home Assistant te integreren en te gebruiken voor verschillende automatiseringen en bewaking.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>
 
 ## Functies
-- Integratie van verschillende Xsense-apparaten in Home Assistant.
-- Ondersteuning voor automatiseringen op basis van Xsense-sensorgegevens.
+- Integratie van verschillende X-Sense-apparaten in Home Assistant.
+- Ondersteuning voor automatiseringen op basis van X-Sense-sensorgegevens.
 - Ondersteuning voor basisstations, rookmelders, koolmonoxidemelders, hittemelders, waterleksensoren, hygrometers, deursensoren, bewegingssensoren, lampen, keypads, brievenbussensoren, listeners, camera's en andere ondersteunde apparaten wanneer ze beschikbaar zijn in het X-Sense-account.
 - Eenvoudige installatie via HACS (Home Assistant Community Store).
 
 ## Vereisten
 - Een werkende Home Assistant-server (de nieuwste versie wordt aanbevolen).
-- Een Xsense-account met ondersteunde apparaten.
+- Een X-Sense-account met ondersteunde apparaten.
 - HACS moet geïnstalleerd zijn in Home Assistant om de installatie van de integratie mogelijk te maken.
 
 ## Uitlegvideo
@@ -110,11 +110,11 @@ ____________________________________________________________
 Met deze integratie kun je verschillende automatiseringen maken. Hier zijn enkele voorbeelden:
 
 ### Voorbeeld 1: Temperatuuralarm
-Wanneer de temperatuur van een Xsense-thermometer te hoog is, wordt een melding verstuurd:
+Wanneer de temperatuur van een X-Sense-thermometer te hoog is, wordt een melding verstuurd:
 
 ```yaml
 automation:
-  - alias: "Xsense Temperatuuralarm"
+  - alias: "X-Sense Temperatuuralarm"
     trigger:
       platform: numeric_state
       entity_id: sensor.xsense_temperature
@@ -146,7 +146,7 @@ ____________________________________________________________
 ## Wij hebben jouw hulp nodig
 We zijn altijd op zoek naar ondersteuning om deze integratie verder te ontwikkelen en te verbeteren. Hier zijn een paar manieren waarop je kunt helpen:
 
-1. **Testen van apparaten**: Als je een Xsense-apparaat hebt dat werkt met de integratie, laat het ons weten, zodat we het aan de lijst met ondersteunde apparaten kunnen toevoegen.
+1. **Testen van apparaten**: Als je een X-Sense-apparaat hebt dat werkt met de integratie, laat het ons weten, zodat we het aan de lijst met ondersteunde apparaten kunnen toevoegen.
 
 2. **Feedback over niet-ondersteunde apparaten**: Als een apparaat niet werkt, geef ons dan feedback, zodat we ondersteuning kunnen bieden of het apparaat in toekomstige versies van de integratie kunnen opnemen.
 

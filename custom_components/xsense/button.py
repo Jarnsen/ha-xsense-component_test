@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import partial
 
 from .api.async_xsense import CAMERA_TYPES
@@ -62,7 +62,7 @@ async def run_action(entity: Entity, xsense: AsyncXSense, action: str) -> None:
         "deviceSN": entity.sn,
         "shadow": shadow,
         "stationSN": station.sn,
-        "time": datetime.now().strftime("%Y%m%d%H%M%S"),
+        "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
         "userId": xsense.userid,
     }
     desired.update(action_def.get("extra", {}))

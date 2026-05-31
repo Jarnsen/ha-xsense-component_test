@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .api.device import Device
 from .api.entity import Entity
@@ -470,7 +470,7 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
             "deviceSN": entity.sn,
             "shadow": "infoDev",
             "stationSN": station.sn,
-            "time": datetime.now().strftime("%Y%m%d%H%M%S"),
+            "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
             "userId": xsense.userid,
             self.entity_description.data_key: self.entity_description.write_value_fn(
                 enabled

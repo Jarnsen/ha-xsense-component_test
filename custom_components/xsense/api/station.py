@@ -18,6 +18,9 @@ class Station(Entity):
         self.online = kwargs.get("onLine", True)
         self.type = kwargs.get("category")
 
+        self.devices = {}
+        self.device_order = []
+        self.device_by_sn = {}
         self.has_alarm = False
         self._alarm_data = {}
         super().__init__(**kwargs)

@@ -16,9 +16,138 @@ Kinnitatud mudelipered hõlmavad: SBS50, XH02-M, XC01-M, XC04-WX, XS01-M, XS01-W
 ## Olemid ja toimingud
 Integratsioon loob olemid ainult nende andmete jaoks, mida seade tegelikult raporteerib. See võib hõlmata häireid, vaigistust, akut, signaali, temperatuuri, õhuniiskust, CO-d, loetavaid ajavälju, kaamera seadeid, LED-lüliteid ning testi-, vaigistus- ja tuleõppuse nuppe.
 
-Seadmehaldus, jagamine, eemaldamine, püsivara, kontod ja maksed jäävad X-Sense rakendusse.
+Seadmehaldus, jagamine, eemaldamine, püsivara, kontod ja maksed jäävad X-Sense rakendusse. Aruteludeks kasutage Discordi või Home Assistanti foorumit.
+
+## Automatiseerimise näited
+```yaml
+automation:
+  - alias: "X-Sense temperatuurihoiatus"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.xsense_temperature
+      above: 30
+    action:
+      service: notify.notify
+      data:
+        message: "Temperatuur ületab 30 kraadi!"
+```
+
+```yaml
+automation:
+  - alias: "Veelekke häire"
+    trigger:
+      platform: state
+      entity_id: binary_sensor.xsense_waterleak
+      to: "on"
+    action:
+      service: notify.notify
+      data:
+        message: "Tuvastati veeleke!"
+```
 
 ## Tugi
 [Discord](https://discord.gg/5phHHgGb3V)
 
 [Home Assistant Forum](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
+
+## Lisateave
+
+### Konto seadistamine
+
+Soovitatav on kasutada Home Assistanti jaoks eraldi X-Sense'i kontot ja jagada sinna ainult need toetatud seadmed, mida soovite Home Assistantis näha. Integratsioon ei seo, eemalda ega liiguta seadmeid kodude vahel. Selline seadmehaldus jääb ametlikku X-Sense'i rakendusse.
+
+### Olekuvärskendused
+
+Integratsioon kasutab kiirete olekumuudatuste jaoks MQTT shadow-teateid ja andmete värskendamiseks säästlikku perioodilist pilvepäringut. Jaama saadetud olek salvestatakse jaamale ning alamseadme saadetud olek konkreetsele seadmele, et alarmid ja andurid ei jääks vanadele väärtustele kinni.
+
+### Saadaolevad olemid
+
+Olenevalt mudelist võivad ilmuda suitsu-, CO-, vee-, temperatuuri-, liikumis- ja uksealarmid, alarmi vaigistamine, kasutusea lõpp, laadimine, meeldetuletuse olek, valguse olek ja muud diagnostilised binaarandurid. Andurid võivad sisaldada akut, RF- või Wi-Fi-signaali, püsivara, temperatuuri, niiskust, CO taset, CO tippväärtust, helitugevust, läviväärtusi, loetavaid ajatempleid, ajavööndit, seerianumbrit, MAC-aadressi ja muud diagnostikat. Lülitid, valikud ja arvväärtused luuakse ainult siis, kui seade neid tegelikult toetab.
+
+### Kaamerad
+
+Toetatud kaamerad võivad pakkuda kaamera olemit, pisipilte, otsevoogu, ühenduse olekut ja X-Sense'i rakendusega kooskõlas olevaid seadeid. Kui Home Assistantis on WebRTC tee olemas, saab integratsioon seda sobiva otsevaate jaoks kasutada.
+
+### Tõrkeotsing
+
+Kui mõni olem puudub, kontrollige esmalt X-Sense'i rakenduses, kas seade seda väärtust tõesti kuvab. Kui olek jääb vanaks, laadige integratsioon ajutise testina uuesti ja lisage veateatele diagnostika ning asjakohased Home Assistanti logiread.
+
+### Seadmete käitumine
+
+- Jaamad ja alamseadmed võivad edastada erinevaid väärtuste komplekte. Seetõttu ei eelda integratsioon, et igal jaamal peab olema alamseade.
+- Aja väärtused teisendatakse loetavaks, kui seade saadab aja X-Sense'i rakenduses kasutatavas vormingus.
+- Olem jäetakse loomata, kui seade vastavat funktsiooni ei teavita. Nii välditakse Home Assistantis eksitavaid juhtelemente.
+
+### Pilvekoormus
+
+Integratsioon püüab X-Sense'i API-t säästlikult kasutada. Kiired muudatused võetakse MQTT-teadetest ning pilvepäringuid kasutatakse ainult seal, kus neid on vaja sisselogimiseks, seadmete laadimiseks või oleku värskendamiseks.
+
+### Probleemist teatamine
+
+Veateates lisage seadme mudel, integratsiooni versioon, kas õige väärtus on X-Sense'i rakenduses nähtav, ning Home Assistanti integratsiooni diagnostika. Kasulik on ka lühidalt kirjeldada, kas olek ei muutu kunagi või muutub alles pärast integratsiooni uuesti laadimist.
+
+## Täielik viiteosa
+
+### Konto seadistamine üksikasjalikult
+- Kasuta Home Assistanti jaoks eraldi X-Sense kontot.
+- Jaga põhikontolt ainult toetatud seadmed.
+- Sidumine, eemaldamine, jagamine ja kodude vahel liigutamine jäävad X-Sense rakendusse.
+- Kui rakendus ja Home Assistant logivad teineteist välja, kasutavad nad tõenäoliselt sama kontot.
+
+### Uuendused ja API koormus
+- Kiired olekumuutused tulevad MQTT shadow sõnumite kaudu.
+- Pilvepäringuid kasutatakse sisselogimiseks, seadmete laadimiseks ja oleku värskendamiseks.
+- Perioodiline päring on varu, kui MQTT sõnum puudub.
+
+### Olemid ja toimingud
+- Olemid luuakse ainult väljade jaoks, mida X-Sense tegelikult raporteerib.
+- Diagnostilised väärtused märgitakse diagnostikaks.
+- Test, vaigistamine, tulekahjuõppus ja kaamera äratamine on ainult toetatud mudelitel.
+
+### Kaamerad
+- Toetatud kaamerad võivad pakkuda kaamera olemit, eelvaadet, otsevoogu ja diagnostikat.
+- WebRTC teed kasutatakse ainult siis, kui Home Assistant seda pakub.
+- SD-kaardi, maksete, püsivara ja konto haldus jääb X-Sense rakendusse.
+
+### Tõrkeotsing
+- Veateates lisa mudel, integratsiooni versioon, diagnostika ja asjakohased logid.
+
+### Ulatus
+- Integratsioon ei lisa, eemalda ega liiguta seadmeid kodude vahel.
+
+## Seadmete ja olemite kontrollnimekiri
+
+### Peamised seadmepered
+- SBS50: baasjaam ja jaamataseme olek.
+- XS01-WX: Wi-Fi suitsuandur, ka ilma alamseadmeta kontodel.
+- XS01-M, XS03-WX, XS0B-MR: suitsuandurite pered.
+- XC01-M, XC04-WX: CO-andurite pered.
+- SC07-WX, XP0A-MR: suitsu ja CO kombineeritud pered.
+- XH02-M: kuumaanduri pere.
+- SWS51: veelekke anduri pere.
+- STH51, STH0A, STH0B, STH0C: temperatuur ja niiskus.
+- SDS0A: ukseandur.
+- SMS0A: liikumisandur.
+- SSC0A, SSC0B: toetatud kaamerad.
+
+### Olekuk väljad
+- Alarmiolek kuvatakse, kui X-Sense raporteerib alarmivälja.
+- Vaigistuse olek kuvatakse, kui X-Sense raporteerib vaigistuse välja.
+- Aku olek kuvatakse, kui seade raporteerib akuandmeid.
+- RF ja Wi-Fi signaal kuvatakse, kui seade neid raporteerib.
+- Kompaktsed ajaväärtused teisendatakse loetavateks Home Assistant sensoriteks.
+
+### Juhtimine ja aruanded
+- Lülitid luuakse ainult X-Sense raporteeritud kirjutatavatele seadetele.
+- Nupud luuakse ainult rakenduse toetatud toimingutele.
+- Kaamerajuhtimine luuakse ainult siis, kui API märgib selle saadaval olevaks.
+- Veateates lisa täpne mudel, integratsiooni versioon, diagnostika, logid ja kas väärtus muutub X-Sense rakenduses.
+
+### Kasutusmärkused
+- Pärast seadistamist kontrolli, et seadmete nimed ja ruumid vastaksid X-Sense'i rakendusele.
+- Kui alarm, vaigistus või LED ei muutu kohe, oota järgmist MQTT sõnumit või olekuvärskendust.
+- SBS50 jaamade puhul kontrolli nii jaama olekut kui ka iga alamseadet.
+- XS01-WX puhul võib kogu olek olla teatatud otse seadme kaudu, isegi ilma eraldi alamseadmeta kontol.
+- Kaamerate puhul sõltuvad loodavad olemid sellest, millised võimalused X-Sense'i pilv selle konto jaoks tagastab.
+- Kui olem ei teki, võrdle väärtust esmalt X-Sense'i rakendusega ja lisa diagnostika.
+- Integratsioon on mõeldud toetatud funktsioonide kuvamiseks ja juhtimiseks, mitte seadmete sidumise või halduse asendamiseks rakenduses.

@@ -5,90 +5,90 @@
 </p>
 
 ## সামগ্ৰিক বিৱৰণ
-এই Home Assistant integration-এ X-Sense device সমূহক smart home system-ত ব্যৱহাৰ কৰিবলৈ সহায় কৰে। ই [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense)-ৰ মূল code-ৰ ওপৰত আধাৰিত আৰু তেওঁৰ অনুমতি আৰু সহযোগিতাৰে প্ৰকাশ কৰা হৈছে।
+এই Home Assistant একীকৰণ-এ X-Sense ডিভাইচ সমূহক স্মাৰ্ট-হোম ব্যৱস্থা-ত ব্যৱহাৰ কৰিবলৈ সহায় কৰে। ই [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense)-ৰ মূল code-ৰ ওপৰত আধাৰিত আৰু তেওঁৰ অনুমতি আৰু সহযোগিতাৰে প্ৰকাশ কৰা হৈছে।
 
-Home Assistant-ৰ official integration উপলব্ধ নোহোৱা পৰ্যন্ত, এই HACS integration-টো নতুন feature যোগ কৰা আৰু সমস্যা সমাধানৰ বাবে update হৈ থাকিব।
+Home Assistant-ৰ আনুষ্ঠানিক একীকৰণ উপলব্ধ নোহোৱা পৰ্যন্ত, এই HACS integration-টো নতুন সুবিধা যোগ কৰা আৰু সমস্যা সমাধানৰ বাবে আপডেট হৈ থাকিব।
 
 ## বৈশিষ্ট্য
-- বিভিন্ন X-Sense device Home Assistant-ত integrate কৰে।
-- X-Sense sensor data-ৰ ওপৰত automation সমৰ্থন কৰে।
-- X-Sense account-ত উপলব্ধ থাকিলে base station, smoke detector, carbon monoxide detector, heat alarm, water leak detector, thermo-hygrometer, door sensor, motion sensor, light, keypad, mailbox sensor, listener device, camera আৰু অন্য supported device সমৰ্থন কৰে।
-- X-Sense MQTT shadow-ৰ জৰিয়তে real-time update, আৰু backup হিচাপে periodic cloud polling।
-- HACS-ৰ জৰিয়তে সহজ installation।
+- বিভিন্ন X-Sense ডিভাইচ Home Assistant-ত যোগ কৰে।
+- X-Sense চেন্সৰৰ তথ্য-ৰ ওপৰত automation সমৰ্থন কৰে।
+- X-Sense একাউণ্ট-ত উপলব্ধ থাকিলে বেছ ষ্টেচন, ধোঁৱা সতৰ্কক, carbon monoxide detector, তাপ সতৰ্কক, পানী লিক সতৰ্কক, তাপ-আৰ্দ্ৰতা মাপক, দুৱাৰৰ চেন্সৰ, গতি চেন্সৰ, light, keypad, ডাকবাকচ চেন্সৰ, শ্ৰোতা ডিভাইচ, camera আৰু অন্য সমৰ্থিত ডিভাইচ সমৰ্থন কৰে।
+- X-Sense MQTT shadow-ৰ জৰিয়তে তাৎক্ষণিক আপডেট, আৰু বিকল্প হিচাপে সীমিত সময়মাফিক ক্লাউড পলিং।
+- HACS-ৰ জৰিয়তে সহজ সংস্থাপন।
 
 ## প্ৰয়োজনীয়তা
 - চলি থকা Home Assistant server।
-- supported device থকা X-Sense account।
-- Home Assistant-ত HACS install কৰা থাকিব লাগিব।
+- সমৰ্থিত ডিভাইচ থকা X-Sense একাউণ্ট।
+- Home Assistant-ত HACS সংস্থাপন কৰা থাকিব লাগিব।
 
 ## কেনেকৈ কৰিব ভিডিঅ'
-Integration install আৰু configure কৰাৰ বিস্তারিত guide-ৰ বাবে এই video চাব পাৰে:
+একীকৰণ সংস্থাপন আৰু কনফিগাৰ কৰাৰ বিস্তারিত guide-ৰ বাবে এই ভিডিঅ চাব পাৰে:
 
 [![X-Sense Home Assistant Integration](https://img.youtube.com/vi/3CCKK-qX-YA/0.jpg)](https://www.youtube.com/watch?v=3CCKK-qX-YA)
 
 ____________________________________________________________
 
 ## প্ৰস্তুতি
-- **Home Assistant-ৰ বাবে দ্বিতীয় X-Sense account সৃষ্টি কৰক**: একে account app আৰু Home Assistant-ত একেলগে স্থিৰভাৱে login হৈ নাথাকিব পাৰে, সেয়ে পৃথক account ব্যৱহাৰ কৰাটো ভাল।
-- **মূল account-ৰ পৰা Home Assistant account-লৈ supported device share কৰক**: device administration মূল account-ত ৰাখক আৰু Home Assistant-লৈ কেৱল প্ৰয়োজনীয় device share কৰক।
+- **Home Assistant-ৰ বাবে দ্বিতীয় X-Sense একাউণ্ট সৃষ্টি কৰক**: একে একাউণ্ট app আৰু Home Assistant-ত একেলগে স্থিৰভাৱে লগইন হৈ নাথাকিব পাৰে, সেয়ে পৃথক একাউণ্ট ব্যৱহাৰ কৰাটো ভাল।
+- **মূল একাউণ্ট-ৰ পৰা Home Assistant একাউণ্ট-লৈ সমৰ্থিত ডিভাইচ share কৰক**: ডিভাইচ পৰিচালনা মূল একাউণ্ট-ত ৰাখক আৰু Home Assistant-লৈ কেৱল প্ৰয়োজনীয় device share কৰক।
 
-## HACS-ৰ জৰিয়তে installation
+## HACS-ৰ জৰিয়তে সংস্থাপন
 1. **Home Assistant-ত HACS খোলক**:
    HACS হৈছে Home Assistant-ৰ এটা extension, যাৰ সহায়ত custom integration সহজে install কৰিব পাৰি।
 
-2. **Custom repositories-লৈ যাওক**:
-   HACS dashboard-ৰ settings-ত repository-টো custom source হিচাপে add কৰক।
+2. **কাষ্টম repository-লৈ যাওক**:
+   HACS dashboard-ৰ ছেটিংছ-ত repository-টো কাষ্টম উৎস হিচাপে add কৰক।
 
-3. **Repository add কৰক**:
+3. **Repository যোগ কৰক**:
    Repository URL লিখক: `https://github.com/Jarnsen/ha-xsense-component_test`
 
-4. **Integration download আৰু install কৰক**:
+4. **একীকৰণ ডাউনলোড আৰু সংস্থাপন কৰক**:
    HACS-ত integration বিচাৰি download/install কৰক। Installation-ৰ পিছত Home Assistant interface-ৰ পৰা configure কৰিব পাৰি।
 
 ____________________________________________________________
 
-## Configuration
-Installation-ৰ পিছত integration সঠিকভাৱে setup কৰিবলৈ basic configuration লাগে:
-- **Username আৰু password**: নতুনকৈ create কৰা X-Sense account-ৰ credential ব্যৱহাৰ কৰক।
-- **Device overview**: Configuration সফল হলে shared devices Home Assistant-ত উপলব্ধ হ'ব আৰু automation-ত ব্যৱহাৰ কৰিব পাৰিব।
+## কনফিগাৰেচন
+Installation-ৰ পিছত integration সঠিকভাৱে setup কৰিবলৈ মৌলিক কনফিগাৰেচন লাগে:
+- **ব্যৱহাৰকাৰীৰ নাম আৰু password**: নতুনকৈ create কৰা X-Sense একাউণ্ট-ৰ লগইন তথ্য ব্যৱহাৰ কৰক।
+- **ডিভাইচৰ সামগ্ৰিক দৃশ্য**: কনফিগাৰেচন সফল হলে ভাগ কৰা ডিভাইচসমূহ Home Assistant-ত উপলব্ধ হ'ব আৰু automation-ত ব্যৱহাৰ কৰিব পাৰিব।
 
-## Home Assistant-ত view
-Installation আৰু configuration সফল হলে integration Home Assistant-ত দেখা যাব। Devices dashboard-ত উপলব্ধ হ'ব আৰু automation, notification, আৰু অন্য use case-ত ব্যৱহাৰ কৰিব পাৰিব।
+## Home Assistant-ত দৃশ্য
+Installation আৰু configuration সফল হলে integration Home Assistant-ত দেখা যাব। ডিভাইচসমূহ dashboard-ত উপলব্ধ হ'ব আৰু automation, জাননী, আৰু অন্য ব্যৱহাৰ-ত ব্যৱহাৰ কৰিব পাৰিব।
 
-## Supported devices
-এই integration-এ বিভিন্ন X-Sense device support কৰে। কোন entity সৃষ্টি হ'ব সেয়া device আৰু account-এ report কৰা data field-ৰ ওপৰত নিৰ্ভৰ কৰে। নিশ্চিত device family আৰু model:
-- **Base station (SBS50)**: X-Sense device-ৰ central hub।
-- **Heat alarm (XH02-M)**: অস্বাভাৱিক উচ্চ temperature detect কৰে।
-- **Carbon monoxide detector (XC01-M; XC04-WX)**: বিপজ্জনক CO concentration detect কৰে।
+## সমৰ্থিত ডিভাইচ
+এই integration-এ বিভিন্ন X-Sense ডিভাইচ সমৰ্থন কৰে। কোন এণ্টিটি সৃষ্টি হ'ব সেয়া device আৰু একাউণ্ট-এ report কৰা তথ্য ক্ষেত্ৰ-ৰ ওপৰত নিৰ্ভৰ কৰে। নিশ্চিত device family আৰু model:
+- **Base station (SBS50)**: X-Sense ডিভাইচ-ৰ কেন্দ্ৰীয় hub।
+- **Heat alarm (XH02-M)**: অস্বাভাৱিক উচ্চ তাপমাত্ৰা ধৰা পেলায়।
+- **Carbon monoxide detector (XC01-M; XC04-WX)**: বিপজ্জনক CO ঘনত্ব ধৰা পেলায়।
 - **Smoke detector (XS01-M; XS01-WX; XS03-WX; XS0B-MR আৰু related RF/iR models)**: smoke early detection।
-- **CO আৰু smoke combination detector (SC07-WX; XP0A-MR আৰু related XP/SC models)**: CO আৰু smoke detect কৰে।
-- **Water leak detector (SWS51)**: অনাকাংক্ষিত স্থানত পানী detect কৰে।
-- **Hygrometer-thermometer (STH51, STH0A, STH0B, STH0C)**: temperature আৰু humidity monitor কৰে।
-- **Door sensor (SDS0A)** আৰু **motion sensor (SMS0A)**: X-Sense-এ status দিলে দেখুওৱা হয়।
-- **Camera (SSC0A, SSC0B)**: device আৰু account support কৰিলে camera entity, thumbnail, live stream URL, diagnostic, আৰু Android app-backed setting দেখুওৱা হয়।
-- **অন্য station-connected devices**: light, keypad, mailbox, listener, driveway alarm, smart drop, remote, আৰু radon data API-এ supported field report কৰিলে দেখুওৱা হয়।
+- **CO আৰু smoke combination detector (SC07-WX; XP0A-MR আৰু related XP/SC models)**: CO আৰু smoke ধৰা পেলায়।
+- **Water leak detector (SWS51)**: অনাকাংক্ষিত স্থানত পানী ধৰা পেলায়।
+- **Hygrometer-thermometer (STH51, STH0A, STH0B, STH0C)**: তাপমাত্ৰা আৰু আৰ্দ্ৰতা নিৰীক্ষণ কৰে।
+- **Door sensor (SDS0A)** আৰু **গতি চেন্সৰ (SMS0A)**: X-Sense-এ স্থিতি দিলে দেখুওৱা হয়।
+- **কেমেৰা (SSC0A, SSC0B)**: ডিভাইচ আৰু একাউণ্টে সমৰ্থন কৰিলে কেমেৰা এণ্টিটি, সৰু পূৰ্বদৃশ্য, live stream URL, নিৰ্ণায়ক তথ্য, আৰু Android app-ৰ সৈতে মিল থকা ছেটিং দেখুওৱা হয়।
+- **ষ্টেচনৰ সৈতে সংযুক্ত অন্য ডিভাইচ**: লাইট, keypad, ডাকবাকচ, শ্ৰোতা ডিভাইচ, driveway alarm, Smart Drop, remote, আৰু radon data API-এ সমৰ্থিত ক্ষেত্ৰ report কৰিলে দেখুওৱা হয়।
 
-### উপলব্ধ entity আৰু action
-Integration-এ কেৱল X-Sense cloud, MQTT shadow payload, বা Android app-aligned camera API-ত সঁচাকৈ থকা field-ৰ বাবে Home Assistant entity সৃষ্টি কৰে। Device অনুসৰি ইয়াত থাকিব পাৰে:
+### উপলব্ধ এণ্টিটি আৰু action
+একীকৰণে কেৱল X-Sense cloud, MQTT shadow payload, বা Android app-aligned camera API-ত সঁচাকৈ থকা ক্ষেত্ৰৰ বাবে Home Assistant এণ্টিটি সৃষ্টি কৰে। ডিভাইচ অনুসৰি ইয়াত থাকিব পাৰে:
 
-- Alarm, mute, end-of-life, AC-break, water alarm, temperature alarm, charging, motion, door, armed, warning, reminder, light, PIR, আৰু keypad status-ৰ binary sensor।
-- Battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning threshold, mute timer, readable timestamp, timezone, serial number, MAC address, আৰু অন্য diagnostic sensor।
-- X-Sense-এ report কৰা writable setting-ৰ switch, যেনে LED light, alarm enablement, continued alarm, chirp tone, reminder, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light, আৰু doorbell control।
-- Supported camera setting-ৰ select আৰু number, যেনে language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold, আৰু doorbell ring key।
-- যি model-ত X-Sense app-এ matching action দিয়ে, সেইবোৰৰ বাবে test, mute, fire-drill, আৰু camera wake button।
+- এলাৰ্ম, mute, end-of-life, AC-break, water alarm, তাপমাত্ৰা এলাৰ্ম, charging, motion, door, armed, warning, reminder, light, PIR, আৰু keypad status-ৰ binary sensor।
+- বেটাৰী, RF signal, Wi-Fi signal, ফাৰ্মৱেৰ, তাপমাত্ৰা, আৰ্দ্ৰতা, CO level, CO peak, এলাৰ্মৰ volume, voice volume, chirp volume, reminder volume, warning threshold, mute timer, পঢ়িব পৰা timestamp, timezone, serial number, MAC address, আৰু অন্য diagnostic sensor।
+- X-Sense-এ জনোৱা লিখিব পৰা ছেটিংৰ switch, যেনে LED light, alarm enablement, continued alarm, chirp tone, reminder, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light, আৰু doorbell control।
+- সমৰ্থিত camera setting-ৰ select আৰু number, যেনে language, recording resolution, codec, anti-flicker rate, motion sensitivity, ভিডিঅ length, volume, alarm duration, cooldown, night threshold, আৰু doorbell ring key।
+- যি মডেলত X-Sense app-এ মিল থকা কাৰ্য দিয়ে, সেইবোৰৰ বাবে test, mute, fire-drill, আৰু camera wake button।
 
-কিছুমান entity diagnostic বা configuration-related আৰু Home Assistant-ত তেনেকৈ group কৰা হয়। Device-এ কোনো field report নকৰিলে, বা X-Sense app-এ সেই device/account-ৰ বাবে feature unsupported বুলি দেখুৱালে, সংশ্লিষ্ট entity সৃষ্টি নহয়। Device binding, remove, sharing, account, payment, firmware update, SD-card format, আৰু অন্য management action X-Sense app-তেই থাকে।
+কিছুমান এণ্টিটি diagnostic বা configuration-related আৰু Home Assistant-ত তেনেকৈ group কৰা হয়। ডিভাইচে কোনো ক্ষেত্ৰ report নকৰিলে, বা X-Sense app-এ সেই ডিভাইচ/একাউণ্ট-ৰ বাবে সুবিধা unsupported বুলি দেখুৱালে, সংশ্লিষ্ট এণ্টিটি সৃষ্টি নহয়। Device binding, remove, sharing, একাউণ্ট, payment, ফাৰ্মৱেৰ আপডেট, SD-card format, আৰু অন্য পৰিচালনামূলক কাৰ্য X-Sense app-তেই থাকে।
 ____________________________________________________________
 
-## Automation উদাহৰণ
+## automation-ৰ উদাহৰণ
 এই integration-ৰ সহায়ত বিভিন্ন automation সৃষ্টি কৰিব পাৰি। কেইটামান উদাহৰণ:
 
-### উদাহৰণ 1: Temperature alert
-X-Sense thermometer-ৰ temperature বেছি হলে notification পঠিওৱা হয়:
+### উদাহৰণ 1: তাপমাত্ৰাৰ সতৰ্কবাণী
+X-Sense thermometer-ৰ তাপমাত্ৰা বেছি হলে জাননী পঠিওৱা হয়:
 
 ```yaml
 automation:
-  - alias: "Xsense Temperature Alert"
+  - alias: "X-Sense Temperature Alert"
     trigger:
       platform: numeric_state
       entity_id: sensor.xsense_temperature
@@ -96,10 +96,10 @@ automation:
     action:
       service: notify.notify
       data:
-        message: "Temperature 30 degrees-তকৈ বেছি!"
+        message: "তাপমাত্ৰা ৩০ ডিগ্ৰীতকৈ বেছি!"
 ```
 
-### উদাহৰণ 2: Water leak alarm
+### উদাহৰণ 2: পানী লিক হোৱাৰ এলাৰ্ম
 Water leak detector-এ water detect কৰিলে alert trigger হয়:
 
 ```yaml
@@ -112,8 +112,57 @@ automation:
     action:
       service: notify.notify
       data:
-        message: "Water leak detected!"
+        message: "পানী লিক হোৱা ধৰা পৰিছে!"
 ```
 
 ## আপোনাৰ সহায় প্ৰয়োজন
-আপোনাৰ ওচৰত যদি এতিয়াও test নোহোৱা X-Sense device আছে, GitHub, Discord বা Home Assistant forum-ত feedback দিয়ক।
+আপোনাৰ ওচৰত যদি এতিয়াও পৰীক্ষা নোহোৱা X-Sense ডিভাইচ আছে, GitHub, Discord বা Home Assistant forum-ত মতামত দিয়ক।
+
+## সম্পূৰ্ণ ৰেফাৰেন্স
+
+### একাউণ্ট আৰু সংস্থাপন
+- Home Assistant-ৰ বাবে পৃথক X-Sense একাউণ্ট ব্যৱহাৰ কৰক।
+- মূল একাউণ্টৰ পৰা কেৱল সমৰ্থিত ডিভাইচ ভাগ কৰক।
+- ডিভাইচ যোগ, আঁতৰোৱা, ভাগ কৰা, firmware আৰু payment X-Sense app-তেই থাকে।
+- App আৰু Home Assistant-এ ইজনে সিজনক logout কৰিলে একেটা একাউণ্ট ব্যৱহাৰ কৰা হৈছে নেকি চাওক।
+
+### আপডেট আৰু API ব্যৱহাৰ
+- দ্ৰুত state change MQTT shadow message-ৰ পৰা আহে।
+- Cloud request login, device load, আৰু state refresh-ৰ বাবে সীমিতভাৱে ব্যৱহাৰ কৰা হয়।
+- MQTT message নাহিলে periodic polling backup হিচাপে থাকে।
+- Full device discovery প্ৰতিটো update-ত কৰা উচিত নহয়।
+
+### এণ্টিটি, camera, আৰু troubleshooting
+- X-Sense-এ সঁচাকৈ জনোৱা ক্ষেত্ৰ থাকিলেহে এণ্টিটি সৃষ্টি হয়।
+- নিৰ্ণায়ক মানসমূহ Home Assistant-ত নিৰ্ণায়ক হিচাপে গোট কৰা হয়।
+- কেমেৰা সমৰ্থিত হ’লে কেমেৰা এণ্টিটি, সৰু পূৰ্বদৃশ্য, live stream, স্থিতি, আৰু সমৰ্থিত ছেটিং দেখুওৱা হয়।
+- WebRTC path থাকিলে live view-ৰ বাবে ব্যৱহাৰ কৰিব পাৰি।
+- সমস্যা জনাওঁতে মডেল, একীকৰণৰ সংস্কৰণ, নিৰ্ণায়ক তথ্য, লগ, আৰু app-ত মান সলনি হয় নে নহয় উল্লেখ কৰক।
+
+## ডিভাইচ আৰু এণ্টিটি পৰীক্ষা-তালিকা
+
+### মূল ডিভাইচ পৰিয়াল
+- SBS50: বেছ ষ্টেচন আৰু ষ্টেচন-স্তৰৰ স্থিতি।
+- XS01-WX: Wi-Fi ধোঁৱা সতৰ্কক, কেৱল-ষ্টেচন থকা একাউণ্টসহ।
+- XS01-M, XS03-WX, XS0B-MR: ধোঁৱা সতৰ্কক পৰিয়াল।
+- XC01-M, XC04-WX: CO alarm পৰিয়াল.
+- SC07-WX, XP0A-MR: smoke আৰু CO combination পৰিয়াল.
+- XH02-M: তাপ সতৰ্কক পৰিয়াল।
+- SWS51: পানী লিক ধৰা পেলোৱা ডিভাইচৰ পৰিয়াল।
+- STH51, STH0A, STH0B, STH0C: temperature আৰু humidity পৰিয়াল.
+- SDS0A: দুৱাৰৰ চেন্সৰ পৰিয়াল।
+- SMS0A: গতি চেন্সৰ পৰিয়াল।
+- SSC0A, SSC0B: সমৰ্থিত কেমেৰা পৰিয়াল।
+
+### স্থিতিৰ ক্ষেত্ৰ
+- X-Sense-এ এলাৰ্ম ক্ষেত্ৰ দিলে এলাৰ্মৰ স্থিতি দেখুওৱা হয়।
+- মিউট ক্ষেত্ৰ দিলে মিউটৰ স্থিতি দেখুওৱা হয়।
+- বেটাৰীৰ তথ্য দিলে বেটাৰীৰ স্থিতি দেখুওৱা হয়।
+- RF আৰু Wi-Fi signal device-এ report কৰিলে দেখুওৱা হয়.
+- সংক্ষিপ্ত timestamp Home Assistant-ত পঢ়িব পৰা সময় চেন্সৰ হিচাপে দেখুওৱা হয়।
+
+### নিয়ন্ত্ৰণ আৰু প্ৰতিবেদন
+- X-Sense-এ লিখিব পৰা ছেটিং জনালে switch সৃষ্টি হয়।
+- app-এ সমৰ্থন কৰা কাৰ্য থাকিলেহে button সৃষ্টি হয়।
+- Android-ৰ সৈতে মিল থকা API-এ উপলব্ধ বুলি দিলে কেমেৰা নিয়ন্ত্ৰণ সৃষ্টি হয়।
+- সমস্যা জনাওঁতে সঠিক মডেল, একীকৰণৰ সংস্কৰণ, নিৰ্ণায়ক তথ্য, লগ, আৰু app-ত মান সলনি হয় নে নহয় লিখক।

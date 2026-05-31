@@ -5,23 +5,23 @@
 </p>
 
 ## Przegląd
-Ta integracja z Home Assistant umożliwia korzystanie z urządzeń Xsense w systemie inteligentnego domu. Została stworzona na podstawie oryginalnego kodu [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) i opublikowana za jego zgodą oraz we współpracy z nim.
+Ta integracja z Home Assistant umożliwia korzystanie z urządzeń X-Sense w systemie inteligentnego domu. Została stworzona na podstawie oryginalnego kodu [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) i opublikowana za jego zgodą oraz we współpracy z nim.
 
-Do czasu, gdy dostępna będzie oficjalna integracja Home Assistant od Theo, będzie używana ta integracja HACS, która jest regularnie aktualizowana, aby dodawać nowe funkcje i rozwiązywać istniejące problemy. Ta integracja umożliwia użytkownikom łatwą integrację urządzeń Xsense z Home Assistant oraz ich używanie do różnych automatyzacji i monitorowania.
+Do czasu, gdy dostępna będzie oficjalna integracja Home Assistant od Theo, będzie używana ta integracja HACS, która jest regularnie aktualizowana, aby dodawać nowe funkcje i rozwiązywać istniejące problemy. Ta integracja umożliwia użytkownikom łatwą integrację urządzeń X-Sense z Home Assistant oraz ich używanie do różnych automatyzacji i monitorowania.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>
 
 ## Funkcje
-- Integracja różnych urządzeń Xsense z Home Assistant.
-- Obsługa automatyzacji na podstawie danych z czujników Xsense.
+- Integracja różnych urządzeń X-Sense z Home Assistant.
+- Obsługa automatyzacji na podstawie danych z czujników X-Sense.
 - Obsługa stacji bazowych, czujników dymu, czujników tlenku węgla, alarmów ciepła, czujników zalania, higrometrów, czujników drzwi, czujników ruchu, świateł, klawiatur, skrzynek pocztowych, listenerów, kamer i innych obsługiwanych urządzeń, gdy są dostępne na koncie X-Sense.
 - Prosta konfiguracja przez HACS (Home Assistant Community Store).
 
 ## Wymagania
 - Działający serwer Home Assistant (zalecana najnowsza wersja).
-- Konto Xsense z obsługiwanymi urządzeniami.
+- Konto X-Sense z obsługiwanymi urządzeniami.
 - HACS musi być zainstalowany w Home Assistant, aby umożliwić instalację tej integracji.
 
 ## Wideo instruktażowe
@@ -67,15 +67,15 @@ ____________________________________________________________
 
 ## Konfiguracja
 Po zainstalowaniu wymagane jest podstawowe skonfigurowanie, aby prawidłowo ustawić integrację:
-- **Nazwa użytkownika i hasło**: Użyj danych logowania do nowo utworzonego konta X-Sense, aby nawiązać połączenie。
+- **Nazwa użytkownika i hasło**: Użyj danych logowania do nowo utworzonego konta X-Sense, aby nawiązać połączenie.
 
     ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
   
-- **Przegląd urządzeń**: Po pomyślnym skonfigurowaniu, udostępnione urządzenia będą dostępne w Home Assistant i mogą być używane do automatyzacji。
+- **Przegląd urządzeń**: Po pomyślnym skonfigurowaniu, udostępnione urządzenia będą dostępne w Home Assistant i mogą być używane do automatyzacji.
 
     ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
 ## Widok w Home Assistant
-Po pomyślnej instalacji i konfiguracji integracja będzie widoczna w Home Assistant. Urządzenia będą widoczne na pulpicie nawigacyjnym i mogą być używane do automatyzacji, powiadomień i innych zastosowań。
+Po pomyślnej instalacji i konfiguracji integracja będzie widoczna w Home Assistant. Urządzenia będą widoczne na pulpicie nawigacyjnym i mogą być używane do automatyzacji, powiadomień i innych zastosowań.
 
 
 ![Forum](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
@@ -109,54 +109,54 @@ Część encji jest diagnostyczna lub konfiguracyjna i tak jest grupowana w Home
 ____________________________________________________________
 
 ## Przykłady automatyzacji
-Dzięki tej integracji można tworzyć różne automatyzacje。Oto kilka przykładów：
+Dzięki tej integracji można tworzyć różne automatyzacje. Oto kilka przykładów:
 
-### Przykład 1：Ostrzeżenie o temperaturze
-Gdy temperatura z termometru Xsense jest zbyt wysoka, zostaje wysłane powiadomienie：
+### Przykład 1: Ostrzeżenie o temperaturze
+Gdy temperatura z termometru X-Sense jest zbyt wysoka, zostaje wysłane powiadomienie:
 
 ```yaml
-automation：
-  - alias："Xsense Ostrzeżenie o temperaturze"
-    trigger：
-      platform：numeric_state
-      entity_id：sensor.xsense_temperature
-      above：30
-    action：
-      service：notify.notify
-      data：
-        message："Temperatura przekroczyła 30 stopni！"
+automation:
+  - alias: "X-Sense Ostrzeżenie o temperaturze"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.xsense_temperature
+      above: 30
+    action:
+      service: notify.notify
+      data:
+        message: "Temperatura przekroczyła 30 stopni!"
 ```
 
-### Przykład 2：Alarm wycieku wody
-Gdy czujnik wycieku wody wykryje wodę, zostaje uruchomiony alarm：
+### Przykład 2: Alarm wycieku wody
+Gdy czujnik wycieku wody wykryje wodę, zostaje uruchomiony alarm:
 
 ```yaml
-automation：
-  - alias："Alarm wycieku wody"
-    trigger：
-      platform：state
-      entity_id：binary_sensor.xsense_waterleak
-      to："on"
-    action：
-      service：notify.notify
-      data：
-        message："Wykryto wyciek wody！"
+automation:
+  - alias: "Alarm wycieku wody"
+    trigger:
+      platform: state
+      entity_id: binary_sensor.xsense_waterleak
+      to: "on"
+    action:
+      service: notify.notify
+      data:
+        message: "Wykryto wyciek wody!"
 ```
 
 ____________________________________________________________
 
 ## Potrzebujemy Twojej pomocy
-Zawsze szukamy wsparcia, aby dalej rozwijać i ulepszać tę integrację。Oto kilka sposobów, w jakie możesz pomóc：
+Zawsze szukamy wsparcia, aby dalej rozwijać i ulepszać tę integrację. Oto kilka sposobów, w jakie możesz pomóc:
 
-1. **Testowanie urządzeń**：Jeśli posiadasz urządzenie Xsense, które działa z tą integracją, daj nam znać, abyśmy mogli dodać je do listy obsługiwanych urządzeń。
+1. **Testowanie urządzeń**: Jeśli posiadasz urządzenie X-Sense, które działa z tą integracją, daj nam znać, abyśmy mogli dodać je do listy obsługiwanych urządzeń.
 
-2. **Informacje zwrotne o nieobsługiwanych urządzeniach**：Jeśli urządzenie nie działa prawidłowo, przekaż nam informacje zwrotne, abyśmy mogli zapewnić wsparcie lub uwzględnić urządzenie w przyszłych wersjach integracji。
+2. **Informacje zwrotne o nieobsługiwanych urządzeniach**: Jeśli urządzenie nie działa prawidłowo, przekaż nam informacje zwrotne, abyśmy mogli zapewnić wsparcie lub uwzględnić urządzenie w przyszłych wersjach integracji.
 
-3. **Udostępnienie urządzeń do testów**：Najlepszym sposobem na przetestowanie nowych urządzeń jest udostępnienie ich za pomocą aplikacji Xsense。W ten sposób możemy zapewnić obsługę jak największej liczby urządzeń。
+3. **Udostępnienie urządzeń do testów**: Najlepszym sposobem na przetestowanie nowych urządzeń jest udostępnienie ich za pomocą aplikacji X-Sense. W ten sposób możemy zapewnić obsługę jak największej liczby urządzeń.
 
-4. **Wsparcie społeczności**：Dołącz do dyskusji w naszej społeczności。Czy to sugestie dotyczące ulepszeń, czy pomoc innym użytkownikom w konfiguracji — każde wsparcie jest mile widziane！
+4. **Wsparcie społeczności**: Dołącz do dyskusji w naszej społeczności. Czy to sugestie dotyczące ulepszeń, czy pomoc innym użytkownikom w konfiguracji — każde wsparcie jest mile widziane!
 
-W celu uzyskania wsparcia i uczestniczenia w dyskusji możesz dołączyć do naszego serwera Discord lub odwiedzić forum Home Assistant：
+W celu uzyskania wsparcia i uczestniczenia w dyskusji możesz dołączyć do naszego serwera Discord lub odwiedzić forum Home Assistant:
 
 [Discord](https://discord.gg/5phHHgGb3V)
 

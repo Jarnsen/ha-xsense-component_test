@@ -1,24 +1,153 @@
 # ha-xsense-component_test
 
 ## Oversikt
-Denne Home Assistant-integrasjonen gjør X-Sense-enheter tilgjengelige i smarthjemmet. Den bygger på Theo Snels opprinnelige arbeid og installeres via HACS.
+Denne Home Assistant-integrasjonen gjør X-Sense-enheter tilgjengelige i smarthuset. Den bygger på Theo Snels opprinnelige arbeid og installeres via HACS.
 
-Vi anbefaler å opprette en separat X-Sense-konto for Home Assistant og bare dele de støttede enhetene fra hovedkontoen.
+Vi anbefaler å opprette en egen X-Sense-konto for Home Assistant og bare dele støttede enheter fra hovedkontoen.
 
 ## Installasjon
-Legg til `https://github.com/Jarnsen/ha-xsense-component_test` som egendefinert repository i HACS, last ned integrasjonen, følg HACS' veiledning for omstart, og konfigurer deretter integrasjonen med X-Sense-kontoen for Home Assistant.
+Legg til `https://github.com/Jarnsen/ha-xsense-component_test` som egendefinert repository i HACS, last ned integrasjonen, følg HACS-instruksjonene for omstart og konfigurer den med X-Sense-kontoen for Home Assistant.
 
 ## Støttede enheter
 Basestasjoner, røykvarslere, CO-detektorer, varmealarmer, vannlekkasjedetektorer, hygrometre, dør- og bevegelsessensorer, lys, tastaturer, postkassesensorer, lytteenheter og støttede kameraer støttes når X-Sense-kontoen rapporterer dem.
 
-Bekreftede modellfamilier omfatter: SBS50, XH02-M, XC01-M, XC04-WX, XS01-M, XS01-WX, XS03-WX, XS0B-MR, SC07-WX, XP0A-MR, SWS51, STH51, STH0A, STH0B, STH0C, SDS0A, SMS0A, SSC0A, SSC0B.
+Bekreftede modellfamilier inkluderer: SBS50, XH02-M, XC01-M, XC04-WX, XS01-M, XS01-WX, XS03-WX, XS0B-MR, SC07-WX, XP0A-MR, SWS51, STH51, STH0A, STH0B, STH0C, SDS0A, SMS0A, SSC0A, SSC0B.
 
 ## Entiteter og handlinger
 Integrasjonen oppretter bare entiteter for data enheten faktisk rapporterer. Det kan omfatte alarmer, demping, batteri, signal, temperatur, fuktighet, CO, lesbare tidsfelt, kamerainnstillinger, LED-brytere og knapper for test, demping og brannøvelse.
 
-Enhetsadministrasjon, deling, fjerning, firmware, kontoer og betalinger forblir i X-Sense-appen.
+Enhetsadministrasjon, deling, fjerning, firmware, kontoer og betalinger forblir i X-Sense-appen. Bruk Discord eller Home Assistant-forumet for diskusjoner.
+
+## Eksempler på automatiseringer
+```yaml
+automation:
+  - alias: "X-Sense temperaturvarsel"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.xsense_temperature
+      above: 30
+    action:
+      service: notify.notify
+      data:
+        message: "Temperaturen er over 30 grader!"
+```
+
+```yaml
+automation:
+  - alias: "Vannlekkasjealarm"
+    trigger:
+      platform: state
+      entity_id: binary_sensor.xsense_waterleak
+      to: "on"
+    action:
+      service: notify.notify
+      data:
+        message: "Vannlekkasje oppdaget!"
+```
 
 ## Støtte
 [Discord](https://discord.gg/5phHHgGb3V)
 
 [Home Assistant Forum](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
+
+## Flere detaljer
+
+### Kontooppsett
+
+Det anbefales å bruke en egen X-Sense-konto for Home Assistant og bare dele de støttede enhetene som skal vises i Home Assistant. Integrasjonen parer ikke, fjerner ikke og flytter ikke enheter mellom hjem. Slik enhetsadministrasjon hører fortsatt hjemme i den offisielle X-Sense-appen.
+
+### Statusoppdateringer
+
+Integrasjonen bruker MQTT shadow-meldinger for raske statusendringer og forsiktig periodisk skyhenting for å friske opp data. Status som rapporteres av en stasjon, lagres på stasjonen, mens status fra en underenhet lagres på den aktuelle enheten, slik at alarmer og sensorer ikke blir stående med gamle verdier.
+
+### Tilgjengelige enheter
+
+Avhengig av modell kan det vises røyk-, CO-, vann-, temperatur-, bevegelses- og døralarmer, alarmdemping, levetidsslutt, lading, påminnelsesstatus, lysstatus og andre diagnostiske binærsensorer. Sensorer kan omfatte batteri, RF- eller Wi-Fi-signal, fastvare, temperatur, fuktighet, CO-nivå, CO-toppverdi, volum, terskler, lesbare tidspunkter, tidssone, serienummer, MAC-adresse og annen diagnostikk. Brytere, valg og tallfelt opprettes bare når enheten faktisk støtter dem.
+
+### Kameraer
+
+Støttede kameraer kan gi kameraenhet, miniatyrbilder, direktestrøm, tilkoblingsstatus og innstillinger som samsvarer med X-Sense-appen. Hvis Home Assistant har en WebRTC-sti tilgjengelig, kan integrasjonen bruke den for egnet direktevisning.
+
+### Feilsøking
+
+Hvis en enhet mangler, bør du først kontrollere i X-Sense-appen at den aktuelle verdien faktisk vises for enheten. Hvis statusen ikke oppdateres, kan du laste integrasjonen på nytt som en midlertidig test og legge ved diagnostikk samt relevante logglinjer fra Home Assistant i rapporten.
+
+### Enhetsatferd
+
+- Stasjoner og underenheter kan rapportere ulike sett med verdier. Integrasjonen antar derfor ikke at hver stasjon må ha en underenhet.
+- Tidsverdier konverteres til lesbar form når enheten sender tid i formatet X-Sense-appen bruker.
+- En entitet opprettes ikke hvis enheten ikke rapporterer funksjonen. Det unngår misvisende kontroller i Home Assistant.
+
+### Skybelastning
+
+Integrasjonen prøver å være skånsom mot X-Sense-API-et. Raske endringer hentes fra MQTT-meldinger, og skykall brukes bare der de trengs for innlogging, innlasting av enheter eller oppfrisking av status.
+
+### Rapportering av problemer
+
+Når du rapporterer en feil, oppgi enhetsmodell, integrasjonsversjon, om riktig verdi vises i X-Sense-appen, og legg ved integrasjonsdiagnostikk fra Home Assistant. Det hjelper også å beskrive kort om status aldri endres, eller først endres etter at integrasjonen lastes inn på nytt.
+
+## Full referanse
+
+### Kontooppsett i detalj
+- Bruk en egen X-Sense-konto for Home Assistant.
+- Del bare støttede enheter fra hovedkontoen.
+- Paring, fjerning, deling og flytting av enheter blir i X-Sense-appen.
+- Hvis appen og Home Assistant logger hverandre ut, bruker de trolig samme konto.
+
+### Oppdateringer og API-belastning
+- Raske statusendringer mottas via MQTT shadow-meldinger.
+- Skyforespørsler brukes til innlogging, enhetslasting og statusoppdatering.
+- Periodisk polling er reserve hvis en MQTT-melding mangler.
+
+### Entiteter og handlinger
+- Entiteter opprettes bare for felt som X-Sense faktisk rapporterer.
+- Diagnostiske verdier merkes som diagnostikk.
+- Test, demping, brannøvelse og kameravekking vises bare for støttede modeller.
+
+### Kameraer
+- Støttede kameraer kan gi kameraentitet, miniatyrbilde, direktestrøm og diagnostikk.
+- WebRTC-stien brukes bare hvis den er tilgjengelig i Home Assistant.
+- SD-kort, betalinger, fastvare og kontoadministrasjon håndteres i X-Sense-appen.
+
+### Feilsøking
+- Feilrapporter bør inneholde modell, integrasjonsversjon, diagnostikk og relevante logger.
+
+### Omfang
+- Integrasjonen legger ikke til, fjerner eller flytter enheter mellom hjem.
+
+## Sjekkliste for enheter og entiteter
+
+### Viktige enhetsfamilier
+- SBS50: basestasjon og status på stasjonsnivå.
+- XS01-WX: Wi-Fi-røykvarsler, også kontoer uten separat underenhet.
+- XS01-M, XS03-WX, XS0B-MR: røykvarslerfamilier.
+- XC01-M, XC04-WX: CO-varslerfamilier.
+- SC07-WX, XP0A-MR: kombinerte røyk- og CO-familier.
+- XH02-M: varmevarslerfamilie.
+- SWS51: vannlekkasjedetektorfamilie.
+- STH51, STH0A, STH0B, STH0C: temperatur og fuktighet.
+- SDS0A: dørsensor.
+- SMS0A: bevegelsessensor.
+- SSC0A, SSC0B: støttede kameraer.
+
+### Statusfelt
+- Alarmstatus vises når X-Sense rapporterer et alarmfelt.
+- Dempestatus vises når X-Sense rapporterer et dempefelt.
+- Batteristatus vises når enheten rapporterer batteridata.
+- RF- og Wi-Fi-signal vises når enheten rapporterer dem.
+- Kompakte tidsverdier konverteres til lesbare Home Assistant-sensorer.
+
+### Kontroller og rapporter
+- Brytere opprettes bare for skrivbare innstillinger rapportert av X-Sense.
+- Knapper opprettes bare for handlinger støttet av appen.
+- Kamerakontroller opprettes bare når API-et markerer dem som tilgjengelige.
+- Feilrapporter bør inneholde modell, integrasjonsversjon, diagnostikk, logger og om verdien endres i X-Sense-appen.
+
+### Driftsmerknader
+- Etter oppsett bør enhetsnavn og rom kontrolleres mot X-Sense-appen.
+- Hvis alarm, demping eller LED ikke endres med en gang, vent på neste MQTT-melding eller statusoppdatering.
+- For SBS50-stasjoner bør både stasjonsstatus og de enkelte underenhetene kontrolleres.
+- For XS01-WX kan hele statusen rapporteres direkte på enheten, også uten en egen underenhet på kontoen.
+- For kameraer avhenger entitetene som opprettes av hvilke funksjoner X-Sense-skyen returnerer for kontoen.
+- Hvis en entitet ikke opprettes, sammenlign først verdien med X-Sense-appen og legg ved diagnostikk.
+- Integrasjonen er ment å vise og styre støttede funksjoner, ikke erstatte paring eller enhetsadministrasjon i appen.

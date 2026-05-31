@@ -5,23 +5,23 @@
 </p>
 
 ## Panoramica
-Questa integrazione per Home Assistant consente l'utilizzo di dispositivi Xsense all'interno di un sistema di casa intelligente. È stata creata sulla base del codice originale di [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) ed è stata pubblicata con la sua autorizzazione e in collaborazione con lui.
+Questa integrazione per Home Assistant consente l'utilizzo di dispositivi X-Sense all'interno di un sistema di casa intelligente. È stata creata sulla base del codice originale di [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) ed è stata pubblicata con la sua autorizzazione e in collaborazione con lui.
 
-Fino a quando non sarà disponibile un'integrazione ufficiale per Home Assistant da parte di Theo, verrà utilizzata questa integrazione HACS, che verrà regolarmente aggiornata per aggiungere nuove funzionalità e risolvere eventuali problemi. Questa integrazione consente agli utenti di integrare facilmente i loro dispositivi Xsense in Home Assistant e di utilizzarli per varie automazioni e monitoraggi.
+Fino a quando non sarà disponibile un'integrazione ufficiale per Home Assistant da parte di Theo, verrà utilizzata questa integrazione HACS, che verrà regolarmente aggiornata per aggiungere nuove funzionalità e risolvere eventuali problemi. Questa integrazione consente agli utenti di integrare facilmente i loro dispositivi X-Sense in Home Assistant e di utilizzarli per varie automazioni e monitoraggi.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>
 
 ## Funzionalità
-- Integrazione di diversi dispositivi Xsense in Home Assistant.
-- Supporto per automazioni basate sui dati dei sensori Xsense.
+- Integrazione di diversi dispositivi X-Sense in Home Assistant.
+- Supporto per automazioni basate sui dati dei sensori X-Sense.
 - Supporto per stazioni base, rilevatori di fumo, rilevatori di monossido di carbonio, allarmi di calore, rilevatori di perdite d'acqua, igrometri, sensori porta, sensori movimento, luci, tastiere, cassette postali, listener, camere e altri dispositivi supportati quando disponibili nell'account X-Sense.
 - Configurazione semplice tramite HACS (Home Assistant Community Store).
 
 ## Requisiti
 - Un server Home Assistant funzionante (si consiglia l'ultima versione).
-- Un account Xsense con dispositivi supportati.
+- Un account X-Sense con dispositivi supportati.
 - HACS deve essere installato in Home Assistant per consentire l'installazione dell'integrazione.
 
 ## Video tutorial
@@ -111,11 +111,11 @@ ____________________________________________________________
 Con questa integrazione, è possibile creare diverse automazioni. Ecco alcuni esempi:
 
 ### Esempio 1: Avviso di temperatura
-Quando la temperatura di un termometro Xsense è troppo alta, viene inviata una notifica:
+Quando la temperatura di un termometro X-Sense è troppo alta, viene inviata una notifica:
 
 ```yaml
 automation:
-  - alias: "Avviso di temperatura Xsense"
+  - alias: "Avviso di temperatura X-Sense"
     trigger:
       platform: numeric_state
       entity_id: sensor.xsense_temperature
@@ -147,7 +147,7 @@ ____________________________________________________________
 ## Abbiamo bisogno del tuo aiuto
 Siamo sempre alla ricerca di supporto per sviluppare e migliorare ulteriormente questa integrazione. Ecco alcuni modi in cui puoi aiutare:
 
-1. **Test dei dispositivi**: Se possiedi un dispositivo Xsense che funziona con l'integrazione, faccelo sapere in modo da poterlo aggiungere all'elenco dei dispositivi supportati.
+1. **Test dei dispositivi**: Se possiedi un dispositivo X-Sense che funziona con l'integrazione, faccelo sapere in modo da poterlo aggiungere all'elenco dei dispositivi supportati.
 
 2. **Feedback sui dispositivi non supportati**: Se un dispositivo non funziona, forniscici un feedback in modo che possiamo fornire supporto o includere il dispositivo nelle versioni future dell'integrazione.
 

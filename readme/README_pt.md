@@ -5,23 +5,23 @@
 </p>
 
 ## Visão Geral
-Esta integração para Home Assistant permite o uso de dispositivos Xsense dentro de um sistema de casa inteligente. Foi criada com base no código original de [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) e foi publicada com a permissão dele e em colaboração com ele.
+Esta integração para Home Assistant permite o uso de dispositivos X-Sense dentro de um sistema de casa inteligente. Foi criada com base no código original de [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) e foi publicada com a permissão dele e em colaboração com ele.
 
-Até que uma integração oficial para Home Assistant esteja disponível por Theo, será utilizada esta integração HACS, que será regularmente atualizada para adicionar novas funcionalidades e resolver problemas existentes. Esta integração permite aos usuários integrar facilmente seus dispositivos Xsense ao Home Assistant e utilizá-los para diversas automações e monitoramento.
+Até que uma integração oficial para Home Assistant esteja disponível por Theo, será utilizada esta integração HACS, que será regularmente atualizada para adicionar novas funcionalidades e resolver problemas existentes. Esta integração permite aos usuários integrar facilmente seus dispositivos X-Sense ao Home Assistant e utilizá-los para diversas automações e monitoramento.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>
 
 ## Funcionalidades
-- Integração de vários dispositivos Xsense no Home Assistant.
-- Suporte para automações com base nos dados dos sensores Xsense.
+- Integração de vários dispositivos X-Sense no Home Assistant.
+- Suporte para automações com base nos dados dos sensores X-Sense.
 - Suporte para os seguintes tipos de dispositivos: estações-base, detectores de fumaça, detectores de monóxido de carbono, alarmes de calor, detectores de vazamento de água e higrômetros.
 - Configuração simples através do HACS (Home Assistant Community Store).
 
 ## Requisitos
 - Um servidor Home Assistant funcional (recomenda-se a versão mais recente).
-- Uma conta Xsense com dispositivos suportados.
+- Uma conta X-Sense com dispositivos suportados.
 - O HACS deve ser instalado no Home Assistant para permitir a instalação da integração.
 
 ## Vídeo Tutorial
@@ -111,11 +111,11 @@ ____________________________________________________________
 Com esta integração, é possível criar várias automações. Aqui estão alguns exemplos:
 
 ### Exemplo 1: Alerta de Temperatura
-Quando a temperatura de um termômetro Xsense está muito alta, uma notificação é enviada:
+Quando a temperatura de um termômetro X-Sense está muito alta, uma notificação é enviada:
 
 ```yaml
 automation:
-  - alias: "Alerta de Temperatura Xsense"
+  - alias: "Alerta de Temperatura X-Sense"
     trigger:
       platform: numeric_state
       entity_id: sensor.xsense_temperature
@@ -147,7 +147,7 @@ ____________________________________________________________
 ## Precisamos da Sua Ajuda
 Estamos sempre em busca de suporte para continuar desenvolvendo e melhorando esta integração. Aqui estão algumas maneiras pelas quais você pode ajudar:
 
-1. **Testar dispositivos**: Se você possui um dispositivo Xsense que funciona com a integração, nos avise para que possamos adicioná-lo à lista de dispositivos suportados.
+1. **Testar dispositivos**: Se você possui um dispositivo X-Sense que funciona com a integração, nos avise para que possamos adicioná-lo à lista de dispositivos suportados.
 
 2. **Feedback sobre dispositivos não suportados**: Caso algum dispositivo não funcione, nos forneça feedback para que possamos oferecer suporte ou incluir o dispositivo em futuras versões da integração.
 
