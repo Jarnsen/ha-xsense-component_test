@@ -48,6 +48,7 @@ def TestAction(shadow="appSelfTest", extra: Optional[Dict] = None):
         "action": "test",
         "topic": lambda x: f"2nd_selftest_{x.sn}",
         "shadow": shadow,
+        "time_format": "epoch_ms",
     }
     if extra:
         data["extra"] = extra
@@ -68,6 +69,11 @@ def _fire_drill_alarm_type(entity) -> str:
     return "1"
 
 
+def _fire_drill_device_sn(entity) -> str:
+    station = getattr(entity, "station", entity)
+    return station.sn
+
+
 def FireDrillAction():
     return {
         "action": "firedrill",
@@ -77,6 +83,7 @@ def FireDrillAction():
             "alarmTone": "1",
             "alarmType": _fire_drill_alarm_type(entity),
             "alarmVol": "75",
+            "deviceSN": _fire_drill_device_sn(entity),
             "drill": "1",
             "drillTime": "30",
             "location": "17",
@@ -90,6 +97,7 @@ def SATestAction(shadow="appSelfTest"):
         "action": "test",
         "topic": lambda x: f"appselftest_{x.sn}",
         "shadow": shadow,
+        "time_format": None,
     }
 
 

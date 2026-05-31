@@ -16,6 +16,39 @@ from .station import Station
 CAMERA_TYPES = {"SSC0A", "SSC0B"}
 CAMERA_LIVE_URL_MAX_AGE_SECONDS = 240
 
+# The Android app reads these standalone Wi-Fi device categories from the
+# house-level mainpage/2nd_mainpage shadows, not from station-level mainpage
+# shadows. Querying a station-level mainpage for them returns 404 on accounts
+# such as #160 and should not fail setup.
+_HOUSE_STATE_DEVICE_TYPES = {
+    "SC06-WX",
+    "SC07-WX",
+    "STH0C",
+    "SWS0B",
+    "XC04-WX",
+    "XC0C-iA",
+    "XC0C-iR",
+    "XC0M-iR",
+    "XP0A-iR",
+    "XP0H-iR",
+    "XP0J-iA",
+    "XS01-WX",
+    "XS03-WX",
+    "XS0B-iR",
+    "XS0E-iR",
+    "XS0R-iA",
+}
+
+
+def _station_state_shadow_names(station: Station) -> tuple[str, ...]:
+    if station.type in _HOUSE_STATE_DEVICE_TYPES:
+        return ()
+    if station.type == "SBS10":
+        return ("mainpage",)
+    if station.type == "SBS50":
+        return ("2nd_mainpage",)
+    return ("2nd_mainpage",)
+
 
 class AsyncXSense(XSenseBase):
     def __init__(self, session=None):
@@ -518,16 +551,16 @@ class AsyncXSense(XSenseBase):
             )
 
     async def get_state(self, station: Station):
-        res = None
-        if station.type not in ("SBS10",):
-            res = await self.get_thing(station, "2nd_mainpage")
+        for page in _station_state_shadow_names(station):
+            res = await self.get_thing(station, page)
 
-        if res is None or self._lastres.status == 404:
-            res = await self.get_thing(station, "mainpage")
+            if self._lastres.status == 404:
+                return
 
-        if "reported" in res.get("state", {}):
-            self.parse_get_state(station, res["state"]["reported"])
-        else:
+            if "reported" in res.get("state", {}):
+                self.parse_get_state(station, res["state"]["reported"])
+                return
+
             text = await self._lastres.text()
             raise APIFailure(
                 f"Unable to retrieve station data: {self._lastres.status}/{text}"
@@ -536,17 +569,16 @@ class AsyncXSense(XSenseBase):
     async def set_state(
         self, entity: Entity, shadow: str, topic: str, definition: Dict
     ):
-        station = entity.station
-        t = datetime.now(timezone.utc)
-        timestamp = t.strftime("%Y%m%d%H%M%S")
+        station = getattr(entity, "station", entity)
 
         desired = {
             "deviceSN": entity.sn,
             "shadow": shadow,
             "stationSN": station.sn,
-            "time": timestamp,
             "userId": self.userid,
         }
+        if timestamp := _action_timestamp(definition):
+            desired["time"] = timestamp
         desired.update(definition.get("extra", {}))
         action_data = definition.get("data", {})
         if callable(action_data):
@@ -580,6 +612,15 @@ class AsyncXSense(XSenseBase):
         if callable(shadow):
             shadow = shadow(entity)
         return await self.set_state(entity, shadow, topic, action_def)
+
+
+def _action_timestamp(definition: Dict) -> str | None:
+    time_format = definition.get("time_format", "datetime")
+    if time_format is None:
+        return None
+    if time_format == "epoch_ms":
+        return str(int(datetime.now(timezone.utc).timestamp() * 1000))
+    return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
 
 def _camera_data(data: Dict) -> Dict:
