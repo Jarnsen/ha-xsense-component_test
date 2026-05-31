@@ -70,7 +70,7 @@ ____________________________________________________________
 - **其他連接至基地台的裝置**：燈、鍵盤、信箱感測器、listener、車道警報、smart drop、遙控器與氡資料會在 API 回報支援欄位時顯示。
 
 ### 可用實體與動作
-整合只會針對 X-Sense 雲端、MQTT shadow payload 或與 Android App 行為一致的攝影機 API 中實際存在的欄位建立 Home Assistant 實體。依裝置不同，可能包含：
+整合只會針對 X-Sense 雲端、MQTT shadow 負載 或與 Android App 行為一致的攝影機 API 中實際存在的欄位建立 Home Assistant 實體。依裝置不同，可能包含：
 
 - 警報、靜音、壽命結束、AC 斷電、漏水警報、溫度警報、充電、動作、門、設防狀態、警告、提醒、燈光、PIR 與鍵盤狀態等二元感測器。
 - 電池、RF 訊號、Wi-Fi 訊號、韌體、溫度、濕度、CO 濃度、CO 峰值、警報音量、語音音量、啁啾音量、提醒音量、警告門檻、靜音計時、可讀時間戳記、時區、序號、MAC 位址與其他診斷感測器。
@@ -89,7 +89,7 @@ ____________________________________________________________
 
 ```yaml
 automation:
-  - alias: "Xsense Temperature Alert"
+  - alias: "X-Sense 溫度警示"
     trigger:
       platform: numeric_state
       entity_id: sensor.xsense_temperature
@@ -105,7 +105,7 @@ automation:
 
 ```yaml
 automation:
-  - alias: "Water Leak Alarm"
+  - alias: "漏水警報"
     trigger:
       platform: state
       entity_id: binary_sensor.xsense_waterleak
@@ -118,3 +118,52 @@ automation:
 
 ## 需要協助
 如果你有尚未測試的 X-Sense 裝置，請在 GitHub、Discord 或 Home Assistant 論壇提供回饋。
+
+## 完整參考
+
+### 帳號與安裝
+- 請為 Home Assistant 使用獨立的 X-Sense 帳號。
+- 只從主帳號分享支援的裝置。
+- 新增、移除、分享、付款、韌體與帳號管理仍保留在 X-Sense App。
+- 如果 App 與 Home Assistant 互相登出，請確認是否使用同一個帳號。
+
+### 更新與 API 使用
+- 快速狀態變更會透過 MQTT shadow 訊息接收。
+- 雲端請求只用於登入、載入裝置與刷新狀態。
+- 定期輪詢 只在 MQTT 訊息缺失時作為備援。
+- 不應在每次更新時重複完整裝置探索。
+
+### 實體、相機與疑難排解
+- 只有 X-Sense 實際回報的 欄位才會建立實體。
+- 診斷值會在 Home Assistant 中歸類為診斷資訊。
+- 支援的相機可提供 相機實體、縮圖、即時串流、狀態與支援的設定。
+- 如果 Home Assistant 有 WebRTC 路徑，整合可用於即時檢視。
+- 回報問題時，請提供型號、整合版本、診斷資訊、記錄，以及 App 中數值是否會變化。
+
+## 裝置與實體檢查清單
+
+### 主要裝置系列
+- SBS50：基站與基站層級狀態。
+- XS01-WX：Wi-Fi 煙霧警報器，也包含沒有獨立子裝置的帳號。
+- XS01-M、XS03-WX、XS0B-MR：煙霧警報器系列。
+- XC01-M、XC04-WX：CO 警報器系列。
+- SC07-WX、XP0A-MR：煙霧與 CO 複合系列。
+- XH02-M：熱警報器系列。
+- SWS51：漏水偵測器系列。
+- STH51、STH0A、STH0B、STH0C：溫度與濕度。
+- SDS0A：門窗感測器。
+- SMS0A：動作感測器。
+- SSC0A、SSC0B：支援的相機。
+
+### 狀態欄位
+- 當 X-Sense 回報 alarm 欄位時會顯示警報狀態。
+- 當 X-Sense 回報 mute 欄位時會顯示靜音狀態。
+- 當裝置回報電池資料時會顯示電池狀態。
+- RF 與 Wi-Fi 訊號會在裝置回報時顯示。
+- X-Sense 的精簡時間值會轉成 Home Assistant 可讀的時間感測器。
+
+### 控制與回報
+- 開關只會針對 X-Sense 回報的可寫設定建立。
+- 按鈕只會針對 App 支援的動作建立。
+- 相機控制只會在 API 標示可用時建立。
+- 回報問題時，請提供精確型號、整合版本、診斷資訊、記錄，以及 X-Sense App 中數值是否會變化。

@@ -6,23 +6,23 @@
 
 
 ## Überblick
-Diese Integration für Home Assistant ermöglicht die Verwendung von Xsense-Geräten innerhalb des Smart-Home-Systems. Sie wurde basierend auf dem Originalcode von [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) erstellt und mit seiner Erlaubnis und in Zusammenarbeit mit ihm veröffentlicht.
+Diese Integration für Home Assistant ermöglicht die Verwendung von X-Sense-Geräten innerhalb des Smart-Home-Systems. Sie wurde basierend auf dem Originalcode von [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) erstellt und mit seiner Erlaubnis und in Zusammenarbeit mit ihm veröffentlicht.
 
-Bis es eine offizielle Home Assistant-Integration von Theo gibt, wird diese HACS-Integration verwendet und regelmäßig aktualisiert, um neue Funktionen hinzuzufügen und bestehende Probleme zu beheben. Diese Integration ermöglicht es Nutzern, ihre Xsense-Geräte einfach in Home Assistant zu integrieren und für verschiedene Automationen und Überwachungen zu nutzen.
+Bis es eine offizielle Home Assistant-Integration von Theo gibt, wird diese HACS-Integration verwendet und regelmäßig aktualisiert, um neue Funktionen hinzuzufügen und bestehende Probleme zu beheben. Diese Integration ermöglicht es Nutzern, ihre X-Sense-Geräte einfach in Home Assistant zu integrieren und für verschiedene Automationen und Überwachungen zu nutzen.
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>
 
 ## Funktionen
-- Integration verschiedener Xsense-Geräte in Home Assistant.
-- Unterstützung für Automationen auf Basis der Xsense-Sensordaten.
+- Integration verschiedener X-Sense-Geräte in Home Assistant.
+- Unterstützung für Automationen auf Basis der X-Sense-Sensordaten.
 - Unterstützung für Basisstationen, Rauchmelder, Kohlenmonoxidmelder, Hitzemelder, Wassermelder, Hygrometer, Türsensoren, Bewegungssensoren, Licht, Tastatur, Briefkastensensoren, Listener, Kameras und weitere unterstützte Geräte, wenn sie im X-Sense-Konto verfügbar sind.
 - Einfache Einrichtung über HACS (Home Assistant Community Store).
 
 ## Voraussetzungen
 - Ein funktionierender Home Assistant-Server (empfohlen ist die neueste Version).
-- Ein Xsense-Konto mit unterstützten Geräten.
+- Ein X-Sense-Konto mit unterstützten Geräten.
 - HACS muss in Home Assistant installiert sein, um die Installation der Integration zu ermöglichen.
 
 ## How-to-Video
@@ -79,7 +79,7 @@ Nach der Installation ist eine grundlegende Konfiguration notwendig, um die Inte
 Nach erfolgreicher Installation und Konfiguration wird die Integration in Home Assistant sichtbar sein. Die Geräte sind dann im Dashboard sichtbar und können für Automationen, Benachrichtigungen und andere Anwendungsfälle verwendet werden.
 
 
-![Форум](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
+![Forum](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/2d271b78-39d9-4bbd-837d-8593cf1933bd)
 
 ____________________________________________________________
 
@@ -116,11 +116,11 @@ ____________________________________________________________
 Mit dieser Integration lassen sich verschiedene Automationen erstellen. Hier sind einige Beispiele:
 
 ### Beispiel 1: Temperaturwarnung
-Wenn die Temperatur von einem Xsense-Thermometer zu hoch ist, wird eine Benachrichtigung gesendet:
+Wenn die Temperatur von einem X-Sense-Thermometer zu hoch ist, wird eine Benachrichtigung gesendet:
 
 ```yaml
 automation:
-  - alias: "Xsense Temperaturwarnung"
+  - alias: "X-Sense Temperaturwarnung"
     trigger:
       platform: numeric_state
       entity_id: sensor.xsense_temperature
@@ -152,7 +152,7 @@ ____________________________________________________________
 ## Wir brauchen Hilfe
 Wir sind immer auf der Suche nach Unterstützung, um diese Integration weiterzuentwickeln und zu verbessern. Hier sind einige Möglichkeiten, wie du helfen kannst:
 
-1. **Testen von Geräten**: Wenn du ein Xsense-Gerät besitzt, das mit der Integration funktioniert, lass es uns wissen, damit wir es zur Liste der unterstützten Geräte hinzufügen können.
+1. **Testen von Geräten**: Wenn du ein X-Sense-Gerät besitzt, das mit der Integration funktioniert, lass es uns wissen, damit wir es zur Liste der unterstützten Geräte hinzufügen können.
 
 2. **Feedback zu nicht unterstützten Geräten**: Falls ein Gerät nicht funktioniert, gib uns bitte Rückmeldung, damit wir Unterstützung bieten oder das Gerät in zukünftigen Versionen der Integration einbinden können.
 

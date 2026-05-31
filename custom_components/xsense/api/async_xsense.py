@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from typing import Dict
 
@@ -518,9 +518,6 @@ class AsyncXSense(XSenseBase):
             )
 
     async def get_state(self, station: Station):
-        if not station.devices:
-            return
-
         res = None
         if station.type not in ("SBS10",):
             res = await self.get_thing(station, "2nd_mainpage")
@@ -540,7 +537,7 @@ class AsyncXSense(XSenseBase):
         self, entity: Entity, shadow: str, topic: str, definition: Dict
     ):
         station = entity.station
-        t = datetime.now()
+        t = datetime.now(timezone.utc)
         timestamp = t.strftime("%Y%m%d%H%M%S")
 
         desired = {

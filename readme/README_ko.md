@@ -88,7 +88,7 @@ X-Sense 온도계의 온도가 너무 높을 때 알림을 보냅니다:
 
 ```yaml
 automation:
-  - alias: "Xsense Temperature Alert"
+  - alias: "X-Sense Temperature Alert"
     trigger:
       platform: numeric_state
       entity_id: sensor.xsense_temperature
@@ -117,3 +117,52 @@ automation:
 
 ## 도움이 필요합니다
 테스트되지 않은 X-Sense 장치가 있다면 GitHub, Discord 또는 Home Assistant 포럼에 피드백을 남겨 주세요.
+
+## 전체 참고 자료
+
+### 계정 및 설치
+- Home Assistant에는 별도의 X-Sense 계정을 사용하세요.
+- 기본 계정에서는 지원되는 장치만 공유하세요.
+- 장치 추가, 제거, 공유, 결제, firmware, 계정 관리는 X-Sense 앱에서 계속 처리합니다.
+- 앱과 Home Assistant가 서로 로그아웃된다면 같은 계정을 쓰는지 확인하세요.
+
+### 업데이트와 API 사용
+- 빠른 상태 변경은 MQTT shadow 메시지로 수신합니다.
+- 클라우드 요청은 로그인, 장치 로드, 상태 갱신에만 신중하게 사용합니다.
+- MQTT 메시지가 없을 때만 주기적 polling이 보조 역할을 합니다.
+- 매 업데이트마다 전체 장치 검색을 반복하지 않아야 합니다.
+
+### 엔티티, 카메라, 문제 해결
+- X-Sense가 실제로 보고하는 필드에 대해서만 엔티티를 만듭니다.
+- 진단 값은 Home Assistant에서 diagnostic으로 분류됩니다.
+- 지원 카메라는 카메라 엔티티, thumbnail, live stream, 상태, 지원 설정을 제공할 수 있습니다.
+- Home Assistant에 WebRTC 경로가 있으면 live view에 사용할 수 있습니다.
+- 문제 보고 시 모델, 통합 버전, diagnostics, logs, 앱에서 값이 바뀌는지 여부를 포함하세요.
+
+## 장치 및 엔티티 체크리스트
+
+### 핵심 장치군
+- SBS50: 베이스 스테이션 및 스테이션 수준 상태.
+- XS01-WX: 별도 하위 장치가 없는 계정을 포함한 Wi-Fi 연기 경보기.
+- XS01-M, XS03-WX, XS0B-MR: 연기 경보기 장치군.
+- XC01-M, XC04-WX: CO 경보기 장치군.
+- SC07-WX, XP0A-MR: 연기 및 CO 복합 장치군.
+- XH02-M: 열 경보기 장치군.
+- SWS51: 누수 감지기 장치군.
+- STH51, STH0A, STH0B, STH0C: 온도 및 습도.
+- SDS0A: 문 센서.
+- SMS0A: 동작 센서.
+- SSC0A, SSC0B: 지원되는 카메라.
+
+### 상태 필드
+- X-Sense가 알람 필드를 보고하면 알람 상태가 표시됩니다.
+- X-Sense가 음소거 필드를 보고하면 음소거 상태가 표시됩니다.
+- 장치가 배터리 데이터를 보고하면 배터리 상태가 표시됩니다.
+- RF 및 Wi-Fi 신호는 장치가 보고할 때 표시됩니다.
+- X-Sense의 압축 시간 값은 읽기 쉬운 Home Assistant 센서로 변환됩니다.
+
+### 제어 및 보고
+- 스위치는 X-Sense가 보고한 쓰기 가능한 설정에 대해서만 생성됩니다.
+- 버튼은 앱에서 지원하는 동작에 대해서만 생성됩니다.
+- 카메라 제어는 API가 사용 가능하다고 표시할 때만 생성됩니다.
+- 문제 보고에는 정확한 모델, 통합 버전, diagnostics, logs, X-Sense 앱에서 값이 바뀌는지 여부가 필요합니다.

@@ -37,7 +37,7 @@ ____________________________________________________________
    HACS เป็นส่วนขยายสำคัญที่ช่วยติดตั้ง custom integration ได้ง่าย
 
 2. **ไปที่ custom repositories**:
-   ในหน้า settings ของ HACS ให้เพิ่ม repository นี้เป็น custom source
+   ในหน้า การตั้งค่าของ HACS ให้เพิ่ม repository นี้เป็น แหล่งที่กำหนดเอง
 
 3. **เพิ่ม repository**:
    ใส่ URL: `https://github.com/Jarnsen/ha-xsense-component_test`
@@ -69,15 +69,15 @@ ____________________________________________________________
 - **อุปกรณ์อื่นที่เชื่อมกับสถานี**: ไฟ แป้นกด กล่องจดหมาย listener สัญญาณทางเข้า smart drop รีโมต และข้อมูลเรดอนจะแสดงเมื่อ API รายงานฟิลด์ที่รองรับ.
 
 ### เอนทิตีและคำสั่งที่มี
-Integration จะสร้าง Home Assistant entity เฉพาะ field ที่มีอยู่จริงใน X-Sense cloud, MQTT shadow payload หรือ camera API ที่สอดคล้องกับแอป Android เท่านั้น แล้วแต่รุ่นอุปกรณ์ อาจรวมถึง:
+อินทิเกรชันจะสร้างเอนทิตี Home Assistant เฉพาะฟิลด์ ที่มีอยู่จริงใน คลาวด์ X-Sense, เพย์โหลด MQTT shadow หรือ API กล้อง ที่สอดคล้องกับแอป Android เท่านั้น แล้วแต่รุ่นอุปกรณ์ อาจรวมถึง:
 
-- Binary sensor สำหรับ alarm, mute, end-of-life, AC-break, water alarm, temperature alarm, charging, motion, door, armed, warning, reminder, light, PIR และสถานะ keypad
-- Sensor สำหรับ battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning threshold, mute timer, timestamp ที่อ่านได้, timezone, serial number, MAC address และข้อมูล diagnostic อื่น
-- Switch สำหรับ setting ที่ X-Sense รายงานว่าสามารถเขียนค่าได้ เช่น LED light, alarm enablement, continued alarm, chirp tone, reminder, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light และ doorbell controls
-- Select และ number สำหรับ camera setting ที่รองรับ เช่น language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold และ doorbell ring key
+- Binary sensor สำหรับ alarm, mute, end-of-life, AC-break, water alarm, temperature alarm, charging, motion, door, armed, warning, การเตือนความจำ, light, PIR และสถานะ keypad
+- Sensor สำหรับ battery, RF signal, Wi-Fi signal, เฟิร์มแวร์, temperature, humidity, CO level, CO peak, alarm ระดับเสียง, voice ระดับเสียง, chirp ระดับเสียง, การเตือนความจำ ระดับเสียง, warning threshold, mute timer, timestamp ที่อ่านได้, timezone, serial number, MAC address และข้อมูล diagnostic อื่น
+- สวิตช์สำหรับการตั้งค่า ที่ X-Sense รายงานว่าสามารถเขียนค่าได้ เช่น ไฟ LED, การเปิดใช้สัญญาณเตือน, สัญญาณเตือนต่อเนื่อง, เสียง chirp, การเตือนความจำ, PIR, แสงแดด/แสงขาว, โหมดรอ, เสียงแป้นกด, การตรวจจับการเคลื่อนไหวของกล้อง, การบันทึก, โหมดกลางคืน, เสียง, ระยะพัก, light และ การควบคุมกริ่งประตู
+- ตัวเลือกและตัวเลข สำหรับ การตั้งค่ากล้อง ที่รองรับ เช่น ภาษา, ความละเอียดการบันทึก, codec, anti-flicker rate, ความไวต่อการเคลื่อนไหว, ความยาววิดีโอ, ระดับเสียง, ระยะเวลาสัญญาณเตือน, ระยะพัก, เกณฑ์กลางคืน และ ปุ่มกริ่งประตู
 - ปุ่ม test, mute, fire-drill และ wake camera สำหรับรุ่นที่แอป X-Sense มี action นั้นให้ใช้
 
-บาง entity เป็น diagnostic หรือ configuration และจะถูกจัดกลุ่มแบบนั้นใน Home Assistant หากอุปกรณ์ไม่รายงาน field ใด หรือแอป X-Sense ระบุว่า feature นั้นไม่รองรับสำหรับอุปกรณ์/บัญชีนี้ entity ที่เกี่ยวข้องจะไม่ถูกสร้าง การผูกอุปกรณ์ ลบ แชร์ บัญชี การชำระเงิน อัปเดต firmware ฟอร์แมต SD card และงานจัดการอื่นยังอยู่ในแอป X-Sense
+บางเอนทิตีเป็นข้อมูลวินิจฉัยหรือการกำหนดค่า และจะถูกจัดกลุ่มแบบนั้นใน Home Assistant หากอุปกรณ์ไม่รายงาน ฟิลด์ใด หรือแอป X-Sense ระบุว่า ฟีเจอร์นั้นไม่รองรับสำหรับอุปกรณ์/บัญชีนี้ เอนทิตีที่เกี่ยวข้องจะไม่ถูกสร้าง การผูกอุปกรณ์ ลบ แชร์ บัญชี การชำระเงิน อัปเดต เฟิร์มแวร์ ฟอร์แมต การ์ด SD และงานจัดการอื่นยังอยู่ในแอป X-Sense
 
 ____________________________________________________________
 
@@ -89,7 +89,7 @@ ____________________________________________________________
 
 ```yaml
 automation:
-  - alias: "Xsense Temperature Alert"
+  - alias: "แจ้งเตือนอุณหภูมิ X-Sense"
     trigger:
       platform: numeric_state
       entity_id: sensor.xsense_temperature
@@ -100,12 +100,12 @@ automation:
         message: "อุณหภูมิสูงกว่า 30 องศา!"
 ```
 
-### ตัวอย่าง 2: Alarm น้ำรั่ว
+### ตัวอย่าง 2: สัญญาณเตือนน้ำรั่ว
 เมื่อตัวตรวจจับน้ำรั่วตรวจพบน้ำ จะส่งการแจ้งเตือน:
 
 ```yaml
 automation:
-  - alias: "Water Leak Alarm"
+  - alias: "สัญญาณเตือนน้ำรั่ว"
     trigger:
       platform: state
       entity_id: binary_sensor.xsense_waterleak
@@ -118,3 +118,52 @@ automation:
 
 ## ต้องการความช่วยเหลือ
 หากคุณมีอุปกรณ์ X-Sense ที่ยังไม่ได้ทดสอบ โปรดแจ้งผลการใช้งานผ่าน GitHub, Discord หรือฟอรัม Home Assistant
+
+## เอกสารอ้างอิงฉบับเต็ม
+
+### บัญชีและการติดตั้ง
+- ใช้บัญชี X-Sense แยกต่างหากสำหรับ Home Assistant
+- แชร์เฉพาะอุปกรณ์ที่รองรับจากบัญชีหลัก
+- การเพิ่ม ลบ แชร์ ชำระเงิน เฟิร์มแวร์ และการจัดการบัญชียังคงอยู่ในแอป X-Sense
+- หากแอปและ Home Assistant ทำให้อีกฝ่ายออกจากระบบ ให้ตรวจสอบว่าใช้บัญชีเดียวกันหรือไม่
+
+### การอัปเดตและการใช้ API
+- การเปลี่ยนสถานะที่รวดเร็วรับผ่านข้อความ MQTT shadow
+- คำขอ cloud ใช้สำหรับเข้าสู่ระบบ โหลดอุปกรณ์ และรีเฟรชสถานะเท่านั้น
+- polling เป็นระยะเป็นตัวสำรองเมื่อไม่มีข้อความ MQTT
+- ไม่ควรค้นหาอุปกรณ์ทั้งหมดซ้ำในทุกการอัปเดต
+
+### เอนทิตี กล้อง และการแก้ปัญหา
+- เอนทิตีจะถูกสร้างเฉพาะเมื่อ X-Sense รายงาน ฟิลด์นั้นจริง
+- ค่าการวินิจฉัยถูกจัดกลุ่มเป็น ข้อมูลวินิจฉัยใน Home Assistant
+- กล้องที่รองรับอาจมี เอนทิตีกล้อง ภาพตัวอย่าง สตรีมสด สถานะ และการตั้งค่าที่รองรับ
+- หาก Home Assistant มีเส้นทาง WebRTC สามารถใช้สำหรับ มุมมองสด ได้
+- เมื่อรายงานปัญหา ให้ระบุรุ่น เวอร์ชันอินทิเกรชัน ข้อมูลวินิจฉัย บันทึก และค่ามีการเปลี่ยนในแอปหรือไม่
+
+## รายการตรวจสอบอุปกรณ์และเอนทิตี
+
+### กลุ่มอุปกรณ์หลัก
+- SBS50: สถานีฐานและสถานะระดับสถานี.
+- XS01-WX: เครื่องตรวจจับควัน Wi-Fi รวมถึงบัญชีที่ไม่มีอุปกรณ์ลูกแยก.
+- XS01-M, XS03-WX, XS0B-MR: กลุ่มเครื่องตรวจจับควัน.
+- XC01-M, XC04-WX: กลุ่มเครื่องตรวจจับ CO.
+- SC07-WX, XP0A-MR: กลุ่มรวมควันและ CO.
+- XH02-M: กลุ่มเตือนความร้อน.
+- SWS51: กลุ่มตรวจจับน้ำรั่ว.
+- STH51, STH0A, STH0B, STH0C: อุณหภูมิและความชื้น.
+- SDS0A: เซนเซอร์ประตู.
+- SMS0A: เซนเซอร์การเคลื่อนไหว.
+- SSC0A, SSC0B: กล้องที่รองรับ.
+
+### ฟิลด์สถานะ
+- สถานะสัญญาณเตือน จะแสดงเมื่อ X-Sense รายงานฟิลด์สัญญาณเตือน.
+- สถานะปิดเสียง จะแสดงเมื่อ X-Sense รายงานฟิลด์ปิดเสียง.
+- สถานะแบตเตอรี่จะแสดงเมื่ออุปกรณ์รายงานข้อมูลแบตเตอรี่.
+- ค่า RF และ Wi-Fi จะแสดงเมื่ออุปกรณ์รายงาน.
+- ค่าเวลาแบบย่อของ X-Sense จะถูกแปลงเป็น เซนเซอร์เวลาอ่านง่ายใน Home Assistant.
+
+### การควบคุมและรายงาน
+- สวิตช์จะถูกสร้างเฉพาะสำหรับการตั้งค่าที่ X-Sense รายงานว่าเขียนได้.
+- ปุ่มจะถูกสร้างเฉพาะสำหรับ คำสั่งที่แอปรองรับ.
+- การควบคุมกล้องจะถูกสร้างเฉพาะเมื่อ API ระบุว่าพร้อมใช้งาน.
+- รายงานปัญหาควรมีรุ่นที่แน่นอน เวอร์ชันอินทิเกรชัน ข้อมูลวินิจฉัย บันทึก และค่ามีการเปลี่ยนในแอป X-Sense หรือไม่.

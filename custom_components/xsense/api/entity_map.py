@@ -192,9 +192,6 @@ entities = {
             FireDrillAction(),
         ],
     },
-    "SD19-MR": {
-        "type": EntityType.SMOKE,
-    },
     "SDA51": {
         "type": EntityType.ALARM,
         "actions": [
@@ -246,6 +243,9 @@ entities = {
         "type": EntityType.MOTION,
     },
     "SPL51": {
+        "type": EntityType.LIGHT,
+    },
+    "group-L": {
         "type": EntityType.LIGHT,
     },
     "SSD01": {
@@ -416,9 +416,6 @@ entities = {
             FireDrillAction(),
         ],
     },
-    "XS0D-MR61": {
-        "type": EntityType.SMOKE,
-    },
     "XC0C-MR": {
         "type": EntityType.CO,
         "actions": [
@@ -427,9 +424,6 @@ entities = {
         ],
     },
     "XP0A-iR": {
-        "type": EntityType.COMBI,
-    },
-    "XPOA-IR": {
         "type": EntityType.COMBI,
     },
     "XP0H-MR": {

@@ -56,7 +56,7 @@ Sau khi cài đặt, cần cấu hình cơ bản để tích hợp hoạt độn
 Sau khi cài đặt và cấu hình thành công, tích hợp sẽ hiển thị trong Home Assistant. Các thiết bị có sẵn trên dashboard và có thể dùng cho automation, thông báo và các mục đích khác.
 
 ## Thiết bị được hỗ trợ
-Tích hợp này hỗ trợ nhiều thiết bị X-Sense. Entity được tạo phụ thuộc vào các trường dữ liệu mà thiết bị và tài khoản báo cáo. Các dòng và mẫu đã xác nhận gồm:
+Tích hợp này hỗ trợ nhiều thiết bị X-Sense. Thực thể được tạo phụ thuộc vào các trường dữ liệu mà thiết bị và tài khoản báo cáo. Các dòng và mẫu đã xác nhận gồm:
 - **Trạm gốc (SBS50)**: Hub trung tâm cho thiết bị X-Sense.
 - **Báo nhiệt (XH02-M)**: Phát hiện nhiệt độ cao bất thường.
 - **Bộ phát hiện carbon monoxide (XC01-M; XC04-WX)**: Phát hiện nồng độ CO nguy hiểm.
@@ -65,19 +65,19 @@ Tích hợp này hỗ trợ nhiều thiết bị X-Sense. Entity được tạo 
 - **Bộ phát hiện rò nước (SWS51)**: Phát hiện nước ở nơi không mong muốn.
 - **Ẩm kế-nhiệt kế (STH51, STH0A, STH0B, STH0C)**: Theo dõi nhiệt độ và độ ẩm.
 - **Cảm biến cửa (SDS0A)** và **cảm biến chuyển động (SMS0A)**: Hiển thị khi X-Sense cung cấp trạng thái.
-- **Camera (SSC0A, SSC0B)**: Hiển thị entity camera, ảnh thu nhỏ, URL phát trực tiếp, chẩn đoán và cài đặt dựa trên ứng dụng Android khi thiết bị và tài khoản hỗ trợ.
+- **Camera (SSC0A, SSC0B)**: Hiển thị thực thể camera, ảnh thu nhỏ, URL phát trực tiếp, chẩn đoán và cài đặt dựa trên ứng dụng Android khi thiết bị và tài khoản hỗ trợ.
 - **Thiết bị khác kết nối qua trạm**: Đèn, bàn phím, hộp thư, listener, báo động lối xe, smart drop, điều khiển và dữ liệu radon hiển thị khi API báo cáo trường được hỗ trợ.
 
-### Entity và thao tác có sẵn
-Tích hợp chỉ tạo entity Home Assistant cho các trường thực sự có trong cloud X-Sense, payload MQTT shadow hoặc API camera tương ứng với hành vi của ứng dụng Android. Tùy thiết bị, có thể bao gồm:
+### Thực thể và thao tác có sẵn
+Tích hợp chỉ tạo thực thể Home Assistant cho các trường thực sự có trong đám mây X-Sense, payload MQTT shadow hoặc API camera tương ứng với hành vi của ứng dụng Android. Tùy thiết bị, có thể bao gồm:
 
 - Binary sensor cho alarm, mute, end-of-life, AC-break, alarm nước, alarm nhiệt độ, sạc, chuyển động, cửa, trạng thái armed, cảnh báo, nhắc nhở, đèn, PIR và trạng thái keypad.
-- Sensor cho pin, tín hiệu RF, tín hiệu Wi-Fi, firmware, nhiệt độ, độ ẩm, mức CO, đỉnh CO, âm lượng alarm, âm lượng voice, âm lượng chirp, âm lượng reminder, ngưỡng cảnh báo, timer mute, timestamp dễ đọc, múi giờ, số sê-ri, địa chỉ MAC và dữ liệu chẩn đoán khác.
-- Switch cho các thiết lập có thể ghi mà X-Sense báo cáo hỗ trợ, như đèn LED, bật alarm, continued alarm, âm chirp, reminder, PIR, sunshine/white light, await, âm keypad, phát hiện chuyển động camera, ghi hình, night vision, audio, cooldown, đèn và điều khiển doorbell.
-- Select và number cho các thiết lập camera được hỗ trợ như ngôn ngữ, độ phân giải ghi hình, codec, anti-flicker, độ nhạy chuyển động, độ dài video, volume, thời lượng alarm, cooldown, ngưỡng ban đêm và phím chuông doorbell.
+- Sensor cho pin, tín hiệu RF, tín hiệu Wi-Fi, phần mềm thiết bị, nhiệt độ, độ ẩm, mức CO, đỉnh CO, âm lượng alarm, âm lượng voice, âm lượng chirp, âm lượng nhắc nhở, ngưỡng cảnh báo, timer mute, timestamp dễ đọc, múi giờ, số sê-ri, địa chỉ MAC và dữ liệu chẩn đoán khác.
+- Công tắc cho các thiết lập có thể ghi mà X-Sense báo cáo hỗ trợ, như đèn LED, bật cảnh báo, cảnh báo liên tục, âm chirp, nhắc nhở, PIR, ánh sáng mặt trời/ánh sáng trắng, chế độ chờ, âm bàn phím, phát hiện chuyển động camera, ghi hình, chế độ nhìn đêm, âm thanh, thời gian nghỉ, đèn và điều khiển chuông cửa.
+- Lựa chọn và số cho các thiết lập camera được hỗ trợ như ngôn ngữ, độ phân giải ghi hình, codec, chống nhấp nháy, độ nhạy chuyển động, độ dài video, âm lượng, thời lượng cảnh báo, thời gian nghỉ, ngưỡng ban đêm và phím chuông cửa.
 - Nút test, mute, fire-drill và wake camera cho các model mà ứng dụng X-Sense cung cấp thao tác tương ứng.
 
-Một số entity là chẩn đoán hoặc cấu hình và được nhóm như vậy trong Home Assistant. Nếu thiết bị không báo cáo trường cụ thể, hoặc ứng dụng X-Sense đánh dấu tính năng không được hỗ trợ cho thiết bị/tài khoản đó, entity tương ứng sẽ không được tạo. Liên kết thiết bị, xóa, chia sẻ, tài khoản, thanh toán, cập nhật firmware, định dạng thẻ SD và các thao tác quản trị khác vẫn nằm trong ứng dụng X-Sense.
+Một số thực thể là chẩn đoán hoặc cấu hình và được nhóm như vậy trong Home Assistant. Nếu thiết bị không báo cáo trường cụ thể, hoặc ứng dụng X-Sense đánh dấu tính năng không được hỗ trợ cho thiết bị/tài khoản đó, thực thể tương ứng sẽ không được tạo. Liên kết thiết bị, xóa, chia sẻ, tài khoản, thanh toán, cập nhật phần mềm thiết bị, định dạng thẻ SD và các thao tác quản trị khác vẫn nằm trong ứng dụng X-Sense.
 ____________________________________________________________
 
 ## Ví dụ Automation
@@ -88,7 +88,7 @@ Khi nhiệt độ từ nhiệt kế X-Sense quá cao, một thông báo được
 
 ```yaml
 automation:
-  - alias: "Xsense Temperature Alert"
+  - alias: "Cảnh báo nhiệt độ X-Sense"
     trigger:
       platform: numeric_state
       entity_id: sensor.xsense_temperature
@@ -99,12 +99,12 @@ automation:
         message: "Nhiệt độ vượt quá 30 độ!"
 ```
 
-### Ví dụ 2: Alarm rò nước
+### Ví dụ 2: Cảnh báo rò nước
 Khi bộ phát hiện rò nước phát hiện nước, cảnh báo được kích hoạt:
 
 ```yaml
 automation:
-  - alias: "Water Leak Alarm"
+  - alias: "Cảnh báo rò nước"
     trigger:
       platform: state
       entity_id: binary_sensor.xsense_waterleak
@@ -117,3 +117,52 @@ automation:
 
 ## Cần sự hỗ trợ của bạn
 Nếu bạn có thiết bị X-Sense chưa được kiểm thử, hãy gửi phản hồi qua GitHub, Discord hoặc diễn đàn Home Assistant.
+
+## Tài liệu tham khảo đầy đủ
+
+### Tài khoản và cài đặt
+- Dùng một tài khoản X-Sense riêng cho Home Assistant.
+- Chỉ chia sẻ các thiết bị được hỗ trợ từ tài khoản chính.
+- Thêm, xóa, chia sẻ, thanh toán, phần mềm thiết bị và quản lý tài khoản vẫn nằm trong ứng dụng X-Sense.
+- Nếu ứng dụng và Home Assistant đăng xuất lẫn nhau, hãy kiểm tra xem có dùng cùng tài khoản không.
+
+### Cập nhật và sử dụng API
+- Thay đổi trạng thái nhanh được nhận qua thông điệp MQTT shadow.
+- Yêu cầu cloud chỉ dùng cho đăng nhập, tải thiết bị và làm mới trạng thái.
+- Polling định kỳ chỉ là dự phòng khi thiếu thông điệp MQTT.
+- Không nên lặp lại việc dò toàn bộ thiết bị trong mỗi lần cập nhật.
+
+### Thực thể, camera và khắc phục sự cố
+- Thực thể chỉ được tạo khi X-Sense thật sự báo trường đó.
+- Giá trị chẩn đoán được nhóm là chẩn đoán trong Home Assistant.
+- Camera được hỗ trợ có thể cung cấp thực thể camera, ảnh xem trước, luồng trực tiếp, trạng thái và cài đặt được hỗ trợ.
+- Nếu Home Assistant có đường WebRTC, tích hợp có thể dùng cho chế độ xem trực tiếp.
+- Khi báo lỗi, hãy gửi model, phiên bản tích hợp, chẩn đoán, nhật ký và việc giá trị có đổi trong app hay không.
+
+## Danh sách thiết bị và thực thể
+
+### Nhóm thiết bị chính
+- SBS50: trạm cơ sở và trạng thái cấp trạm.
+- XS01-WX: báo khói Wi-Fi, bao gồm tài khoản không có thiết bị con riêng.
+- XS01-M, XS03-WX, XS0B-MR: nhóm báo khói.
+- XC01-M, XC04-WX: nhóm báo CO.
+- SC07-WX, XP0A-MR: nhóm kết hợp khói và CO.
+- XH02-M: nhóm báo nhiệt.
+- SWS51: nhóm phát hiện rò rỉ nước.
+- STH51, STH0A, STH0B, STH0C: nhiệt độ và độ ẩm.
+- SDS0A: cảm biến cửa.
+- SMS0A: cảm biến chuyển động.
+- SSC0A, SSC0B: camera được hỗ trợ.
+
+### Trường trạng thái
+- Trạng thái cảnh báo hiển thị khi X-Sense báo trường cảnh báo.
+- Trạng thái tắt tiếng hiển thị khi X-Sense báo trường tắt tiếng.
+- Trạng thái pin hiển thị khi thiết bị báo dữ liệu pin.
+- Giá trị RF và Wi-Fi hiển thị khi thiết bị báo.
+- Giá trị thời gian dạng gọn của X-Sense được chuyển thành cảm biến thời gian dễ đọc trong Home Assistant.
+
+### Điều khiển và báo lỗi
+- Công tắc chỉ được tạo cho cài đặt có thể ghi mà X-Sense báo.
+- Nút chỉ được tạo cho hành động được ứng dụng hỗ trợ.
+- Điều khiển camera chỉ được tạo khi API đánh dấu là có sẵn.
+- Báo lỗi nên có model chính xác, phiên bản tích hợp, chẩn đoán, nhật ký và giá trị có thay đổi trong app X-Sense không.

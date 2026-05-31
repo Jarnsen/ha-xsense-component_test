@@ -303,9 +303,12 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         station_data = _mqtt_reported_data(data)
 
-        station = self._get_station_by_id(station_data.get("stationSN"))
+        station_sn = station_data.get("stationSN") or station_data.get("_stationSN")
+        device_sn = station_data.get("deviceSN") or station_data.get("_deviceSN")
+
+        station = self._get_station_by_id(station_sn)
         if station is None:
-            station = self._get_station_by_device_sn(station_data.get("deviceSN"))
+            station = self._get_station_by_device_sn(device_sn)
 
         if station is None and isinstance(topic, str):
             parts = topic.split("/")
@@ -328,8 +331,14 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
 
         children = station_data.pop("devs", {})
-        target_device_sn = station_data.get("deviceSN")
-        if target_device_sn and (dev := station.get_device_by_sn(target_device_sn)):
+        target_device_sn = station_data.get("deviceSN") or station_data.get(
+            "_deviceSN"
+        )
+        if (
+            target_device_sn
+            and target_device_sn != station.sn
+            and (dev := station.get_device_by_sn(target_device_sn))
+        ):
             dev.set_data(station_data)
         else:
             self.xsense.parse_get_state(station, station_data)
@@ -405,7 +414,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         "reportDst": "1",
                         "timeoutM": str(POLL_INTERVAL_MIN),
                         "userId": self.xsense.userid,
-                        "time": datetime.now().strftime("%Y%m%d%H%M%S"),
+                        "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
                         "stationSN": s.sn,
                     }
                 }

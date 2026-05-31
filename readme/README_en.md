@@ -120,7 +120,7 @@ When the temperature from an X-Sense thermometer is too high, a notification is 
 
 ```yaml
 automation:
-  - alias: "Xsense Temperature Alert"
+  - alias: "X-Sense Temperature Alert"
     trigger:
       platform: numeric_state
       entity_id: sensor.xsense_temperature

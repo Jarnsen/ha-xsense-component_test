@@ -16,9 +16,138 @@ A megerősített modellcsaládok: SBS50, XH02-M, XC01-M, XC04-WX, XS01-M, XS01-W
 ## Entitások és műveletek
 Az integráció csak a ténylegesen jelentett mezőkhöz hoz létre entitásokat. Ilyen lehet a riasztás, némítás, akkumulátor, jelerősség, hőmérséklet, páratartalom, CO, olvasható időadatok, kamerabeállítások, LED kapcsolók, teszt, némítás és tűzriadó gomb.
 
-Az eszközkezelés, megosztás, eltávolítás, firmware, fiókok és fizetés továbbra is az X-Sense alkalmazásban marad.
+Az eszközkezelés, megosztás, eltávolítás, firmware, fiók és fizetés továbbra is az X-Sense alkalmazásban marad. Kérdésekhez használja a Discordot vagy a Home Assistant fórumot.
+
+## Automatizálási példák
+```yaml
+automation:
+  - alias: "X-Sense hőmérséklet-riasztás"
+    trigger:
+      platform: numeric_state
+      entity_id: sensor.xsense_temperature
+      above: 30
+    action:
+      service: notify.notify
+      data:
+        message: "A hőmérséklet meghaladta a 30 fokot!"
+```
+
+```yaml
+automation:
+  - alias: "Vízszivárgás-riasztás"
+    trigger:
+      platform: state
+      entity_id: binary_sensor.xsense_waterleak
+      to: "on"
+    action:
+      service: notify.notify
+      data:
+        message: "Vízszivárgás észlelve!"
+```
 
 ## Támogatás
 [Discord](https://discord.gg/5phHHgGb3V)
 
 [Home Assistant Forum](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
+
+## További részletek
+
+### Fiókbeállítás
+
+Ajánlott külön X-Sense-fiókot használni a Home Assistanthoz, és csak azokat a támogatott eszközöket megosztani vele, amelyeket a Home Assistantban szeretne látni. Az integráció nem párosít, nem távolít el és nem helyez át eszközöket otthonok között. Az ilyen eszközkezelés továbbra is a hivatalos X-Sense alkalmazásban történik.
+
+### Állapotfrissítések
+
+Az integráció MQTT shadow üzeneteket használ a gyors állapotváltozásokhoz, és óvatos, időszakos felhőlekérdezést az adatok frissítéséhez. Az állomás által jelentett állapot az állomáson, az aleszköz által jelentett állapot pedig az adott eszközön frissül, hogy a riasztások és érzékelők ne ragadjanak régi értéken.
+
+### Elérhető entitások
+
+Modelltől függően megjelenhet füst-, CO-, víz-, hőmérséklet-, mozgás- és ajtóriasztás, riasztásnémítás, élettartam vége, töltés, emlékeztető állapota, fényállapot és további diagnosztikai bináris érzékelők. Az érzékelők között lehet akkumulátor, RF- vagy Wi-Fi-jel, firmware, hőmérséklet, páratartalom, CO-szint, CO-csúcsérték, hangerő, küszöbértékek, olvasható időpontok, időzóna, sorozatszám, MAC-cím és egyéb diagnosztika. Kapcsolók, választók és számmezők csak akkor jönnek létre, ha az eszköz valóban támogatja őket.
+
+### Kamerák
+
+A támogatott kamerák kameraentitást, bélyegképeket, élő közvetítést, kapcsolati állapotot és az X-Sense alkalmazással összhangban lévő beállításokat biztosíthatnak. Ha a Home Assistantban elérhető WebRTC útvonal, az integráció ezt használhatja megfelelő élő nézethez.
+
+### Hibaelhárítás
+
+Ha egy entitás hiányzik, először ellenőrizze az X-Sense alkalmazásban, hogy az adott érték valóban megjelenik-e az eszköznél. Ha az állapot elavult marad, csak ideiglenes tesztként töltse újra az integrációt, és a hibajelentéshez csatolja a diagnosztikát, valamint a releváns Home Assistant naplósorokat.
+
+### Eszközviselkedés
+
+- Az állomások és az aleszközök eltérő értékkészleteket jelenthetnek. Az integráció ezért nem feltételezi, hogy minden állomáshoz tartoznia kell aleszköznek.
+- Az időértékek olvasható formára alakulnak, ha az eszköz az X-Sense alkalmazás által használt formátumban küldi őket.
+- Entitás nem jön létre, ha az eszköz nem jelenti az adott funkciót. Ez megakadályozza a félrevezető vezérlők megjelenését a Home Assistantban.
+
+### Felhőterhelés
+
+Az integráció igyekszik kíméletesen használni az X-Sense API-t. A gyors változások MQTT üzenetekből érkeznek, a felhőhívások pedig csak bejelentkezéshez, eszközbetöltéshez vagy állapotfrissítéshez szükséges esetekben történnek.
+
+### Hibajelentés
+
+Hiba jelentésekor adja meg az eszköz modelljét, az integráció verzióját, hogy a helyes érték látható-e az X-Sense alkalmazásban, és csatolja a Home Assistant integrációdiagnosztikáját. Az is hasznos, ha röviden leírja, hogy az állapot soha nem változik-e, vagy csak az integráció újratöltése után frissül.
+
+## Teljes referencia
+
+### Fiókbeállítás részletesen
+- A Home Assistant számára használj külön X-Sense-fiókot.
+- A fő fiókból csak a támogatott eszközöket oszd meg.
+- A párosítás, eltávolítás, megosztás és eszközáthelyezés az X-Sense alkalmazásban marad.
+- Ha az alkalmazás és a Home Assistant kijelentkezteti egymást, valószínűleg ugyanazt a fiókot használják.
+
+### Frissítések és API-terhelés
+- A gyors állapotváltozások MQTT shadow üzeneteken keresztül érkeznek.
+- A felhőkérések bejelentkezésre, eszközbetöltésre és állapotfrissítésre szolgálnak.
+- Az időszakos lekérdezés tartalék, ha egy MQTT üzenet kimarad.
+
+### Entitások és műveletek
+- Entitás csak olyan mezőhöz jön létre, amelyet az X-Sense ténylegesen jelent.
+- A diagnosztikai értékek diagnosztikaként jelennek meg.
+- Teszt, némítás, tűzriadó-próba és kameraébresztés csak támogatott modelleknél érhető el.
+
+### Kamerák
+- A támogatott kamerák kameraentitást, bélyegképet, élő streamet és diagnosztikát adhatnak.
+- A WebRTC út csak akkor használható, ha Home Assistantban elérhető.
+- Az SD-kártya, fizetések, firmware és fiókkezelés az X-Sense alkalmazásban marad.
+
+### Hibaelhárítás
+- Hibajelentéshez add meg a modellt, integrációs verziót, diagnosztikát és naplókat.
+
+### Hatókör
+- Az integráció nem ad hozzá, nem távolít el és nem helyez át eszközöket otthonok között.
+
+## Eszköz- és entitás-ellenőrzőlista
+
+### Fő eszközcsaládok
+- SBS50: bázisállomás és állomásszintű állapot.
+- XS01-WX: Wi-Fi füstjelző, külön alárendelt eszköz nélküli fiókokkal is.
+- XS01-M, XS03-WX, XS0B-MR: füstjelző családok.
+- XC01-M, XC04-WX: CO-jelző családok.
+- SC07-WX, XP0A-MR: kombinált füst és CO családok.
+- XH02-M: hőjelző család.
+- SWS51: vízszivárgás-érzékelő család.
+- STH51, STH0A, STH0B, STH0C: hőmérséklet és páratartalom.
+- SDS0A: ajtóérzékelő.
+- SMS0A: mozgásérzékelő.
+- SSC0A, SSC0B: támogatott kamerák.
+
+### Állapotmezők
+- A riasztási állapot akkor jelenik meg, ha az X-Sense riasztási mezőt jelent.
+- A némítási állapot akkor jelenik meg, ha az X-Sense némítási mezőt jelent.
+- Az akkumulátor állapota akkor jelenik meg, ha az eszköz akkumulátoradatot jelent.
+- Az RF és Wi-Fi jel akkor jelenik meg, ha az eszköz jelenti.
+- A kompakt időértékek olvasható Home Assistant szenzorokká alakulnak.
+
+### Vezérlők és jelentés
+- Kapcsolók csak X-Sense által jelentett írható beállításokhoz jönnek létre.
+- Gombok csak alkalmazás által támogatott műveletekhez jönnek létre.
+- Kamera-vezérlők csak akkor jönnek létre, ha az API elérhetőnek jelöli őket.
+- Hibajelentésben szerepeljen a pontos modell, integrációs verzió, diagnosztika, naplók és hogy az érték változik-e az X-Sense alkalmazásban.
+
+### Üzemeltetési megjegyzések
+- Beállítás után ellenőrizze, hogy az eszköznevek és helyiségek megegyeznek-e az X-Sense alkalmazásban láthatókkal.
+- Ha a riasztás, a némítás vagy a LED állapota nem változik azonnal, várja meg a következő MQTT üzenetet vagy állapotfrissítést.
+- SBS50 állomásoknál az állomás állapotát és az egyes alárendelt eszközöket is ellenőrizni kell.
+- XS01-WX esetén a teljes állapot közvetlenül az eszközön jelenhet meg, külön alárendelt eszköz nélkül is.
+- Kameráknál a létrehozott entitások attól függenek, milyen képességeket ad vissza az X-Sense felhő az adott fiókhoz.
+- Ha egy entitás nem jön létre, először hasonlítsa össze az értéket az X-Sense alkalmazással, és mellékeljen diagnosztikát.
+- Az integráció célja a támogatott funkciók megjelenítése és vezérlése, nem pedig a párosítás vagy az eszközkezelés kiváltása az alkalmazásban.
