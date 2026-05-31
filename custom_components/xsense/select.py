@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .api.async_xsense import CAMERA_TYPES
+from .api.async_xsense import is_camera_entity
 from .api.device import Device
 from .api.entity import Entity
 from .const import DOMAIN
@@ -190,7 +190,7 @@ async def async_setup_entry(
         devices.extend(
             XSenseSelectEntity(coordinator, station, description)
             for description in SELECTS
-            if station.type in CAMERA_TYPES and description.exists_fn(station)
+            if is_camera_entity(station) and description.exists_fn(station)
         )
 
     async_add_entities(devices)

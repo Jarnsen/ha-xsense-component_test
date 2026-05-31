@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from .api.device import Device
 from .api.entity import Entity
-from .api.async_xsense import CAMERA_TYPES
+from .api.async_xsense import is_camera_entity
 
 from homeassistant import config_entries
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
@@ -87,6 +87,19 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         icon="mdi:led-on",
         exists_fn=has_data("ledLight"),
         value_fn=data_bool("ledLight"),
+    ),
+    XSenseSwitchEntityDescription(
+        key="light_power",
+        data_key="on",
+        name="Light Power",
+        icon="mdi:lightbulb",
+        exists_fn=lambda entity: (
+            entity.entity_type is not None
+            and entity.entity_type.value == "light"
+            and entity.type != "group-L"
+            and "on" in entity.data
+        ),
+        value_fn=data_bool("on"),
     ),
     XSenseSwitchEntityDescription(
         key="alarm_enabled",
@@ -424,7 +437,13 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
             raise HomeAssistantError("X-Sense entity is no longer available")
 
         station = getattr(entity, "station", entity)
-        if entity.type in CAMERA_TYPES and self.entity_description.addx_key:
+        if self.entity_description.data_key == "on" and entity.type != "group-L":
+            await xsense.update_light_power(entity, enabled)
+            entity.data[self.entity_description.data_key] = enabled
+            self.coordinator.async_update_listeners()
+            return
+
+        if is_camera_entity(entity) and self.entity_description.addx_key:
             if self.entity_description.addx_key == "cooldown.userEnable":
                 await xsense.update_camera_cooldown(
                     entity,

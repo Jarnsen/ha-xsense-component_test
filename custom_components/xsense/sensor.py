@@ -5,9 +5,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from .api.device import Device
 from .api.entity import Entity
+from .api.entity_map import EntityType
 
 from homeassistant import config_entries
 from homeassistant.components.sensor import (
@@ -28,8 +30,11 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
 from .const import DOMAIN, STATE_SIGNAL
-from .coordinator import XSenseDataUpdateCoordinator
 from .entity import XSenseEntity
+
+
+if TYPE_CHECKING:
+    from .coordinator import XSenseDataUpdateCoordinator
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -105,6 +110,11 @@ def data_timestamp(key: str) -> Callable[[Entity], datetime | None]:
 def has_data(key: str) -> Callable[[Entity], bool]:
     """Return an exists function for a X-Sense data key."""
     return lambda entity: key in entity.data
+
+
+def has_report_time(entity: Entity) -> bool:
+    """Return whether a report timestamp should be exposed as a sensor."""
+    return "time" in entity.data and entity.entity_type is not EntityType.BASESTATION
 
 
 SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
@@ -641,7 +651,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=data_timestamp("time"),
-        exists_fn=has_data("time"),
+        exists_fn=has_report_time,
     ),
     XSenseSensorEntityDescription(
         key="utc_time",

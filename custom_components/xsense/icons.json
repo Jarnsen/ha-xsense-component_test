@@ -36,6 +36,20 @@
       "wifi_sw": {
         "default": "mdi:chip"
       }
+    },
+    "number": {
+      "alarm_volume": {
+        "default": "mdi:volume-high"
+      },
+      "voice_volume": {
+        "default": "mdi:volume-high"
+      },
+      "chirp_volume": {
+        "default": "mdi:volume-high"
+      },
+      "reminder_volume": {
+        "default": "mdi:volume-high"
+      }
     }
   }
 }

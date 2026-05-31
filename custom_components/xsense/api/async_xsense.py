@@ -8,7 +8,7 @@ import aiohttp
 from .aws_signer import AWSSigner
 from .base import XSenseBase
 from .entity import Entity
-from .entity_map import entities
+from .entity_map import EntityType, entities
 from .exceptions import SessionExpired, APIFailure, XSenseError
 from .house import House
 from .station import Station
@@ -48,6 +48,11 @@ def _station_state_shadow_names(station: Station) -> tuple[str, ...]:
     if station.type == "SBS50":
         return ("2nd_mainpage",)
     return ("2nd_mainpage",)
+
+
+def is_camera_entity(entity: Entity) -> bool:
+    """Return if an entity is an IPC camera discovered through the app path."""
+    return entity.type in CAMERA_TYPES or entity.entity_type == EntityType.CAMERA
 
 
 class AsyncXSense(XSenseBase):
@@ -309,17 +314,19 @@ class AsyncXSense(XSenseBase):
 
     async def update_camera_data(self):
         """Merge camera metadata and config from the Android app ADDX API."""
+        data = await self.addx_call("/device/listuserdevices")
+        devices = (data or {}).get("list") or []
+        self._ensure_addx_cameras(devices)
+
         cameras = [
             station
             for house in self.houses.values()
             for station in house.stations.values()
-            if station.type in CAMERA_TYPES
+            if is_camera_entity(station)
         ]
         if not cameras:
             return
 
-        data = await self.addx_call("/device/listuserdevices")
-        devices = (data or {}).get("list") or []
         by_sn = {device.get("serialNumber"): device for device in devices}
 
         for camera in cameras:
@@ -368,6 +375,45 @@ class AsyncXSense(XSenseBase):
                     doorbell = None
                 if doorbell:
                     camera.set_data(_camera_doorbell_data(doorbell))
+
+    def _ensure_addx_cameras(self, devices: list[Dict]) -> None:
+        """Add cameras that the app exposes only through the ADDX device list."""
+        if not self.houses:
+            return
+
+        fallback_house = next(iter(self.houses.values()))
+        for addx_device in devices:
+            sn = addx_device.get("serialNumber")
+            if not sn or self._get_station_by_sn(sn):
+                continue
+
+            house = self.houses.get(str(addx_device.get("houseId"))) or fallback_house
+            camera_type = _camera_type(addx_device)
+            if camera_type is None:
+                continue
+
+            station = Station(
+                house,
+                stationId=sn,
+                stationName=addx_device.get("deviceName")
+                or addx_device.get("displayModelNo")
+                or camera_type
+                or sn,
+                stationSn=sn,
+                onLine=addx_device.get("online", True),
+                category=camera_type,
+                devices=[],
+            )
+            station.entity_type = EntityType.CAMERA
+            house.stations[station.entity_id] = station
+            if house.station_order is not None:
+                house.station_order.append(station.entity_id)
+
+    def _get_station_by_sn(self, sn: str) -> Station | None:
+        for house in self.houses.values():
+            if station := house.get_station_by_sn(sn):
+                return station
+        return None
 
     async def update_camera_config(self, camera: Entity, **updates):
         """Write camera user config through the Android app endpoint."""
@@ -576,6 +622,11 @@ class AsyncXSense(XSenseBase):
         self, entity: Entity, shadow: str, topic: str, definition: Dict
     ):
         station = getattr(entity, "station", entity)
+        target = definition.get("target")
+        if callable(target):
+            target = target(entity)
+        if target is None:
+            target = station
 
         desired = {
             "deviceSN": entity.sn,
@@ -583,9 +634,12 @@ class AsyncXSense(XSenseBase):
             "stationSN": station.sn,
             "userId": self.userid,
         }
-        if timestamp := _action_timestamp(definition):
+        if timestamp := _action_timestamp(definition, entity):
             desired["time"] = timestamp
-        desired.update(definition.get("extra", {}))
+        extra = definition.get("extra", {})
+        if callable(extra):
+            extra = extra(entity)
+        desired.update(extra)
         action_data = definition.get("data", {})
         if callable(action_data):
             action_data = action_data(entity)
@@ -593,7 +647,57 @@ class AsyncXSense(XSenseBase):
 
         data = {"state": {"desired": desired}}
 
-        return await self.do_thing(station, topic, data)
+        return await self.do_thing(target, topic, data)
+
+    async def update_light_power(self, entity: Entity, enabled: bool):
+        """Write an SBS50 light power change through the app lampPower shadow."""
+        station = getattr(entity, "station", entity)
+        desired = {
+            "dev": entity.sn,
+            "isOn": "1" if enabled else "0",
+            "shadow": "lampPower",
+            "stationSN": station.sn,
+            "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
+            "userId": self.userid,
+            "userParam": "source=1",
+        }
+        return await self.do_thing(
+            station, "2nd_lamppower", {"state": {"desired": desired}}
+        )
+
+    async def update_shadow_volume(self, entity: Entity, data_key: str, value: int):
+        """Write a volume value through the same settings shadow as the app."""
+        station = getattr(entity, "station", entity)
+        desired = {
+            "shadow": "infoBase" if entity is station else "infoDev",
+            data_key: str(value),
+        }
+
+        if data_key in {"alarmVol", "voiceVol"}:
+            if _volume_includes_station_sn(entity, data_key):
+                desired["stationSN"] = station.sn
+
+            if entity is station:
+                if entity.type == "SBS10":
+                    if data_key != "voiceVol" and "voiceVol" in entity.data:
+                        desired["voiceVol"] = str(entity.data["voiceVol"])
+                    if data_key != "alarmVol" and "alarmVol" in entity.data:
+                        desired["alarmVol"] = str(entity.data["alarmVol"])
+            else:
+                desired["deviceSN"] = entity.sn
+
+            if data_key == "alarmVol":
+                if alarm_tone := entity.data.get("alarmTone"):
+                    desired["alarmTone"] = str(alarm_tone)
+        else:
+            desired["deviceSN"] = entity.sn
+            tone_key = _volume_tone_key(data_key)
+            if tone_key and (tone := entity.data.get(tone_key)):
+                desired[tone_key] = str(tone)
+
+        return await self.do_thing(
+            station, _shadow_config_topic(entity), {"state": {"desired": desired}}
+        )
 
     async def action(self, entity: Entity, action: str):
         entity_def = entities.get(entity.type)
@@ -620,17 +724,65 @@ class AsyncXSense(XSenseBase):
         return await self.set_state(entity, shadow, topic, action_def)
 
 
+def _shadow_config_topic(entity: Entity) -> str:
+    """Return the settings shadow topic used by the X-Sense app."""
+    station = getattr(entity, "station", None)
+    if entity.type == "SBS50":
+        return f"2nd_cfg_{entity.sn}"
+    if station and station.type == "SBS50":
+        return f"2nd_cfg_{entity.sn}"
+    return f"info_{entity.sn}"
+
+
+def _volume_includes_station_sn(entity: Entity, data_key: str) -> bool:
+    """Return if the APK volume payload includes stationSN for this entity."""
+    if data_key == "voiceVol":
+        return True
+    if getattr(entity, "entity_type", None) in {
+        EntityType.CO,
+        EntityType.LIGHT,
+        EntityType.TEMPERATURE,
+    }:
+        return False
+    return True
+
+
+def _volume_tone_key(data_key: str) -> str | None:
+    """Return the companion tone field the app preserves with volume changes."""
+    return {
+        "alarmVol": "alarmTone",
+        "chirpVol": "chirpTone",
+        "remindVol": "remindTone",
+    }.get(data_key)
+
+
 def _shadow_update_body(data: Dict) -> str:
     return json.dumps(data, separators=(",", ":"))
 
 
-def _action_timestamp(definition: Dict) -> str | None:
+def _action_timestamp(definition: Dict, entity: Entity) -> str | None:
     time_format = definition.get("time_format", "datetime")
+    if callable(time_format):
+        time_format = time_format(entity)
     if time_format is None:
         return None
     if time_format == "epoch_ms":
         return str(int(datetime.now(timezone.utc).timestamp() * 1000))
     return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+
+def _camera_type(data: Dict) -> str | None:
+    device_model = data.get("deviceModel") or {}
+    for value in (
+        data.get("modelNo"),
+        data.get("displayModelNo"),
+        device_model.get("modelName"),
+    ):
+        text = str(value or "").upper()
+        for camera_type in CAMERA_TYPES:
+            if camera_type in text:
+                return camera_type
+    return None
 
 
 def _camera_data(data: Dict) -> Dict:

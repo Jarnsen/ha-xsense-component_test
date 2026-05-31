@@ -97,6 +97,20 @@
             "wifi_sw": {
                 "name": "Wifi Module Firmware"
             }
+        },
+        "number": {
+            "alarm_volume": {
+                "name": "Alarm Volume"
+            },
+            "voice_volume": {
+                "name": "Voice Volume"
+            },
+            "chirp_volume": {
+                "name": "Chirp Volume"
+            },
+            "reminder_volume": {
+                "name": "Reminder Volume"
+            }
         }
     }
 }
