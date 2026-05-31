@@ -190,3 +190,89 @@ async def test_fire_drill_keeps_datetime_payload_shape():
     assert len(desired["time"]) == 14
     assert desired["drill"] == "1"
     assert desired["drillTime"] == "30"
+
+
+class FakePostResponse:
+    def __init__(self, status: int = 200, body: str = "shadow error") -> None:
+        self.status = status
+        self._body = body
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def json(self):
+        return {"ok": True}
+
+    async def text(self):
+        return self._body
+
+
+class FakePostSession:
+    def __init__(self, status: int = 200):
+        self.calls = []
+        self.status = status
+
+    def post(self, url, data=None, json=None, headers=None):
+        self.calls.append({"url": url, "data": data, "json": json, "headers": headers})
+        return FakePostResponse(self.status)
+
+
+@pytest.mark.asyncio
+async def test_do_thing_signs_and_sends_same_serialized_body():
+    client = async_xsense.AsyncXSense()
+    client.aws_access_expiry = async_xsense.datetime.now(async_xsense.timezone.utc)
+    session = FakePostSession()
+    signed_payloads = []
+
+    client._aws_token_expiring = lambda: False
+
+    async def get_session():
+        return session
+
+    client._get_session = get_session
+
+    def thing_request(station, page, data):
+        signed_payloads.append(data)
+        return "https://example.invalid", {"signed": "yes"}
+
+    client._thing_request = thing_request
+
+    payload = {"state": {"desired": {"b": 2, "a": 1}}}
+    result = await client.do_thing(
+        FakeXSenseStation(), "2nd_selftest_device-sn", payload
+    )
+
+    assert result == {"ok": True}
+    assert len(signed_payloads) == 1
+    assert len(session.calls) == 1
+    assert session.calls[0]["json"] is None
+    assert session.calls[0]["data"] == signed_payloads[0]
+    assert session.calls[0]["data"] == async_xsense._shadow_update_body(payload)
+    assert session.calls[0]["data"] == '{"state":{"desired":{"b":2,"a":1}}}'
+
+
+@pytest.mark.asyncio
+async def test_do_thing_raises_on_shadow_update_failure():
+    client = async_xsense.AsyncXSense()
+    session = FakePostSession(status=403)
+
+    client._aws_token_expiring = lambda: False
+
+    async def get_session():
+        return session
+
+    client._get_session = get_session
+    client._thing_request = lambda station, page, data: (
+        "https://example.invalid",
+        {"signed": "yes"},
+    )
+
+    with pytest.raises(exceptions.APIFailure, match="403/shadow error"):
+        await client.do_thing(
+            FakeXSenseStation(),
+            "2nd_selftest_device-sn",
+            {"state": {"desired": {"a": 1}}},
+        )

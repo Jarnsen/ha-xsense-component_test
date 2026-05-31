@@ -1,6 +1,6 @@
 import asyncio
-from datetime import datetime, timezone
 import json
+from datetime import datetime, timezone
 from typing import Dict
 
 import aiohttp
@@ -225,11 +225,17 @@ class AsyncXSense(XSenseBase):
         if self._aws_token_expiring():
             await self.load_aws()
 
-        url, headers = self._thing_request(station, page, data)
+        body = _shadow_update_body(data)
+        url, headers = self._thing_request(station, page, body)
 
         session = await self._get_session()
-        async with session.post(url, json=data, headers=headers) as response:
+        async with session.post(url, data=body, headers=headers) as response:
             self._lastres = response
+            if response.status >= 400:
+                text = await response.text()
+                raise APIFailure(
+                    f"Unable to update thing shadow: {response.status}/{text}"
+                )
             return await response.json()
 
     async def login(self, username, password):
@@ -612,6 +618,10 @@ class AsyncXSense(XSenseBase):
         if callable(shadow):
             shadow = shadow(entity)
         return await self.set_state(entity, shadow, topic, action_def)
+
+
+def _shadow_update_body(data: Dict) -> str:
+    return json.dumps(data, separators=(",", ":"))
 
 
 def _action_timestamp(definition: Dict) -> str | None:
