@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .api.async_xsense import CAMERA_TYPES
+from .api.async_xsense import is_camera_entity
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import XSenseEntity
@@ -43,7 +43,7 @@ async def async_setup_entry(
     async_add_entities(
         XSenseCameraEntity(coordinator, station, CAMERA_DESCRIPTION)
         for station in coordinator.data["stations"].values()
-        if station.type in CAMERA_TYPES
+        if is_camera_entity(station)
     )
 
 

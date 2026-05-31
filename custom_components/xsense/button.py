@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from functools import partial
 
-from .api.async_xsense import CAMERA_TYPES
+from .api.async_xsense import is_camera_entity
 from .api.device import Device
 from .api.entity import Entity
 
@@ -72,7 +72,7 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
         icon="mdi:power-sleep",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: (
-            entity.type in CAMERA_TYPES and entity.data.get("supportSleep", False)
+            is_camera_entity(entity) and entity.data.get("supportSleep", False)
         ),
         press_fn=wake_camera,
     ),

@@ -43,7 +43,7 @@ def MuteAction(
     return data
 
 
-def TestAction(shadow="appSelfTest", extra: Optional[Dict] = None):
+def TestAction(shadow="appSelfTest", extra: Optional[Dict] = None, target=None):
     data = {
         "action": "test",
         "topic": lambda x: f"2nd_selftest_{x.sn}",
@@ -52,6 +52,8 @@ def TestAction(shadow="appSelfTest", extra: Optional[Dict] = None):
     }
     if extra:
         data["extra"] = extra
+    if target:
+        data["target"] = target
     return data
 
 
@@ -59,8 +61,22 @@ def SBS50SecondGenTestAction():
     return TestAction("app2ndSelfTest", extra={"userParam": "source=1"})
 
 
+def _smoke_rf_test_shadow(entity) -> str:
+    return "app2ndSelfTest" if _is_smoke_v9(entity) else "appSelfTest"
+
+
+def _smoke_rf_test_extra(entity) -> Dict:
+    return {"userParam": "source=1"} if _is_smoke_v9(entity) else {}
+
+
+def SmokeRFTestAction():
+    return TestAction(_smoke_rf_test_shadow, extra=_smoke_rf_test_extra)
+
+
 def WifiSelfTestAction():
-    return TestAction("appSelfTest", extra={"userParam": "source=1"})
+    return TestAction(
+        "appSelfTest", extra={"userParam": "source=1"}, target=lambda entity: entity
+    )
 
 
 def _fire_drill_alarm_type(entity) -> str:
@@ -101,6 +117,24 @@ def SATestAction(shadow="appSelfTest"):
     }
 
 
+def XS01WXTestAction():
+    """XS01-WX self test for standalone and SBS50-linked Wi-Fi smoke devices."""
+    return {
+        "action": "test",
+        "topic": lambda entity: (
+            f"2nd_selftest_{entity.sn}"
+            if getattr(getattr(entity, "station", None), "type", None) == "SBS50"
+            else f"appselftest_{entity.sn}"
+        ),
+        "shadow": "appSelfTest",
+        "time_format": lambda entity: (
+            "epoch_ms"
+            if getattr(getattr(entity, "station", None), "type", None) == "SBS50"
+            else None
+        ),
+    }
+
+
 def _is_smoke_v9(entity) -> bool:
     try:
         return int(entity.data.get("smokeEdition", 0)) >= 9
@@ -127,12 +161,14 @@ entities = {
     "SAL51": {
         "type": EntityType.LISTENER,
         "actions": [
+            TestAction("listenerSelfTest"),
             MuteAction("appListener", mute_type="1"),
         ],
     },
     "SAL100": {
         "type": EntityType.LISTENER,
         "actions": [
+            TestAction("listenerSelfTest"),
             MuteAction("appListener", mute_type="1"),
         ],
     },
@@ -168,9 +204,6 @@ entities = {
     "SC06-WX": {
         "identifier": lambda entity: f"SC06-WX-{entity.sn}",
         "type": EntityType.COMBI,
-        "actions": [
-            TestAction(),
-        ],
     },
     "SC07-MR": {
         "identifier": lambda entity: f"SC07-MR-{entity.sn}",
@@ -189,7 +222,7 @@ entities = {
     "SD11-MR": {
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(),
+            SBS50SecondGenTestAction(),
             FireDrillAction(),
         ],
     },
@@ -213,6 +246,9 @@ entities = {
     },
     "SDS0A": {
         "type": EntityType.DOOR,
+        "actions": [
+            SBS50SecondGenTestAction(),
+        ],
     },
     "SES01": {
         "type": EntityType.DOOR,
@@ -232,6 +268,9 @@ entities = {
     },
     "SKP0A": {
         "type": EntityType.KEYPAD,
+        "actions": [
+            SBS50SecondGenTestAction(),
+        ],
     },
     "SMA51": {
         "type": EntityType.MAILBOX,
@@ -246,6 +285,9 @@ entities = {
     },
     "SMS0A": {
         "type": EntityType.MOTION,
+        "actions": [
+            SBS50SecondGenTestAction(),
+        ],
     },
     "SMS01": {
         "type": EntityType.MOTION,
@@ -297,6 +339,9 @@ entities = {
     },
     "SWS0A": {
         "type": EntityType.WATER,
+        "actions": [
+            TestAction("waterSelfTest", extra={"userParam": "source=1"}),
+        ],
     },
     "SWS0B": {
         "type": EntityType.WATER,
@@ -387,7 +432,7 @@ entities = {
     "XS01-M": {
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(),
+            SmokeRFTestAction(),
             MuteAction(),
             FireDrillAction(),
         ],
@@ -395,7 +440,7 @@ entities = {
     "XS01-WX": {
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(),
+            XS01WXTestAction(),
             XS01WXMuteAction(),
         ],
     },
@@ -411,7 +456,7 @@ entities = {
         # Smoke RF
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(),
+            SmokeRFTestAction(),
         ],
     },
     "XS03-WX": {
@@ -420,7 +465,7 @@ entities = {
     "XS0D-MR": {
         "type": EntityType.SMOKE,
         "actions": [
-            TestAction(),
+            SBS50SecondGenTestAction(),
             FireDrillAction(),
         ],
     },
@@ -448,6 +493,7 @@ entities = {
     "XP0J-iA": {
         "type": EntityType.COMBI,
         "actions": [
+            WifiSelfTestAction(),
             FireDrillAction(),
         ],
     },

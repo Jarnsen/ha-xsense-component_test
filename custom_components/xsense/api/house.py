@@ -26,6 +26,10 @@ class House:
         self.region = region
         self.mqtt_region = mqtt_region
         self.mqtt_server = mqtt_server
+        self.rooms = {}
+        self.room_order = []
+        self.stations = {}
+        self.station_order = []
 
         self.mqtt = MQTTHelper(signer, self)
 

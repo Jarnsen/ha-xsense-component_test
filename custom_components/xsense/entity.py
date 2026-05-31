@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .api.entity import Entity
 
 from homeassistant.const import ATTR_VIA_DEVICE
@@ -13,12 +15,15 @@ from homeassistant.helpers.device_registry import (
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
-from .coordinator import XSenseDataUpdateCoordinator
+
+if TYPE_CHECKING:
+    from .coordinator import XSenseDataUpdateCoordinator
+
 
 OFFLINE_STATES = {False, 0, "0", "false", "False", "offline", "Offline"}
 
 
-class XSenseEntity(CoordinatorEntity[XSenseDataUpdateCoordinator]):
+class XSenseEntity(CoordinatorEntity):
     """Represent a XSense Entity."""
 
     _attr_has_entity_name = True
