@@ -152,7 +152,7 @@ class XSenseBase:
                     values.append(str(value))
 
         concatenated_string = "".join(values)
-        mac_data = concatenated_string.encode("utf-8") + self.clientsecret
+        mac_data = concatenated_string.encode("utf-8") + (self.clientsecret or b"")
         return hashlib.md5(mac_data).hexdigest()
 
     def _signed_body(self, data: Dict | None, code: str, *, ipc: bool = False) -> Dict:

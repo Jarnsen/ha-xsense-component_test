@@ -107,29 +107,33 @@ class AsyncXSense(XSenseBase):
     async def __aexit__(self, exc_type, exc, traceback):
         await self.close()
 
-    async def api_call(self, code, unauth=False, **kwargs):
+    async def api_call(self, code, unauth=False, use_ipc_client=False, **kwargs):
         data = {**kwargs}
 
         if unauth:
             headers = None
-            mac = "abcdefg"
+            body = (
+                self._signed_body(data, code, ipc=True)
+                if use_ipc_client
+                else {
+                    **data,
+                    "clientType": self.CLIENTYPE,
+                    "mac": "abcdefg",
+                    "appVersion": self.VERSION,
+                    "bizCode": code,
+                    "appCode": self.APPCODE,
+                }
+            )
         else:
             if self._access_token_expiring():
                 await self.refresh()
             headers = {"Authorization": self.access_token}
-            mac = self._calculate_mac(data)
+            body = self._signed_body(data, code)
 
         session = await self._get_session()
         async with session.post(
             f"{self.API}/app",
-            json={
-                **data,
-                "clientType": self.CLIENTYPE,
-                "mac": mac,
-                "appVersion": self.VERSION,
-                "bizCode": code,
-                "appCode": self.APPCODE,
-            },
+            json=body,
             headers=headers,
         ) as response:
             self._lastres = response
@@ -569,7 +573,7 @@ class AsyncXSense(XSenseBase):
         camera.set_data(updates)
 
     async def get_client_info(self):
-        data = await self.api_call("101001", unauth=True)
+        data = await self.api_call("101001", unauth=True, use_ipc_client=True)
         self.clientid = data["clientId"]
         self.clientsecret = self._decode_secret(data["clientSecret"])
         self.region = data["cgtRegion"]

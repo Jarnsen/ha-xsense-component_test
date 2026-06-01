@@ -1199,3 +1199,78 @@ async def test_update_camera_data_reraises_real_camera_api_errors():
 
     with pytest.raises(exceptions.APIFailure):
         await client.update_camera_data()
+
+
+class FakeJsonResponse:
+    def __init__(self, body, status=200):
+        self._body = body
+        self.status = status
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def json(self):
+        return self._body
+
+
+class FakeApiSession:
+    def __init__(self, body):
+        self.body = body
+        self.calls = []
+
+    def post(self, url, data=None, json=None, headers=None):
+        self.calls.append({"url": url, "data": data, "json": json, "headers": headers})
+        return FakeJsonResponse(self.body)
+
+
+@pytest.mark.asyncio
+async def test_get_client_info_uses_apk_ipc_client_header():
+    client = async_xsense.AsyncXSense()
+    session = FakeApiSession(
+        {
+            "reCode": 200,
+            "reData": {
+                "clientId": "ipc-client",
+                "clientSecret": "MTM2MHNlY3JldHg=",
+                "cgtRegion": "us-east-1",
+                "userPoolId": "pool",
+            },
+        }
+    )
+
+    async def get_session():
+        return session
+
+    client._get_session = get_session
+
+    await client.get_client_info()
+
+    assert client.clientid == "ipc-client"
+    assert client.clientsecret == b"secret"
+    body = session.calls[0]["json"]
+    assert body["bizCode"] == "101001"
+    assert body["appCode"] == client.IPC_APPCODE
+    assert body["appVersion"] == client.IPC_VERSION
+    assert body["clientType"] == client.IPC_CLIENTTYPE
+    assert body["mac"] == "d41d8cd98f00b204e9800998ecf8427e"
+
+
+@pytest.mark.asyncio
+async def test_legacy_unauth_api_call_keeps_app_client_header():
+    client = async_xsense.AsyncXSense()
+    session = FakeApiSession({"reCode": 200, "reData": {"ok": True}})
+
+    async def get_session():
+        return session
+
+    client._get_session = get_session
+
+    assert await client.api_call("101001", unauth=True) == {"ok": True}
+    body = session.calls[0]["json"]
+    assert body["appCode"] == client.APPCODE
+    assert body["appVersion"] == client.VERSION
+    assert body["clientType"] == client.CLIENTYPE
+    assert body["mac"] == "abcdefg"
