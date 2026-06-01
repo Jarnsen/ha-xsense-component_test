@@ -90,15 +90,26 @@ class MQTTHelper:
             transport="websockets",
         )
 
+        self._tls_context_configured = False
         self.client.username_pw_set(USERNAME, "")
+
+    def ensure_tls_context(self):
+        """Configure TLS after certificate loading has moved off the event loop."""
+        if self._tls_context_configured:
+            return
         ssl_context = ssl.create_default_context()
         self.client.tls_set_context(ssl_context)
+        self._tls_context_configured = True
 
     def prepare_connect(self):
         self.client.ws_set_options(path=self._get_path())
 
-    def connect(self, port: int = 443, keepalive: int = 60):
+    def prepare_connection(self):
         self.prepare_connect()
+        self.ensure_tls_context()
+
+    def connect(self, port: int = 443, keepalive: int = 60):
+        self.prepare_connection()
         result = self.client.connect(self.house.mqtt_server, port, keepalive)
         self.active = result == 0
         return result
