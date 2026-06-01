@@ -96,6 +96,17 @@
             },
             "wifi_sw": {
                 "name": "Wifi Module Firmware"
+            },
+            "last_self_test": {
+                "name": "Last Self Test",
+                "state": {
+                    "not_run": "Not Run",
+                    "success": "Success",
+                    "failed": "Failed"
+                }
+            },
+            "last_self_test_time": {
+                "name": "Last Self Test Time"
             }
         },
         "number": {

@@ -23,14 +23,17 @@ from .entity import XSenseEntity
 def has_data(*keys: str) -> Callable[[Entity], bool]:
     """Return an exists function for required X-Sense data keys."""
     return lambda entity: (
-        all(key in entity.data for key in keys) and entity.data.get("isAdmin", True)
+        is_camera_entity(entity)
+        and all(key in entity.data for key in keys)
+        and entity.data.get("isAdmin", True)
     )
 
 
 def has_supported_data(*keys: str, support_key: str) -> Callable[[Entity], bool]:
     """Return if the app exposes a supported camera setting."""
     return lambda entity: (
-        all(key in entity.data for key in keys)
+        is_camera_entity(entity)
+        and all(key in entity.data for key in keys)
         and entity.data.get("isAdmin", True)
         and entity.data.get(support_key, True)
     )
@@ -108,7 +111,8 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         name="Default Codec",
         icon="mdi:video-settings",
         exists_fn=lambda entity: (
-            "defaultCodec" in entity.data
+            is_camera_entity(entity)
+            and "defaultCodec" in entity.data
             and entity.data.get("isAdmin", True)
             and entity.data.get("showCodecChange", False)
         ),
@@ -141,7 +145,8 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         name="Cooldown",
         icon="mdi:timer-sand",
         exists_fn=lambda entity: (
-            "cooldownValue" in entity.data
+            is_camera_entity(entity)
+            and "cooldownValue" in entity.data
             and entity.data.get("isAdmin", True)
             and "cooldownOptions" in entity.data
             and entity.data.get("cooldownSupported", True)

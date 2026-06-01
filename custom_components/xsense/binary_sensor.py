@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from .api.async_xsense import is_camera_entity
 from .api.device import Device
 from .api.entity import Entity
 from .api.station import Station
@@ -78,6 +79,11 @@ def data_bool(key: str) -> Callable[[Entity], bool]:
 def has_data(key: str) -> Callable[[Entity], bool]:
     """Return an exists function for a X-Sense data key."""
     return lambda entity: key in entity.data
+
+
+def has_camera_data(key: str) -> Callable[[Entity], bool]:
+    """Return an exists function for an IPC camera data key."""
+    return lambda entity: is_camera_entity(entity) and key in entity.data
 
 
 SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
@@ -182,7 +188,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         name="Camera Awake",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:cctv",
-        exists_fn=has_data("awake"),
+        exists_fn=has_camera_data("awake"),
         value_fn=data_bool("awake"),
     ),
     XSenseBinarySensorEntityDescription(
@@ -191,7 +197,9 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:power-sleep",
         exists_fn=lambda entity: (
-            "deviceStatus" in entity.data and entity.data.get("supportSleep", False)
+            is_camera_entity(entity)
+            and "deviceStatus" in entity.data
+            and entity.data.get("supportSleep", False)
         ),
         value_fn=lambda entity: entity.data["deviceStatus"] == 3,
     ),
@@ -243,35 +251,35 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         name="Motion Required",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:motion-sensor",
-        exists_fn=has_data("needMotion"),
+        exists_fn=has_camera_data("needMotion"),
         value_fn=data_bool("needMotion"),
     ),
     XSenseBinarySensorEntityDescription(
         key="video_recording_enabled",
         name="Video Recording Enabled",
         icon="mdi:video-check",
-        exists_fn=has_data("needVideo"),
+        exists_fn=has_camera_data("needVideo"),
         value_fn=data_bool("needVideo"),
     ),
     XSenseBinarySensorEntityDescription(
         key="night_vision_enabled",
         name="Night Vision Enabled",
         icon="mdi:weather-night",
-        exists_fn=has_data("needNightVision"),
+        exists_fn=has_camera_data("needNightVision"),
         value_fn=data_bool("needNightVision"),
     ),
     XSenseBinarySensorEntityDescription(
         key="recording_light_enabled",
         name="Recording Light Enabled",
         icon="mdi:led-on",
-        exists_fn=has_data("recLamp"),
+        exists_fn=has_camera_data("recLamp"),
         value_fn=data_bool("recLamp"),
     ),
     XSenseBinarySensorEntityDescription(
         key="camera_alarm_enabled",
         name="Camera Alarm Enabled",
         icon="mdi:bell-check",
-        exists_fn=has_data("needAlarm"),
+        exists_fn=has_camera_data("needAlarm"),
         value_fn=data_bool("needAlarm"),
     ),
     XSenseBinarySensorEntityDescription(
@@ -279,7 +287,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         name="Mirror Flip",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:flip-horizontal",
-        exists_fn=has_data("mirrorFlip"),
+        exists_fn=has_camera_data("mirrorFlip"),
         value_fn=data_bool("mirrorFlip"),
     ),
     XSenseBinarySensorEntityDescription(
@@ -287,7 +295,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         name="Anti-Flicker",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:lightbulb-on-10",
-        exists_fn=has_data("antiflickerSwitch"),
+        exists_fn=has_camera_data("antiflickerSwitch"),
         value_fn=data_bool("antiflickerSwitch"),
     ),
     XSenseBinarySensorEntityDescription(
@@ -295,7 +303,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         name="Live Audio",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:volume-high",
-        exists_fn=has_data("liveAudioToggleOn"),
+        exists_fn=has_camera_data("liveAudioToggleOn"),
         value_fn=data_bool("liveAudioToggleOn"),
     ),
     XSenseBinarySensorEntityDescription(
@@ -303,7 +311,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         name="Voice Volume Enabled",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:volume-high",
-        exists_fn=has_data("voiceVolumeSwitch"),
+        exists_fn=has_camera_data("voiceVolumeSwitch"),
         value_fn=data_bool("voiceVolumeSwitch"),
     ),
     XSenseBinarySensorEntityDescription(
@@ -311,7 +319,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         name="Cooldown Enabled",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:timer-sand",
-        exists_fn=has_data("cooldownEnabled"),
+        exists_fn=has_camera_data("cooldownEnabled"),
         value_fn=data_bool("cooldownEnabled"),
     ),
     XSenseBinarySensorEntityDescription(
@@ -319,7 +327,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         name="WebRTC Supported",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:video-wireless-outline",
-        exists_fn=has_data("supportWebrtc"),
+        exists_fn=has_camera_data("supportWebrtc"),
         value_fn=data_bool("supportWebrtc"),
     ),
     XSenseBinarySensorEntityDescription(

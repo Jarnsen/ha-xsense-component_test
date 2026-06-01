@@ -22,7 +22,11 @@ from .entity import XSenseEntity
 
 def has_data(key: str) -> Callable[[Entity], bool]:
     """Return an exists function for a X-Sense data key."""
-    return lambda entity: key in entity.data and entity.data.get("isAdmin", True)
+    return lambda entity: (
+        is_camera_entity(entity)
+        and key in entity.data
+        and entity.data.get("isAdmin", True)
+    )
 
 
 def has_supported_data(key: str, support_key: str) -> Callable[[Entity], bool]:
@@ -178,7 +182,8 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_max_value=300,
         native_step=1,
         exists_fn=lambda entity: (
-            "cooldownValue" in entity.data
+            is_camera_entity(entity)
+            and "cooldownValue" in entity.data
             and entity.data.get("isAdmin", True)
             and "cooldownOptions" not in entity.data
             and entity.data.get("cooldownSupported", True)

@@ -332,6 +332,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 topic,
             )
 
+        if _is_self_test_topic(topic) and "selfTest" in station_data:
+            station_data["lastSelfTest"] = station_data.pop("selfTest")
+            if test_time := station_data.pop("time", None):
+                station_data["lastSelfTestTime"] = test_time
+
         children = station_data.pop("devs", {})
         target_device_sn = station_data.get("deviceSN") or station_data.get(
             "_deviceSN"
@@ -451,3 +456,11 @@ def _mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any]:
         return result
 
     return {}
+
+
+def _is_self_test_topic(topic: str) -> bool:
+    """Return if an MQTT update is an X-Sense self-test report topic."""
+    return (
+        "/shadow/name/selftestup/update" in topic
+        or "/shadow/name/2nd_selftestup/update" in topic
+    )

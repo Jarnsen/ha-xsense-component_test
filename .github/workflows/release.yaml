@@ -20,7 +20,20 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6.0.2
 
+      - name: Check for curated release notes
+        id: notes
+        shell: bash
+        run: |
+          notes_file=".github/release-notes/${GITHUB_REF_NAME}.md"
+          if [[ -f "$notes_file" ]]; then
+            echo "body_path=$notes_file" >> "$GITHUB_OUTPUT"
+            echo "generate=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "generate=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3.0.0
         with:
-          generate_release_notes: true
+          body_path: ${{ steps.notes.outputs.body_path }}
+          generate_release_notes: ${{ steps.notes.outputs.generate }}
