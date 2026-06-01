@@ -343,6 +343,10 @@ class AsyncXSense(XSenseBase):
 
     async def update_camera_data(self):
         """Merge camera metadata and config from the Android app ADDX API."""
+        data = await self.addx_call("/device/listuserdevices")
+        devices = (data or {}).get("list") or []
+        self._ensure_addx_cameras(devices)
+
         cameras = [
             station
             for house in self.houses.values()
@@ -351,16 +355,6 @@ class AsyncXSense(XSenseBase):
         ]
         if not cameras:
             return
-
-        try:
-            data = await self.addx_call("/device/listuserdevices")
-        except APIFailure as ex:
-            if _is_camera_api_unavailable(ex):
-                return
-            raise
-
-        devices = (data or {}).get("list") or []
-        self._ensure_addx_cameras(devices)
 
         by_sn = {device.get("serialNumber"): device for device in devices}
 
@@ -800,12 +794,6 @@ def _action_timestamp(definition: Dict, entity: Entity) -> str | None:
     if time_format == "epoch_ms":
         return str(int(datetime.now(timezone.utc).timestamp() * 1000))
     return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-
-
-def _is_camera_api_unavailable(error: APIFailure) -> bool:
-    """Return if the ADDX/IPC camera API is not enabled for this account."""
-    message = str(error).lower()
-    return "10000023" in message or "clientid is incorrect" in message
 
 
 def _camera_type(data: Dict) -> str | None:
