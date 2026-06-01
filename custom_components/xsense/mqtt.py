@@ -272,6 +272,10 @@ class XSenseMQTT:
         )
         await self._async_wait_for_mid_or_raise(msg_info.mid, msg_info.rc)
 
+    async def _async_prepare_connection(self) -> None:
+        """Prepare MQTT connection settings without blocking the event loop."""
+        await self.hass.async_add_executor_job(self.mqtt_helper.prepare_connection)
+
     # updated call, added exception handler
     async def async_connect(self) -> None:
         """Connect to the host. Does not process messages yet."""
@@ -281,7 +285,7 @@ class XSenseMQTT:
         self._should_reconnect = True
         try:
             async with self._connection_lock, self._async_connect_in_executor():
-                self.mqtt_helper.prepare_connect()
+                await self._async_prepare_connection()
                 result = await self.hass.async_add_executor_job(
                     self._mqttc.connect, self.mqtt_helper.house.mqtt_server, 443
                 )
@@ -335,7 +339,7 @@ class XSenseMQTT:
             _LOGGER.debug("Reconnecting to XSense MQTT server")
             try:
                 async with self._connection_lock, self._async_connect_in_executor():
-                    self.mqtt_helper.prepare_connect()
+                    await self._async_prepare_connection()
                     await self.hass.async_add_executor_job(self._mqttc.reconnect)
                 delay = 1
             except OSError as err:

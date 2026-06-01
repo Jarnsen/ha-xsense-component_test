@@ -30,7 +30,91 @@ async_xsense = load_api_module("async_xsense")
 entity_map = load_api_module("entity_map")
 exceptions = load_api_module("exceptions")
 house = load_api_module("house")
+mqtt_helper = load_api_module("mqtt_helper")
 station = load_api_module("station")
+xsense_mqtt = importlib.import_module("custom_components.xsense.mqtt")
+
+
+def test_mqtt_helper_defers_tls_context_loading_until_connect_setup(monkeypatch):
+    calls = []
+    clients = []
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.contexts = []
+            self.ws_paths = []
+            clients.append(self)
+
+        def username_pw_set(self, username, password):
+            self.username = username
+            self.password = password
+
+        def tls_set_context(self, context):
+            self.contexts.append(context)
+
+        def ws_set_options(self, path):
+            self.ws_paths.append(path)
+
+    def fake_create_default_context():
+        calls.append("created")
+        return "ssl-context"
+
+    monkeypatch.setattr(mqtt_helper.mqtt_client, "Client", FakeClient)
+    monkeypatch.setattr(
+        mqtt_helper.ssl, "create_default_context", fake_create_default_context
+    )
+
+    helper = mqtt_helper.MQTTHelper(
+        signer=types.SimpleNamespace(
+            presign_url=lambda *args: "wss://mqtt.example/mqtt?sig=abc"
+        ),
+        house=types.SimpleNamespace(
+            mqtt_server="mqtt.example",
+            mqtt_region="us-east-1",
+        ),
+    )
+
+    assert calls == []
+    assert clients[0].contexts == []
+    assert clients[0].ws_paths == []
+
+    helper.prepare_connection()
+
+    assert calls == ["created"]
+    assert clients[0].contexts == ["ssl-context"]
+    assert clients[0].ws_paths == ["/mqtt?sig=abc"]
+
+    helper.prepare_connection()
+
+    assert calls == ["created"]
+    assert clients[0].contexts == ["ssl-context"]
+    assert clients[0].ws_paths == ["/mqtt?sig=abc", "/mqtt?sig=abc"]
+
+
+@pytest.mark.asyncio
+async def test_xsense_mqtt_prepares_connection_in_executor():
+    calls = []
+    prepared = []
+
+    class FakeHass:
+        async def async_add_executor_job(self, func, *args):
+            calls.append(func)
+            return func(*args)
+
+    class FakeHelper:
+        def prepare_connection(self):
+            prepared.append(True)
+
+    client = object.__new__(xsense_mqtt.XSenseMQTT)
+    client.hass = FakeHass()
+    client.mqtt_helper = FakeHelper()
+
+    await client._async_prepare_connection()
+
+    assert calls[0].__self__ is client.mqtt_helper
+    assert calls[0].__name__ == "prepare_connection"
+    assert prepared == [True]
 
 
 class FakeResponse:
