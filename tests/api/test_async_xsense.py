@@ -1163,15 +1163,8 @@ async def test_temperature_alarm_volume_uses_temp_info_payload_without_station_s
 async def test_update_camera_data_creates_cameras_from_addx_device_list():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
-    camera_station = station.Station(
-        test_house,
-        stationId="cam-id",
-        stationName="Front Camera",
-        stationSn="cam-sn",
-        category="SSC0A",
-    )
-    test_house.stations = {"cam-id": camera_station}
-    test_house.station_order = ["cam-id"]
+    test_house.stations = {}
+    test_house.station_order = []
     client.houses = {"house-id": test_house}
     calls = []
 
@@ -1183,6 +1176,7 @@ async def test_update_camera_data_creates_cameras_from_addx_device_list():
                     {
                         "serialNumber": "cam-sn",
                         "deviceName": "Front Camera",
+                        "houseId": "house-id",
                         "modelNo": "SSC0A",
                         "online": 1,
                         "batteryLevel": 3,
@@ -1197,19 +1191,20 @@ async def test_update_camera_data_creates_cameras_from_addx_device_list():
 
     await client.update_camera_data()
 
-    assert "cam-id" in test_house.stations
-    camera = test_house.stations["cam-id"]
+    camera = test_house.get_station_by_sn("cam-sn")
+    assert camera is not None
     assert async_xsense.is_camera_entity(camera)
     assert camera.name == "Front Camera"
     assert camera.type == "SSC0A"
     assert camera.sn == "cam-sn"
     assert camera.data["batteryLevel"] == 3
     assert camera.data["streamProtocol"] == "webrtc"
+    assert ("/device/listuserdevices", {}) in calls
     assert ("/device/getuserconfig", {"serialNumber": "cam-sn", "voiceReminder": False}) in calls
 
 
 @pytest.mark.asyncio
-async def test_update_camera_data_skips_ipc_api_when_normal_device_list_has_no_camera():
+async def test_update_camera_data_queries_addx_when_normal_device_list_has_no_camera():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
     test_house.stations = {}
@@ -1225,29 +1220,19 @@ async def test_update_camera_data_skips_ipc_api_when_normal_device_list_has_no_c
 
     await client.update_camera_data()
 
-    assert calls == []
+    assert calls == [("/device/listuserdevices", {})]
     assert test_house.stations == {}
 
 
 @pytest.mark.asyncio
-async def test_update_camera_data_ignores_accounts_without_camera_ipc_client():
+async def test_update_camera_data_reraises_ipc_client_errors():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
-    camera_station = station.Station(
-        test_house,
-        stationId="cam-id",
-        stationName="Front Camera",
-        stationSn="cam-sn",
-        category="SSC0A",
-    )
-    test_house.stations = {"cam-id": camera_station}
-    test_house.station_order = ["cam-id"]
+    test_house.stations = {}
+    test_house.station_order = []
     client.houses = {"house-id": test_house}
 
-    calls = []
-
     async def addx_call(endpoint, **kwargs):
-        calls.append((endpoint, kwargs))
         raise exceptions.APIFailure(
             "Request for IPC code C10101 failed with error "
             "10000023/500 clientId is incorrect !"
@@ -1255,10 +1240,8 @@ async def test_update_camera_data_ignores_accounts_without_camera_ipc_client():
 
     client.addx_call = addx_call
 
-    await client.update_camera_data()
-
-    assert calls == [("/device/listuserdevices", {})]
-    assert test_house.stations == {"cam-id": camera_station}
+    with pytest.raises(exceptions.APIFailure):
+        await client.update_camera_data()
 
 
 @pytest.mark.asyncio
