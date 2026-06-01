@@ -41,13 +41,18 @@ def has_data(key: str) -> Callable[[Entity], bool]:
 
 def has_camera_data(key: str) -> Callable[[Entity], bool]:
     """Return if the app exposes an admin-only camera setting."""
-    return lambda entity: key in entity.data and entity.data.get("isAdmin", True)
+    return lambda entity: (
+        is_camera_entity(entity)
+        and key in entity.data
+        and entity.data.get("isAdmin", True)
+    )
 
 
 def has_supported_data(key: str, support_key: str) -> Callable[[Entity], bool]:
     """Return if the app exposes a supported camera setting."""
     return lambda entity: (
-        key in entity.data
+        is_camera_entity(entity)
+        and key in entity.data
         and entity.data.get("isAdmin", True)
         and entity.data.get(support_key, True)
     )
@@ -271,7 +276,8 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         name="Cooldown",
         icon="mdi:timer-sand",
         exists_fn=lambda entity: (
-            "cooldownEnabled" in entity.data
+            is_camera_entity(entity)
+            and "cooldownEnabled" in entity.data
             and entity.data.get("cooldownSupported", True)
             and entity.data.get("supportPirCooldown", True)
         ),

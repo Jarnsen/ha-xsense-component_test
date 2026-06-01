@@ -32,11 +32,30 @@ _HOUSE_STATE_DEVICE_TYPES = {
     "XP0A-iR",
     "XP0H-iR",
     "XP0J-iA",
+    "XR0A-iR",
     "XS01-WX",
     "XS03-WX",
     "XS0B-iR",
     "XS0E-iR",
     "XS0R-iA",
+}
+
+# The APK uses 2nd_info directly for the newer standalone Wi-Fi CO,
+# combined, temperature/humidity, water, and radon families. Wi-Fi smoke
+# families still use the legacy info shadow in their settings screens.
+_SECOND_INFO_DEVICE_TYPES = {
+    "SC06-WX",
+    "SC07-WX",
+    "STH0C",
+    "SWS0B",
+    "XC04-WX",
+    "XC0C-iA",
+    "XC0C-iR",
+    "XC0M-iR",
+    "XP0A-iR",
+    "XP0H-iR",
+    "XP0J-iA",
+    "XR0A-iR",
 }
 
 
@@ -50,9 +69,19 @@ def _station_state_shadow_names(station: Station) -> tuple[str, ...]:
     return ("2nd_mainpage",)
 
 
+def _station_info_shadow_names(station: Station) -> tuple[str, ...]:
+    if station.type == "SBS10":
+        return (f"info_{station.sn}",)
+    if station.type == "SBS50" or station.type in _SECOND_INFO_DEVICE_TYPES:
+        return (f"2nd_info_{station.sn}",)
+    return (f"info_{station.sn}", f"2nd_info_{station.sn}")
+
+
 def is_camera_entity(entity: Entity) -> bool:
     """Return if an entity is an IPC camera discovered through the app path."""
-    return entity.type in CAMERA_TYPES or entity.entity_type == EntityType.CAMERA
+    return entity.type in CAMERA_TYPES or (
+        getattr(entity, "entity_type", None) == EntityType.CAMERA
+    )
 
 
 class AsyncXSense(XSenseBase):
@@ -314,10 +343,6 @@ class AsyncXSense(XSenseBase):
 
     async def update_camera_data(self):
         """Merge camera metadata and config from the Android app ADDX API."""
-        data = await self.addx_call("/device/listuserdevices")
-        devices = (data or {}).get("list") or []
-        self._ensure_addx_cameras(devices)
-
         cameras = [
             station
             for house in self.houses.values()
@@ -326,6 +351,16 @@ class AsyncXSense(XSenseBase):
         ]
         if not cameras:
             return
+
+        try:
+            data = await self.addx_call("/device/listuserdevices")
+        except APIFailure as ex:
+            if _is_camera_api_unavailable(ex):
+                return
+            raise
+
+        devices = (data or {}).get("list") or []
+        self._ensure_addx_cameras(devices)
 
         by_sn = {device.get("serialNumber"): device for device in devices}
 
@@ -583,20 +618,16 @@ class AsyncXSense(XSenseBase):
             station.set_alarm_data(res["state"]["reported"])
 
     async def get_station_state(self, station: Station):
-        res = None
+        for page in _station_info_shadow_names(station):
+            res = await self.get_thing(station, page)
 
-        if station.type not in ("SBS50", "SC07-WX", "XC04-WX"):
-            res = await self.get_thing(station, f"info_{station.sn}")
+            if self._lastres.status == 404:
+                continue
 
-        if res is None or self._lastres.status == 404:
-            res = await self.get_thing(station, f"2nd_info_{station.sn}")
+            if "reported" in res.get("state", {}):
+                station.set_data(res["state"]["reported"])
+                return
 
-        if self._lastres.status == 404:
-            return
-
-        if "reported" in res.get("state", {}):
-            station.set_data(res["state"]["reported"])
-        else:
             text = await self._lastres.text()
             raise APIFailure(
                 f"Unable to retrieve station data: {self._lastres.status}/{text}"
@@ -769,6 +800,12 @@ def _action_timestamp(definition: Dict, entity: Entity) -> str | None:
     if time_format == "epoch_ms":
         return str(int(datetime.now(timezone.utc).timestamp() * 1000))
     return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+
+def _is_camera_api_unavailable(error: APIFailure) -> bool:
+    """Return if the ADDX/IPC camera API is not enabled for this account."""
+    message = str(error).lower()
+    return "10000023" in message or "clientid is incorrect" in message
 
 
 def _camera_type(data: Dict) -> str | None:

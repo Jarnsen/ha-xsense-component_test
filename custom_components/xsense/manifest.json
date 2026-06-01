@@ -1,16 +1,23 @@
 {
   "domain": "xsense",
   "name": "X-Sense Home Security",
-  "codeowners": ["@theosnel"],
+  "codeowners": [
+    "@theosnel"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/Jarnsen/ha-xsense-component_test",
   "homekit": {},
   "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "requirements": ["boto3", "botocore", "pycognito", "paho-mqtt>=2.1.0,<3"],
+  "requirements": [
+    "boto3",
+    "botocore",
+    "pycognito",
+    "paho-mqtt>=2.1.0,<3"
+  ],
   "homeassistant": "2025.3.0",
   "ssdp": [],
   "zeroconf": [],
-  "version": "1.2.4"
+  "version": "1.2.5"
 }

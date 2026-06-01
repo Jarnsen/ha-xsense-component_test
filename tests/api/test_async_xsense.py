@@ -30,6 +30,7 @@ async_xsense = load_api_module("async_xsense")
 entity_map = load_api_module("entity_map")
 exceptions = load_api_module("exceptions")
 house = load_api_module("house")
+station = load_api_module("station")
 
 
 class FakeResponse:
@@ -46,12 +47,102 @@ class FakeStation:
         self.type = station_type
         self.sn = "station-sn"
         self.parsed = []
+        self.data = {}
+
+    def set_data(self, values):
+        self.data.update(values)
+
+
+def test_station_shadow_names_follow_apk_factory_rules():
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+
+    def make_station(device_type, sn="serial"):
+        return station.Station(
+            test_house,
+            stationId=f"{device_type}-{sn}",
+            stationName=device_type,
+            stationSn=sn,
+            category=device_type,
+        )
+
+    assert make_station("SBS50").shadow_name == "SBS50serial"
+    assert make_station("STH0C").shadow_name == "STH0C-serial"
+    assert make_station("SWS0B").shadow_name == "SWS0B-serial"
+    assert make_station("XR0A-iR").shadow_name == "XR0A-iR-serial"
+    assert make_station("XS0R-iA").shadow_name == "XS0R-iA-serial"
+    assert make_station("SC07-WX").shadow_name == "SC07-WX-serial"
+    assert make_station("XC04-WX").shadow_name == "XC04-WX-serial"
+    assert make_station("XS0E-iR").shadow_name == "XS0E-iRserial"
+    assert make_station("XS03-WX").shadow_name == "XS03-WXserial"
+    assert make_station("XS01-WX", "ABC123").shadow_name == "XS01-WXABC123"
+    assert make_station("XS01-WX", "ABCEN123").shadow_name == "XS01-WX-ABCEN123"
 
 
 @pytest.mark.asyncio
-async def test_get_state_skips_house_level_wifi_device_shadows():
+async def test_get_station_state_uses_legacy_info_for_wifi_smoke_like_apk():
+    client = async_xsense.AsyncXSense()
+    station = FakeStation("XS01-WX")
+    calls = []
+
+    async def get_thing(station_arg, page):
+        calls.append(page)
+        client._lastres = FakeResponse(200)
+        return {"state": {"reported": {"wifiRSSI": -55}}}
+
+    client.get_thing = get_thing
+
+    await client.get_station_state(station)
+
+    assert calls == ["info_station-sn"]
+    assert station.data == {"wifiRSSI": -55}
+
+
+@pytest.mark.asyncio
+async def test_get_station_state_uses_second_info_for_new_wifi_devices_like_apk():
     client = async_xsense.AsyncXSense()
     station = FakeStation("STH0C")
+    calls = []
+
+    async def get_thing(station_arg, page):
+        calls.append(page)
+        client._lastres = FakeResponse(200)
+        return {"state": {"reported": {"temperature": 21}}}
+
+    client.get_thing = get_thing
+
+    await client.get_station_state(station)
+
+    assert calls == ["2nd_info_station-sn"]
+    assert station.data == {"temperature": 21}
+
+
+@pytest.mark.asyncio
+async def test_get_station_state_falls_back_to_second_info_for_unknown_legacy_types():
+    client = async_xsense.AsyncXSense()
+    station = FakeStation("XS01-M")
+    calls = []
+
+    async def get_thing(station_arg, page):
+        calls.append(page)
+        if page == "info_station-sn":
+            client._lastres = FakeResponse(404, "missing")
+            return {"message": "missing"}
+        client._lastres = FakeResponse(200)
+        return {"state": {"reported": {"rfLevel": 2}}}
+
+    client.get_thing = get_thing
+
+    await client.get_station_state(station)
+
+    assert calls == ["info_station-sn", "2nd_info_station-sn"]
+    assert station.data == {"rfLevel": 2}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("station_type", ["STH0C", "XR0A-iR"])
+async def test_get_state_skips_house_level_standalone_device_shadows(station_type):
+    client = async_xsense.AsyncXSense()
+    station = FakeStation(station_type)
     calls = []
 
     async def get_thing(station_arg, page):
@@ -304,7 +395,7 @@ async def test_wifi_device_test_v2_targets_wifi_thing_like_apk():
     assert len(calls) == 1
     station, page, data = calls[0]
     desired = data["state"]["desired"]
-    assert station is device
+    assert station.shadow_name == "XP0J-iA-station-sn"
     assert page == "2nd_selftest_device-sn"
     assert desired["shadow"] == "appSelfTest"
     assert desired["stationSN"] == "station-sn"
@@ -427,6 +518,192 @@ async def test_listener_self_test_uses_apk_payload_shape():
     assert desired["userId"] == "user-id"
     assert desired["time"].isdigit()
     assert len(desired["time"]) == 13
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("station_sn", "smoke_edition", "expected_topic", "expected_thing"),
+    [
+        ("ABC123", "8", "appmute", "XS01-WXABC123"),
+        ("ABCEN123", "9", "2nd_appmute", "XS01-WX-ABCEN123"),
+    ],
+)
+async def test_xs01_wx_mute_targets_apk_thing_name(
+    station_sn, smoke_edition, expected_topic, expected_thing
+):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    device = FakeXSenseDevice("XS01-WX")
+    device.station.sn = station_sn
+    device.data = {"smokeEdition": smoke_edition}
+    calls = []
+
+    async def do_thing(station, page, data):
+        calls.append((station, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+
+    await client.action(device, "mute")
+
+    assert len(calls) == 1
+    station, page, data = calls[0]
+    desired = data["state"]["desired"]
+    assert station.shadow_name == expected_thing
+    assert page == expected_topic
+    assert desired["shadow"] == "appMute"
+    assert desired["stationSN"] == station_sn
+    assert desired["deviceSN"] == "device-sn"
+    assert desired["muteType"] == "0"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("device_type", "expected_shadow", "expected_topic", "expected_thing"),
+    [
+        ("SC06-WX", "appMute", "2nd_appmute", "SC06-WX-station-sn"),
+        ("SC07-WX", "appMute", "2nd_appmute", "SC07-WX-station-sn"),
+        ("XP0H-iR", "appMute", "2nd_appmute", "XP0H-iR-station-sn"),
+        ("XP0A-iR", "appMute", "2nd_appmute", "XP0A-iR-station-sn"),
+        ("XP0J-iA", "appMute", "2nd_appmute", "XP0J-iA-station-sn"),
+        ("XS0B-iR", "appMute", "2nd_appmute", "XS0B-iR-station-sn"),
+        ("XS0E-iR", "appMute", "2nd_appmute", "XS0E-iRstation-sn"),
+        ("XS03-WX", "appMute", "2nd_appmute", "XS03-WXstation-sn"),
+        ("XS0R-iA", "appMute", "2nd_appmute", "XS0R-iA-station-sn"),
+        ("XC04-WX", "appMute", "2nd_appmute", "XC04-WX-station-sn"),
+        ("XC0C-iA", "appMute", "2nd_appmute", "XC0C-iA-station-sn"),
+        ("XC0C-iR", "appMute", "2nd_appmute", "XC0C-iR-station-sn"),
+        ("STH0C", "extendMute", "2nd_appmute", "STH0C-station-sn"),
+        ("XC0M-iR", "extendMute", "2nd_appmute", "XC0M-iR-station-sn"),
+        ("XR0A-iR", "extendMute", "2nd_appmute", "XR0A-iR-station-sn"),
+        ("SWS0B", "appWater", "2nd_appwater", "SWS0B-station-sn"),
+    ],
+)
+async def test_wifi_device_mute_uses_apk_factory_payload_shape(
+    device_type, expected_shadow, expected_topic, expected_thing
+):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    device = FakeXSenseStation(device_type)
+    calls = []
+
+    async def do_thing(station_arg, page, data):
+        calls.append((station_arg, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+
+    await client.action(device, "mute")
+
+    assert len(calls) == 1
+    station, page, data = calls[0]
+    desired = data["state"]["desired"]
+    assert station.shadow_name == expected_thing
+    assert page == expected_topic
+    assert desired["shadow"] == expected_shadow
+    assert desired["stationSN"] == "station-sn"
+    assert desired["deviceSN"] == "station-sn"
+    assert desired["userId"] == "user-id"
+    assert desired["muteType"] == "1"
+    assert desired["time"].isdigit()
+    assert len(desired["time"]) == 14
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("device_type", "expected_shadow"),
+    [
+        ("SD11-MR", "appMute"),
+        ("SD19-MN", "appMute"),
+        ("SK0Z-3S", "appMute"),
+        ("LP/N-SA-0B", "appMute"),
+        ("XP02S-MR", "appMute"),
+        ("XS0D-MR", "appMute"),
+        ("XC0C-MR", "app2ndMute"),
+    ],
+)
+async def test_sbs50_child_mute_uses_apk_payload_shape(
+    device_type, expected_shadow
+):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    device = FakeXSenseDevice(device_type)
+    calls = []
+
+    async def do_thing(station, page, data):
+        calls.append((station, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+
+    await client.action(device, "mute")
+
+    assert len(calls) == 1
+    station, page, data = calls[0]
+    desired = data["state"]["desired"]
+    assert station is device.station
+    assert page == "2nd_appmute"
+    assert desired["shadow"] == expected_shadow
+    assert desired["stationSN"] == "station-sn"
+    assert desired["deviceSN"] == "device-sn"
+    assert desired["userId"] == "user-id"
+    assert desired["muteType"] == "1"
+    assert desired["time"].isdigit()
+    assert len(desired["time"]) == 14
+
+
+@pytest.mark.asyncio
+async def test_xs03_iwx_mute_uses_apk_station_serial_thing_name():
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    device = FakeXSenseDevice("XS03-iWX")
+    calls = []
+
+    async def do_thing(station, page, data):
+        calls.append((station, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+
+    await client.action(device, "mute")
+
+    assert len(calls) == 1
+    station, page, data = calls[0]
+    desired = data["state"]["desired"]
+    assert station.shadow_name == "station-sn"
+    assert page == "appmute"
+    assert desired["shadow"] == "appMute"
+    assert desired["stationSN"] == "station-sn"
+    assert desired["deviceSN"] == "device-sn"
+    assert desired["userId"] == "user-id"
+    assert desired["muteType"] == "1"
+    assert desired["time"].isdigit()
+    assert len(desired["time"]) == 14
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("device_type", ["XP0J-iA", "XS0R-iA"])
+async def test_wifi_fire_drill_targets_apk_wifi_thing_name(device_type):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    device = FakeXSenseDevice(device_type, entity_map.EntityType.COMBI)
+    calls = []
+
+    async def do_thing(station, page, data):
+        calls.append((station, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+
+    await client.action(device, "firedrill")
+
+    assert len(calls) == 1
+    station, page, data = calls[0]
+    desired = data["state"]["desired"]
+    assert station.shadow_name == f"{device_type}-station-sn"
+    assert page == "2nd_firedrill"
+    assert desired["stationSN"] == "station-sn"
+    assert desired["deviceSN"] == "station-sn"
 
 
 @pytest.mark.asyncio
@@ -802,8 +1079,15 @@ async def test_temperature_alarm_volume_uses_temp_info_payload_without_station_s
 async def test_update_camera_data_creates_cameras_from_addx_device_list():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
-    test_house.stations = {}
-    test_house.station_order = []
+    camera_station = station.Station(
+        test_house,
+        stationId="cam-id",
+        stationName="Front Camera",
+        stationSn="cam-sn",
+        category="SSC0A",
+    )
+    test_house.stations = {"cam-id": camera_station}
+    test_house.station_order = ["cam-id"]
     client.houses = {"house-id": test_house}
     calls = []
 
@@ -829,8 +1113,8 @@ async def test_update_camera_data_creates_cameras_from_addx_device_list():
 
     await client.update_camera_data()
 
-    assert "cam-sn" in test_house.stations
-    camera = test_house.stations["cam-sn"]
+    assert "cam-id" in test_house.stations
+    camera = test_house.stations["cam-id"]
     assert async_xsense.is_camera_entity(camera)
     assert camera.name == "Front Camera"
     assert camera.type == "SSC0A"
@@ -841,30 +1125,77 @@ async def test_update_camera_data_creates_cameras_from_addx_device_list():
 
 
 @pytest.mark.asyncio
-async def test_update_camera_data_skips_unsupported_addx_camera_models():
+async def test_update_camera_data_skips_ipc_api_when_normal_device_list_has_no_camera():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
     test_house.stations = {}
     test_house.station_order = []
     client.houses = {"house-id": test_house}
+    calls = []
 
     async def addx_call(endpoint, **kwargs):
-        if endpoint == "/device/listuserdevices":
-            return {
-                "list": [
-                    {
-                        "serialNumber": "unknown-cam",
-                        "deviceName": "New Camera",
-                        "displayModelNo": "Future Cam",
-                        "deviceModel": {"modelName": "G2"},
-                        "deviceSupport": {},
-                    }
-                ]
-            }
-        return {}
+        calls.append((endpoint, kwargs))
+        return {"list": []}
 
     client.addx_call = addx_call
 
     await client.update_camera_data()
 
+    assert calls == []
     assert test_house.stations == {}
+
+
+@pytest.mark.asyncio
+async def test_update_camera_data_ignores_accounts_without_camera_ipc_client():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    camera_station = station.Station(
+        test_house,
+        stationId="cam-id",
+        stationName="Front Camera",
+        stationSn="cam-sn",
+        category="SSC0A",
+    )
+    test_house.stations = {"cam-id": camera_station}
+    test_house.station_order = ["cam-id"]
+    client.houses = {"house-id": test_house}
+
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        raise exceptions.APIFailure(
+            "Request for IPC code C10101 failed with error "
+            "10000023/500 clientId is incorrect !"
+        )
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    assert calls == [("/device/listuserdevices", {})]
+    assert test_house.stations == {"cam-id": camera_station}
+
+
+@pytest.mark.asyncio
+async def test_update_camera_data_reraises_real_camera_api_errors():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    camera_station = station.Station(
+        test_house,
+        stationId="cam-id",
+        stationName="Front Camera",
+        stationSn="cam-sn",
+        category="SSC0A",
+    )
+    test_house.stations = {"cam-id": camera_station}
+    test_house.station_order = ["cam-id"]
+    client.houses = {"house-id": test_house}
+
+    async def addx_call(endpoint, **kwargs):
+        raise exceptions.APIFailure("Request failed with error 123/500 server exploded")
+
+    client.addx_call = addx_call
+
+    with pytest.raises(exceptions.APIFailure):
+        await client.update_camera_data()
