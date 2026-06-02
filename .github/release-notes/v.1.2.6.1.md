@@ -1,19 +1,20 @@
-## v.1.2.6.1
+## 🧹 v.1.2.6.1
 
-### Summary
+A cleanup and availability hotfix after 1.2.6. This release removes stale identifier entities, improves device availability behavior, and keeps diagnostics useful without cluttering normal device views.
 
-This hotfix cleans up stale entities and improves availability handling after the 1.2.6 release.
+### ✨ Highlights
 
-### Fixed
+- 🧹 Removed obsolete serial number and MAC address sensor entities left behind by older releases.
+- 🟢 Kept control entities unavailable until X-Sense reports the device online, while still showing sensor data when available.
+- 🧭 Matched APK online-time offline thresholds so stale reports do not make devices look controllable.
 
-- Removed obsolete serial number and MAC address sensor entities left behind by older releases.
+### 🛠️ Fixed
+
 - Hardened obsolete sensor cleanup so stale identifier entries are removed without touching current device entities.
-- Renamed legacy X-Sense entities that were left with none-suffixed IDs when a clean device-based entity ID is available.
-- Kept control entities unavailable until X-Sense reports the device online, while still showing sensor data when it exists.
-- Matched the APK online-time offline thresholds so stale reports do not make devices look controllable.
+- Renamed legacy X-Sense entities that were left with old none-suffixed IDs when a clean device-based entity ID is available.
 - Kept static identifiers out of normal sensors and visible device metadata while leaving them available in Home Assistant diagnostics.
 
-### Validation
+### 🔎 Validation
 
-- Home Assistant install check completed before release
-- Full test suite passed
+- ✅ Installed and checked on Steve Home Assistant before release.
+- ✅ Full test suite passed.

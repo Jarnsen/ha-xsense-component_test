@@ -1,22 +1,23 @@
-## v.1.2.6.2
+## 🚀 v.1.2.6.2
 
-### Summary
+A focused stability release for X-Sense cloud/API communication. This version brings the integration closer to the current Android app behavior, especially around request signing, MQTT/shadow payloads, online status, and camera handling.
 
-This hotfix aligns app metadata, signing, MQTT/shadow payloads, presence updates, and camera handling with the current Android APK.
+### ✨ Highlights
 
-### Fixed
+- 📱 Updated X-Sense app request metadata to match the current Android app.
+- 🔐 Fixed request signing for Unicode payloads, empty lists, booleans, null values, and mixed list values.
+- 📡 Matched AWS shadow and MQTT command payloads to the Android app compact JSON format.
+- 🟢 Added AWS IoT presence handling so online/offline state updates more like the app.
+- 📷 Tightened camera handling for APK-supported camera models and live-stream resolution fallback.
 
-- Updated X-Sense app request metadata to match the current Android app.
-- Matched the Android app compact JSON format for AWS shadow and MQTT command payloads.
-- Fixed request signing for Unicode payloads, empty lists, booleans, null values, and mixed list values.
-- Added AWS IoT presence-event handling so online/offline state updates like it does in the app.
-- Tightened camera support to the APK-supported camera models and improved live-stream resolution fallback.
-- Allowed camera data loading to retry after a failed update instead of suppressing future attempts.
+### 🛠️ Reliability
 
-### Validation
+- 🔁 Camera data loading now retries after a failed update instead of suppressing later attempts.
+- ✅ XS01-WX live readback was verified before release.
+- 🏠 Home Assistant config check passed before publishing.
 
-- Installed and checked on Steve Home Assistant before release
-- Home Assistant config check passed
-- Home Assistant restarted successfully after install
-- XS01-WX live API readback confirmed online with current data
-- Full test suite passed
+### 🔎 Validation
+
+- ✅ Installed and checked on Steve Home Assistant before release.
+- ✅ Home Assistant restarted successfully after install.
+- ✅ Full test suite passed.
