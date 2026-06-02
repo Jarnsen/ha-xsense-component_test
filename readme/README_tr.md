@@ -7,10 +7,10 @@
 ## Genel Bakış
 Bu Home Assistant entegrasyonu, X-Sense cihazlarının akıllı ev sistemine entegre edilmesine olanak tanır. [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) tarafından oluşturulan orijinal kod temel alınarak Theo'nun izni ve işbirliği ile yayımlanmıştır.
 
-Theo tarafından resmi bir Home Assistant entegrasyonu sunulana kadar, bu HACS entegrasyonu kullanılacak ve mevcut sorunları çözmek ve yeni özellikler eklemek için düzenli olarak güncellenecektir. Bu entegrasyon, kullanıcıların X-Sense cihazlarını Home Assistant'a kolayca entegre etmelerini ve çeşitli otomasyonlar ve izleme amaçlarıyla kullanmalarını sağlar.
+Bu HACS entegrasyonu, Home Assistant içinde daha geniş X-Sense cihaz desteği isteyen kullanıcılar için aktif olarak sürdürülür. Yeni işlevler, ek cihaz kapsamı ve bildirilen sorunlara yönelik düzeltmelerle düzenli olarak güncellenir.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+ <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>
 
 ## Özellikler
@@ -38,30 +38,30 @@ Entegrasyonu kurmadan önce bazı hazırlıklar yapılmalıdır:
 
 - **Ana hesaptaki desteklenen cihazları Home Assistant hesabıyla paylaşın**: X-Sense uygulamasını kullanarak **sadece desteklenen cihazları** yeni oluşturduğunuz hesapla paylaşın. Böylece, entegrasyonu Home Assistant'ta sorunsuz kullanabilir ve cihazları ana hesabınız üzerinden yönetmeye devam edebilirsiniz.
 
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
 
 ____________________________________________________________
 
 ## HACS Üzerinden Kurulum
 1. **Home Assistant'ta HACS'i açın**:
-   HACS, Home Assistant için önemli bir eklentidir ve özel entegrasyonların kolayca kurulmasına olanak tanır.
+  HACS, Home Assistant için önemli bir eklentidir ve özel entegrasyonların kolayca kurulmasına olanak tanır.
 
-   ![Download (1)](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+  ![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
 
 2. **Özel depolara gidin**:
-   HACS kontrol panelinde ayarlara gidin ve bu depoyu özel kaynak olarak ekleyin.
+  HACS kontrol panelinde ayarlara gidin ve bu depoyu özel kaynak olarak ekleyin.
 
 3. **Depoyu ekleyin**:
-   Depo URL'sini girin: `https://github.com/Jarnsen/ha-xsense-component_test`
+  Depo URL'sini girin: `https://github.com/Jarnsen/ha-xsense-component_test`
 
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+  ![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 
 4. **Entegrasyonu indirin ve yükleyin**:
-   HACS'te entegrasyonu arayın, indirin ve yükleyin. Kurulum tamamlandıktan sonra Home Assistant arayüzü üzerinden yapılandırma yapılabilir.
+  HACS'te entegrasyonu arayın, indirin ve yükleyin. Kurulum tamamlandıktan sonra Home Assistant arayüzü üzerinden yapılandırma yapılabilir.
 
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
-   
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+  ![HACS repository selection screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
+
+  ![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
 
 ____________________________________________________________
 
@@ -69,11 +69,11 @@ ____________________________________________________________
 Kurulumdan sonra entegrasyonu doğru bir şekilde ayarlamak için temel bir yapılandırma gereklidir:
 - **Kullanıcı adı ve şifre**: Yeni oluşturduğunuz X-Sense hesabının kimlik bilgilerini kullanarak bağlantıyı kurun.
 
-    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
-  
+  ![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
 - **Cihaz görünümü**: Başarılı bir kurulumdan sonra paylaşılan cihazlar Home Assistant'ta kullanılabilir hale gelir ve otomasyonlar için kullanılabilir.
 
-    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+  ![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
 ## Home Assistant'ta Görünüm
 Başarılı bir kurulum ve yapılandırma sonrasında entegrasyon Home Assistant'ta görünür olacaktır. Cihazlar kontrol panelinde görüntülenebilir ve otomasyonlar, bildirimler ve diğer uygulamalar için kullanılabilir.
 
@@ -92,13 +92,13 @@ Bu entegrasyon çeşitli X-Sense cihazlarını destekler. Oluşturulan varlıkla
 - **Higrometre-termometre (STH51, STH0A, STH0B, STH0C)**: Sıcaklık ve nemi izler.
 - **Kapı sensörü (SDS0A)** ve **hareket sensörü (SMS0A)**: X-Sense durum bildirdiğinde gösterilir.
 - **Kamera (SSC0A, SSC0B)**: Cihaz ve hesap desteklediğinde kamera varlıkları, küçük resimler, canlı yayın URL'leri, durum tanıları ve Android uygulamasına dayalı ayarları sağlar.
-- **Diğer istasyon cihazları**: Işık, tuş takımı, posta kutusu, listener, araç yolu alarmı, smart drop, kumanda ve radon verileri API desteklenen alanları bildirdiğinde gösterilir.
+- **Diğer istasyon cihazları**: Işık, tuş takımı, posta kutusu, dinleme cihazı, araç yolu alarmı, akıllı teslimat cihazı, kumanda ve radon verileri API desteklenen alanları bildirdiğinde gösterilir.
 
 ### Kullanılabilir varlıklar ve eylemler
 Entegrasyon yalnızca X-Sense bulutunda, MQTT shadow payload'larında veya Android uygulamasıyla uyumlu kamera API'lerinde gerçekten bulunan alanlar için Home Assistant varlıkları oluşturur. Cihaza bağlı olarak şunları içerebilir:
 
 - Alarm, sessize alma, kullanım ömrü sonu, AC kesintisi, su alarmı, sıcaklık alarmı, şarj, hareket, kapı, kurulu durum, uyarı, hatırlatıcı, ışık, PIR ve tuş takımı durumu için ikili sensörler.
-- Pil, RF sinyali, Wi-Fi sinyali, firmware, sıcaklık, nem, CO seviyesi, CO tepe değeri, alarm/konuşma/chirp/hatırlatıcı ses seviyesi, uyarı eşikleri, sessize alma sayaçları, okunabilir zaman damgaları, saat dilimi, seri numarası, MAC adresi ve diğer tanılama sensörleri.
+- Pil, RF sinyali, Wi-Fi sinyali, firmware, sıcaklık, nem, CO seviyesi, CO tepe değeri, alarm/konuşma/chirp/hatırlatıcı ses seviyesi, uyarı eşikleri, sessize alma sayaçları, okunabilir zaman damgaları, saat dilimi ve diğer tanılama sensörleri.
 - LED ışık, alarm etkinleştirme, devam eden alarm, chirp tonu, hatırlatıcılar, PIR, sunshine/white light, bekleme, tuş takımı sesi, kamera hareket algılama, kayıt, gece görüşü, ses, cooldown, ışık ve kapı zili kontrolleri gibi X-Sense tarafından bildirilen yazılabilir ayarlar için anahtarlar.
 - Dil, kayıt çözünürlüğü, codec, anti-flicker oranı, hareket hassasiyeti, video süresi, ses seviyesi, alarm süresi, cooldown, gece eşiği ve kapı zili tuşu gibi desteklenen kamera ayarları için seçimler ve sayı varlıkları.
 - X-Sense uygulamasının ilgili modeli desteklediği durumlarda test, sessize alma, yangın tatbikatı ve kamera uyandırma düğmeleri.
@@ -159,3 +159,35 @@ Tartışmalar ve destek için Discord sunucumuza katılabilir veya Home Assistan
 [Discord](https://discord.gg/5phHHgGb3V)
 
 [Forum](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
+
+## Tam Başvuru
+
+### Hesap ve kurulum
+- Home Assistant için ayrı bir X-Sense hesabı kullanın.
+- Ana hesaptan yalnızca desteklenen cihazları bu hesaba paylaşın.
+- Eşleştirme, kaldırma, paylaşma, firmware, hesap, ödeme ve SD kart yönetimi X-Sense uygulamasında kalır.
+- Uygulama ile Home Assistant birbirini oturumdan çıkarıyorsa aynı hesabın kullanılmadığını kontrol edin.
+
+### Güncellemeler ve API kullanımı
+- Hızlı durum değişiklikleri MQTT shadow mesajlarıyla alınır.
+- Bulut istekleri oturum açma, cihaz keşfi, kamera verileri ve durum yenileme için kullanılır.
+- Periyodik sorgulama yalnızca canlı güncelleme eksik kaldığında yedek olarak kullanılır.
+- Entegrasyon X-Sense API kullanımını gereksiz yere artırmamak için tam cihaz keşfini her güncellemede tekrarlamaz.
+
+### Varlıklar, kameralar ve sorun giderme
+- Varlıklar yalnızca X-Sense gerçekten ilgili alanı bildirdiğinde oluşturulur.
+- Kamera varlıkları ve kamera kontrolleri yalnızca Android uygulamasıyla uyumlu API, ilgili hesap ve model için destek bildirdiğinde oluşturulur.
+- WebRTC yolu Home Assistant içinde kullanılabilir olduğunda, uygun kamera canlı görüntüsü için kullanılabilir.
+- Eksik bir değer varsa önce X-Sense uygulamasında aynı değerin görünüp değiştiğini kontrol edin, ardından tanılama çıktısını ve ilgili Home Assistant günlüklerini ekleyin.
+
+## Cihaz ve Varlık Kontrol Listesi
+
+### Ana cihaz aileleri
+- SBS50 baz istasyonu, XS duman alarmları, XC CO alarmları, SC/XP birleşik alarmlar, XH ısı alarmları, SWS su kaçağı dedektörleri, STH sıcaklık/nem sensörleri, SDS kapı sensörleri, SMS hareket sensörleri, SSC kameralar ve X-Sense tarafından bildirilen diğer aileler, API desteklenen alanları sağladığında desteklenir.
+
+### Durum alanları
+- Alarm, sessize alma, pil, RF/Wi-Fi sinyali, sıcaklık, nem, CO, su, hareket, kapı, ışık, hatırlatıcılar, uyarılar ve okunabilir zaman damgaları yalnızca X-Sense bunları bildirdiğinde görünür.
+
+### Kontroller ve raporlama
+- Anahtarlar, seçimler, sayılar ve düğmeler yalnızca cihaz ve hesap tarafından sağlanan yazılabilir ayarlar ve eylemler için oluşturulur.
+- İyi bir hata bildirimi kesin modeli, entegrasyon sürümünü, tanılama çıktısını, günlükleri ve değerin X-Sense uygulamasında doğru değişip değişmediğini içerir.

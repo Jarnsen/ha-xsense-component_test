@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Oversikt
 Denne Home Assistant-integrasjonen gjør X-Sense-enheter tilgjengelige i smarthuset. Den bygger på Theo Snels opprinnelige arbeid og installeres via HACS.
 
@@ -7,6 +11,31 @@ Vi anbefaler å opprette en egen X-Sense-konto for Home Assistant og bare dele s
 
 ## Installasjon
 Legg til `https://github.com/Jarnsen/ha-xsense-component_test` som egendefinert repository i HACS, last ned integrasjonen, følg HACS-instruksjonene for omstart og konfigurer den med X-Sense-kontoen for Home Assistant.
+
+
+## Detaljert oppsett med skjermbilder
+
+1. Opprett en separat X-Sense-konto for Home Assistant, og del bare støttede enheter fra hovedkontoen.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. Legg til `https://github.com/Jarnsen/ha-xsense-component_test` som et egendefinert repository i HACS.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Last ned og installer integrasjonen, start Home Assistant på nytt, og konfigurer den deretter med den nye X-Sense-kontoen.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Etter vellykket oppsett vises de delte enhetene på enhetssiden i Home Assistant.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Paring, fjerning, firmware, betalinger, SD-kort og kontoadministrasjon forblir i X-Sense-appen.
 
 ## Støttede enheter
 Basestasjoner, røykvarslere, CO-detektorer, varmealarmer, vannlekkasjedetektorer, hygrometre, dør- og bevegelsessensorer, lys, tastaturer, postkassesensorer, lytteenheter og støttede kameraer støttes når X-Sense-kontoen rapporterer dem.
@@ -62,7 +91,7 @@ Integrasjonen bruker MQTT shadow-meldinger for raske statusendringer og forsikti
 
 ### Tilgjengelige enheter
 
-Avhengig av modell kan det vises røyk-, CO-, vann-, temperatur-, bevegelses- og døralarmer, alarmdemping, levetidsslutt, lading, påminnelsesstatus, lysstatus og andre diagnostiske binærsensorer. Sensorer kan omfatte batteri, RF- eller Wi-Fi-signal, fastvare, temperatur, fuktighet, CO-nivå, CO-toppverdi, volum, terskler, lesbare tidspunkter, tidssone, serienummer, MAC-adresse og annen diagnostikk. Brytere, valg og tallfelt opprettes bare når enheten faktisk støtter dem.
+Avhengig av modell kan det vises røyk-, CO-, vann-, temperatur-, bevegelses- og døralarmer, alarmdemping, levetidsslutt, lading, påminnelsesstatus, lysstatus og andre diagnostiske binærsensorer. Sensorer kan omfatte batteri, RF- eller Wi-Fi-signal, fastvare, temperatur, fuktighet, CO-nivå, CO-toppverdi, volum, terskler, lesbare tidspunkter, tidssone og annen diagnostikk. Brytere, valg og tallfelt opprettes bare når enheten faktisk støtter dem.
 
 ### Kameraer
 
@@ -104,12 +133,12 @@ Når du rapporterer en feil, oppgi enhetsmodell, integrasjonsversjon, om riktig 
 - Diagnostiske verdier merkes som diagnostikk.
 - Test, demping, brannøvelse og kameravekking vises bare for støttede modeller.
 
-### Kameraer
+### Kamerareferanse
 - Støttede kameraer kan gi kameraentitet, miniatyrbilde, direktestrøm og diagnostikk.
 - WebRTC-stien brukes bare hvis den er tilgjengelig i Home Assistant.
 - SD-kort, betalinger, fastvare og kontoadministrasjon håndteres i X-Sense-appen.
 
-### Feilsøking
+### Sjekkliste for feilsøking
 - Feilrapporter bør inneholde modell, integrasjonsversjon, diagnostikk og relevante logger.
 
 ### Omfang

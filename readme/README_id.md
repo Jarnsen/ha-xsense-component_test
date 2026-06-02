@@ -12,7 +12,7 @@ Sampai integrasi resmi Home Assistant tersedia, integrasi HACS ini akan terus di
 ## Fitur
 - Mengintegrasikan berbagai perangkat X-Sense ke Home Assistant.
 - Mendukung otomatisasi berdasarkan data sensor X-Sense.
-- Mendukung base stasiun, detektor asap, detektor karbon monoksida, alarm panas, detektor kebocoran air, termohigrometer, sensor pintu, sensor gerak, lampu, keypad, sensor kotak surat, dan perangkat listener saat tersedia di akun X-Sense.
+- Mendukung base stasiun, detektor asap, detektor karbon monoksida, alarm panas, detektor kebocoran air, termohigrometer, sensor pintu, sensor gerak, lampu, keypad, sensor kotak surat, dan perangkat perangkat pendengar saat tersedia di akun X-Sense.
 - Pembaruan real-time melalui X-Sense MQTT shadow, dengan polling cloud berkala sebagai cadangan.
 - Instalasi mudah melalui HACS.
 
@@ -34,16 +34,16 @@ ____________________________________________________________
 
 ## Instalasi melalui HACS
 1. **Buka HACS di Home Assistant**:
-   HACS adalah ekstensi penting untuk Home Assistant yang memudahkan pemasangan integrasi kustom.
+  HACS adalah ekstensi penting untuk Home Assistant yang memudahkan pemasangan integrasi kustom.
 
 2. **Buka custom repositories**:
-   Masuk ke pengaturan HACS dan tambahkan repositori sebagai sumber kustom.
+  Masuk ke pengaturan HACS dan tambahkan repositori sebagai sumber kustom.
 
 3. **Tambahkan repositori**:
-   Masukkan URL repositori: `https://github.com/Jarnsen/ha-xsense-component_test`
+  Masukkan URL repositori: `https://github.com/Jarnsen/ha-xsense-component_test`
 
 4. **Unduh dan pasang integrasi**:
-   Cari integrasi di HACS, unduh, lalu pasang. Setelah itu konfigurasi dilakukan dari antarmuka Home Assistant.
+  Cari integrasi di HACS, unduh, lalu pasang. Setelah itu konfigurasi dilakukan dari antarmuka Home Assistant.
 
 ____________________________________________________________
 
@@ -54,6 +54,31 @@ Setelah pemasangan, konfigurasi dasar diperlukan agar integrasi dapat digunakan:
 
 ## Tampilan di Home Assistant
 Setelah instalasi dan konfigurasi berhasil, integrasi akan terlihat di Home Assistant. Perangkat tersedia di dashboard dan dapat digunakan untuk otomasi, notifikasi, dan kebutuhan lain.
+
+
+## Penyiapan rinci dengan tangkapan layar
+
+1. Buat akun X-Sense terpisah untuk Home Assistant dan bagikan hanya perangkat yang didukung dari akun utama.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. Tambahkan `https://github.com/Jarnsen/ha-xsense-component_test` sebagai repositori khusus di HACS.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Unduh dan pasang integrasi, mulai ulang Home Assistant, lalu konfigurasikan dengan akun X-Sense baru.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Setelah penyiapan berhasil, perangkat yang dibagikan akan muncul di halaman perangkat Home Assistant.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Pemasangan, penghapusan, firmware, pembayaran, kartu SD, dan manajemen akun tetap berada di aplikasi X-Sense.
 
 ## Perangkat yang didukung
 Integrasi ini mendukung berbagai perangkat X-Sense. Entitas yang tersedia bergantung pada kolom data yang dilaporkan perangkat dan akun. Keluarga dan model yang dikonfirmasi meliputi:
@@ -66,13 +91,13 @@ Integrasi ini mendukung berbagai perangkat X-Sense. Entitas yang tersedia bergan
 - **Higrometer-termometer (STH51, STH0A, STH0B, STH0C)**: Memantau suhu dan kelembapan.
 - **Sensor pintu (SDS0A)** dan **sensor gerak (SMS0A)**: Ditampilkan saat X-Sense menyediakan status.
 - **Kamera (SSC0A, SSC0B)**: Menampilkan entitas kamera, gambar pratinjau, URL siaran langsung, diagnostik, dan pengaturan berbasis aplikasi Android saat didukung perangkat dan akun.
-- **Perangkat lain yang terhubung ke stasiun**: Lampu, keypad, mailbox, listener, alarm driveway, smart drop, remote, dan data radon ditampilkan saat API melaporkan kolom yang didukung.
+- **Perangkat lain yang terhubung ke stasiun**: Lampu, keypad, mailbox, perangkat pendengar, alarm driveway, perangkat penerima paket pintar, remote, dan data radon ditampilkan saat API melaporkan kolom yang didukung.
 
 ### Entitas dan aksi yang tersedia
 Integrasi hanya membuat entitas Home Assistant untuk kolom yang benar-benar ada di cloud X-Sense, muatan MQTT shadow, atau API kamera yang selaras dengan aplikasi Android. Bergantung pada perangkat, ini dapat mencakup:
 
 - Binary sensor untuk alarm, mute, end-of-life, AC-break, alarm air, alarm suhu, pengisian daya, gerakan, pintu, status armed, peringatan, pengingat, lampu, PIR, dan status keypad.
-- Sensor baterai, sinyal RF, sinyal Wi-Fi, firmware, suhu, kelembapan, level CO, puncak CO, volume alarm, volume suara, volume chirp, volume pengingat, ambang peringatan, timer mute, timestamp yang mudah dibaca, zona waktu, nomor seri, alamat MAC, dan data diagnostik lain.
+- Sensor baterai, sinyal RF, sinyal Wi-Fi, firmware, suhu, kelembapan, level CO, puncak CO, volume alarm, volume suara, volume chirp, volume pengingat, ambang peringatan, timer senyap, cap waktu yang mudah dibaca, zona waktu, dan data diagnostik lain.
 - Sakelar untuk pengaturan yang dapat ditulis yang didukung X-Sense, seperti lampu LED, pengaktifan alarm, alarm berkelanjutan, nada kicau, pengingat, PIR, cahaya matahari/cahaya putih, mode tunggu, suara papan tombol, deteksi gerakan kamera, perekaman, penglihatan malam, audio, jeda pendinginan, lampu, dan kontrol bel pintu.
 - Pilihan dan angka untuk pengaturan kamera yang didukung seperti bahasa, resolusi rekaman, codec, anti-flicker, sensitivitas gerakan, durasi video, volume, durasi alarm, jeda pendinginan, ambang malam, dan tombol dering bel pintu.
 - Tombol test, mute, fire-drill, dan wake kamera untuk model perangkat yang menyediakan aksi tersebut di aplikasi X-Sense.

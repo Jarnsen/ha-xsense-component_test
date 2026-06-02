@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Översikt
 Den här Home Assistant-integrationen gör X-Sense-enheter tillgängliga i ditt smarta hem. Den bygger på Theo Snels ursprungliga arbete och installeras via HACS.
 
@@ -7,6 +11,31 @@ Vi rekommenderar att du skapar ett separat X-Sense-konto för Home Assistant och
 
 ## Installation
 Lägg till `https://github.com/Jarnsen/ha-xsense-component_test` som anpassat repository i HACS, ladda ned integrationen, följ HACS anvisning för omstart och konfigurera sedan integrationen med X-Sense-kontot för Home Assistant.
+
+
+## Detaljerad installation med skärmbilder
+
+1. Skapa ett separat X-Sense-konto för Home Assistant och dela endast enheter som stöds från huvudkontot.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. Lägg till `https://github.com/Jarnsen/ha-xsense-component_test` som ett anpassat repository i HACS.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Ladda ned och installera integrationen, starta om Home Assistant och konfigurera den sedan med det nya X-Sense-kontot.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Efter lyckad installation visas de delade enheterna på enhetssidan i Home Assistant.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Parkoppling, borttagning, firmware, betalningar, SD-kort och kontohantering stannar i X-Sense-appen.
 
 ## Enheter som stöds
 Basstationer, brandvarnare, CO-detektorer, värmelarm, vattenläckagedetektorer, hygrometrar, dörr- och rörelsesensorer, lampor, knappsatser, brevlådesensorer, lyssnarenheter och kameror stöds när de rapporteras av X-Sense-kontot.
@@ -62,7 +91,7 @@ Integrationen använder MQTT shadow-meddelanden för snabba statusändringar och
 
 ### Tillgängliga entiteter
 
-Beroende på modell kan rök-, CO-, vatten-, temperatur-, rörelse- och dörrlarm visas, liksom larmtystning, slut på livslängd, laddning, påminnelsestatus, ljusstatus och andra diagnostiska binära sensorer. Sensorer kan omfatta batteri, RF- eller Wi-Fi-signal, firmware, temperatur, luftfuktighet, CO-nivå, CO-toppvärde, volym, tröskelvärden, läsbara tider, tidszon, serienummer, MAC-adress och annan diagnostik. Brytare, val och numeriska värden skapas bara när enheten faktiskt stöder dem.
+Beroende på modell kan rök-, CO-, vatten-, temperatur-, rörelse- och dörrlarm visas, liksom larmtystning, slut på livslängd, laddning, påminnelsestatus, ljusstatus och andra diagnostiska binära sensorer. Sensorer kan omfatta batteri, RF- eller Wi-Fi-signal, firmware, temperatur, luftfuktighet, CO-nivå, CO-toppvärde, volym, tröskelvärden, läsbara tider, tidszon och annan diagnostik. Brytare, val och numeriska värden skapas bara när enheten faktiskt stöder dem.
 
 ### Kameror
 
@@ -104,12 +133,12 @@ När du rapporterar ett fel, ange enhetsmodell, integrationsversion, om rätt v�
 - Diagnostiska värden markeras som diagnostik.
 - Test, tystning, brandövning och kameraväckning visas bara för modeller som stöds.
 
-### Kameror
+### Kamerareferens
 - Kameror som stöds kan ge kameraentitet, miniatyrbild, liveström och diagnostik.
 - WebRTC-vägen används bara om den är tillgänglig i Home Assistant.
 - SD-kort, betalningar, firmware och kontoadministration hanteras i X-Sense-appen.
 
-### Felsökning
+### Felsökningschecklista
 - Felrapporter bör innehålla modell, integrationsversion, diagnostik och relevanta loggar.
 
 ### Omfattning

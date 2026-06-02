@@ -39,10 +39,22 @@ property_mapper = {
 }
 
 
-def bool_state(value: typing.Any) -> bool:
+def bool_state(value: typing.Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value == 1:
+            return True
+        if value == 0:
+            return False
+        return None
     if isinstance(value, str):
-        return value == "1"
-    return bool(value)
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "on"}:
+            return True
+        if normalized in {"0", "false", "off"}:
+            return False
+    return None
 
 
 def safe_float(value: typing.Any) -> float | None:
@@ -71,6 +83,7 @@ type_mapping: dict[str, Callable[[typing.Any], typing.Any]] = {
     "alarmEnabled": bool_state,
     "alarmEnable": bool_state,
     "alarmWhenRemoveToggleOn": bool_state,
+    "activate": bool_state,
     "alarmSound": bool_state,
     "appTip": bool_state,
     "awaitEnable": bool_state,

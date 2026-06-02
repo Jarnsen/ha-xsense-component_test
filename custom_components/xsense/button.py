@@ -72,7 +72,7 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
         icon="mdi:power-sleep",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: (
-            is_camera_entity(entity) and entity.data.get("supportSleep", False)
+            is_camera_entity(entity) and entity.data.get("supportSleep") is True
         ),
         press_fn=wake_camera,
     ),

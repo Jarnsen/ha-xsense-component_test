@@ -85,6 +85,7 @@ class MQTTHelper:
         self._sig_age = None
 
         self.client = mqtt_client.Client(
+            callback_api_version=mqtt_client.CallbackAPIVersion.VERSION2,
             client_id=str(uuid.uuid4()),
             reconnect_on_failure=False,
             transport="websockets",

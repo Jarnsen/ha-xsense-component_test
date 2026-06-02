@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from .api.device import Device
 from .api.entity import Entity
-from .api.async_xsense import is_camera_entity
+from .api.async_xsense import _camera_config_write_value, is_camera_entity
 
 from homeassistant import config_entries
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
@@ -22,11 +22,23 @@ from .coordinator import XSenseDataUpdateCoordinator
 from .entity import XSenseEntity
 
 
-def boolean_state(value) -> bool:
-    """Return the normalized bool for common X-Sense boolean payload values."""
+def boolean_state(value) -> bool | None:
+    """Return the normalized state for explicit X-Sense boolean payload values."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value == 1:
+            return True
+        if value == 0:
+            return False
+        return None
     if isinstance(value, str):
-        return value == "1"
-    return bool(value)
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "on"}:
+            return True
+        if normalized in {"0", "false", "off"}:
+            return False
+    return None
 
 
 def on_off_value(value: bool) -> str:
@@ -44,7 +56,7 @@ def has_camera_data(key: str) -> Callable[[Entity], bool]:
     return lambda entity: (
         is_camera_entity(entity)
         and key in entity.data
-        and entity.data.get("isAdmin", True)
+        and entity.data.get("isAdmin") is True
     )
 
 
@@ -53,12 +65,12 @@ def has_supported_data(key: str, support_key: str) -> Callable[[Entity], bool]:
     return lambda entity: (
         is_camera_entity(entity)
         and key in entity.data
-        and entity.data.get("isAdmin", True)
-        and entity.data.get(support_key, True)
+        and entity.data.get("isAdmin") is True
+        and entity.data.get(support_key) is True
     )
 
 
-def data_bool(key: str) -> Callable[[Entity], bool]:
+def data_bool(key: str) -> Callable[[Entity], bool | None]:
     """Return a value function for an X-Sense boolean data key."""
     return lambda entity: boolean_state(entity.data[key])
 
@@ -77,7 +89,7 @@ class XSenseSwitchEntityDescription(SwitchEntityDescription):
 
     data_key: str
     exists_fn: Callable[[Entity], bool]
-    value_fn: Callable[[Entity], bool]
+    value_fn: Callable[[Entity], bool | None]
     read_key: str | None = None
     addx_key: str | None = None
     write_value_fn: Callable[[bool], str] = on_off_value
@@ -101,7 +113,6 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         exists_fn=lambda entity: (
             entity.entity_type is not None
             and entity.entity_type.value == "light"
-            and entity.type != "group-L"
             and "on" in entity.data
         ),
         value_fn=data_bool("on"),
@@ -278,8 +289,10 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         exists_fn=lambda entity: (
             is_camera_entity(entity)
             and "cooldownEnabled" in entity.data
-            and entity.data.get("cooldownSupported", True)
-            and entity.data.get("supportPirCooldown", True)
+            and "cooldownValue" in entity.data
+            and entity.data.get("isAdmin") is True
+            and entity.data.get("cooldownSupported") is True
+            and entity.data.get("supportPirCooldown") is True
         ),
         value_fn=data_bool("cooldownEnabled"),
     ),
@@ -443,7 +456,7 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
             raise HomeAssistantError("X-Sense entity is no longer available")
 
         station = getattr(entity, "station", entity)
-        if self.entity_description.data_key == "on" and entity.type != "group-L":
+        if self.entity_description.data_key == "on":
             await xsense.update_light_power(entity, enabled)
             entity.data[self.entity_description.data_key] = enabled
             self.coordinator.async_update_listeners()
@@ -454,7 +467,7 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
                 await xsense.update_camera_cooldown(
                     entity,
                     user_enable=enabled,
-                    value=int(entity.data.get("cooldownValue") or 10),
+                    value=int(entity.data["cooldownValue"]),
                 )
                 self.coordinator.async_update_listeners()
                 return
@@ -483,7 +496,9 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
                 self.coordinator.async_update_listeners()
                 return
 
-            value = 1 if enabled else 0
+            value = _camera_config_write_value(
+                self.entity_description.addx_key, enabled
+            )
             await xsense.update_camera_config(
                 entity, **{self.entity_description.addx_key: value}
             )

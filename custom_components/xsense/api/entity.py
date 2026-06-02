@@ -1,5 +1,5 @@
 from .entity_map import entities
-from .mapping import map_values
+from .mapping import bool_state, map_values
 
 
 class Entity:
@@ -9,18 +9,29 @@ class Entity:
     entity_type = None
 
     def __init__(self, **kwargs):
+        self.online = None
         self.room_id = kwargs.get("roomId")
         self._data = {}
 
         entity = entities.get(self.type, {})
         self.entity_type = entity.get("type")
 
+        for key in ("online", "onLine"):
+            if key in kwargs:
+                self._set_online(kwargs[key])
+                break
+
+    def _set_online(self, value) -> None:
+        online = bool_state(value)
+        if online is not None:
+            self.online = online
+
     def set_data(self, values: dict):
         data = values.copy()
-        if "online" in data:
-            self.online = str(data.pop("online")) != "0"
-        if data.get("onlineTime"):
-            self.online = True
+        for key in ("online", "onLine"):
+            if key in data:
+                self._set_online(data.pop(key))
+                break
         status_data = data.pop("status", {}) or {}
         if isinstance(status_data, dict):
             data.update(status_data)

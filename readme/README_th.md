@@ -12,7 +12,7 @@
 ## คุณสมบัติ
 - รวมอุปกรณ์ X-Sense หลายประเภทเข้ากับ Home Assistant
 - รองรับการทำงานอัตโนมัติจากข้อมูลเซนเซอร์ X-Sense
-- รองรับสถานีฐาน เครื่องตรวจจับควัน เครื่องตรวจจับคาร์บอนมอนอกไซด์ เครื่องตรวจจับความร้อน เซนเซอร์น้ำรั่ว เครื่องวัดอุณหภูมิและความชื้น เซนเซอร์ประตู เซนเซอร์ตรวจจับการเคลื่อนไหว ไฟ คีย์แพด เซนเซอร์กล่องจดหมาย และอุปกรณ์ listener เมื่อมีข้อมูลในบัญชี X-Sense
+- รองรับสถานีฐาน เครื่องตรวจจับควัน เครื่องตรวจจับคาร์บอนมอนอกไซด์ เครื่องตรวจจับความร้อน เซนเซอร์น้ำรั่ว เครื่องวัดอุณหภูมิและความชื้น เซนเซอร์ประตู เซนเซอร์ตรวจจับการเคลื่อนไหว ไฟ คีย์แพด เซนเซอร์กล่องจดหมาย และอุปกรณ์รับฟัง เมื่อมีข้อมูลในบัญชี X-Sense
 - อัปเดตแบบเรียลไทม์ผ่าน X-Sense MQTT shadow พร้อมการดึงข้อมูลจากคลาวด์เป็นระยะเป็นแผนสำรอง
 - ติดตั้งผ่าน HACS ได้ง่าย
 
@@ -34,16 +34,16 @@ ____________________________________________________________
 
 ## ติดตั้งผ่าน HACS
 1. **เปิด HACS ใน Home Assistant**:
-   HACS เป็นส่วนขยายสำคัญที่ช่วยติดตั้ง custom integration ได้ง่าย
+  HACS เป็นส่วนขยายสำคัญที่ช่วยติดตั้ง custom integration ได้ง่าย
 
 2. **ไปที่ custom repositories**:
-   ในหน้า การตั้งค่าของ HACS ให้เพิ่ม repository นี้เป็น แหล่งที่กำหนดเอง
+  ในหน้า การตั้งค่าของ HACS ให้เพิ่ม repository นี้เป็น แหล่งที่กำหนดเอง
 
 3. **เพิ่ม repository**:
-   ใส่ URL: `https://github.com/Jarnsen/ha-xsense-component_test`
+  ใส่ URL: `https://github.com/Jarnsen/ha-xsense-component_test`
 
 4. **ดาวน์โหลดและติดตั้ง integration**:
-   ค้นหา integration ใน HACS ดาวน์โหลดและติดตั้ง จากนั้นตั้งค่าผ่านหน้า Home Assistant
+  ค้นหา integration ใน HACS ดาวน์โหลดและติดตั้ง จากนั้นตั้งค่าผ่านหน้า Home Assistant
 
 ____________________________________________________________
 
@@ -54,6 +54,31 @@ ____________________________________________________________
 
 ## มุมมองใน Home Assistant
 เมื่อติดตั้งและตั้งค่าสำเร็จ integration จะปรากฏใน Home Assistant อุปกรณ์จะอยู่บน dashboard และใช้กับ automation, notification และงานอื่นได้
+
+
+## การตั้งค่าโดยละเอียดพร้อมภาพหน้าจอ
+
+1. สร้างบัญชี X-Sense แยกสำหรับ Home Assistant และแชร์เฉพาะอุปกรณ์ที่รองรับจากบัญชีหลัก
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. เพิ่ม `https://github.com/Jarnsen/ha-xsense-component_test` เป็น custom repository ใน HACS
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. ดาวน์โหลดและติดตั้ง integration รีสตาร์ต Home Assistant แล้วตั้งค่าด้วยบัญชี X-Sense ใหม่
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. เมื่อตั้งค่าสำเร็จ อุปกรณ์ที่แชร์จะแสดงในหน้าอุปกรณ์ของ Home Assistant
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. การจับคู่ การลบ firmware การชำระเงิน SD card และการจัดการบัญชียังคงอยู่ในแอป X-Sense
 
 ## อุปกรณ์ที่รองรับ
 อินทิเกรชันนี้รองรับอุปกรณ์ X-Sense หลายประเภท เอนทิตีที่มีขึ้นอยู่กับฟิลด์ข้อมูลที่อุปกรณ์และบัญชีรายงาน รุ่นและกลุ่มที่ยืนยันแล้วได้แก่:
@@ -66,13 +91,13 @@ ____________________________________________________________
 - **ไฮโกรมิเตอร์-เทอร์โมมิเตอร์ (STH51, STH0A, STH0B, STH0C)**: ตรวจวัดอุณหภูมิและความชื้น.
 - **เซ็นเซอร์ประตู (SDS0A)** และ **เซ็นเซอร์การเคลื่อนไหว (SMS0A)**: แสดงเมื่อ X-Sense รายงานสถานะ.
 - **กล้อง (SSC0A, SSC0B)**: แสดงเอนทิตีกล้อง ภาพย่อ URL สตรีมสด การวินิจฉัย และการตั้งค่าตามแอป Android เมื่ออุปกรณ์และบัญชีรองรับ.
-- **อุปกรณ์อื่นที่เชื่อมกับสถานี**: ไฟ แป้นกด กล่องจดหมาย listener สัญญาณทางเข้า smart drop รีโมต และข้อมูลเรดอนจะแสดงเมื่อ API รายงานฟิลด์ที่รองรับ.
+- **อุปกรณ์อื่นที่เชื่อมกับสถานี**: ไฟ แป้นกด กล่องจดหมาย อุปกรณ์รับฟัง สัญญาณทางเข้า อุปกรณ์รับพัสดุอัจฉริยะ รีโมต และข้อมูลเรดอนจะแสดงเมื่อ API รายงานฟิลด์ที่รองรับ.
 
 ### เอนทิตีและคำสั่งที่มี
 อินทิเกรชันจะสร้างเอนทิตี Home Assistant เฉพาะฟิลด์ ที่มีอยู่จริงใน คลาวด์ X-Sense, เพย์โหลด MQTT shadow หรือ API กล้อง ที่สอดคล้องกับแอป Android เท่านั้น แล้วแต่รุ่นอุปกรณ์ อาจรวมถึง:
 
-- Binary sensor สำหรับ alarm, mute, end-of-life, AC-break, water alarm, temperature alarm, charging, motion, door, armed, warning, การเตือนความจำ, light, PIR และสถานะ keypad
-- Sensor สำหรับ battery, RF signal, Wi-Fi signal, เฟิร์มแวร์, temperature, humidity, CO level, CO peak, alarm ระดับเสียง, voice ระดับเสียง, chirp ระดับเสียง, การเตือนความจำ ระดับเสียง, warning threshold, mute timer, timestamp ที่อ่านได้, timezone, serial number, MAC address และข้อมูล diagnostic อื่น
+- Binary sensor สำหรับ alarm, mute, end-of-life, AC-break, water alarm, อุณหภูมิ alarm, charging, motion, door, armed, warning, การเตือนความจำ, light, PIR และสถานะ keypad
+- เซนเซอร์สำหรับแบตเตอรี่, สัญญาณ RF, สัญญาณ Wi-Fi, เฟิร์มแวร์, อุณหภูมิ, ความชื้น, ระดับ CO, ค่าสูงสุด CO, ระดับเสียงเตือน, ระดับเสียงพูด, ระดับเสียงแจ้งเตือนสั้น, การเตือนความจำ ระดับเสียง, เกณฑ์เตือน, ตัวจับเวลาปิดเสียง, เวลาที่อ่านได้, เขตเวลา และข้อมูล การวินิจฉัย อื่น
 - สวิตช์สำหรับการตั้งค่า ที่ X-Sense รายงานว่าสามารถเขียนค่าได้ เช่น ไฟ LED, การเปิดใช้สัญญาณเตือน, สัญญาณเตือนต่อเนื่อง, เสียง chirp, การเตือนความจำ, PIR, แสงแดด/แสงขาว, โหมดรอ, เสียงแป้นกด, การตรวจจับการเคลื่อนไหวของกล้อง, การบันทึก, โหมดกลางคืน, เสียง, ระยะพัก, light และ การควบคุมกริ่งประตู
 - ตัวเลือกและตัวเลข สำหรับ การตั้งค่ากล้อง ที่รองรับ เช่น ภาษา, ความละเอียดการบันทึก, codec, anti-flicker rate, ความไวต่อการเคลื่อนไหว, ความยาววิดีโอ, ระดับเสียง, ระยะเวลาสัญญาณเตือน, ระยะพัก, เกณฑ์กลางคืน และ ปุ่มกริ่งประตู
 - ปุ่ม test, mute, fire-drill และ wake camera สำหรับรุ่นที่แอป X-Sense มี action นั้นให้ใช้
@@ -81,7 +106,7 @@ ____________________________________________________________
 
 ____________________________________________________________
 
-## ตัวอย่าง Automation
+## ตัวอย่างระบบอัตโนมัติ
 ด้วย integration นี้สามารถสร้าง automation ได้หลายแบบ ตัวอย่างเช่น:
 
 ### ตัวอย่าง 1: แจ้งเตือนอุณหภูมิ
@@ -92,7 +117,7 @@ automation:
   - alias: "แจ้งเตือนอุณหภูมิ X-Sense"
     trigger:
       platform: numeric_state
-      entity_id: sensor.xsense_temperature
+      entity_id: sensor.xsense_อุณหภูมิ
       above: 30
     action:
       service: notify.notify

@@ -25,7 +25,7 @@ def has_data(*keys: str) -> Callable[[Entity], bool]:
     return lambda entity: (
         is_camera_entity(entity)
         and all(key in entity.data for key in keys)
-        and entity.data.get("isAdmin", True)
+        and entity.data.get("isAdmin") is True
     )
 
 
@@ -34,8 +34,8 @@ def has_supported_data(*keys: str, support_key: str) -> Callable[[Entity], bool]
     return lambda entity: (
         is_camera_entity(entity)
         and all(key in entity.data for key in keys)
-        and entity.data.get("isAdmin", True)
-        and entity.data.get(support_key, True)
+        and entity.data.get("isAdmin") is True
+        and entity.data.get(support_key) is True
     )
 
 
@@ -44,6 +44,24 @@ def option_strings(value) -> list[str]:
     if not isinstance(value, list):
         return []
     return [str(item) for item in value if item is not None]
+
+
+def _required_bool_state(value) -> bool:
+    """Return an explicit X-Sense boolean value or raise if it is unknown."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value == 1:
+            return True
+        if value == 0:
+            return False
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "on"}:
+            return True
+        if normalized in {"0", "false", "off"}:
+            return False
+    raise HomeAssistantError("X-Sense cooldown enabled state is unknown")
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -113,8 +131,8 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         exists_fn=lambda entity: (
             is_camera_entity(entity)
             and "defaultCodec" in entity.data
-            and entity.data.get("isAdmin", True)
-            and entity.data.get("showCodecChange", False)
+            and entity.data.get("isAdmin") is True
+            and entity.data.get("showCodecChange") is True
         ),
     ),
     XSenseSelectEntityDescription(
@@ -147,10 +165,10 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         exists_fn=lambda entity: (
             is_camera_entity(entity)
             and "cooldownValue" in entity.data
-            and entity.data.get("isAdmin", True)
+            and entity.data.get("isAdmin") is True
             and "cooldownOptions" in entity.data
-            and entity.data.get("cooldownSupported", True)
-            and entity.data.get("supportPirCooldown", True)
+            and entity.data.get("cooldownSupported") is True
+            and entity.data.get("supportPirCooldown") is True
         ),
     ),
     XSenseSelectEntityDescription(
@@ -253,7 +271,7 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
         elif self.entity_description.addx_key == "cooldown.value":
             await self.coordinator.xsense.update_camera_cooldown(
                 entity,
-                user_enable=bool(entity.data.get("cooldownEnabled")),
+                user_enable=_required_bool_state(entity.data.get("cooldownEnabled")),
                 value=int(_typed_option(option)),
             )
         elif self.entity_description.addx_key.startswith("audio."):

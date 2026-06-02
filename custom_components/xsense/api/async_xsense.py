@@ -66,7 +66,7 @@ def _station_state_shadow_names(station: Station) -> tuple[str, ...]:
         return ("mainpage",)
     if station.type == "SBS50":
         return ("2nd_mainpage",)
-    return ("2nd_mainpage",)
+    return ()
 
 
 def _station_info_shadow_names(station: Station) -> tuple[str, ...]:
@@ -185,8 +185,10 @@ class AsyncXSense(XSenseBase):
             self._addx_session = await self.register_ipc()
 
         addx_session = self._addx_session
-        node = addx_session.get("nodeType", "US")
-        base_url = self.ADDX_API_BY_NODE.get(node, self.ADDX_API_BY_NODE["US"])
+        node = addx_session.get("nodeType")
+        base_url = self.ADDX_API_BY_NODE.get(node)
+        if base_url is None:
+            raise APIFailure(f"Unknown ADDX nodeType: {node}")
         data = self._addx_body(addx_session, kwargs)
 
         session = await self._get_session()
@@ -217,8 +219,12 @@ class AsyncXSense(XSenseBase):
     def _addx_body(self, addx_session: dict, data: Dict | None = None) -> Dict:
         """Return the ADDX request body shape used by the Android SDK."""
         result = dict(data or {})
-        country = addx_session.get("countryNo") or "US"
-        language = addx_session.get("language") or "en"
+        country = addx_session.get("countryNo")
+        if not country:
+            raise APIFailure("Missing ADDX countryNo from IPC registration")
+        language = addx_session.get("language")
+        if not language:
+            raise APIFailure("Missing ADDX language from IPC registration")
         tenant = addx_session.get("tenantId")
         result["countryNo"] = country
         result["language"] = language
@@ -328,12 +334,10 @@ class AsyncXSense(XSenseBase):
 
     async def register_ipc(self):
         """Register with X-Sense IPC and receive the ADDX camera token."""
-        node_type = "US"
-        for house in self.houses.values():
-            region = (house.region or "")[:2].upper()
-            if region:
-                node_type = region
-                break
+        if not self.houses:
+            raise APIFailure("Cannot register IPC without an X-Sense house")
+        house = next(iter(self.houses.values()))
+        node_type = _ipc_node_type(house.region)
         return await self.ipc_call(
             "C10101",
             userName=self.username,
@@ -343,10 +347,6 @@ class AsyncXSense(XSenseBase):
 
     async def update_camera_data(self):
         """Merge camera metadata and config from the Android app ADDX API."""
-        data = await self.addx_call("/device/listuserdevices")
-        devices = (data or {}).get("list") or []
-        self._ensure_addx_cameras(devices)
-
         cameras = [
             station
             for house in self.houses.values()
@@ -356,6 +356,8 @@ class AsyncXSense(XSenseBase):
         if not cameras:
             return
 
+        data = await self.addx_call("/device/listuserdevices")
+        devices = (data or {}).get("list") or []
         by_sn = {device.get("serialNumber"): device for device in devices}
 
         for camera in cameras:
@@ -405,48 +407,9 @@ class AsyncXSense(XSenseBase):
                 if doorbell:
                     camera.set_data(_camera_doorbell_data(doorbell))
 
-    def _ensure_addx_cameras(self, devices: list[Dict]) -> None:
-        """Add cameras that the app exposes only through the ADDX device list."""
-        if not self.houses:
-            return
-
-        fallback_house = next(iter(self.houses.values()))
-        for addx_device in devices:
-            sn = addx_device.get("serialNumber")
-            if not sn or self._get_station_by_sn(sn):
-                continue
-
-            house = self.houses.get(str(addx_device.get("houseId"))) or fallback_house
-            camera_type = _camera_type(addx_device)
-            if camera_type is None:
-                continue
-
-            station = Station(
-                house,
-                stationId=sn,
-                stationName=addx_device.get("deviceName")
-                or addx_device.get("displayModelNo")
-                or camera_type
-                or sn,
-                stationSn=sn,
-                onLine=addx_device.get("online", True),
-                category=camera_type,
-                devices=[],
-            )
-            station.entity_type = EntityType.CAMERA
-            house.stations[station.entity_id] = station
-            if house.station_order is not None:
-                house.station_order.append(station.entity_id)
-
-    def _get_station_by_sn(self, sn: str) -> Station | None:
-        for house in self.houses.values():
-            if station := house.get_station_by_sn(sn):
-                return station
-        return None
-
     async def update_camera_config(self, camera: Entity, **updates):
         """Write camera user config through the Android app endpoint."""
-        payload = {"serialNumber": camera.sn, **updates}
+        payload = _camera_user_config_payload(camera, updates)
         await self.addx_call("/device/updateuserconfig", **payload)
         camera.set_data(updates)
 
@@ -517,7 +480,7 @@ class AsyncXSense(XSenseBase):
         data = await self.addx_call(
             "/device/newstartlive",
             serialNumber=camera.sn,
-            liveResolution=str(camera.data.get("recResolution") or ""),
+            liveResolution=str(camera.data.get("liveResolution") or ""),
         )
         if isinstance(data, dict):
             camera.set_data(
@@ -675,17 +638,35 @@ class AsyncXSense(XSenseBase):
         return await self.do_thing(target, topic, data)
 
     async def update_light_power(self, entity: Entity, enabled: bool):
-        """Write an SBS50 light power change through the app lampPower shadow."""
+        """Write an SBS50 light power change through the app light shadows."""
         station = getattr(entity, "station", entity)
         desired = {
-            "dev": entity.sn,
             "isOn": "1" if enabled else "0",
-            "shadow": "lampPower",
-            "stationSN": station.sn,
             "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
             "userId": self.userid,
             "userParam": "source=1",
         }
+        if entity.type == "group-L":
+            desired.update(
+                {
+                    "devs": entity.data.get("devs") or [],
+                    "groupId": entity.data.get("groupId"),
+                    "shadow": "groupLampPower",
+                    "stationSN": station.sn,
+                    "timeOut": "180",
+                }
+            )
+            return await self.do_thing(
+                station, "2nd_grouppower", {"state": {"desired": desired}}
+            )
+
+        desired.update(
+            {
+                "dev": entity.sn,
+                "shadow": "lampPower",
+                "stationSN": station.sn,
+            }
+        )
         return await self.do_thing(
             station, "2nd_lamppower", {"state": {"desired": desired}}
         )
@@ -796,6 +777,13 @@ def _action_timestamp(definition: Dict, entity: Entity) -> str | None:
     return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
 
+def _ipc_node_type(house_region: str | None) -> str:
+    """Return the IPC node type derived from the app's current house region."""
+    if not house_region or len(house_region) <= 2:
+        return "US"
+    return house_region[:2].upper()
+
+
 def _camera_type(data: Dict) -> str | None:
     device_model = data.get("deviceModel") or {}
     for value in (
@@ -803,10 +791,9 @@ def _camera_type(data: Dict) -> str | None:
         data.get("displayModelNo"),
         device_model.get("modelName"),
     ):
-        text = str(value or "").upper()
-        for camera_type in CAMERA_TYPES:
-            if camera_type in text:
-                return camera_type
+        model = str(value or "").upper()
+        if model in CAMERA_TYPES:
+            return model
     return None
 
 
@@ -848,30 +835,40 @@ def _camera_data(data: Dict) -> Dict:
         "signalStrength": data.get("signalStrength"),
         "showCodecChange": data.get("showCodecChange"),
         "streamProtocol": device_model.get("streamProtocol"),
-        "supportAntiFlicker": data.get("antiflickerSupport"),
-        "supportAlarm": device_support.get("deviceSupportAlarm"),
-        "supportAlarmVolume": device_support.get("supportAlarmVolume"),
-        "supportBattery": device_model.get("canStandby"),
-        "supportChargeAutoPowerOn": device_support.get("supportChargeAutoPowerOn"),
-        "supportCryDetect": device_support.get("supportCryDetect"),
-        "supportDeviceCall": device_support.get("supportDeviceCall"),
-        "supportDoorBellAlarm": device_support.get("supportAlarmWhenRemoveToggle"),
-        "supportLiveAudio": device_support.get("supportLiveAudioToggle"),
-        "supportLight": device_model.get("whiteLight"),
-        "supportMechanicalDingDong": device_support.get("supportMechanicalDingDong"),
-        "supportMirrorFlip": device_support.get("deviceSupportMirrorFlip"),
-        "supportMotionTrack": device_model.get("supportMotionTrack"),
+        "supportAntiFlicker": _addx_bool(data.get("antiflickerSupport")),
+        "supportAlarm": _addx_bool(device_support.get("deviceSupportAlarm")),
+        "supportAlarmVolume": _addx_bool(device_support.get("supportAlarmVolume")),
+        "supportBattery": _addx_bool(device_model.get("canStandby")),
+        "supportChargeAutoPowerOn": _addx_bool(
+            device_support.get("supportChargeAutoPowerOn")
+        ),
+        "supportCryDetect": _addx_bool(device_support.get("supportCryDetect")),
+        "supportDeviceCall": _addx_bool(device_support.get("supportDeviceCall")),
+        "supportDoorBellAlarm": _addx_bool(
+            device_support.get("supportAlarmWhenRemoveToggle")
+        ),
+        "supportLiveAudio": _addx_bool(device_support.get("supportLiveAudioToggle")),
+        "supportLight": _addx_bool(device_model.get("whiteLight")),
+        "supportMechanicalDingDong": _addx_bool(
+            device_support.get("supportMechanicalDingDong")
+        ),
+        "supportMirrorFlip": _addx_bool(device_support.get("deviceSupportMirrorFlip")),
+        "supportMotionTrack": _addx_bool(device_model.get("supportMotionTrack")),
         "supportPersonDetect": False,
-        "supportPirCooldown": device_support.get("supportPirCooldown"),
-        "supportRecLamp": device_support.get("supportRecLamp"),
-        "supportRecordingAudio": device_support.get("supportRecordingAudioToggle"),
-        "supportRocker": device_model.get("canRotate"),
-        "supportSdCard": sd_card.get("formatStatus") not in (None, 23),
-        "supportSleep": device_support.get("deviceDormancySupport"),
-        "supportLiveSpeakerVolume": device_support.get("supportLiveSpeakerVolume"),
+        "supportPirCooldown": _addx_bool(device_support.get("supportPirCooldown")),
+        "supportRecLamp": _addx_bool(device_support.get("supportRecLamp")),
+        "supportRecordingAudio": _addx_bool(
+            device_support.get("supportRecordingAudioToggle")
+        ),
+        "supportRocker": _addx_bool(device_model.get("canRotate")),
+        "supportSdCard": sd_card.get("formatStatus") == 0,
+        "supportSleep": device_support.get("deviceDormancySupport") == 1,
+        "supportLiveSpeakerVolume": _addx_bool(
+            device_support.get("supportLiveSpeakerVolume")
+        ),
         "supportedRecordingResolutions": device_support.get("deviceSupportResolution"),
-        "supportVoiceVolume": device_support.get("supportVoiceVolume"),
-        "supportWebrtc": device_support.get("supportWebrtc"),
+        "supportVoiceVolume": _addx_bool(device_support.get("supportVoiceVolume")),
+        "supportWebrtc": _addx_bool(device_support.get("supportWebrtc")),
         "thumbImgTime": data.get("thumbImgTime"),
         "thumbImgUrl": data.get("thumbImgUrl"),
         "timeZone": data.get("timeZone"),
@@ -881,49 +878,126 @@ def _camera_data(data: Dict) -> Dict:
     }
 
 
+_CAMERA_USER_CONFIG_KEYS = (
+    "alarmSeconds",
+    "alarmVolume",
+    "antiflicker",
+    "antiflickerSwitch",
+    "chargeAutoPowerOnCapacity",
+    "chargeAutoPowerOnSwitch",
+    "cryDetect",
+    "cryDetectLevel",
+    "deviceCallToggleOn",
+    "deviceLanguage",
+    "devicePersonDetect",
+    "mechanicalDingDongDuration",
+    "mechanicalDingDongSwitch",
+    "mirrorFlip",
+    "motionSensitivity",
+    "motionTrack",
+    "motionTrackMode",
+    "needAlarm",
+    "needMotion",
+    "needNightVision",
+    "needVideo",
+    "nightThresholdLevel",
+    "nightVisionMode",
+    "recLamp",
+    "timeZone",
+    "timeZoneArea",
+    "videoSeconds",
+    "voiceVolume",
+    "voiceVolumeSwitch",
+    "whiteLightScintillation",
+)
+
+_CAMERA_BOOLEAN_USER_CONFIG_KEYS = {"deviceCallToggleOn"}
+
+
+def _camera_user_config_payload(camera: Entity, updates: Dict) -> Dict:
+    """Return the APK UserConfigBean-style camera config payload."""
+    payload = {"serialNumber": camera.sn}
+    for key in _CAMERA_USER_CONFIG_KEYS:
+        if key in camera.data and camera.data[key] is not None:
+            payload[key] = _camera_config_payload_value(key, camera.data[key])
+    payload.update(
+        {
+            key: _camera_config_payload_value(key, value)
+            for key, value in updates.items()
+            if key in _CAMERA_USER_CONFIG_KEYS and value is not None
+        }
+    )
+    return payload
+
+
+def _camera_config_payload_value(key: str, value):
+    """Return the value type used by the APK UserConfigBean field."""
+    if key in _CAMERA_BOOLEAN_USER_CONFIG_KEYS:
+        return value if isinstance(value, bool) else _addx_bool(value)
+    if isinstance(value, bool):
+        return 1 if value else 0
+    return value
+
+
+def _camera_config_write_value(key: str, enabled: bool):
+    """Return the value type used by the APK UserConfigBean field."""
+    return _camera_config_payload_value(key, enabled)
+
+
+def _addx_bool(value) -> bool | None:
+    """Return the APK-style Boolean/int support flag value."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value == 1
+    return None
+
+
 def _camera_config_data(data: Dict) -> Dict:
     cooldown = data.get("cooldown") or {}
     return {
         "alarmSeconds": data.get("alarmSeconds"),
         "alarmVol": data.get("alarmVolume"),
         "antiflicker": data.get("antiflicker"),
-        "antiflickerSwitch": data.get("antiflickerSwitch"),
+        "antiflickerSwitch": _addx_bool(data.get("antiflickerSwitch")),
         "chargeAutoPowerOnCapacity": data.get("chargeAutoPowerOnCapacity"),
         "chargeAutoPowerOnCapacityOptions": data.get(
             "chargeAutoPowerOnCapacityOptions"
         ),
-        "chargeAutoPowerOnSwitch": data.get("chargeAutoPowerOnSwitch"),
-        "cooldownSupported": cooldown.get("deviceSupport"),
-        "cooldownEnabled": cooldown.get("userEnable"),
+        "chargeAutoPowerOnSwitch": _addx_bool(data.get("chargeAutoPowerOnSwitch")),
+        "cooldownSupported": _addx_bool(cooldown.get("deviceSupport")),
+        "cooldownEnabled": _addx_bool(cooldown.get("userEnable")),
         "cooldownOptions": cooldown.get("notCloseValues") or data.get("coolDownValues"),
         "cooldownValue": cooldown.get("value"),
-        "cryDetect": data.get("cryDetect"),
+        "cryDetect": _addx_bool(data.get("cryDetect")),
         "cryDetectLevel": data.get("cryDetectLevel"),
-        "deviceCallToggleOn": data.get("deviceCallToggleOn"),
+        "deviceCallToggleOn": _addx_bool(data.get("deviceCallToggleOn")),
         "deviceLanguage": data.get("deviceLanguage"),
-        "devicePersonDetect": data.get("devicePersonDetect"),
+        "devicePersonDetect": _addx_bool(data.get("devicePersonDetect")),
         "deviceSupportLanguage": data.get("deviceSupportLanguage"),
         "mechanicalDingDongDuration": data.get("mechanicalDingDongDuration"),
-        "mechanicalDingDongSwitch": data.get("mechanicalDingDongSwitch"),
-        "mirrorFlip": data.get("mirrorFlip"),
+        "mechanicalDingDongSwitch": _addx_bool(data.get("mechanicalDingDongSwitch")),
+        "mirrorFlip": _addx_bool(data.get("mirrorFlip")),
         "motionSensitivity": data.get("motionSensitivity"),
         "motionSensitivityOptionList": data.get("motionSensitivityOptionList"),
-        "motionTrack": data.get("motionTrack"),
+        "motionTrack": _addx_bool(data.get("motionTrack")),
         "motionTrackMode": data.get("motionTrackMode"),
-        "needAlarm": data.get("needAlarm"),
-        "needMotion": data.get("needMotion"),
-        "needNightVision": data.get("needNightVision"),
-        "needVideo": data.get("needVideo"),
+        "needAlarm": _addx_bool(data.get("needAlarm")),
+        "needMotion": _addx_bool(data.get("needMotion")),
+        "needNightVision": _addx_bool(data.get("needNightVision")),
+        "needVideo": _addx_bool(data.get("needVideo")),
         "nightThresholdLevel": data.get("nightThresholdLevel"),
         "nightVisionMode": data.get("nightVisionMode"),
-        "recLamp": data.get("recLamp"),
+        "recLamp": _addx_bool(data.get("recLamp")),
         "timeZone": data.get("timeZone"),
         "timeZoneArea": data.get("timeZoneArea"),
         "videoSeconds": data.get("videoSeconds"),
         "videoSecondsValues": data.get("videoSecondsValues"),
         "voiceVol": data.get("voiceVolume"),
-        "voiceVolumeSwitch": data.get("voiceVolumeSwitch"),
-        "whiteLightScintillation": data.get("whiteLightScintillation"),
+        "voiceVolumeSwitch": _addx_bool(data.get("voiceVolumeSwitch")),
+        "whiteLightScintillation": _addx_bool(data.get("whiteLightScintillation")),
     }
 
 
@@ -937,14 +1011,16 @@ def _camera_audio_data(data: Dict) -> Dict:
             for ring_key in ring_keys
             if isinstance(ring_key, dict) and ring_key.get("id") is not None
         ],
-        "liveAudioToggleOn": audio.get("liveAudioToggleOn"),
+        "liveAudioToggleOn": _addx_bool(audio.get("liveAudioToggleOn")),
         "liveSpeakerVolume": audio.get("liveSpeakerVolume"),
-        "recordingAudioToggleOn": audio.get("recordingAudioToggleOn"),
+        "recordingAudioToggleOn": _addx_bool(audio.get("recordingAudioToggleOn")),
     }
 
 
 def _camera_doorbell_data(data: Dict) -> Dict:
     doorbell_config = data.get("doorbellConfig") or data
     return {
-        "alarmWhenRemoveToggleOn": doorbell_config.get("alarmWhenRemoveToggleOn"),
+        "alarmWhenRemoveToggleOn": _addx_bool(
+            doorbell_config.get("alarmWhenRemoveToggleOn")
+        ),
     }

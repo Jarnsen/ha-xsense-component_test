@@ -34,16 +34,16 @@ ____________________________________________________________
 
 ## HACS를 통한 설치
 1. **Home Assistant에서 HACS 열기**:
-   HACS는 사용자 지정 통합을 쉽게 설치할 수 있게 해 주는 Home Assistant 확장입니다.
+  HACS는 사용자 지정 통합을 쉽게 설치할 수 있게 해 주는 Home Assistant 확장입니다.
 
 2. **사용자 지정 저장소로 이동**:
-   HACS 대시보드의 설정에서 저장소를 사용자 지정 소스로 추가합니다.
+  HACS 대시보드의 설정에서 저장소를 사용자 지정 소스로 추가합니다.
 
 3. **저장소 추가**:
-   저장소 URL `https://github.com/Jarnsen/ha-xsense-component_test` 를 입력합니다.
+  저장소 URL `https://github.com/Jarnsen/ha-xsense-component_test` 를 입력합니다.
 
 4. **통합 다운로드 및 설치**:
-   HACS에서 통합을 찾아 다운로드하고 설치합니다. 설치 후 Home Assistant UI에서 설정할 수 있습니다.
+  HACS에서 통합을 찾아 다운로드하고 설치합니다. 설치 후 Home Assistant UI에서 설정할 수 있습니다.
 
 ____________________________________________________________
 
@@ -54,6 +54,31 @@ ____________________________________________________________
 
 ## Home Assistant에서 보기
 설치와 설정이 끝나면 통합이 Home Assistant에 표시됩니다. 장치는 대시보드에서 사용할 수 있으며 자동화, 알림 및 기타 용도로 사용할 수 있습니다.
+
+
+## 스크린샷으로 보는 자세한 설정
+
+1. Home Assistant용 별도 X-Sense 계정을 만들고 기본 계정에서는 지원되는 장치만 공유하세요.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. HACS에서 `https://github.com/Jarnsen/ha-xsense-component_test`를 사용자 지정 저장소로 추가하세요.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. 통합을 다운로드하고 설치한 뒤 Home Assistant를 다시 시작하고 새 X-Sense 계정으로 설정하세요.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. 설정이 완료되면 공유된 장치가 Home Assistant 장치 페이지에 표시됩니다.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. 페어링, 제거, 펌웨어, 결제, SD 카드, 계정 관리는 X-Sense 앱에서 계속 관리합니다.
 
 ## 지원 장치
 이 통합은 여러 X-Sense 장치를 지원합니다. 생성되는 엔티티는 장치와 계정이 보고하는 데이터 필드에 따라 달라집니다. 확인된 장치군과 모델은 다음과 같습니다.
@@ -66,13 +91,13 @@ ____________________________________________________________
 - **온습도계 (STH51, STH0A, STH0B, STH0C)**: 온도와 습도를 모니터링합니다.
 - **문 센서 (SDS0A)** 및 **모션 센서 (SMS0A)**: X-Sense가 상태를 제공할 때 표시됩니다.
 - **카메라 (SSC0A, SSC0B)**: 장치와 계정이 지원하는 경우 카메라 엔티티, 썸네일, 라이브 스트림 URL, 진단, Android 앱 기반 설정을 제공합니다.
-- **기타 스테이션 연결 장치**: 조명, 키패드, 우편함, listener, 진입로 알람, smart drop, 리모컨, 라돈 데이터는 API가 지원 필드를 보고할 때 표시됩니다.
+- **기타 스테이션 연결 장치**: 조명, 키패드, 우편함, 청취 장치, 진입로 알람, 스마트 드롭, 리모컨, 라돈 데이터는 API가 지원 필드를 보고할 때 표시됩니다.
 
 ### 사용 가능한 엔티티와 동작
 이 통합은 X-Sense 클라우드, MQTT shadow payload 또는 Android 앱과 맞춘 카메라 API에 실제로 존재하는 필드에 대해서만 Home Assistant 엔티티를 만듭니다. 장치에 따라 다음을 포함할 수 있습니다:
 
 - 알람, 음소거, 수명 종료, AC 전원 차단, 누수 알람, 온도 알람, 충전, 움직임, 문, 경계 상태, 경고, 리마인더, 조명, PIR, 키패드 상태용 이진 센서.
-- 배터리, RF 신호, Wi-Fi 신호, 펌웨어, 온도, 습도, CO 수치, CO 최고치, 알람/음성/차임/리마인더 볼륨, 경고 임계값, 음소거 타이머, 읽기 쉬운 타임스탬프, 시간대, 일련번호, MAC 주소 및 기타 진단 센서.
+- 배터리, RF 신호, Wi-Fi 신호, 펌웨어, 온도, 습도, CO 수치, CO 최고치, 알람/음성/차임/리마인더 볼륨, 경고 임계값, 음소거 타이머, 읽기 쉬운 타임스탬프, 시간대 및 기타 진단 센서.
 - LED 조명, 알람 활성화, 계속 알람, 차임 톤, 리마인더, PIR, 햇빛/화이트라이트 관련 설정, 대기 상태, 키패드 소리, 카메라 움직임 감지, 녹화, 야간 시야, 오디오, 쿨다운, 조명, 도어벨 제어처럼 X-Sense가 보고하는 쓰기 가능한 설정용 스위치.
 - 언어, 녹화 해상도, 코덱, 플리커 방지 주파수, 움직임 감도, 비디오 길이, 볼륨, 알람 지속 시간, 쿨다운, 야간 임계값, 도어벨 링 키 같은 지원되는 카메라 설정용 선택 항목과 숫자 엔티티.
 - X-Sense 앱이 해당 모델에 동작을 제공하는 경우 테스트, 음소거, 화재 훈련, 카메라 깨우기 버튼.

@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Prezentare generală
 Această integrare pentru Home Assistant expune dispozitivele X-Sense în casa inteligentă. Se bazează pe lucrarea originală a lui Theo Snel și se instalează prin HACS.
 
@@ -8,13 +12,38 @@ Recomandăm crearea unui al doilea cont X-Sense pentru Home Assistant și partaj
 ## Instalare
 În HACS adăugați depozitul personalizat `https://github.com/Jarnsen/ha-xsense-component_test`, descărcați integrarea, urmați instrucțiunile HACS pentru repornire, apoi configurați integrarea cu acel cont X-Sense.
 
+
+## Configurare detaliată cu capturi de ecran
+
+1. Creați un cont X-Sense separat pentru Home Assistant și partajați din contul principal doar dispozitivele acceptate.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. În HACS, adăugați `https://github.com/Jarnsen/ha-xsense-component_test` ca depozit personalizat.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Descărcați și instalați integrarea, reporniți Home Assistant, apoi configurați integrarea cu noul cont X-Sense.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. După configurarea reușită, dispozitivele partajate apar în pagina de dispozitive din Home Assistant.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Asocierea, eliminarea, firmware-ul, plățile, cardurile SD și administrarea contului rămân în aplicația X-Sense.
+
 ## Dispozitive acceptate
-Sunt acceptate stații de bază, detectoare de fum, detectoare CO, alarme de căldură, detectoare de scurgeri de apă, higrometre, senzori de ușă și mișcare, lumini, tastaturi, senzori de cutie poștală, dispozitive listener și camere acceptate, atunci când contul X-Sense le raportează.
+Sunt acceptate stații de bază, detectoare de fum, detectoare CO, alarme de căldură, detectoare de scurgeri de apă, higrometre, senzori de ușă și mișcare, lumini, tastaturi, senzori de cutie poștală, dispozitive de ascultare și camere acceptate, atunci când contul X-Sense le raportează.
 
 Familiile de modele confirmate includ: SBS50, XH02-M, XC01-M, XC04-WX, XS01-M, XS01-WX, XS03-WX, XS0B-MR, SC07-WX, XP0A-MR, SWS51, STH51, STH0A, STH0B, STH0C, SDS0A, SMS0A, SSC0A, SSC0B.
 
 ## Entități și acțiuni
-Integrarea creează entități numai pentru câmpurile raportate efectiv de dispozitiv. Acestea pot include alarme, muting, baterie, semnal, temperatură, umiditate, CO, timestampuri lizibile, setări de cameră, comutatoare LED, test, muting și fire drill.
+Integrarea creează entități numai pentru câmpurile raportate efectiv de dispozitiv. Acestea pot include alarme, muting, baterie, semnal, temperatură, umiditate, CO, marcaje de timp lizibile, setări de cameră, comutatoare LED, test, muting și exerciții de alarmă.
 
 Administrarea dispozitivelor, partajarea, eliminarea, firmware-ul, conturile și plățile rămân în aplicația X-Sense. Pentru discuții folosiți Discord sau forumul Home Assistant.
 
@@ -62,7 +91,7 @@ Integrarea folosește mesaje MQTT shadow pentru schimbări rapide de stare și i
 
 ### Entități disponibile
 
-În funcție de model, pot apărea alarme pentru fum, CO, apă, temperatură, mișcare și ușă, oprirea sonorului alarmei, sfârșitul duratei de viață, încărcare, stare memento, stare lumină și alți senzori binari de diagnostic. Senzorii pot include baterie, semnal RF sau Wi-Fi, firmware, temperatură, umiditate, nivel CO, vârf CO, volum, praguri, ore lizibile, fus orar, număr de serie, adresă MAC și alte informații de diagnostic. Comutatoarele, selecțiile și valorile numerice sunt create doar când dispozitivul le acceptă cu adevărat.
+În funcție de model, pot apărea alarme pentru fum, CO, apă, temperatură, mișcare și ușă, oprirea sonorului alarmei, sfârșitul duratei de viață, încărcare, stare memento, stare lumină și alți senzori binari de diagnostic. Senzorii pot include baterie, semnal RF sau Wi-Fi, firmware, temperatură, umiditate, nivel CO, vârf CO, volum, praguri, ore lizibile, fus orar și alte informații de diagnostic. Comutatoarele, selecțiile și valorile numerice sunt create doar când dispozitivul le acceptă cu adevărat.
 
 ### Camere
 
@@ -104,12 +133,12 @@ Când raportați o eroare, includeți modelul dispozitivului, versiunea integră
 - Valorile de diagnostic sunt marcate ca diagnostic.
 - Testul, amuțirea, exercițiul de incendiu și trezirea camerei apar doar pentru modelele acceptate.
 
-### Camere
+### Referință pentru camere
 - Camerele acceptate pot oferi entitate cameră, miniatură, flux live și diagnostic.
 - WebRTC este folosit doar dacă este disponibil în Home Assistant.
 - Cardul SD, plățile, firmware-ul și administrarea contului rămân în aplicația X-Sense.
 
-### Depanare
+### Listă de verificare pentru depanare
 - Raportul trebuie să includă modelul, versiunea integrării, diagnostice și jurnale relevante.
 
 ### Domeniu

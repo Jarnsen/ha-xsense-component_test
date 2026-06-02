@@ -7,10 +7,10 @@
 ## Visão geral
 Esta integração para Home Assistant permite usar dispositivos X-Sense em um sistema de casa inteligente. Ela foi criada com base no código original de [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) e é publicada com a permissão e colaboração dele.
 
-Até que uma integração oficial do Home Assistant de Theo esteja disponível, esta integração HACS será usada e atualizada regularmente para adicionar novas funções e corrigir problemas existentes. Ela permite integrar dispositivos X-Sense ao Home Assistant e usá-los em automações e monitoramento.
+Esta integração HACS é mantida ativamente para usuários que desejam suporte mais amplo a dispositivos X-Sense no Home Assistant. Ela é atualizada regularmente com novas funções, maior cobertura de dispositivos e correções para problemas relatados.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+ <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>
 
 ## Recursos
@@ -39,41 +39,41 @@ Antes de instalar a integração, alguns preparativos são necessários:
 
 - **Compartilhe os dispositivos compatíveis da conta principal com a conta do Home Assistant**: Use o app X-Sense para compartilhar **somente os dispositivos compatíveis** com a conta recém-criada. Assim, a integração pode ser usada no Home Assistant enquanto a administração continua na conta principal.
 
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
 
 ____________________________________________________________
 
 ## Instalação via HACS
 1. **Abra o HACS no Home Assistant**:
-   O HACS é uma extensão importante do Home Assistant que permite instalar integrações personalizadas com facilidade.
+  O HACS é uma extensão importante do Home Assistant que permite instalar integrações personalizadas com facilidade.
 
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+  ![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
 
 2. **Acesse os repositórios personalizados**:
-   Navegue até as configurações no painel do HACS e adicione o repositório como uma fonte personalizada.
+  Navegue até as configurações no painel do HACS e adicione o repositório como uma fonte personalizada.
 
 3. **Adicione o repositório**:
-   Informe a URL do repositório: `https://github.com/Jarnsen/ha-xsense-component_test`
+  Informe a URL do repositório: `https://github.com/Jarnsen/ha-xsense-component_test`
 
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+  ![HACS repository selection screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 
 4. **Baixe e instale a integração**:
-   Encontre a integração no HACS, baixe e instale. Depois da instalação, a configuração pode ser feita pela interface do Home Assistant.
+  Encontre a integração no HACS, baixe e instale. Depois da instalação, a configuração pode ser feita pela interface do Home Assistant.
 
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
+  ![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
 
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+  ![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
 
 ____________________________________________________________
 
 ## Configuração
 - **Usuário e senha**: Use as credenciais da conta X-Sense recém-criada para estabelecer a conexão.
 
-    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+  ![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
 
 - **Visão geral dos dispositivos**: Depois da configuração bem-sucedida, os dispositivos compartilhados ficarão disponíveis no Home Assistant e poderão ser usados em automações.
 
-    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+  ![X-Sense integration screenshot](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
 ## Visualização no Home Assistant
 Depois da instalação e configuração bem-sucedidas, a integração ficará visível no Home Assistant. Os dispositivos estarão disponíveis no painel e poderão ser usados em automações, notificações e outros usos.
 
@@ -94,15 +94,15 @@ Esta integração oferece suporte a vários dispositivos X-Sense. As entidades c
 - **Sensor de porta (SDS0A)**: Expõe o estado da porta quando fornecido pela conta X-Sense.
 - **Detector de movimento (SMS0A)**: Expõe o estado de alarme de movimento quando fornecido pela conta X-Sense.
 - **Câmera (SSC0A, SSC0B)**: Expõe entidades de câmera, miniaturas, URLs de transmissão ao vivo, diagnósticos de status e configurações alinhadas ao app Android quando suportadas pelo dispositivo e pela conta.
-- **Outros dispositivos conectados à estação**: Dados de luzes, teclados, caixas de correio, ouvintes, alarmes de garagem, smart drop, controles remotos e dispositivos de radônio são expostos quando a API X-Sense informa campos compatíveis.
+- **Outros dispositivos conectados à estação**: Dados de luzes, teclados, caixas de correio, ouvintes, alarmes de garagem, caixa de entrega inteligente, controles remotos e dispositivos de radônio são expostos quando a API X-Sense informa campos compatíveis.
 
 Esses dispositivos podem ser usados para criar automações e alertas depois de integrados ao Home Assistant.
 
 ### Entidades e ações disponíveis
-A integração cria entidades do Home Assistant somente para campos presentes na nuvem X-Sense, nos payloads de shadow MQTT ou nas APIs de câmera alinhadas ao app Android. Dependendo do dispositivo, isso pode incluir:
+A integração cria entidades do Home Assistant somente para campos presentes na nuvem X-Sense, nos mensagens de shadow MQTT ou nas APIs de câmera alinhadas ao app Android. Dependendo do dispositivo, isso pode incluir:
 
 - Sensores binários de alarme, silenciamento, fim de vida, falha de energia AC, alarme de água, alarme de temperatura, carregamento, movimento, porta, armado, aviso, lembrete, luz, PIR e status de teclado.
-- Sensores de bateria, sinal RF, sinal Wi-Fi, firmware, temperatura, umidade, nível de CO, pico de CO, volume de alarme, volume de voz, volume de chirp, volume de lembrete, limites de aviso, temporizadores de silenciamento, horários legíveis, fuso horário, número de série, endereço MAC e outros diagnósticos.
+- Sensores de bateria, sinal RF, sinal Wi-Fi, firmware, temperatura, umidade, nível de CO, pico de CO, volume de alarme, volume de voz, volume de chirp, volume de lembrete, limites de aviso, temporizadores de silenciamento, horários legíveis, fuso horário e outros diagnósticos.
 - Switches para configurações graváveis suportadas pela X-Sense, como luz LED, ativação de alarme, alarme contínuo, tom de chirp, lembretes, PIR, sunshine, await, som do teclado, detecção de movimento da câmera, gravação, visão noturna, áudio, cooldown, luz e controles de campainha.
 - Seleções e números para configurações de câmera suportadas, como idioma, resolução de gravação, codec, taxa anti-flicker, sensibilidade de movimento, duração do vídeo, volume, duração do alarme, cooldown, limite noturno e tecla da campainha.
 - Botões de teste, silenciamento, simulação de incêndio e despertar câmera para modelos em que o app X-Sense expõe a ação correspondente.
@@ -164,3 +164,32 @@ Para discussões e suporte, entre no nosso servidor Discord ou visite o fórum d
 [Discord](https://discord.gg/5phHHgGb3V)
 
 [Forum](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
+
+## Referência completa
+
+### Conta e instalação
+- Use uma conta X-Sense separada para o Home Assistant.
+- Compartilhe apenas dispositivos compatíveis a partir da conta principal X-Sense.
+- Pareamento, remoção, compartilhamento, firmware, conta, pagamentos e gerenciamento do cartão SD continuam no aplicativo X-Sense.
+
+### Atualizações e uso da API
+- Mudanças rápidas de estado chegam por mensagens MQTT shadow.
+- Solicitações à nuvem são usadas para login, descoberta de dispositivos, dados de câmeras e recuperação de estado.
+- A consulta periódica é apenas um fallback quando falta uma atualização ao vivo.
+
+### Entidades, câmeras e solução de problemas
+- As entidades são criadas apenas para campos que o X-Sense realmente informa.
+- Entidades e controles de câmera são criados apenas quando a API alinhada ao app Android informa suporte para essa conta e modelo.
+- Se faltar um valor, compare primeiro com o app X-Sense e depois anexe diagnósticos e logs relevantes do Home Assistant.
+
+## Lista de dispositivos e entidades
+
+### Famílias principais
+- Estação SBS50, alarmes de fumaça XS, alarmes de CO XC, alarmes combinados SC/XP, alarmes de calor XH, sensores de água SWS, sensores de temperatura/umidade STH, sensores de porta SDS, sensores de movimento SMS, câmeras SSC e outras famílias X-Sense informadas são tratadas quando a API expõe seus campos.
+
+### Campos de status
+- Alarme, silenciar, bateria, sinal RF/Wi-Fi, temperatura, umidade, CO, água, movimento, porta, luz, lembretes, avisos e horários legíveis aparecem apenas quando o X-Sense informa esses dados.
+
+### Controles e relatórios
+- Interruptores, seletores, números e botões são criados apenas para configurações e ações graváveis expostas pelo dispositivo/conta.
+- Um bom relatório de bug inclui modelo exato, versão da integração, diagnósticos, logs e se o valor muda corretamente no app X-Sense.

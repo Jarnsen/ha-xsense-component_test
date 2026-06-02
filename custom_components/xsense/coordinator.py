@@ -337,7 +337,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if test_time := station_data.pop("time", None):
                 station_data["lastSelfTestTime"] = test_time
 
-        children = station_data.pop("devs", {})
+        children = station_data.pop("devs", {}) or {}
         target_device_sn = station_data.get("deviceSN") or station_data.get(
             "_deviceSN"
         )
@@ -348,10 +348,13 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ):
             dev.set_data(station_data)
         else:
+            if isinstance(children, list):
+                station_data["devs"] = children
             self.xsense.parse_get_state(station, station_data)
-        for k, v in children.items():
-            if dev := station.get_device_by_sn(k):
-                dev.set_data(v)
+        if isinstance(children, dict):
+            for k, v in children.items():
+                if dev := station.get_device_by_sn(k):
+                    dev.set_data(v)
 
         self.async_update_listeners()
 
@@ -460,7 +463,11 @@ def _mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any]:
 
 def _is_self_test_topic(topic: str) -> bool:
     """Return if an MQTT update is an X-Sense self-test report topic."""
-    return (
-        "/shadow/name/selftestup/update" in topic
-        or "/shadow/name/2nd_selftestup/update" in topic
+    return any(
+        marker in topic
+        for marker in (
+            "_testup/update",
+            "selftestup/update",
+            "selftestup_v2/update",
+        )
     )
