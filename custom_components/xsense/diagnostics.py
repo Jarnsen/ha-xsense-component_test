@@ -20,24 +20,14 @@ TO_REDACT = {
     "cameraLiveId",
     "cameraLiveUrl",
     "deviceId",
-    "deviceSN",
-    "ip",
-    "ipAddress",
     "ipcId",
     "ipcSn",
-    "mac",
-    "macAddress",
-    "macBT",
     "networkName",
-    "serialNumber",
-    "sn",
     "stationId",
-    "stationSN",
     "thumbImgUrl",
     "title",
     "unique_id",
     "userId",
-    "wiredMacAddress",
 }
 
 
@@ -45,6 +35,7 @@ def entity_diagnostics(entity) -> dict[str, Any]:
     """Return diagnostic data for an X-Sense entity."""
     return {
         "type": entity.type,
+        "serial_number": getattr(entity, "sn", None),
         "data": async_redact_data(entity.data, TO_REDACT),
     }
 

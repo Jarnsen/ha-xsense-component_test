@@ -7,6 +7,10 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.device_registry import (
+    CONNECTION_BLUETOOTH,
+    CONNECTION_NETWORK_MAC,
+)
 
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
@@ -52,16 +56,89 @@ def _obsolete_sensor_unique_ids(data) -> set[str]:
     return unique_ids
 
 
-def _remove_obsolete_sensor_entities(hass: HomeAssistant, data) -> None:
-    """Remove old serial/MAC diagnostic sensors now stored as device metadata."""
+def _obsolete_sensor_unique_id_suffixes() -> set[str]:
+    """Return old sensor unique ID suffixes independent of the device prefix."""
+    return {f"-{key.replace('_', '-')}" for key in OBSOLETE_SENSOR_KEYS}
+
+
+def _is_obsolete_sensor_entry(registry_entry) -> bool:
+    """Return whether a registry entry is an obsolete X-Sense sensor."""
+    return (
+        registry_entry.domain == Platform.SENSOR
+        and registry_entry.platform == DOMAIN
+        and any(
+            registry_entry.unique_id.endswith(suffix)
+            for suffix in _obsolete_sensor_unique_id_suffixes()
+        )
+    )
+
+
+def _remove_obsolete_sensor_entities(
+    hass: HomeAssistant, data, entry: ConfigEntry
+) -> None:
+    """Remove old serial/MAC diagnostic sensors from prior releases."""
     entity_registry = er.async_get(hass)
-    for unique_id in _obsolete_sensor_unique_ids(data):
+    checked_unique_ids = set()
+
+    for registry_entry in er.async_entries_for_config_entry(
+        entity_registry, entry.entry_id
+    ):
+        checked_unique_ids.add(registry_entry.unique_id)
+        if _is_obsolete_sensor_entry(registry_entry):
+            entity_registry.async_remove(registry_entry.entity_id)
+
+    for unique_id in _obsolete_sensor_unique_ids(data) - checked_unique_ids:
         entity_id = entity_registry.async_get_entity_id(
             Platform.SENSOR, DOMAIN, unique_id
         )
         if entity_id is not None:
             entity_registry.async_remove(entity_id)
 
+
+def _visible_identifier_connections_removed(connections):
+    """Return device connections without visible static hardware identifiers."""
+    return {
+        connection
+        for connection in connections
+        if connection[0] not in {CONNECTION_BLUETOOTH, CONNECTION_NETWORK_MAC}
+    }
+
+
+def _clear_visible_device_metadata(device_registry, device) -> None:
+    """Clear old visible serial/MAC metadata from one registry device."""
+    new_connections = _visible_identifier_connections_removed(device.connections)
+    if device.serial_number is None and new_connections == device.connections:
+        return
+
+    device_registry.async_update_device(
+        device.id,
+        new_connections=new_connections,
+        serial_number=None,
+    )
+
+
+def _remove_obsolete_device_metadata(
+    hass: HomeAssistant, data, entry: ConfigEntry
+) -> None:
+    """Clear old serial/MAC metadata from existing device registry entries."""
+    device_registry = dr.async_get(hass)
+    checked_device_ids = set()
+
+    for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id):
+        checked_device_ids.add(device.id)
+        _clear_visible_device_metadata(device_registry, device)
+
+    for entity in (
+        *data.get("stations", {}).values(),
+        *data.get("devices", {}).values(),
+    ):
+        device = device_registry.async_get_device(
+            identifiers={(DOMAIN, entity.entity_id)}
+        )
+        if device is None or device.id in checked_device_ids:
+            continue
+
+        _clear_visible_device_metadata(device_registry, device)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -70,7 +147,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
 
-    _remove_obsolete_sensor_entities(hass, coordinator.data)
+    _remove_obsolete_sensor_entities(hass, coordinator.data, entry)
+    _remove_obsolete_device_metadata(hass, coordinator.data, entry)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 

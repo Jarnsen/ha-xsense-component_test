@@ -7,11 +7,7 @@ from typing import TYPE_CHECKING
 from .api.entity import Entity
 
 from homeassistant.const import ATTR_VIA_DEVICE
-from homeassistant.helpers.device_registry import (
-    CONNECTION_BLUETOOTH,
-    CONNECTION_NETWORK_MAC,
-    DeviceInfo,
-)
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
@@ -45,17 +41,9 @@ class XSenseEntity(CoordinatorEntity):
             ).lower()
         )
 
-        connections = set()
-        if "mac" in entity.data and entity.data["mac"]:
-            connections.add((CONNECTION_NETWORK_MAC, entity.data["mac"]))
-        if "macBT" in entity.data and entity.data["macBT"]:
-            connections.add((CONNECTION_BLUETOOTH, entity.data["macBT"]))
-
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entity.entity_id)},
-            connections=connections,
             manufacturer=MANUFACTURER,
-            serial_number=entity.sn,
             model=entity.type,
             name=entity.name,
         )
