@@ -64,11 +64,15 @@ class XSenseEntity(CoordinatorEntity):
         self._handle_coordinator_update()
         await super().async_added_to_hass()
 
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
+    def _current_entity_is_online(self) -> bool:
+        """Return if the current X-Sense entity is online."""
         entity = self._current_entity()
         if entity is None:
             return False
 
-        return entity.online not in OFFLINE_STATES and super().available
+        return entity.online is True and super().available
+
+    @property
+    def available(self) -> bool:
+        """Return if entity data is available."""
+        return self._current_entity() is not None and super().available

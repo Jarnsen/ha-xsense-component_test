@@ -11,6 +11,7 @@ from homeassistant.helpers.device_registry import (
     CONNECTION_BLUETOOTH,
     CONNECTION_NETWORK_MAC,
 )
+from homeassistant.util import slugify
 
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
@@ -35,6 +36,7 @@ OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
     "device_mac",
     "mac",
     "bluetooth_mac",
+    "online_time",
 )
 
 
@@ -80,9 +82,16 @@ def _remove_obsolete_sensor_entities(
     entity_registry = er.async_get(hass)
     checked_unique_ids = set()
 
-    for registry_entry in er.async_entries_for_config_entry(
-        entity_registry, entry.entry_id
-    ):
+    seen_entity_ids = set()
+    registry_entries = list(
+        er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+    )
+    registry_entries.extend(getattr(entity_registry, "entities", {}).values())
+
+    for registry_entry in registry_entries:
+        if registry_entry.entity_id in seen_entity_ids:
+            continue
+        seen_entity_ids.add(registry_entry.entity_id)
         checked_unique_ids.add(registry_entry.unique_id)
         if _is_obsolete_sensor_entry(registry_entry):
             entity_registry.async_remove(registry_entry.entity_id)
@@ -93,6 +102,101 @@ def _remove_obsolete_sensor_entities(
         )
         if entity_id is not None:
             entity_registry.async_remove(entity_id)
+
+
+def _legacy_entity_key(registry_entry) -> str | None:
+    # Return a usable entity key from legacy registry metadata.
+    for value in (
+        getattr(registry_entry, "object_id_base", None),
+        getattr(registry_entry, "original_name", None),
+        getattr(registry_entry, "translation_key", None),
+    ):
+        if value:
+            return str(value)
+
+    unique_id = getattr(registry_entry, "unique_id", "")
+    if "-" in unique_id:
+        return unique_id.rsplit("-", 1)[1]
+
+    return None
+
+
+def _legacy_device_name(device, entity_id: str) -> str | None:
+    # Return the stable visible name for a legacy registry device.
+    if device is not None:
+        for value in (
+            getattr(device, "name_by_user", None),
+            getattr(device, "name", None),
+        ):
+            if value:
+                return str(value)
+
+    object_id = entity_id.split(".", 1)[-1]
+    if object_id.endswith("_none"):
+        return object_id[: -len("_none")]
+
+    return None
+
+
+def _legacy_none_entity_target(
+    entity_registry, device_registry, registry_entry
+) -> str | None:
+    # Return the clean entity ID for an old *_none entity when safe.
+    entity_id = getattr(registry_entry, "entity_id", "")
+    if (
+        not entity_id.endswith("_none")
+        or getattr(registry_entry, "platform", None) != DOMAIN
+    ):
+        return None
+
+    device_id = getattr(registry_entry, "device_id", None)
+    device = device_registry.async_get(device_id) if device_id else None
+    device_name = _legacy_device_name(device, entity_id)
+    key = _legacy_entity_key(registry_entry)
+    if not device_name or not key:
+        return None
+
+    domain = entity_id.split(".", 1)[0]
+    object_id = slugify(f"{device_name} {key}")
+    if not domain or not object_id:
+        return None
+
+    new_entity_id = f"{domain}.{object_id}"
+    if new_entity_id == entity_id:
+        return None
+
+    existing_entry = entity_registry.async_get(new_entity_id)
+    if (
+        existing_entry is not None
+        and getattr(existing_entry, "entity_id", None) != entity_id
+    ):
+        return None
+
+    return new_entity_id
+
+
+def _migrate_legacy_none_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    # Rename old *_none entity IDs left by earlier releases.
+    entity_registry = er.async_get(hass)
+    device_registry = dr.async_get(hass)
+
+    seen_entity_ids = set()
+    registry_entries = list(
+        er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+    )
+    registry_entries.extend(getattr(entity_registry, "entities", {}).values())
+
+    for registry_entry in registry_entries:
+        if registry_entry.entity_id in seen_entity_ids:
+            continue
+        seen_entity_ids.add(registry_entry.entity_id)
+        new_entity_id = _legacy_none_entity_target(
+            entity_registry, device_registry, registry_entry
+        )
+        if new_entity_id is not None:
+            entity_registry.async_update_entity(
+                registry_entry.entity_id, new_entity_id=new_entity_id
+            )
 
 
 def _visible_identifier_connections_removed(connections):
@@ -149,10 +253,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _remove_obsolete_sensor_entities(hass, coordinator.data, entry)
     _remove_obsolete_device_metadata(hass, coordinator.data, entry)
+    _migrate_legacy_none_entity_ids(hass, entry)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    _remove_obsolete_sensor_entities(hass, coordinator.data, entry)
 
     return True
 

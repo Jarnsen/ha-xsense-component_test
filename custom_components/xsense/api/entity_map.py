@@ -469,7 +469,7 @@ entities = {
     },
     "XC0M-iR": {
         "type": EntityType.CO,
-        "actions": [WifiExtendedMuteAction()],
+        "actions": [WifiAlarmMuteAction()],
     },
     "XC01-M": {
         # CO RF

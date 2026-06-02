@@ -236,6 +236,11 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
         super().__init__(coordinator, entity)
 
     @property
+    def available(self) -> bool:
+        """Return if this control can be used."""
+        return self._current_entity_is_online()
+
+    @property
     def options(self) -> list[str]:
         """Return the API-provided valid options."""
         entity = self._current_entity()

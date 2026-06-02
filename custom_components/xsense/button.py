@@ -126,6 +126,11 @@ class XSenseButtonEntity(XSenseEntity, ButtonEntity):
 
         super().__init__(coordinator, entity, station_id)
 
+    @property
+    def available(self) -> bool:
+        """Return if this control can be used."""
+        return self._current_entity_is_online()
+
     async def async_press(self) -> None:
         """Press the button."""
 

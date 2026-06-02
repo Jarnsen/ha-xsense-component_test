@@ -592,5 +592,7 @@ class XSenseMQTTConnectedEntity(XSenseBinarySensorEntity):
         if device is None:
             return None
 
-        mqtt_server = self.coordinator.mqtt_server(device.house.mqtt_server)
-        return bool(mqtt_server and mqtt_server.connected)
+        if device.online is None:
+            return None
+
+        return device.online is True

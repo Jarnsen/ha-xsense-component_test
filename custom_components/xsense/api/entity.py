@@ -1,5 +1,41 @@
+from datetime import UTC, datetime, timedelta
+
 from .entity_map import entities
 from .mapping import bool_state, map_values
+
+
+_ONLINE_TIME_EXCLUDED_TYPES = {"XP0J-iA", "XS0R-iA", "STH0C"}
+_EXTENDED_OFFLINE_HOUR_TYPES = {"SWS0B", "XR0A-iR"}
+
+
+def _offline_over_hours(entity_type: str | None) -> int:
+    return 49 if entity_type in _EXTENDED_OFFLINE_HOUR_TYPES else 34
+
+
+def _parse_xsense_time(value: str | None) -> datetime | None:
+    if not value:
+        return None
+
+    try:
+        return datetime.strptime(str(value), "%Y%m%d%H%M%S").replace(tzinfo=UTC)
+    except ValueError:
+        return None
+
+
+def _online_from_report_time(data: dict, entity_type: str | None) -> bool | None:
+    if entity_type in _ONLINE_TIME_EXCLUDED_TYPES:
+        return None
+
+    online_time = data.get("onlineTime")
+    if not online_time:
+        return None
+
+    reported = _parse_xsense_time(online_time)
+    utc_time = _parse_xsense_time(data.get("utcTime")) or datetime.now(UTC)
+    if reported is None:
+        return True
+
+    return utc_time <= reported + timedelta(hours=_offline_over_hours(entity_type))
 
 
 class Entity:
@@ -28,10 +64,16 @@ class Entity:
 
     def set_data(self, values: dict):
         data = values.copy()
+        has_online_flag = False
         for key in ("online", "onLine"):
             if key in data:
                 self._set_online(data.pop(key))
+                has_online_flag = True
                 break
+        if not has_online_flag:
+            online = _online_from_report_time(data, self.type)
+            if online is not None:
+                self.online = online
         status_data = data.pop("status", {}) or {}
         if isinstance(status_data, dict):
             data.update(status_data)

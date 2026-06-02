@@ -166,11 +166,14 @@ def test_station_shadow_names_follow_apk_factory_rules():
     assert make_station("XS01-WX", "ABCEN123").shadow_name == "XS01-WX-ABCEN123"
 
 
-def test_entity_online_state_uses_explicit_online_value_only():
+def test_entity_online_state_uses_online_time_report_without_explicit_status():
     device = entity.Entity()
 
-    device.set_data({"onlineTime": "20260531010101"})
-    assert device.online is None
+    device.set_data({"onlineTime": "20260531010101", "utcTime": "20260601010101"})
+    assert device.online is True
+
+    device.set_data({"onlineTime": "20260531010101", "utcTime": "20260602090102"})
+    assert device.online is False
 
     device.set_data({"online": False})
     assert device.online is False
@@ -180,6 +183,23 @@ def test_entity_online_state_uses_explicit_online_value_only():
 
     device.set_data({"online": "unexpected"})
     assert device.online is True
+
+
+def test_entity_online_time_uses_apk_device_specific_thresholds():
+    sws0b = entity.Entity()
+    sws0b.type = "SWS0B"
+    sws0b.set_data({"onlineTime": "20260531010101", "utcTime": "20260602010100"})
+    assert sws0b.online is True
+
+    normal = entity.Entity()
+    normal.type = "XS01-WX"
+    normal.set_data({"onlineTime": "20260531010101", "utcTime": "20260602010100"})
+    assert normal.online is False
+
+    excluded = entity.Entity()
+    excluded.type = "STH0C"
+    excluded.set_data({"onlineTime": "20260531010101", "utcTime": "20260602010100"})
+    assert excluded.online is None
 
 
 def test_station_set_devices_matches_apk_child_device_normalization():
@@ -959,7 +979,7 @@ async def test_xs01_wx_mute_targets_apk_thing_name(
         ("XC0C-iA", "appMute", "2nd_appmute", "XC0C-iA-station-sn"),
         ("XC0C-iR", "appMute", "2nd_appmute", "XC0C-iR-station-sn"),
         ("STH0C", "extendMute", "2nd_appmute", "STH0C-station-sn"),
-        ("XC0M-iR", "extendMute", "2nd_appmute", "XC0M-iR-station-sn"),
+        ("XC0M-iR", "appMute", "2nd_appmute", "XC0M-iR-station-sn"),
         ("XR0A-iR", "extendMute", "2nd_appmute", "XR0A-iR-station-sn"),
         ("SWS0B", "appWater", "2nd_appwater", "SWS0B-station-sn"),
     ],

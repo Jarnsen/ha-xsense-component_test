@@ -1,8 +1,18 @@
+import sys
 from types import SimpleNamespace
+
+for module_name in list(sys.modules):
+    if module_name == "custom_components.xsense" or module_name.startswith(
+        "custom_components.xsense."
+    ):
+        del sys.modules[module_name]
+if not hasattr(sys.modules.get("custom_components"), "__path__"):
+    sys.modules.pop("custom_components", None)
 
 from custom_components.xsense import (
     OBSOLETE_SENSOR_KEYS,
     _is_obsolete_sensor_entry,
+    _migrate_legacy_none_entity_ids,
     _obsolete_sensor_unique_ids,
     _sensor_unique_id,
     _clear_visible_device_metadata,
@@ -323,3 +333,344 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
     )
 
     assert removed == ["sensor.missing_device_serial_number"]
+
+
+def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
+    removed = []
+
+    class FakeEntityRegistry:
+        def async_get_entity_id(self, platform, domain, unique_id):
+            return None
+
+        def async_remove(self, entity_id):
+            removed.append(entity_id)
+
+    current_unique_ids = [
+        "xs01-wx-alarm-status",
+        "xs01-wx-battery",
+        "xs01-wx-connected",
+        "xs01-wx-ip-address",
+        "xs01-wx-last-self-test",
+        "xs01-wx-last-self-test-time",
+        "xs01-wx-led-light",
+        "xs01-wx-mute-status",
+        "xs01-wx-report-time",
+        "xs01-wx-signal-strength",
+        "xs01-wx-software-version",
+        "xs01-wx-ssid",
+    ]
+    entries = [
+        SimpleNamespace(
+            domain="sensor",
+            platform="xsense",
+            unique_id=unique_id,
+            entity_id="sensor." + unique_id.replace("-", "_"),
+        )
+        for unique_id in current_unique_ids
+    ]
+    entries.extend(
+        [
+            SimpleNamespace(
+                domain="sensor",
+                platform="xsense",
+                unique_id="xs01-wx-online-time",
+                entity_id="sensor.xs01_wx_online_time",
+            ),
+            SimpleNamespace(
+                domain="sensor",
+                platform="xsense",
+                unique_id="xs01-wx-serial-number",
+                entity_id="sensor.xs01_wx_serial_number",
+            ),
+        ]
+    )
+
+    import custom_components.xsense as xsense
+
+    monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
+    monkeypatch.setattr(
+        xsense.er,
+        "async_entries_for_config_entry",
+        lambda entity_registry, entry_id: entries,
+    )
+
+    _remove_obsolete_sensor_entities(
+        SimpleNamespace(),
+        {"stations": {}, "devices": {"xs01_wx": SimpleNamespace(entity_id="xs01_wx")}},
+        SimpleNamespace(entry_id="entry-id"),
+    )
+
+    assert removed == ["sensor.xs01_wx_online_time", "sensor.xs01_wx_serial_number"]
+
+
+def test_obsolete_sensor_cleanup_scans_all_xsense_sensor_entries(monkeypatch):
+    removed = []
+
+    class FakeEntityRegistry:
+        entities = {
+            "sensor.orphan_serial_number": SimpleNamespace(
+                domain="sensor",
+                platform="xsense",
+                unique_id="orphan-serial-number",
+                entity_id="sensor.orphan_serial_number",
+            ),
+            "sensor.orphan_ip": SimpleNamespace(
+                domain="sensor",
+                platform="xsense",
+                unique_id="orphan-ip",
+                entity_id="sensor.orphan_ip",
+            ),
+        }
+
+        def async_get_entity_id(self, platform, domain, unique_id):
+            return None
+
+        def async_remove(self, entity_id):
+            removed.append(entity_id)
+
+    import custom_components.xsense as xsense
+
+    monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
+    monkeypatch.setattr(
+        xsense.er,
+        "async_entries_for_config_entry",
+        lambda entity_registry, entry_id: [],
+    )
+
+    _remove_obsolete_sensor_entities(
+        SimpleNamespace(),
+        {"stations": {}, "devices": {}},
+        SimpleNamespace(entry_id="entry-id"),
+    )
+
+    assert removed == ["sensor.orphan_serial_number"]
+
+
+def test_legacy_none_entity_id_migration_renames_safe_entries(monkeypatch):
+    renamed = []
+    entries = [
+        SimpleNamespace(
+            domain="binary_sensor",
+            platform="xsense",
+            entity_id="binary_sensor.smoke_alarm_none",
+            unique_id="device-connected",
+            device_id="device-id",
+            object_id_base="Connected",
+            original_name=None,
+            translation_key="connected",
+        ),
+        SimpleNamespace(
+            domain="button",
+            platform="xsense",
+            entity_id="button.smoke_alarm_none",
+            unique_id="device-test",
+            device_id="device-id",
+            object_id_base="Test",
+            original_name=None,
+            translation_key="test",
+        ),
+        SimpleNamespace(
+            domain="sensor",
+            platform="other",
+            entity_id="sensor.other_none",
+            unique_id="other-test",
+            device_id="device-id",
+            object_id_base="Test",
+            original_name=None,
+            translation_key="test",
+        ),
+    ]
+
+    class FakeEntityRegistry:
+        def async_get(self, entity_id):
+            return None
+
+        def async_update_entity(self, entity_id, **kwargs):
+            renamed.append((entity_id, kwargs))
+
+    class FakeDeviceRegistry:
+        def async_get(self, device_id):
+            assert device_id == "device-id"
+            return SimpleNamespace(name_by_user=None, name="Smoke Alarm")
+
+    import custom_components.xsense as xsense
+
+    monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
+    monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())
+    monkeypatch.setattr(
+        xsense.er,
+        "async_entries_for_config_entry",
+        lambda entity_registry, entry_id: entries,
+    )
+
+    _migrate_legacy_none_entity_ids(
+        SimpleNamespace(), SimpleNamespace(entry_id="entry-id")
+    )
+
+    assert renamed == [
+        (
+            "binary_sensor.smoke_alarm_none",
+            {"new_entity_id": "binary_sensor.smoke_alarm_connected"},
+        ),
+        ("button.smoke_alarm_none", {"new_entity_id": "button.smoke_alarm_test"}),
+    ]
+
+
+def test_legacy_none_entity_id_migration_applies_to_other_xsense_devices(monkeypatch):
+    renamed = []
+    entries = [
+        SimpleNamespace(
+            domain="binary_sensor",
+            platform="xsense",
+            entity_id="binary_sensor.water_leak_sensor_none",
+            unique_id="leak-device-connected",
+            device_id="leak-device-id",
+            object_id_base="Connected",
+            original_name="Connected",
+            translation_key="connected",
+        ),
+        SimpleNamespace(
+            domain="button",
+            platform="xsense",
+            entity_id="button.base_station_none",
+            unique_id="base-device-test",
+            device_id="base-device-id",
+            object_id_base="Test",
+            original_name="Test",
+            translation_key="test",
+        ),
+    ]
+
+    class FakeEntityRegistry:
+        entities = {}
+
+        def async_get(self, entity_id):
+            return None
+
+        def async_update_entity(self, entity_id, **kwargs):
+            renamed.append((entity_id, kwargs))
+
+    class FakeDeviceRegistry:
+        def async_get(self, device_id):
+            devices = {
+                "leak-device-id": SimpleNamespace(
+                    name_by_user=None, name="Water Leak Sensor"
+                ),
+                "base-device-id": SimpleNamespace(
+                    name_by_user=None, name="Base Station"
+                ),
+            }
+            return devices[device_id]
+
+    import custom_components.xsense as xsense
+
+    monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
+    monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())
+    monkeypatch.setattr(
+        xsense.er,
+        "async_entries_for_config_entry",
+        lambda entity_registry, entry_id: entries,
+    )
+
+    _migrate_legacy_none_entity_ids(
+        SimpleNamespace(), SimpleNamespace(entry_id="entry-id")
+    )
+
+    assert renamed == [
+        (
+            "binary_sensor.water_leak_sensor_none",
+            {"new_entity_id": "binary_sensor.water_leak_sensor_connected"},
+        ),
+        ("button.base_station_none", {"new_entity_id": "button.base_station_test"}),
+    ]
+
+
+def test_legacy_none_entity_id_migration_uses_entity_id_base_without_device(monkeypatch):
+    renamed = []
+    entries = [
+        SimpleNamespace(
+            domain="button",
+            platform="xsense",
+            entity_id="button.smoke_alarm_none",
+            unique_id="device-test",
+            device_id=None,
+            object_id_base="Test",
+            original_name=None,
+            translation_key="test",
+        )
+    ]
+
+    class FakeEntityRegistry:
+        entities = {}
+
+        def async_get(self, entity_id):
+            return None
+
+        def async_update_entity(self, entity_id, **kwargs):
+            renamed.append((entity_id, kwargs))
+
+    class FakeDeviceRegistry:
+        def async_get(self, device_id):
+            return None
+
+    import custom_components.xsense as xsense
+
+    monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
+    monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())
+    monkeypatch.setattr(
+        xsense.er,
+        "async_entries_for_config_entry",
+        lambda entity_registry, entry_id: entries,
+    )
+
+    _migrate_legacy_none_entity_ids(
+        SimpleNamespace(), SimpleNamespace(entry_id="entry-id")
+    )
+
+    assert renamed == [
+        ("button.smoke_alarm_none", {"new_entity_id": "button.smoke_alarm_test"})
+    ]
+
+
+def test_legacy_none_entity_id_migration_skips_existing_target(monkeypatch):
+    renamed = []
+    entries = [
+        SimpleNamespace(
+            domain="button",
+            platform="xsense",
+            entity_id="button.smoke_alarm_none",
+            unique_id="device-test",
+            device_id="device-id",
+            object_id_base="Test",
+            original_name=None,
+            translation_key="test",
+        )
+    ]
+
+    class FakeEntityRegistry:
+        def async_get(self, entity_id):
+            assert entity_id == "button.smoke_alarm_test"
+            return SimpleNamespace(entity_id="button.smoke_alarm_test")
+
+        def async_update_entity(self, entity_id, **kwargs):
+            renamed.append((entity_id, kwargs))
+
+    class FakeDeviceRegistry:
+        def async_get(self, device_id):
+            return SimpleNamespace(name_by_user=None, name="Smoke Alarm")
+
+    import custom_components.xsense as xsense
+
+    monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
+    monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())
+    monkeypatch.setattr(
+        xsense.er,
+        "async_entries_for_config_entry",
+        lambda entity_registry, entry_id: entries,
+    )
+
+    _migrate_legacy_none_entity_ids(
+        SimpleNamespace(), SimpleNamespace(entry_id="entry-id")
+    )
+
+    assert renamed == []

@@ -95,8 +95,12 @@ class XSenseAlarmControlPanel(
 
     @property
     def available(self) -> bool:
-        """Return if the alarm control panel is available."""
-        return self._station is not None and super().available
+        """Return if the alarm control panel can be used."""
+        station = self._station
+        if station is None:
+            return False
+
+        return station.online is True and super().available
 
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
