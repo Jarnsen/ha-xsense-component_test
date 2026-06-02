@@ -2,11 +2,18 @@ from types import SimpleNamespace
 
 from custom_components.xsense.api.entity_map import EntityType
 from custom_components.xsense.sensor import (
+    battery_percentage,
     has_report_time,
     has_self_test_report,
     optional_data_timestamp,
     self_test_result,
 )
+
+
+def test_battery_percentage_returns_unknown_for_non_numeric_value():
+    entity = SimpleNamespace(data={"batInfo": "unknown"})
+
+    assert battery_percentage(entity) is None
 
 
 def test_base_station_report_time_is_internal_metadata():

@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Oversigt
 Denne Home Assistant-integration gør X-Sense-enheder tilgængelige i dit smart home. Den bygger på Theo Snels oprindelige arbejde og installeres via HACS.
 
@@ -7,6 +11,31 @@ Vi anbefaler at oprette en separat X-Sense-konto til Home Assistant og kun dele 
 
 ## Installation
 Tilføj `https://github.com/Jarnsen/ha-xsense-component_test` som brugerdefineret repository i HACS, download integrationen, følg HACS' genstartsvejledning, og konfigurer derefter integrationen med X-Sense-kontoen til Home Assistant.
+
+
+## Detaljeret opsætning med skærmbilleder
+
+1. Opret en separat X-Sense-konto til Home Assistant, og del kun understøttede enheder fra hovedkontoen.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. Tilføj `https://github.com/Jarnsen/ha-xsense-component_test` som et brugerdefineret repository i HACS.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Download og installer integrationen, genstart Home Assistant, og konfigurer den derefter med den nye X-Sense-konto.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Efter en vellykket opsætning vises de delte enheder på enhedssiden i Home Assistant.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Parring, fjernelse, firmware, betalinger, SD-kort og kontostyring forbliver i X-Sense-appen.
 
 ## Understøttede enheder
 Understøttet er basestationer, røgalarmer, CO-detektorer, varmealarmer, vandlækagedetektorer, hygrometre, dør- og bevægelsessensorer, lys, tastaturer, postkassesensorer, lytteenheder og understøttede kameraer, når X-Sense-kontoen rapporterer dem.
@@ -62,7 +91,7 @@ Integrationen bruger MQTT shadow-meddelelser til hurtige statusændringer og for
 
 ### Tilgængelige enheder
 
-Afhængigt af modellen kan der vises røg-, CO-, vand-, temperatur-, bevægelses- og døralarmer, alarmdæmpning, levetidsudløb, opladning, påmindelsesstatus, lysstatus og andre diagnostiske binære sensorer. Sensorer kan omfatte batteri, RF- eller Wi-Fi-signal, firmware, temperatur, fugtighed, CO-niveau, CO-topværdi, lydstyrke, tærskler, læsbare tidspunkter, tidszone, serienummer, MAC-adresse og anden diagnostik. Kontakter, valg og talfelter oprettes kun, når enheden faktisk understøtter dem.
+Afhængigt af modellen kan der vises røg-, CO-, vand-, temperatur-, bevægelses- og døralarmer, alarmdæmpning, levetidsudløb, opladning, påmindelsesstatus, lysstatus og andre diagnostiske binære sensorer. Sensorer kan omfatte batteri, RF- eller Wi-Fi-signal, firmware, temperatur, fugtighed, CO-niveau, CO-topværdi, lydstyrke, tærskler, læsbare tidspunkter, tidszone og anden diagnostik. Kontakter, valg og talfelter oprettes kun, når enheden faktisk understøtter dem.
 
 ### Kameraer
 
@@ -104,12 +133,12 @@ Når du rapporterer en fejl, så angiv enhedsmodellen, integrationsversionen, om
 - Diagnostiske værdier markeres som diagnostik.
 - Test, mute, brandøvelse og kameravækning vises kun for understøttede modeller.
 
-### Kameraer
+### Kamerareference
 - Understøttede kameraer kan vise kameraentitet, miniaturebillede, live stream og diagnostik.
 - WebRTC bruges kun, når stien er tilgængelig i Home Assistant.
 - SD-kort, betalinger, firmware og kontoadministration bliver i X-Sense-appen.
 
-### Fejlfinding
+### Tjekliste til fejlfinding
 - Ved fejlrapporter skal model, integrationsversion, diagnostik og relevante logge medtages.
 
 ### Afgrænsning

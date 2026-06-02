@@ -1,4 +1,4 @@
-# ha-xsense-component_test 
+# ha-xsense-component_test
 <p align="center">
 <img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
 </p>
@@ -8,16 +8,16 @@
 ## Überblick
 Diese Integration für Home Assistant ermöglicht die Verwendung von X-Sense-Geräten innerhalb des Smart-Home-Systems. Sie wurde basierend auf dem Originalcode von [Theo Snel](https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense) erstellt und mit seiner Erlaubnis und in Zusammenarbeit mit ihm veröffentlicht.
 
-Bis es eine offizielle Home Assistant-Integration von Theo gibt, wird diese HACS-Integration verwendet und regelmäßig aktualisiert, um neue Funktionen hinzuzufügen und bestehende Probleme zu beheben. Diese Integration ermöglicht es Nutzern, ihre X-Sense-Geräte einfach in Home Assistant zu integrieren und für verschiedene Automationen und Überwachungen zu nutzen.
+Diese HACS-Integration wird aktiv gepflegt, damit Nutzer eine breitere X-Sense-Geräteunterstützung in Home Assistant erhalten. Sie wird regelmäßig mit neuen Funktionen, zusätzlicher Geräteabdeckung und Korrekturen für gemeldete Probleme aktualisiert.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+ <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>
 
 ## Funktionen
 - Integration verschiedener X-Sense-Geräte in Home Assistant.
 - Unterstützung für Automationen auf Basis der X-Sense-Sensordaten.
-- Unterstützung für Basisstationen, Rauchmelder, Kohlenmonoxidmelder, Hitzemelder, Wassermelder, Hygrometer, Türsensoren, Bewegungssensoren, Licht, Tastatur, Briefkastensensoren, Listener, Kameras und weitere unterstützte Geräte, wenn sie im X-Sense-Konto verfügbar sind.
+- Unterstützung für Basisstationen, Rauchmelder, Kohlenmonoxidmelder, Hitzemelder, Wassermelder, Hygrometer, Türsensoren, Bewegungssensoren, Licht, Tastatur, Briefkastensensoren, Lauschgerät, Kameras und weitere unterstützte Geräte, wenn sie im X-Sense-Konto verfügbar sind.
 - Einfache Einrichtung über HACS (Home Assistant Community Store).
 
 ## Voraussetzungen
@@ -39,30 +39,30 @@ Bevor du die Integration installierst, sind einige Vorbereitungen notwendig:
 
 - **Teile die unterstützten Geräte vom Hauptkonto mit dem Home Assistant-Konto**: Verwende die X-Sense-App, um **nur die unterstützten Geräte** mit dem neu erstellten Account zu teilen. Auf diese Weise kannst du die Integration unkompliziert in Home Assistant nutzen, während die Verwaltung weiterhin über dein Hauptkonto erfolgt.
 
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
 
 ____________________________________________________________
 
 ## Installation über HACS
 1. **Öffne HACS in Home Assistant**:
-   HACS ist eine wichtige Erweiterung für Home Assistant, die es dir ermöglicht, benutzerdefinierte Integrationen einfach zu installieren.
+  HACS ist eine wichtige Erweiterung für Home Assistant, die es dir ermöglicht, benutzerdefinierte Integrationen einfach zu installieren.
 
-   ![Download (1)](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+  ![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
 
 2. **Gehe zu den benutzerdefinierten Repositories**:
-   Navigiere im HACS-Dashboard zu den Einstellungen und füge das Repository als benutzerdefinierte Quelle hinzu.
+  Navigiere im HACS-Dashboard zu den Einstellungen und füge das Repository als benutzerdefinierte Quelle hinzu.
 
 3. **Füge das Repository hinzu**:
-   Gib die URL des Repositories ein: `https://github.com/Jarnsen/ha-xsense-component_test`
+  Gib die URL des Repositories ein: `https://github.com/Jarnsen/ha-xsense-component_test`
 
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+  ![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 
 4. **Lade die Integration herunter und installiere sie**:
-   Suche die Integration in HACS, lade sie herunter und installiere sie. Nach der Installation kann die Konfiguration über die Home Assistant-Benutzeroberfläche vorgenommen werden.
+  Suche die Integration in HACS, lade sie herunter und installiere sie. Nach der Installation kann die Konfiguration über die Home Assistant-Benutzeroberfläche vorgenommen werden.
 
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
-   
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+  ![HACS repository selection screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
+
+  ![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
 
 ____________________________________________________________
 
@@ -70,11 +70,11 @@ ____________________________________________________________
 Nach der Installation ist eine grundlegende Konfiguration notwendig, um die Integration korrekt einzurichten:
 - **Benutzername und Passwort**: Verwende die Zugangsdaten des neu erstellten X-Sense-Kontos, um die Verbindung herzustellen.
 
-    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
-  
+  ![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
 - **Geräteübersicht**: Nach erfolgreicher Einrichtung werden die geteilten Geräte in Home Assistant verfügbar und können dort für Automationen genutzt werden.
 
-    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+  ![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
 ## Ansicht in Home Assistant
 Nach erfolgreicher Installation und Konfiguration wird die Integration in Home Assistant sichtbar sein. Die Geräte sind dann im Dashboard sichtbar und können für Automationen, Benachrichtigungen und andere Anwendungsfälle verwendet werden.
 
@@ -95,7 +95,7 @@ Diese Integration unterstützt verschiedene X-Sense-Geräte. Die verfügbaren En
 - **Türsensor (SDS0A)**: Stellt den Türstatus bereit, wenn er vom X-Sense-Konto gemeldet wird.
 - **Bewegungsmelder (SMS0A)**: Stellt den Bewegungsalarmstatus bereit, wenn er vom X-Sense-Konto gemeldet wird.
 - **Kamera (SSC0A, SSC0B)**: Stellt Kameraentitäten, Vorschaubilder, Livestream-URLs, Statusdiagnosen und appgestützte Einstellungen bereit, wenn Gerät und Konto dies unterstützen.
-- **Weitere über Stationen verbundene Geräte**: Licht, Tastatur, Briefkastensensor, Listener, Einfahrtsalarm, Smart Drop, Fernbedienung und Radondaten werden angezeigt, wenn die X-Sense-API unterstützte Felder meldet.
+- **Weitere über Stationen verbundene Geräte**: Licht, Tastatur, Briefkastensensor, Lauschgerät, Einfahrtsalarm, Smart-Drop-Gerät, Fernbedienung und Radondaten werden angezeigt, wenn die X-Sense-API unterstützte Felder meldet.
 
 Nach der Einbindung in Home Assistant können diese Geräte für Automationen und Warnungen genutzt werden.
 
@@ -103,7 +103,7 @@ Nach der Einbindung in Home Assistant können diese Geräte für Automationen un
 Die Integration erstellt Home-Assistant-Entitäten nur für Felder, die in der X-Sense-Cloud, in MQTT-Shadow-Daten oder über die appgestützten Kamera-APIs vorhanden sind. Je nach Gerät kann dies Folgendes umfassen:
 
 - Binärsensoren für Alarm, Stummschaltung, Lebensdauerende, AC-Unterbrechung, Wasseralarm, Temperaturalarm, Laden, Bewegung, Tür, Scharfstatus, Warnungen, Erinnerungen, Licht, PIR und Tastaturstatus.
-- Sensoren für Batterie, RF-Signal, WLAN-Signal, Firmware, Temperatur, Luftfeuchtigkeit, CO-Wert, CO-Spitzenwert, Alarm-, Sprach-, Chirp- und Erinnerungslautstärke, Warnschwellen, Stummschaltzeiten, lesbare Zeitstempel, Zeitzone, Seriennummer, MAC-Adresse und weitere Diagnosedaten.
+- Sensoren für Batterie, RF-Signal, WLAN-Signal, Firmware, Temperatur, Luftfeuchtigkeit, CO-Wert, CO-Spitzenwert, Alarm-, Sprach-, Chirp- und Erinnerungslautstärke, Warnschwellen, Stummschaltzeiten, lesbare Zeitstempel, Zeitzone und weitere Diagnosedaten.
 - Schalter für unterstützte beschreibbare Einstellungen wie LED-Licht, Alarmaktivierung, fortgesetzten Alarm, Chirp-Ton, Erinnerungen, PIR, Sonnenschein, Wartezustand, Tastenton, Kamera-Bewegungserkennung, Aufnahme, Nachtsicht, Audio, Cooldown, Licht und Türklingelsteuerung.
 - Auswahlfelder und Zahlenwerte für unterstützte Kameraeinstellungen wie Sprache, Aufnahmeauflösung, Codec, Anti-Flicker-Rate, Bewegungsempfindlichkeit, Videolänge, Lautstärke, Alarmdauer, Cooldown, Nachtschwelle und Türklingelton.
 - Test-, Stumm-, Feueralarm- und Kamera-Weckschaltflächen für Modelle, bei denen die X-Sense-App die passende Aktion anbietet.
@@ -165,3 +165,32 @@ Für Diskussionen und Unterstützung kannst du uns auf unserem Discord-Server od
 [Discord](https://discord.gg/5phHHgGb3V)
 
 [Forum](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
+
+## Vollständige Referenz
+
+### Konto und Installation
+- Verwende für Home Assistant ein separates X-Sense-Konto.
+- Teile vom Hauptkonto nur unterstützte Geräte mit diesem Konto.
+- Koppeln, Entfernen, Teilen, Firmware, Konto, Zahlungen und SD-Kartenverwaltung bleiben in der X-Sense-App.
+
+### Updates und API-Nutzung
+- Schnelle Statusänderungen kommen über MQTT-Shadow-Nachrichten.
+- Cloud-Anfragen werden für Anmeldung, Gerätesuche, Kameradaten und Statuswiederherstellung genutzt.
+- Periodisches Polling dient nur als Fallback, wenn ein Live-Update fehlt.
+
+### Entitäten, Kameras und Fehlersuche
+- Entitäten werden nur für Felder erstellt, die X-Sense tatsächlich meldet.
+- Kamera-Entitäten und Steuerungen werden nur erstellt, wenn die an der Android-App ausgerichtete API Unterstützung für dieses Konto und Modell meldet.
+- Wenn ein Wert fehlt, vergleiche ihn zuerst mit der X-Sense-App und füge dann Diagnosen sowie relevante Home-Assistant-Logs bei.
+
+## Geräte- und Entitäten-Checkliste
+
+### Wichtige Gerätefamilien
+- SBS50-Basisstation, XS-Rauchmelder, XC-CO-Melder, SC/XP-Kombimelder, XH-Hitzemelder, SWS-Wassermelder, STH-Temperatur-/Feuchtesensoren, SDS-Türsensoren, SMS-Bewegungssensoren, SSC-Kameras und weitere gemeldete X-Sense-Familien werden unterstützt, wenn die API ihre Felder bereitstellt.
+
+### Statusfelder
+- Alarm, Stummschaltung, Batterie, RF-/WLAN-Signal, Temperatur, Luftfeuchte, CO, Wasser, Bewegung, Tür, Licht, Erinnerungen, Warnungen und lesbare Zeitstempel erscheinen nur, wenn X-Sense sie meldet.
+
+### Steuerungen und Meldungen
+- Schalter, Auswahlen, Zahlen und Tasten werden nur für beschreibbare Einstellungen und Aktionen erstellt, die Gerät und Konto bereitstellen.
+- Gute Fehlermeldungen enthalten das genaue Modell, die Integrationsversion, Diagnosen, Logs und ob sich der Wert in der X-Sense-App korrekt ändert.

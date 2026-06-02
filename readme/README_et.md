@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Ülevaade
 See Home Assistanti integratsioon teeb X-Sense seadmed nutikodus kasutatavaks. See põhineb Theo Sneli algsel tööl ja paigaldatakse HACS-i kaudu.
 
@@ -7,6 +11,31 @@ Soovitame luua Home Assistanti jaoks eraldi X-Sense konto ning jagada põhikonto
 
 ## Paigaldamine
 Lisage HACS-is kohandatud repositoorium `https://github.com/Jarnsen/ha-xsense-component_test`, laadige integratsioon alla, järgige HACS-i taaskäivituse juhiseid ja seadistage integratsioon Home Assistanti jaoks loodud X-Sense kontoga.
+
+
+## Üksikasjalik seadistus ekraanipiltidega
+
+1. Loo Home Assistanti jaoks eraldi X-Sense'i konto ja jaga põhikontolt ainult toetatud seadmed.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. Lisa HACS-is kohandatud hoidlaks `https://github.com/Jarnsen/ha-xsense-component_test`.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Laadi integratsioon alla, paigalda see, taaskäivita Home Assistant ja seadista see uue X-Sense'i kontoga.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Pärast edukat seadistamist ilmuvad jagatud seadmed Home Assistanti seadmete lehele.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Sidumine, eemaldamine, püsivara, maksed, SD-kaardid ja konto haldus jäävad X-Sense'i rakendusse.
 
 ## Toetatud seadmed
 Toetatud on tugijaamad, suitsuandurid, CO-andurid, kuumahäired, veelekkeandurid, hügromeetrid, ukse- ja liikumisandurid, valgustid, klaviatuurid, postkastiandurid, kuulamisseadmed ja toetatud kaamerad, kui X-Sense konto neid raporteerib.
@@ -62,7 +91,7 @@ Integratsioon kasutab kiirete olekumuudatuste jaoks MQTT shadow-teateid ja andme
 
 ### Saadaolevad olemid
 
-Olenevalt mudelist võivad ilmuda suitsu-, CO-, vee-, temperatuuri-, liikumis- ja uksealarmid, alarmi vaigistamine, kasutusea lõpp, laadimine, meeldetuletuse olek, valguse olek ja muud diagnostilised binaarandurid. Andurid võivad sisaldada akut, RF- või Wi-Fi-signaali, püsivara, temperatuuri, niiskust, CO taset, CO tippväärtust, helitugevust, läviväärtusi, loetavaid ajatempleid, ajavööndit, seerianumbrit, MAC-aadressi ja muud diagnostikat. Lülitid, valikud ja arvväärtused luuakse ainult siis, kui seade neid tegelikult toetab.
+Olenevalt mudelist võivad ilmuda suitsu-, CO-, vee-, temperatuuri-, liikumis- ja uksealarmid, alarmi vaigistamine, kasutusea lõpp, laadimine, meeldetuletuse olek, valguse olek ja muud diagnostilised binaarandurid. Andurid võivad sisaldada akut, RF- või Wi-Fi-signaali, püsivara, temperatuuri, niiskust, CO taset, CO tippväärtust, helitugevust, läviväärtusi, loetavaid ajatempleid, ajavööndit ja muud diagnostikat. Lülitid, valikud ja arvväärtused luuakse ainult siis, kui seade neid tegelikult toetab.
 
 ### Kaamerad
 
@@ -104,12 +133,12 @@ Veateates lisage seadme mudel, integratsiooni versioon, kas õige väärtus on X
 - Diagnostilised väärtused märgitakse diagnostikaks.
 - Test, vaigistamine, tulekahjuõppus ja kaamera äratamine on ainult toetatud mudelitel.
 
-### Kaamerad
+### Kaamerate ülevaade
 - Toetatud kaamerad võivad pakkuda kaamera olemit, eelvaadet, otsevoogu ja diagnostikat.
 - WebRTC teed kasutatakse ainult siis, kui Home Assistant seda pakub.
 - SD-kaardi, maksete, püsivara ja konto haldus jääb X-Sense rakendusse.
 
-### Tõrkeotsing
+### Tõrkeotsingu kontrollnimekiri
 - Veateates lisa mudel, integratsiooni versioon, diagnostika ja asjakohased logid.
 
 ### Ulatus

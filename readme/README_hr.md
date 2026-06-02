@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Pregled
 Ova integracija za Home Assistant omogućuje korištenje X-Sense uređaja u pametnom domu. Temelji se na izvornom radu Thea Snela i namijenjena je instalaciji putem HACS-a.
 
@@ -7,6 +11,31 @@ Preporučujemo stvaranje drugog X-Sense računa za Home Assistant i dijeljenje s
 
 ## Instalacija
 V HACS dodajte repozitorij po meri `https://github.com/Jarnsen/ha-xsense-component_test`, prenesite integracijo, sledite navodilom HACS za ponovni zagon in jo nato nastavite z računom X-Sense za Home Assistant.
+
+
+## Detaljno postavljanje sa snimkama zaslona
+
+1. Izradite zaseban X-Sense račun za Home Assistant i s glavnog računa podijelite samo podržane uređaje.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. U HACS-u dodajte `https://github.com/Jarnsen/ha-xsense-component_test` kao prilagođeni repozitorij.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Preuzmite i instalirajte integraciju, ponovno pokrenite Home Assistant i zatim je konfigurirajte novim X-Sense računom.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Nakon uspješnog postavljanja dijeljeni uređaji prikazat će se na stranici uređaja u Home Assistantu.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Uparivanje, uklanjanje, firmware, plaćanja, SD kartice i upravljanje računom ostaju u X-Sense aplikaciji.
 
 ## Podržani uređaji
 Podprte so bazne postaje, detektorji dima, detektorji CO, toplotni alarmi, detektorji izliva vode, higrometri, senzorji vrat in gibanja, luči, tipkovnice, senzorji poštnega nabiralnika, poslušalne naprave in podprte kamere, kadar jih račun X-Sense poroča.
@@ -62,7 +91,7 @@ Integracija koristi MQTT shadow poruke za brze promjene stanja i oprezno periodi
 
 ### Dostupni entiteti
 
-Ovisno o modelu mogu se prikazati alarmi za dim, CO, vodu, temperaturu, pokret i vrata, utišavanje alarma, kraj životnog vijeka, punjenje, status podsjetnika, status svjetla i drugi dijagnostički binarni senzori. Senzori mogu uključivati bateriju, RF ili Wi-Fi signal, firmware, temperaturu, vlagu, razinu CO, vršnu vrijednost CO, glasnoću, pragove, čitljiva vremena, vremensku zonu, serijski broj, MAC adresu i dodatnu dijagnostiku. Prekidači, odabiri i numeričke vrijednosti stvaraju se samo kada ih uređaj stvarno podržava.
+Ovisno o modelu mogu se prikazati alarmi za dim, CO, vodu, temperaturu, pokret i vrata, utišavanje alarma, kraj životnog vijeka, punjenje, status podsjetnika, status svjetla i drugi dijagnostički binarni senzori. Senzori mogu uključivati bateriju, RF ili Wi-Fi signal, firmware, temperaturu, vlagu, razinu CO, vršnu vrijednost CO, glasnoću, pragove, čitljiva vremena, vremensku zonu i dodatnu dijagnostiku. Prekidači, odabiri i numeričke vrijednosti stvaraju se samo kada ih uređaj stvarno podržava.
 
 ### Kamere
 
@@ -104,12 +133,12 @@ Pri prijavi greške navedite model uređaja, verziju integracije, prikazuje li s
 - Dijagnostičke vrijednosti označene su kao dijagnostika.
 - Test, utišavanje, protupožarna vježba i buđenje kamere dostupni su samo za podržane modele.
 
-### Kamere
+### Referenca za kamere
 - Podržane kamere mogu pružiti entitet kamere, sličicu, prijenos uživo i dijagnostiku.
 - WebRTC put koristi se samo ako je dostupan u Home Assistantu.
 - SD kartica, plaćanja, firmware i upravljanje računom ostaju u aplikaciji X-Sense.
 
-### Rješavanje problema
+### Kontrolni popis za rješavanje problema
 - U prijavi problema navedite model, verziju integracije, dijagnostiku i relevantne zapise.
 
 ### Opseg

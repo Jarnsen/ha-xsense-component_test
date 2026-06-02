@@ -1,3 +1,7 @@
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 <div dir="rtl">
 
 # ha-xsense-component_test
@@ -9,6 +13,31 @@
 
 ## התקנה
 ב-HACS הוסיפו מאגר מותאם אישית `https://github.com/Jarnsen/ha-xsense-component_test`, הורידו את האינטגרציה, פעלו לפי הוראות ההפעלה מחדש של HACS והגדירו אותה עם חשבון X-Sense הייעודי ל-Home Assistant.
+
+
+## הגדרה מפורטת עם צילומי מסך
+
+1. צרו חשבון X-Sense נפרד עבור Home Assistant ושתפו אליו מהחשבון הראשי רק מכשירים נתמכים.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. הוסיפו ב-HACS את `https://github.com/Jarnsen/ha-xsense-component_test` כמאגר מותאם אישית.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. הורידו והתקינו את האינטגרציה, הפעילו מחדש את Home Assistant, ואז הגדירו אותה עם חשבון X-Sense החדש.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. לאחר הגדרה מוצלחת, המכשירים המשותפים יופיעו בעמוד המכשירים של Home Assistant.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. צימוד, הסרה, קושחה, תשלומים, כרטיסי SD וניהול חשבון נשארים באפליקציית X-Sense.
 
 ## מכשירים נתמכים
 נתמכים תחנות בסיס, גלאי עשן, גלאי CO, אזעקות חום, גלאי נזילת מים, היגרומטרים, חיישני דלת ותנועה, אורות, לוחות מקשים, חיישני תיבת דואר, התקני האזנה ומצלמות נתמכות כאשר חשבון X-Sense מדווח עליהם.
@@ -65,7 +94,7 @@ automation:
 
 ### ישויות זמינות
 
-בהתאם לדגם, עשויים להופיע חיישנים בינאריים עבור עשן, CO, מים, טמפרטורה, תנועה ודלת, השתקת התרעה, סוף חיי מכשיר, טעינה, מצב תזכורת, מצב תאורה ואבחון נוסף. חיישנים יכולים לכלול סוללה, אות RF או Wi-Fi, קושחה, טמפרטורה, לחות, רמת CO, שיא CO, עוצמת קול, ספי התרעה, זמני קריאה נוחים, אזור זמן, מספר סידורי, כתובת MAC ונתוני אבחון נוספים. מתגים, בחירות ושדות מספריים נוצרים רק כאשר המכשיר באמת תומך בהם.
+בהתאם לדגם, עשויים להופיע חיישנים בינאריים עבור עשן, CO, מים, טמפרטורה, תנועה ודלת, השתקת התרעה, סוף חיי מכשיר, טעינה, מצב תזכורת, מצב תאורה ואבחון נוסף. חיישנים יכולים לכלול סוללה, אות RF או Wi-Fi, קושחה, טמפרטורה, לחות, רמת CO, שיא CO, עוצמת קול, ספי התרעה, זמני קריאה נוחים, אזור זמן ונתוני אבחון נוספים. מתגים, בחירות ושדות מספריים נוצרים רק כאשר המכשיר באמת תומך בהם.
 
 ### מצלמות
 

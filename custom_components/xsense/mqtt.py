@@ -593,9 +593,9 @@ class XSenseMQTT:
         self,
         _mqttc: mqtt.Client,
         _userdata: None,
-        _flags: dict[str, int],
-        result_code: int,
-        properties: mqtt.Properties | None = None,
+        _flags: mqtt.ConnectFlags,
+        result_code: mqtt.ReasonCode,
+        _properties: mqtt.Properties,
     ) -> None:
         """On connect callback.
 
@@ -664,8 +664,8 @@ class XSenseMQTT:
         _mqttc: mqtt.Client,
         _userdata: None,
         mid: int,
-        _granted_qos_reason: tuple[int, ...] | mqtt.ReasonCodes | None = None,
-        _properties_reason: mqtt.ReasonCodes | None = None,
+        _granted_qos_reason: tuple[int, ...] | mqtt.ReasonCode | None = None,
+        _properties_reason: mqtt.Properties | None = None,
     ) -> None:
         """Publish / Subscribe / Unsubscribe callback."""
         # The callback signature for on_unsubscribe is different from on_subscribe
@@ -693,11 +693,12 @@ class XSenseMQTT:
         self,
         _mqttc: mqtt.Client,
         _userdata: None,
-        result_code: int,
-        properties: mqtt.Properties | None = None,
+        _disconnect_flags: mqtt.DisconnectFlags,
+        result_code: mqtt.ReasonCode,
+        _properties: mqtt.Properties,
     ) -> None:
         """Disconnected callback."""
-        self._async_on_disconnect(result_code)
+        self._async_on_disconnect(result_code.value)
 
     # remove mqtt status dispatching
     @callback

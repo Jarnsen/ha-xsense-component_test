@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Áttekintés
 Ez a Home Assistant integráció elérhetővé teszi az X-Sense eszközöket az okosotthonban. Theo Snel eredeti munkáján alapul, és HACS-en keresztül telepíthető.
 
@@ -7,6 +11,31 @@ Javasolt egy külön X-Sense fiókot létrehozni a Home Assistant számára, maj
 
 ## Telepítés
 A HACS-ben adja hozzá egyéni tárolóként a `https://github.com/Jarnsen/ha-xsense-component_test` címet, töltse le az integrációt, kövesse a HACS újraindítási utasítását, majd állítsa be a Home Assistant célú X-Sense fiókkal.
+
+
+## Részletes beállítás képernyőképekkel
+
+1. Hozz létre külön X-Sense-fiókot a Home Assistant számára, és a fő fiókból csak a támogatott eszközöket oszd meg vele.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. A HACS-ban add hozzá egyéni tárolóként: `https://github.com/Jarnsen/ha-xsense-component_test`.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Töltsd le és telepítsd az integrációt, indítsd újra a Home Assistantot, majd állítsd be az új X-Sense-fiókkal.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Sikeres beállítás után a megosztott eszközök megjelennek a Home Assistant eszközoldalán.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. A párosítás, eltávolítás, firmware, fizetések, SD-kártyák és fiókkezelés az X-Sense alkalmazásban marad.
 
 ## Támogatott eszközök
 Támogatottak a bázisállomások, füstérzékelők, CO-érzékelők, hőriasztók, vízszivárgás-érzékelők, higrométerek, ajtó- és mozgásérzékelők, lámpák, billentyűzetek, postaláda-érzékelők, figyelő eszközök és támogatott kamerák, ha az X-Sense fiók jelenti őket.
@@ -62,13 +91,13 @@ Az integráció MQTT shadow üzeneteket használ a gyors állapotváltozásokhoz
 
 ### Elérhető entitások
 
-Modelltől függően megjelenhet füst-, CO-, víz-, hőmérséklet-, mozgás- és ajtóriasztás, riasztásnémítás, élettartam vége, töltés, emlékeztető állapota, fényállapot és további diagnosztikai bináris érzékelők. Az érzékelők között lehet akkumulátor, RF- vagy Wi-Fi-jel, firmware, hőmérséklet, páratartalom, CO-szint, CO-csúcsérték, hangerő, küszöbértékek, olvasható időpontok, időzóna, sorozatszám, MAC-cím és egyéb diagnosztika. Kapcsolók, választók és számmezők csak akkor jönnek létre, ha az eszköz valóban támogatja őket.
+Modelltől függően megjelenhet füst-, CO-, víz-, hőmérséklet-, mozgás- és ajtóriasztás, riasztásnémítás, élettartam vége, töltés, emlékeztető állapota, fényállapot és további diagnosztikai bináris érzékelők. Az érzékelők között lehet akkumulátor, RF- vagy Wi-Fi-jel, firmware, hőmérséklet, páratartalom, CO-szint, CO-csúcsérték, hangerő, küszöbértékek, olvasható időpontok, időzóna és egyéb diagnosztika. Kapcsolók, választók és számmezők csak akkor jönnek létre, ha az eszköz valóban támogatja őket.
 
-### Kamerák
+### Kamera-referencia
 
 A támogatott kamerák kameraentitást, bélyegképeket, élő közvetítést, kapcsolati állapotot és az X-Sense alkalmazással összhangban lévő beállításokat biztosíthatnak. Ha a Home Assistantban elérhető WebRTC útvonal, az integráció ezt használhatja megfelelő élő nézethez.
 
-### Hibaelhárítás
+### Hibaelhárítási ellenőrzőlista
 
 Ha egy entitás hiányzik, először ellenőrizze az X-Sense alkalmazásban, hogy az adott érték valóban megjelenik-e az eszköznél. Ha az állapot elavult marad, csak ideiglenes tesztként töltse újra az integrációt, és a hibajelentéshez csatolja a diagnosztikát, valamint a releváns Home Assistant naplósorokat.
 

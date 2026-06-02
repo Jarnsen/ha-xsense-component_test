@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Prehľad
 Táto integrácia pre Home Assistant sprístupňuje zariadenia X-Sense v inteligentnej domácnosti. Vychádza z pôvodnej práce Thea Snela a je určená na inštaláciu cez HACS.
 
@@ -7,6 +11,31 @@ Odporúčame vytvoriť druhý účet X-Sense pre Home Assistant a z hlavného ú
 
 ## Inštalácia
 V HACS pridajte vlastný repozitár `https://github.com/Jarnsen/ha-xsense-component_test`, integráciu stiahnite, reštartujte Home Assistant podľa pokynov HACS a potom ju nastavte pomocou účtu X-Sense určeného pre Home Assistant.
+
+
+## Podrobné nastavenie so snímkami obrazovky
+
+1. Vytvorte samostatný účet X-Sense pre Home Assistant a z hlavného účtu zdieľajte iba podporované zariadenia.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. V HACS pridajte `https://github.com/Jarnsen/ha-xsense-component_test` ako vlastný repozitár.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Stiahnite a nainštalujte integráciu, reštartujte Home Assistant a potom ju nastavte pomocou nového účtu X-Sense.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Po úspešnom nastavení sa zdieľané zariadenia zobrazia na stránke zariadení v Home Assistante.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Párovanie, odstránenie, firmware, platby, SD karty a správa účtu zostávajú v aplikácii X-Sense.
 
 ## Podporované zariadenia
 Podporované sú základňové stanice, detektory dymu, detektory CO, tepelné alarmy, detektory úniku vody, vlhkomery, dverové a pohybové senzory, svetlá, klávesnice, senzory poštovej schránky, posluchové zariadenia a podporované kamery, ak ich účet X-Sense poskytuje.
@@ -62,7 +91,7 @@ Integrácia používa správy MQTT shadow na rýchle zmeny stavu a opatrné peri
 
 ### Dostupné entity
 
-V závislosti od modelu sa môžu zobraziť alarmy dymu, CO, vody, teploty, pohybu a dverí, stlmenie alarmu, koniec životnosti, nabíjanie, stav pripomienky, stav svetla a ďalšie diagnostické binárne senzory. Senzory môžu zahŕňať batériu, RF alebo Wi-Fi signál, firmvér, teplotu, vlhkosť, úroveň CO, špičku CO, hlasitosť, prahové hodnoty, čitateľné časy, časové pásmo, sériové číslo, MAC adresu a ďalšiu diagnostiku. Prepínače, výbery a číselné hodnoty sa vytvoria iba vtedy, keď ich zariadenie skutočne podporuje.
+V závislosti od modelu sa môžu zobraziť alarmy dymu, CO, vody, teploty, pohybu a dverí, stlmenie alarmu, koniec životnosti, nabíjanie, stav pripomienky, stav svetla a ďalšie diagnostické binárne senzory. Senzory môžu zahŕňať batériu, RF alebo Wi-Fi signál, firmvér, teplotu, vlhkosť, úroveň CO, špičku CO, hlasitosť, prahové hodnoty, čitateľné časy, časové pásmo a ďalšiu diagnostiku. Prepínače, výbery a číselné hodnoty sa vytvoria iba vtedy, keď ich zariadenie skutočne podporuje.
 
 ### Kamery
 
@@ -104,12 +133,12 @@ Pri hlásení chyby uveďte model zariadenia, verziu integrácie, či sa správn
 - Diagnostické hodnoty sú označené ako diagnostika.
 - Test, stlmenie, požiarne cvičenie a prebudenie kamery sú dostupné iba pre podporované modely.
 
-### Kamery
+### Referencia pre kamery
 - Podporované kamery môžu poskytovať entitu kamery, náhľad, živý stream a diagnostiku.
 - WebRTC cesta sa použije iba vtedy, keď je dostupná v Home Assistant.
 - SD karta, platby, firmvér a správa účtu zostávajú v aplikácii X-Sense.
 
-### Riešenie problémov
+### Kontrolný zoznam riešenia problémov
 - Hlásenie problému má obsahovať model, verziu integrácie, diagnostiku a relevantné denníky.
 
 ### Rozsah

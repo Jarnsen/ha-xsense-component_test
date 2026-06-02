@@ -10,7 +10,7 @@
 जब तक थियो से होम असिस्टेंट के लिए एक आधिकारिक इंटीग्रेशन जारी नहीं होता है, तब तक इस HACS इंटीग्रेशन का उपयोग किया जाएगा और नियमित रूप से नई सुविधाओं को जोड़ने और मौजूदा समस्याओं को हल करने के लिए अपडेट किया जाएगा। यह इंटीग्रेशन उपयोगकर्ताओं को उनके X-Sense उपकरणों को होम असिस्टेंट में आसानी से इंटीग्रेट करने और विभिन्न ऑटोमेशन और मॉनिटरिंग के लिए उपयोग करने की अनुमति देता है।
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+ <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>
 
 ## विशेषताएँ
@@ -38,30 +38,30 @@ ____________________________________________________________
 
 - **मुख्य खाते से होम असिस्टेंट खाते के साथ समर्थित उपकरणों को साझा करें**: X-Sense ऐप का उपयोग करके **केवल समर्थित उपकरणों** को नए बनाए गए खाते के साथ साझा करें। इस तरह आप होम असिस्टेंट में आसानी से इंटीग्रेशन का उपयोग कर सकते हैं, जबकि उपकरणों का प्रबंधन अभी भी आपके मुख्य खाते से होगा।
 
-![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
 
 ____________________________________________________________
 
 ## HACS के माध्यम से स्थापना
 1. **होम असिस्टेंट में HACS खोलें**:
-   HACS होम असिस्टेंट के लिए एक महत्वपूर्ण विस्तार है, जो आपको कस्टम इंटीग्रेशन को आसानी से स्थापित करने की अनुमति देता है।
+  HACS होम असिस्टेंट के लिए एक महत्वपूर्ण विस्तार है, जो आपको कस्टम इंटीग्रेशन को आसानी से स्थापित करने की अनुमति देता है।
 
-   ![Download (1)](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+  ![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
 
 2. **कस्टम रिपॉजिटरी पर जाएँ**:
-   HACS डैशबोर्ड में सेटिंग्स में जाएँ और इस रिपॉजिटरी को कस्टम स्रोत के रूप में जोड़ें।
+  HACS डैशबोर्ड में सेटिंग्स में जाएँ और इस रिपॉजिटरी को कस्टम स्रोत के रूप में जोड़ें।
 
 3. **रिपॉजिटरी जोड़ें**:
-   रिपॉजिटरी का URL दर्ज करें: `https://github.com/Jarnsen/ha-xsense-component_test`
+  रिपॉजिटरी का URL दर्ज करें: `https://github.com/Jarnsen/ha-xsense-component_test`
 
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+  ![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
 
 4. **इंटीग्रेशन को डाउनलोड और इंस्टॉल करें**:
-   HACS में इंटीग्रेशन खोजें, इसे डाउनलोड करें और इंस्टॉल करें। स्थापना के बाद, आप होम असिस्टेंट इंटरफ़ेस से इंटीग्रेशन सेटअप कर सकते हैं।
+  HACS में इंटीग्रेशन खोजें, इसे डाउनलोड करें और इंस्टॉल करें। स्थापना के बाद, आप होम असिस्टेंट इंटरफ़ेस से इंटीग्रेशन सेटअप कर सकते हैं।
 
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
-   
-   ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+  ![HACS repository selection screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/5bd2d567-6568-47c5-a45e-6af7228ff30e)
+
+  ![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
 
 ____________________________________________________________
 
@@ -69,11 +69,11 @@ ____________________________________________________________
 स्थापना के बाद, सही तरीके से इंटीग्रेशन कार्य करने के लिए मूलभूत कॉन्फ़िगरेशन आवश्यक है:
 - **उपयोगकर्ता नाम और पासवर्ड**: कनेक्शन स्थापित करने के लिए अपने द्वारा बनाए गए नए X-Sense खाते की साख का उपयोग करें।
 
-    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
-  
+  ![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
 - **उपकरणों का अवलोकन**: सफलतापूर्वक सेटअप के बाद, साझा किए गए उपकरण होम असिस्टेंट में उपलब्ध होंगे और ऑटोमेशन के लिए उपयोग किए जा सकते हैं।
 
-    ![image](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+  ![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
 ## होम असिस्टेंट में दृश्य
 सफलतापूर्वक स्थापना और कॉन्फ़िगरेशन के बाद, इंटीग्रेशन होम असिस्टेंट में दिखाई देगा। उपकरण डैशबोर्ड पर दिखाई देंगे और ऑटोमेशन, सूचनाओं और अन्य उपयोग के मामलों के लिए उपयोग किए जा सकते हैं।
 
@@ -93,18 +93,18 @@ ____________________________________________________________
 - **हाइग्रोमीटर-थर्मामीटर (STH51, STH0A, STH0B, STH0C)**: तापमान और आर्द्रता मॉनिटर करता है।
 - **डोर सेंसर (SDS0A)** और **मोशन सेंसर (SMS0A)**: जब X-Sense स्थिति प्रदान करता है तब दिखते हैं।
 - **कैमरा (SSC0A, SSC0B)**: उपकरण और खाता समर्थन करने पर कैमरा एंटिटी, थंबनेल, लाइव स्ट्रीम URL, डायग्नोस्टिक और Android ऐप आधारित सेटिंग दिखाता है।
-- **अन्य स्टेशन से जुड़े उपकरण**: लाइट, कीपैड, मेलबॉक्स, listener, ड्राइववे अलार्म, smart drop, रिमोट और रेडॉन डेटा API द्वारा समर्थित फ़ील्ड रिपोर्ट होने पर दिखते हैं।
+- **अन्य स्टेशन से जुड़े उपकरण**: लाइट, कीपैड, मेलबॉक्स, सुनने वाला उपकरण, ड्राइववे अलार्म, स्मार्ट डिलीवरी उपकरण, रिमोट और रेडॉन डेटा API द्वारा समर्थित फ़ील्ड रिपोर्ट होने पर दिखते हैं।
 
 ### उपलब्ध एंटिटी और कार्य
-यह इंटीग्रेशन केवल उन फ़ील्ड के लिए Home Assistant एंटिटी बनाता है जो वास्तव में X-Sense cloud, MQTT shadow payloads या Android ऐप के व्यवहार से मेल खाने वाली camera APIs में मौजूद हों। डिवाइस के अनुसार इसमें शामिल हो सकते हैं:
+यह इंटीग्रेशन केवल उन फ़ील्ड के लिए Home Assistant एंटिटी बनाता है जो वास्तव में X-Sense cloud, MQTT shadow संदेश या Android ऐप के व्यवहार से मेल खाने वाली कैमरा API में मौजूद हों। डिवाइस के अनुसार इसमें शामिल हो सकते हैं:
 
-- alarm, mute, end-of-life, AC-break, water alarm, temperature alarm, charging, motion, door, armed, warning, reminder, light, PIR और keypad status के लिए binary sensors।
-- battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, readable timestamps, timezone, serial number, MAC address और अन्य diagnostic sensors।
+- alarm, mute, end-of-life, AC-break, water alarm, तापमान alarm, charging, motion, door, armed, warning, reminder, light, PIR और keypad status के लिए binary sensors।
+- बैटरी, RF signal, Wi-Fi signal, firmware, तापमान, आर्द्रता, CO level, CO peak, अलार्म वॉल्यूम, आवाज़ वॉल्यूम, चर्प वॉल्यूम, रिमाइंडर वॉल्यूम, चेतावनी सीमाएँ, म्यूट टाइमर, पढ़ने योग्य समय-चिह्न, समय क्षेत्र और अन्य डायग्नोस्टिक सेंसर।
 - X-Sense द्वारा रिपोर्ट की गई writable settings के switches, जैसे LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light और doorbell controls।
 - समर्थित camera settings के लिए select और number entities, जैसे language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold और doorbell ring key।
 - जिन मॉडलों में X-Sense ऐप संबंधित action दिखाता है, उनके लिए test, mute, fire-drill और camera wake buttons।
 
-कुछ एंटिटी diagnostic या configuration-related होती हैं और Home Assistant में उसी तरह group की जाती हैं। यदि डिवाइस कोई खास field report नहीं करता, या X-Sense ऐप उस device/account के लिए feature unsupported बताता है, तो संबंधित entity नहीं बनाई जाती। Device binding, removal, sharing, account, payment, firmware update, SD-card format और अन्य management actions X-Sense ऐप में ही रहते हैं।
+कुछ एंटिटी डायग्नोस्टिक या कॉन्फ़िगरेशन से जुड़ी होती हैं और Home Assistant में उसी तरह समूहित की जाती हैं। यदि डिवाइस कोई खास फ़ील्ड रिपोर्ट नहीं करता, या X-Sense ऐप उस डिवाइस/खाते के लिए सुविधा समर्थित नहीं बताता, तो संबंधित एंटिटी नहीं बनाई जाती। डिवाइस जोड़ना, हटाना, शेयर करना, खाता, भुगतान, फ़र्मवेयर अपडेट, SD-card format और अन्य प्रबंधन कार्य X-Sense ऐप में ही रहते हैं।
 ____________________________________________________________
 
 ## ऑटोमेशन के उदाहरण
@@ -118,7 +118,7 @@ automation:
   - alias: "X-Sense तापमान चेतावनी"
     trigger:
       platform: numeric_state
-      entity_id: sensor.xsense_temperature
+      entity_id: sensor.xsense_तापमान
       above: 30
     action:
       service: notify.notify
@@ -160,3 +160,32 @@ ____________________________________________________________
 [Discord](https://discord.gg/5phHHgGb3V)
 
 [फोरम](https://community.home-assistant.io/t/x-sense-security-is-it-possible-to-create-an-integration/534119/110)
+
+## पूर्ण संदर्भ
+
+### खाता और स्थापना
+- Home Assistant के लिए अलग X-Sense खाता उपयोग करें।
+- मुख्य X-Sense खाते से केवल समर्थित उपकरण साझा करें।
+- पेयरिंग, हटाना, साझा करना, फर्मवेयर, खाता, भुगतान और SD कार्ड प्रबंधन X-Sense ऐप में ही रहते हैं।
+
+### अपडेट और API उपयोग
+- तेज़ स्थिति परिवर्तन MQTT shadow संदेशों से प्राप्त होते हैं।
+- क्लाउड अनुरोध लॉगिन, डिवाइस खोज, कैमरा डेटा और स्थिति पुनर्प्राप्ति के लिए उपयोग होते हैं।
+- आवधिक polling केवल तब fallback है जब live update छूट जाए।
+
+### एंटिटी, कैमरा और समस्या निवारण
+- एंटिटी केवल उन फ़ील्ड के लिए बनाई जाती हैं जिन्हें X-Sense वास्तव में रिपोर्ट करता है।
+- कैमरा एंटिटी और नियंत्रण केवल तब बनाए जाते हैं जब Android ऐप-संगत API उस खाते और मॉडल के लिए समर्थन बताता है।
+- यदि कोई मान गायब है, तो पहले X-Sense ऐप से तुलना करें, फिर diagnostics और संबंधित Home Assistant logs जोड़ें।
+
+## डिवाइस और एंटिटी जाँच सूची
+
+### मुख्य डिवाइस परिवार
+- जब API संबंधित फ़ील्ड देता है, तो SBS50 बेस स्टेशन, XS smoke alarms, XC CO alarms, SC/XP combination alarms, XH heat alarms, SWS water sensors, STH तापमान/आर्द्रता sensors, SDS door sensors, SMS motion sensors, SSC cameras और अन्य X-Sense परिवार संभाले जाते हैं।
+
+### स्थिति फ़ील्ड
+- Alarm, mute, बैटरी, RF/Wi-Fi signal, तापमान, आर्द्रता, CO, water, motion, door, light, reminders, warnings और पढ़ने योग्य समय-चिह्न केवल X-Sense द्वारा रिपोर्ट किए जाने पर दिखते हैं।
+
+### नियंत्रण और रिपोर्टिंग
+- Switches, selects, numbers और buttons केवल उन writable settings और actions के लिए बनते हैं जिन्हें device/account expose करता है।
+- अच्छी bug report में exact model, integration version, diagnostics, logs और X-Sense app में value सही बदलती है या नहीं, शामिल होना चाहिए।

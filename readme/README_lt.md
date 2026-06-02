@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Apžvalga
 Ši Home Assistant integracija leidžia naudoti X-Sense įrenginius išmaniajame name. Ji paremta pradiniu Theo Snel darbu ir diegiama per HACS.
 
@@ -7,6 +11,31 @@ Rekomenduojame sukurti atskirą X-Sense paskyrą Home Assistant ir iš pagrindin
 
 ## Diegimas
 HACS pridėkite pasirinktinę saugyklą `https://github.com/Jarnsen/ha-xsense-component_test`, atsisiųskite integraciją, vykdykite HACS paleidimo iš naujo nurodymus ir sukonfigūruokite ją su Home Assistant skirta X-Sense paskyra.
+
+
+## Išsamus nustatymas su ekrano nuotraukomis
+
+1. Sukurkite atskirą X-Sense paskyrą Home Assistant ir iš pagrindinės paskyros bendrinkite tik palaikomus įrenginius.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. HACS pridėkite `https://github.com/Jarnsen/ha-xsense-component_test` kaip pasirinktinę saugyklą.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Atsisiųskite ir įdiekite integraciją, paleiskite Home Assistant iš naujo ir sukonfigūruokite ją nauja X-Sense paskyra.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Sėkmingai nustačius, bendrinti įrenginiai bus rodomi Home Assistant įrenginių puslapyje.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Susiejimas, pašalinimas, firmware, mokėjimai, SD kortelės ir paskyros valdymas lieka X-Sense programėlėje.
 
 ## Palaikomi įrenginiai
 Palaikomos bazinės stotys, dūmų detektoriai, CO detektoriai, šilumos signalizacijos, vandens nuotėkio detektoriai, higrometrai, durų ir judesio jutikliai, šviesos, klaviatūros, pašto dėžutės jutikliai, klausymo įrenginiai ir palaikomos kameros, kai jas pateikia X-Sense paskyra.
@@ -62,7 +91,7 @@ Integracija naudoja MQTT shadow pranešimus greitiems būsenos pokyčiams ir ats
 
 ### Galimi objektai
 
-Priklausomai nuo modelio gali būti rodomi dūmų, CO, vandens, temperatūros, judesio ir durų signalai, signalo nutildymas, eksploatacijos pabaiga, įkrovimas, priminimo būsena, šviesos būsena ir kiti diagnostiniai dvejetainiai jutikliai. Jutikliai gali apimti bateriją, RF arba Wi-Fi signalą, programinę aparatinę įrangą, temperatūrą, drėgmę, CO lygį, CO piką, garsumą, slenksčius, lengvai skaitomą laiką, laiko juostą, serijos numerį, MAC adresą ir kitą diagnostiką. Jungikliai, pasirinkimai ir skaitinės reikšmės kuriami tik tada, kai įrenginys juos tikrai palaiko.
+Priklausomai nuo modelio gali būti rodomi dūmų, CO, vandens, temperatūros, judesio ir durų signalai, signalo nutildymas, eksploatacijos pabaiga, įkrovimas, priminimo būsena, šviesos būsena ir kiti diagnostiniai dvejetainiai jutikliai. Jutikliai gali apimti bateriją, RF arba Wi-Fi signalą, programinę aparatinę įrangą, temperatūrą, drėgmę, CO lygį, CO piką, garsumą, slenksčius, lengvai skaitomą laiką, laiko juostą ir kitą diagnostiką. Jungikliai, pasirinkimai ir skaitinės reikšmės kuriami tik tada, kai įrenginys juos tikrai palaiko.
 
 ### Kameros
 
@@ -104,12 +133,12 @@ Pranešdami apie klaidą nurodykite įrenginio modelį, integracijos versiją, a
 - Diagnostinės reikšmės pažymimos kaip diagnostika.
 - Testas, nutildymas, gaisro pratybos ir kameros pažadinimas rodomi tik palaikomiems modeliams.
 
-### Kameros
+### Kamerų nuoroda
 - Palaikomos kameros gali pateikti kameros esybę, miniatiūrą, tiesioginę transliaciją ir diagnostiką.
 - WebRTC kelias naudojamas tik tada, kai jis prieinamas Home Assistant.
 - SD kortelės, mokėjimų, programinės aparatinės įrangos ir paskyros tvarkymas lieka X-Sense programėlėje.
 
-### Trikčių šalinimas
+### Trikčių šalinimo kontrolinis sąrašas
 - Pranešime nurodykite modelį, integracijos versiją, diagnostiką ir aktualius žurnalus.
 
 ### Apimtis

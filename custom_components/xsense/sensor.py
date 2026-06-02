@@ -51,7 +51,11 @@ def battery_percentage(device: Entity) -> int | None:
     value = device.data["batInfo"]
     if value is None:
         return None
-    return min(max(round((int(value) * 100) / 3), 0), 100)
+    try:
+        level = int(value)
+    except (TypeError, ValueError):
+        return None
+    return min(max(round((level * 100) / 3), 0), 100)
 
 
 def rf_level(device: Entity) -> str | None:
@@ -452,30 +456,6 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         exists_fn=has_camera_data("signalStrength"),
     ),
     XSenseSensorEntityDescription(
-        key="serial_number",
-        translation_key="serial_number",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:identifier",
-        value_fn=lambda entity: entity.sn,
-        exists_fn=lambda entity: bool(entity.sn),
-    ),
-    XSenseSensorEntityDescription(
-        key="station_sn",
-        name="Station Serial Number",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:identifier",
-        value_fn=data_value("stationSN"),
-        exists_fn=has_data("stationSN"),
-    ),
-    XSenseSensorEntityDescription(
-        key="device_sn",
-        name="Device Serial Number",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:identifier",
-        value_fn=data_value("deviceSN"),
-        exists_fn=has_data("deviceSN"),
-    ),
-    XSenseSensorEntityDescription(
         key="smoke_edition",
         name="Smoke Edition",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -659,14 +639,6 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         exists_fn=has_data("alarmSource"),
     ),
     XSenseSensorEntityDescription(
-        key="co_event_id",
-        name="CO Event ID",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:identifier",
-        value_fn=data_value("coEventId"),
-        exists_fn=has_data("coEventId"),
-    ),
-    XSenseSensorEntityDescription(
         key="re_alarm",
         name="Re-Alarm",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -745,46 +717,6 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         icon="mdi:map-marker-outline",
         value_fn=data_value("location"),
         exists_fn=has_data("location"),
-    ),
-    XSenseSensorEntityDescription(
-        key="language_count",
-        name="Language Count",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:translate",
-        value_fn=data_value("languageCount"),
-        exists_fn=has_data("languageCount"),
-    ),
-    XSenseSensorEntityDescription(
-        key="language_index",
-        name="Language Index",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:translate",
-        value_fn=data_value("languageIndex"),
-        exists_fn=has_data("languageIndex"),
-    ),
-    XSenseSensorEntityDescription(
-        key="device_mac",
-        name="Device MAC",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:network-outline",
-        value_fn=data_value("deviceMAC"),
-        exists_fn=has_data("deviceMAC"),
-    ),
-    XSenseSensorEntityDescription(
-        key="mac",
-        name="MAC",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:network-outline",
-        value_fn=data_value("mac"),
-        exists_fn=has_data("mac"),
-    ),
-    XSenseSensorEntityDescription(
-        key="bluetooth_mac",
-        name="Bluetooth MAC",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:bluetooth",
-        value_fn=data_value("macBT"),
-        exists_fn=has_data("macBT"),
     ),
     XSenseSensorEntityDescription(
         key="color",
@@ -946,22 +878,6 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         icon="mdi:video-settings",
         value_fn=data_value("defaultCodec"),
         exists_fn=has_camera_data("defaultCodec"),
-    ),
-    XSenseSensorEntityDescription(
-        key="camera_thumbnail_url",
-        name="Thumbnail URL",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:image",
-        value_fn=data_value("thumbImgUrl"),
-        exists_fn=has_camera_data("thumbImgUrl"),
-    ),
-    XSenseSensorEntityDescription(
-        key="camera_live_url",
-        name="Live URL",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:video-wireless-outline",
-        value_fn=data_value("cameraLiveUrl"),
-        exists_fn=has_camera_data("cameraLiveUrl"),
     ),
     XSenseSensorEntityDescription(
         key="camera_video_seconds",

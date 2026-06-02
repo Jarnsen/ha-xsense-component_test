@@ -30,7 +30,7 @@ class XSenseBinarySensorEntityDescription(BinarySensorEntityDescription):
     """Describes XSense binary-sensor entity."""
 
     exists_fn: Callable[[Entity], bool] = lambda _: True
-    value_fn: Callable[[Entity], bool]
+    value_fn: Callable[[Entity], bool | None]
 
 
 ALARM_DEVICE_CLASS_BY_TYPE = {
@@ -59,19 +59,33 @@ def has_alarm_status(entity: Entity) -> bool:
     return "alarmStatus" in entity.data or alarm_device_class(entity) is not None
 
 
-def alarm_status(entity: Entity) -> bool:
-    """Return the alarm status, defaulting to clear before the first report."""
-    return boolean_state(entity.data.get("alarmStatus", False))
+def alarm_status(entity: Entity) -> bool | None:
+    """Return the reported alarm status, or unknown before the first report."""
+    if "alarmStatus" not in entity.data:
+        return None
+    return boolean_state(entity.data["alarmStatus"])
 
 
-def boolean_state(value) -> bool:
-    """Return the normalized bool for common X-Sense boolean payload values."""
+def boolean_state(value) -> bool | None:
+    """Return the normalized state for explicit X-Sense boolean payload values."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value == 1:
+            return True
+        if value == 0:
+            return False
+        return None
     if isinstance(value, str):
-        return value == "1"
-    return bool(value)
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "on"}:
+            return True
+        if normalized in {"0", "false", "off"}:
+            return False
+    return None
 
 
-def data_bool(key: str) -> Callable[[Entity], bool]:
+def data_bool(key: str) -> Callable[[Entity], bool | None]:
     """Return a value function for a boolean X-Sense data key."""
     return lambda entity: boolean_state(entity.data[key])
 
@@ -92,7 +106,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         translation_key="is_life_end",
         device_class=BinarySensorDeviceClass.PROBLEM,
         exists_fn=lambda entity: "isLifeEnd" in entity.data,
-        value_fn=lambda entity: entity.data["isLifeEnd"] == 1,
+        value_fn=data_bool("isLifeEnd"),
     ),
     XSenseBinarySensorEntityDescription(
         key="alarm_status",
@@ -199,7 +213,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         exists_fn=lambda entity: (
             is_camera_entity(entity)
             and "deviceStatus" in entity.data
-            and entity.data.get("supportSleep", False)
+            and entity.data.get("supportSleep") is True
         ),
         value_fn=lambda entity: entity.data["deviceStatus"] == 3,
     ),

@@ -34,18 +34,62 @@ class House:
         self.mqtt = MQTTHelper(signer, self)
 
     def set_rooms(self, data):
-        self.rooms = data.get("houseRooms")
-        self.room_order = data.get("roomSort")
+        self.rooms = data.get("houseRooms") or {}
+        self.room_order = data.get("roomSort") or []
+
+    def room_name(self, room_id: str | None) -> str | None:
+        if not room_id:
+            return None
+        if isinstance(self.rooms, dict):
+            room = self.rooms.get(room_id)
+            if isinstance(room, dict):
+                return room.get("roomName") or room.get("name")
+            if isinstance(room, str):
+                return room
+        if isinstance(self.rooms, list):
+            for room in self.rooms:
+                if not isinstance(room, dict):
+                    continue
+                if room.get("roomId") == room_id:
+                    return room.get("roomName") or room.get("name")
+        return None
 
     def set_stations(self, data):
-        self.station_order = data.get("stationSort")
+        self.station_order = list(data.get("stationSort") or [])
 
         stations = {}
-        for i in data.get("stations", []):
+        for i in data.get("stations") or []:
+            station_id = i.get("stationId")
+            if not station_id:
+                continue
             s = Station(self, **i)
             s.set_devices(i)
 
-            stations[i["stationId"]] = s
+            stations[station_id] = s
+
+        for i in data.get("cameras") or []:
+            camera_type = i.get("category")
+            station_id = i.get("ipcId")
+            if not station_id:
+                continue
+            if station_id in stations:
+                continue
+
+            station_data = {
+                "stationId": station_id,
+                "roomId": i.get("roomId"),
+                "stationSn": i.get("ipcSn"),
+                "stationName": i.get("ipcName"),
+                "category": camera_type,
+                "deviceType": camera_type,
+                "userId": i.get("userId"),
+                "userName": i.get("userName"),
+                "onLine": 1,
+                "devices": [],
+            }
+            s = Station(self, **station_data)
+            s.set_devices(station_data)
+            stations[station_id] = s
 
         self.stations = stations
 

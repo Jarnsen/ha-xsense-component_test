@@ -82,9 +82,6 @@
           "good": "Good"
         }
       },
-      "serial_number": {
-        "name": "Serial Number"
-      },
       "sw_version": {
         "name": "Software Version"
       },

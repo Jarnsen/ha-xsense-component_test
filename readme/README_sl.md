@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Pregled
 Ta integracija za Home Assistant omogoča uporabo naprav X-Sense v pametnem domu. Temelji na izvirnem delu Thea Snela in je namenjena namestitvi prek HACS.
 
@@ -7,6 +11,31 @@ Priporočamo, da ustvarite drugi račun X-Sense za Home Assistant in iz glavnega
 
 ## Namestitev
 V HACS dodajte repozitorij po meri `https://github.com/Jarnsen/ha-xsense-component_test`, prenesite integracijo, sledite navodilom HACS za ponovni zagon in jo nato nastavite z računom X-Sense za Home Assistant.
+
+
+## Podrobna nastavitev s posnetki zaslona
+
+1. Ustvarite ločen račun X-Sense za Home Assistant in iz glavnega računa delite samo podprte naprave.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. V HACS dodajte `https://github.com/Jarnsen/ha-xsense-component_test` kot repozitorij po meri.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Prenesite in namestite integracijo, znova zaženite Home Assistant in jo nato nastavite z novim računom X-Sense.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Po uspešni nastavitvi se deljene naprave prikažejo na strani naprav v Home Assistantu.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Seznanjanje, odstranjevanje, firmware, plačila, kartice SD in upravljanje računa ostanejo v aplikaciji X-Sense.
 
 ## Podprte naprave
 Podprte so bazne postaje, detektorji dima, detektorji CO, toplotni alarmi, detektorji izliva vode, higrometri, senzorji vrat in gibanja, luči, tipkovnice, senzorji poštnega nabiralnika, poslušalne naprave in podprte kamere, kadar jih račun X-Sense poroča.
@@ -62,7 +91,7 @@ Integracija uporablja sporočila MQTT shadow za hitre spremembe stanja in previd
 
 ### Razpoložljive entitete
 
-Glede na model se lahko prikažejo alarmi za dim, CO, vodo, temperaturo, gibanje in vrata, utišanje alarma, konec življenjske dobe, polnjenje, stanje opomnika, stanje luči in drugi diagnostični binarni senzorji. Senzorji lahko vključujejo baterijo, RF ali Wi-Fi signal, vdelano programsko opremo, temperaturo, vlago, raven CO, najvišjo vrednost CO, glasnost, pragove, berljive čase, časovni pas, serijsko številko, naslov MAC in drugo diagnostiko. Stikala, izbire in številčne vrednosti se ustvarijo samo, kadar jih naprava dejansko podpira.
+Glede na model se lahko prikažejo alarmi za dim, CO, vodo, temperaturo, gibanje in vrata, utišanje alarma, konec življenjske dobe, polnjenje, stanje opomnika, stanje luči in drugi diagnostični binarni senzorji. Senzorji lahko vključujejo baterijo, RF ali Wi-Fi signal, vdelano programsko opremo, temperaturo, vlago, raven CO, najvišjo vrednost CO, glasnost, pragove, berljive čase, časovni pas in drugo diagnostiko. Stikala, izbire in številčne vrednosti se ustvarijo samo, kadar jih naprava dejansko podpira.
 
 ### Kamere
 
@@ -104,12 +133,12 @@ Pri prijavi napake navedite model naprave, različico integracije, ali je pravil
 - Diagnostične vrednosti so označene kot diagnostika.
 - Test, utišanje, požarna vaja in prebujanje kamere so na voljo samo za podprte modele.
 
-### Kamere
+### Referenca za kamere
 - Podprte kamere lahko zagotovijo entiteto kamere, sličico, prenos v živo in diagnostiko.
 - WebRTC pot se uporabi samo, če je na voljo v Home Assistant.
 - Kartica SD, plačila, vdelana programska oprema in upravljanje računa ostanejo v aplikaciji X-Sense.
 
-### Odpravljanje težav
+### Kontrolni seznam za odpravljanje težav
 - Prijava težave naj vsebuje model, različico integracije, diagnostiko in ustrezne dnevnike.
 
 ### Obseg

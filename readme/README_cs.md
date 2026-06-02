@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Přehled
 Tato integrace pro Home Assistant zpřístupňuje zařízení X-Sense v chytré domácnosti. Vychází z původní práce Theo Snela a je určena pro instalaci přes HACS.
 
@@ -7,6 +11,31 @@ Doporučujeme vytvořit druhý účet X-Sense určený pro Home Assistant a z hl
 
 ## Instalace
 V HACS přidejte vlastní repozitář `https://github.com/Jarnsen/ha-xsense-component_test`, integraci stáhněte, restartujte Home Assistant podle pokynů HACS a potom integraci nastavte pomocí účtu X-Sense určeného pro Home Assistant.
+
+
+## Podrobné nastavení se snímky obrazovky
+
+1. Vytvořte samostatný účet X-Sense pro Home Assistant a z hlavního účtu sdílejte pouze podporovaná zařízení.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. V HACS přidejte vlastní repozitář `https://github.com/Jarnsen/ha-xsense-component_test`.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Integraci stáhněte, nainstalujte, restartujte Home Assistant a potom ji nastavte pomocí nového účtu X-Sense.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Po úspěšném nastavení se sdílená zařízení zobrazí na stránce zařízení v Home Assistantu.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Párování, odebrání, firmware, platby, SD karty a správa účtu zůstávají v aplikaci X-Sense.
 
 ## Podporovaná zařízení
 Podporovány jsou základnové stanice, kouřové hlásiče, detektory CO, tepelné hlásiče, detektory úniku vody, hygrometry, dveřní a pohybové senzory, světla, klávesnice, poštovní senzory, naslouchací zařízení a podporované kamery, pokud je účet X-Sense poskytuje.
@@ -62,7 +91,7 @@ Integrace používá zprávy MQTT shadow pro rychlé změny stavu a opatrné per
 
 ### Dostupné entity
 
-Podle možností konkrétního modelu se zobrazují alarm kouře, CO, vody, teploty, pohybu a dveří, ztlumení alarmu, konec životnosti, nabíjení, stav připomenutí, stav světla a další diagnostické binární senzory. Senzory mohou zahrnovat baterii, signál RF nebo Wi-Fi, firmware, teplotu, vlhkost, koncentraci CO, špičku CO, hlasitost, prahové hodnoty, čitelné časové údaje, časové pásmo, sériové číslo, MAC adresu a další diagnostiku. Přepínače, výběry a číselné entity se vytvoří jen tehdy, když je zařízení opravdu podporuje.
+Podle možností konkrétního modelu se zobrazují alarm kouře, CO, vody, teploty, pohybu a dveří, ztlumení alarmu, konec životnosti, nabíjení, stav připomenutí, stav světla a další diagnostické binární senzory. Senzory mohou zahrnovat baterii, signál RF nebo Wi-Fi, firmware, teplotu, vlhkost, koncentraci CO, špičku CO, hlasitost, prahové hodnoty, čitelné časové údaje, časové pásmo a další diagnostiku. Přepínače, výběry a číselné entity se vytvoří jen tehdy, když je zařízení opravdu podporuje.
 
 ### Kamery
 
@@ -104,12 +133,12 @@ Při hlášení chyby uveďte model zařízení, verzi integrace, zda se správn
 - Diagnostické hodnoty jsou označeny jako diagnostika.
 - Test, ztlumení, požární cvičení a probuzení kamery jsou dostupné jen pro podporované modely.
 
-### Kamery
+### Referenční část ke kamerám
 - Podporované kamery mohou zobrazit entitu kamery, náhled, živý stream a diagnostiku.
 - WebRTC cesta se použije jen tehdy, když je v Home Assistant dostupná.
 - SD karta, platby, firmware a správa účtu zůstávají v aplikaci X-Sense.
 
-### Řešení potíží
+### Kontrolní seznam pro řešení potíží
 - Při hlášení chyby uveďte model, verzi integrace, diagnostiku a relevantní protokoly.
 
 ### Rozsah

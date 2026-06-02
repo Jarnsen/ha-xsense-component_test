@@ -246,16 +246,20 @@ class XSenseBase:
         station_data = data.copy()
         children = station_data.pop("devs", {}) or {}
 
+        if _apply_group_light_state(station, station_data, children):
+            return
+
+        has_alarm_status = "alarmStatus" in station_data or "a" in station_data
         if station_data:
             station.set_data(station_data)
 
-        station.has_alarm = _is_active_state(data.get("activate")) or _is_active_state(
-            station.data.get("alarmStatus")
+        station.has_alarm = _is_active_state(data.get("activate")) or (
+            has_alarm_status and _is_active_state(station.data.get("alarmStatus"))
         )
-
-        for sn, i in children.items():
-            if dev := station.get_device_by_sn(sn):
-                dev.set_data(i)
+        if isinstance(children, dict):
+            for sn, i in children.items():
+                if dev := station.get_device_by_sn(sn):
+                    dev.set_data(i)
 
     def _parse_get_house_state(self, house: House, data: Dict):
         for sn, i in data.items():
@@ -268,6 +272,24 @@ class XSenseBase:
                 a for a in entity_def.get("actions", []) if a.get("action") == action
             )
         return False
+
+
+def _apply_group_light_state(station: Station, station_data: Dict, children) -> bool:
+    group_id = station_data.get("groupId")
+    if group_id is None:
+        return False
+
+    group = station.get_group_device(group_id)
+    if group is None:
+        return False
+
+    group_data = station_data.copy()
+    if "isOn" in group_data:
+        group_data["on"] = group_data["isOn"]
+    if isinstance(children, list):
+        group_data["devs"] = children
+    group.set_data(group_data)
+    return True
 
 
 def _is_active_state(value) -> bool:

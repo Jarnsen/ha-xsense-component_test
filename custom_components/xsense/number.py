@@ -25,7 +25,7 @@ def has_data(key: str) -> Callable[[Entity], bool]:
     return lambda entity: (
         is_camera_entity(entity)
         and key in entity.data
-        and entity.data.get("isAdmin", True)
+        and entity.data.get("isAdmin") is True
     )
 
 
@@ -34,18 +34,32 @@ def has_supported_data(key: str, support_key: str) -> Callable[[Entity], bool]:
     return lambda entity: (
         is_camera_entity(entity)
         and key in entity.data
-        and entity.data.get("isAdmin", True)
-        and entity.data.get(support_key, True)
+        and entity.data.get("isAdmin") is True
+        and entity.data.get(support_key) is True
     )
 
 
 def has_shadow_volume(key: str) -> Callable[[Entity], bool]:
     """Return if a non-camera X-Sense shadow exposes a writable volume field."""
-    return lambda entity: (
-        not is_camera_entity(entity)
-        and key in entity.data
-        and entity.data.get("isAdmin", True)
-    )
+    return lambda entity: not is_camera_entity(entity) and key in entity.data
+
+
+def _required_bool_state(value) -> bool:
+    """Return an explicit X-Sense boolean value or raise if it is unknown."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value == 1:
+            return True
+        if value == 0:
+            return False
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "on"}:
+            return True
+        if normalized in {"0", "false", "off"}:
+            return False
+    raise HomeAssistantError("X-Sense cooldown enabled state is unknown")
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -184,10 +198,10 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         exists_fn=lambda entity: (
             is_camera_entity(entity)
             and "cooldownValue" in entity.data
-            and entity.data.get("isAdmin", True)
+            and entity.data.get("isAdmin") is True
             and "cooldownOptions" not in entity.data
-            and entity.data.get("cooldownSupported", True)
-            and entity.data.get("supportPirCooldown", True)
+            and entity.data.get("cooldownSupported") is True
+            and entity.data.get("supportPirCooldown") is True
         ),
     ),
     XSenseNumberEntityDescription(
@@ -259,7 +273,12 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         if entity is None:
             return None
         value = entity.data.get(self.entity_description.data_key)
-        return None if value is None else float(value)
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
     async def async_set_native_value(self, value: float) -> None:
         """Write the X-Sense numeric setting."""
@@ -275,7 +294,7 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         elif self.entity_description.addx_key == "cooldown.value":
             await self.coordinator.xsense.update_camera_cooldown(
                 entity,
-                user_enable=bool(entity.data.get("cooldownEnabled")),
+                user_enable=_required_bool_state(entity.data.get("cooldownEnabled")),
                 value=int_value,
             )
         elif self.entity_description.addx_key.startswith("audio."):

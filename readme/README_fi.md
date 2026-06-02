@@ -1,5 +1,9 @@
 # ha-xsense-component_test
 
+<p align="center">
+<img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
+</p>
+
 ## Yleiskatsaus
 Tämä Home Assistant -integraatio tuo X-Sense-laitteet älykotiin. Se perustuu Theo Snelin alkuperäiseen työhön ja asennetaan HACS:n kautta.
 
@@ -7,6 +11,31 @@ Suosittelemme luomaan erillisen X-Sense-tilin Home Assistantia varten ja jakamaa
 
 ## Asennus
 Lisää HACS:ssa mukautettu arkisto `https://github.com/Jarnsen/ha-xsense-component_test`, lataa integraatio, noudata HACS:n uudelleenkäynnistysohjetta ja määritä integraatio Home Assistantille luodulla X-Sense-tilillä.
+
+
+## Yksityiskohtainen käyttöönotto kuvakaappauksilla
+
+1. Luo Home Assistantia varten erillinen X-Sense-tili ja jaa päätililtä vain tuetut laitteet.
+
+![X-Sense device sharing screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/9cc18693-5f37-49c5-a67d-22602fa7eef5)
+
+2. Lisää HACSissa mukautetuksi repositorioksi `https://github.com/Jarnsen/ha-xsense-component_test`.
+
+![HACS download screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/3220c686-f53f-4766-9523-e3272a6ff104)
+
+![HACS custom repository screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c23cf0-a212-4889-8d08-f995ff2fd5d7)
+
+3. Lataa ja asenna integraatio, käynnistä Home Assistant uudelleen ja määritä integraatio uudella X-Sense-tilillä.
+
+![HACS installation screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/33cd7bfa-eec2-44f5-af30-4f21269f0081)
+
+![X-Sense configuration screen](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/48c5e923-a6a0-4a47-8f26-8ef3954ea34b)
+
+4. Onnistuneen määrityksen jälkeen jaetut laitteet näkyvät Home Assistantin laitesivulla.
+
+![Home Assistant device overview](https://github.com/Elwinmage/ha-xsense-component/assets/15807572/42b33b6b-ecd9-45f6-99fc-314a0abd9bbe)
+
+5. Paritus, poisto, laiteohjelmisto, maksut, SD-kortit ja tilinhallinta pysyvät X-Sense-sovelluksessa.
 
 ## Tuetut laitteet
 Tuettuja ovat tukiasemat, palovaroittimet, CO-ilmaisimet, lämpöhälyttimet, vesivuotoilmaisimet, kosteusmittarit, ovi- ja liiketunnistimet, valot, näppäimistöt, postilaatikkoanturit, kuuntelulaitteet ja tuetut kamerat, kun X-Sense-tili raportoi ne.
@@ -62,7 +91,7 @@ Integraatio käyttää nopeisiin tilamuutoksiin MQTT shadow -viestejä ja tietoj
 
 ### Saatavilla olevat entiteetit
 
-Mallista riippuen näkyviin voi tulla savu-, CO-, vesi-, lämpötila-, liike- ja ovihälytyksiä, hälytyksen vaimennus, käyttöiän päättyminen, lataus, muistutuksen tila, valon tila sekä muita diagnostisia binääriantureita. Antureihin voi kuulua akku, RF- tai Wi-Fi-signaali, laiteohjelmisto, lämpötila, kosteus, CO-pitoisuus, CO-huippuarvo, äänenvoimakkuus, raja-arvot, luettavat aikaleimat, aikavyöhyke, sarjanumero, MAC-osoite ja muuta diagnostiikkaa. Kytkimet, valinnat ja numerokentät luodaan vain, kun laite todella tukee niitä.
+Mallista riippuen näkyviin voi tulla savu-, CO-, vesi-, lämpötila-, liike- ja ovihälytyksiä, hälytyksen vaimennus, käyttöiän päättyminen, lataus, muistutuksen tila, valon tila sekä muita diagnostisia binääriantureita. Antureihin voi kuulua akku, RF- tai Wi-Fi-signaali, laiteohjelmisto, lämpötila, kosteus, CO-pitoisuus, CO-huippuarvo, äänenvoimakkuus, raja-arvot, luettavat aikaleimat, aikavyöhyke ja muuta diagnostiikkaa. Kytkimet, valinnat ja numerokentät luodaan vain, kun laite todella tukee niitä.
 
 ### Kamerat
 
@@ -104,12 +133,12 @@ Kun ilmoitat viasta, kerro laitteen malli, integraation versio, näkyykö oikea 
 - Diagnostiikka-arvot merkitään diagnostiikaksi.
 - Testi, mykistys, paloharjoitus ja kameran herätys näkyvät vain tuetuilla malleilla.
 
-### Kamerat
+### Kameraviite
 - Tuetut kamerat voivat tarjota kameraentiteetin, esikatselun, live-streamin ja diagnostiikkaa.
 - WebRTC-polku käytetään vain, jos se on Home Assistantissa saatavilla.
 - SD-kortti, maksut, laiteohjelmisto ja tilinhallinta pysyvät X-Sense-sovelluksessa.
 
-### Vianmääritys
+### Vianmäärityksen tarkistuslista
 - Virheraporttiin tarvitaan malli, integraation versio, diagnostiikka ja relevantit lokit.
 
 ### Rajaus
