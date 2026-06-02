@@ -15,6 +15,41 @@ from .station import Station
 
 CAMERA_TYPES = {"SSC0A", "SSC0B"}
 CAMERA_LIVE_URL_MAX_AGE_SECONDS = 240
+_CAMERA_VIDEO_RESOLUTIONS = {
+    "auto",
+    "640x360",
+    "640x480",
+    "960x720",
+    "1280x720",
+    "1280x960",
+    "1920x1080",
+    "2048x1440",
+    "2048x1536",
+    "2304x1296",
+    "2560x1440",
+    "3840x2160",
+    "7680x4320",
+}
+_CAMERA_RESOLUTION_ALIASES = {
+    "AUTO": "auto",
+    "SD": "1280x720",
+    "HD": "1920x1080",
+    "2K": "2560x1440",
+    "360P": "640x360",
+    "P360": "640x360",
+    "480P": "640x480",
+    "P480": "640x480",
+    "720P": "1280x720",
+    "P720": "1280x720",
+    "1080P": "1920x1080",
+    "P1080": "1920x1080",
+    "1296P": "2304x1296",
+    "P1296": "2304x1296",
+    "1440P": "2560x1440",
+    "P1440": "2560x1440",
+    "1536P": "2048x1536",
+    "P1536": "2048x1536",
+}
 
 # The Android app reads these standalone Wi-Fi device categories from the
 # house-level mainpage/2nd_mainpage shadows, not from station-level mainpage
@@ -78,10 +113,33 @@ def _station_info_shadow_names(station: Station) -> tuple[str, ...]:
 
 
 def is_camera_entity(entity: Entity) -> bool:
-    """Return if an entity is an IPC camera discovered through the app path."""
-    return entity.type in CAMERA_TYPES or (
-        getattr(entity, "entity_type", None) == EntityType.CAMERA
-    )
+    """Return if an entity is an APK-supported IPC camera."""
+    return entity.type in CAMERA_TYPES
+
+
+def _camera_resolution(value) -> str | None:
+    """Return an APK-style camera video resolution value."""
+    if value is None:
+        return None
+    resolution = str(value).strip().replace("VIDEO_SIZE_", "")
+    if not resolution:
+        return None
+    normalized = resolution.replace("×", "x")
+    if normalized in _CAMERA_VIDEO_RESOLUTIONS:
+        return normalized
+    return _CAMERA_RESOLUTION_ALIASES.get(normalized.upper())
+
+
+def _camera_live_resolution(camera: Entity) -> str:
+    """Return the APK start-live resolution fallback for a camera."""
+    if resolution := _camera_resolution(camera.data.get("liveResolution")):
+        return resolution
+    options = camera.data.get("supportedRecordingResolutions")
+    if isinstance(options, list):
+        for option in options:
+            if resolution := _camera_resolution(option):
+                return resolution
+    return "auto"
 
 
 class AsyncXSense(XSenseBase):
@@ -337,7 +395,7 @@ class AsyncXSense(XSenseBase):
         if not self.houses:
             raise APIFailure("Cannot register IPC without an X-Sense house")
         house = next(iter(self.houses.values()))
-        node_type = _ipc_node_type(house.region)
+        node_type = _ipc_node_type(house.mqtt_region)
         return await self.ipc_call(
             "C10101",
             userName=self.username,
@@ -480,7 +538,7 @@ class AsyncXSense(XSenseBase):
         data = await self.addx_call(
             "/device/newstartlive",
             serialNumber=camera.sn,
-            liveResolution=str(camera.data.get("liveResolution") or ""),
+            liveResolution=_camera_live_resolution(camera),
         )
         if isinstance(data, dict):
             camera.set_data(
@@ -763,7 +821,7 @@ def _volume_tone_key(data_key: str) -> str | None:
 
 
 def _shadow_update_body(data: Dict) -> str:
-    return json.dumps(data, separators=(",", ":"))
+    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
 
 def _action_timestamp(definition: Dict, entity: Entity) -> str | None:
@@ -777,11 +835,12 @@ def _action_timestamp(definition: Dict, entity: Entity) -> str | None:
     return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
 
-def _ipc_node_type(house_region: str | None) -> str:
-    """Return the IPC node type derived from the app's current house region."""
-    if not house_region or len(house_region) <= 2:
+def _ipc_node_type(mqtt_region: str | None) -> str:
+    """Return the IPC node type from the APK current-house MQTT region."""
+    if not mqtt_region or len(mqtt_region) <= 2:
         return "US"
-    return house_region[:2].upper()
+    node_type = mqtt_region[:2].upper()
+    return node_type if node_type in {"CN", "EU", "US"} else "US"
 
 
 def _camera_type(data: Dict) -> str | None:
@@ -917,9 +976,6 @@ _CAMERA_BOOLEAN_USER_CONFIG_KEYS = {"deviceCallToggleOn"}
 def _camera_user_config_payload(camera: Entity, updates: Dict) -> Dict:
     """Return the APK UserConfigBean-style camera config payload."""
     payload = {"serialNumber": camera.sn}
-    for key in _CAMERA_USER_CONFIG_KEYS:
-        if key in camera.data and camera.data[key] is not None:
-            payload[key] = _camera_config_payload_value(key, camera.data[key])
     payload.update(
         {
             key: _camera_config_payload_value(key, value)
@@ -927,7 +983,26 @@ def _camera_user_config_payload(camera: Entity, updates: Dict) -> Dict:
             if key in _CAMERA_USER_CONFIG_KEYS and value is not None
         }
     )
+    _add_camera_config_companions(camera, payload)
     return payload
+
+
+def _add_camera_config_companions(camera: Entity, payload: Dict) -> None:
+    """Add companion config fields the APK sends with selected toggles."""
+    if "needMotion" in payload and camera.data.get("motionSensitivity") is None:
+        payload["motionSensitivity"] = 1
+    if "needVideo" in payload and camera.data.get("videoSeconds") == 0:
+        payload["videoSeconds"] = -1
+    if "needAlarm" in payload:
+        if camera.data.get("supportRocker") is True:
+            payload["alarmSeconds"] = 10
+        elif camera.data.get("alarmSeconds") is not None:
+            payload["alarmSeconds"] = camera.data["alarmSeconds"]
+    if (
+        "needNightVision" in payload
+        and camera.data.get("nightThresholdLevel") is not None
+    ):
+        payload["nightThresholdLevel"] = camera.data["nightThresholdLevel"]
 
 
 def _camera_config_payload_value(key: str, value):

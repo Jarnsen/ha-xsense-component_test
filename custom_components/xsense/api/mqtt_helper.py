@@ -134,7 +134,7 @@ class MQTTHelper:
         retain: bool = DEFAULT_RETAIN,
     ):
         if not isinstance(payload, str):
-            payload = json.dumps(payload, separators=(",", ":"))
+            payload = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         return self.client.publish(topic, payload, qos=qos, retain=retain)
 
     def subscribe(self, topic: str, qos: int = DEFAULT_QOS):

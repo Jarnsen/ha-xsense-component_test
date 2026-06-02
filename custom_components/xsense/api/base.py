@@ -16,6 +16,20 @@ from .station import Station
 from .house import House
 
 
+def _mac_json(value) -> str:
+    """Return compact Gson-style JSON for X-Sense MAC input."""
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _mac_scalar(value) -> str:
+    """Return the Java StringBuilder text used by the APK MAC input."""
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
 class XSenseBase:
     API = "https://api.x-sense-iot.com"
     IPC_API = "https://ipc.x-sense-iot.com"
@@ -24,12 +38,12 @@ class XSenseBase:
         "EU": "https://api-eu.vicohome.io",
         "US": "https://api-us.vicohome.io",
     }
-    VERSION = "v1.22.0_20240914.1"
-    APPCODE = "1220"
-    CLIENTYPE = "1"
-    IPC_VERSION = "v1.36.0_20260130"
-    IPC_APPCODE = "1360"
-    IPC_CLIENTTYPE = "2"
+    VERSION = "v1.36.0_20260130"
+    APPCODE = "1360"
+    CLIENTYPE = "2"
+    IPC_VERSION = VERSION
+    IPC_APPCODE = APPCODE
+    IPC_CLIENTTYPE = CLIENTYPE
 
     userid = None
     username = None
@@ -142,14 +156,16 @@ class XSenseBase:
             for key in data:
                 value = data[key]
                 if isinstance(value, list):
-                    if value and isinstance(value[0], str):
-                        values.extend(value)
+                    if not value:
+                        continue
+                    if isinstance(value[0], str):
+                        values.extend(_mac_scalar(item) for item in value)
                     else:
-                        values.append(json.dumps(value))
+                        values.append(_mac_json(value))
                 elif isinstance(value, dict):
-                    values.append(json.dumps(value, separators=(",", ":")))
+                    values.append(_mac_json(value))
                 else:
-                    values.append(str(value))
+                    values.append(_mac_scalar(value))
 
         concatenated_string = "".join(values)
         mac_data = concatenated_string.encode("utf-8") + self.clientsecret

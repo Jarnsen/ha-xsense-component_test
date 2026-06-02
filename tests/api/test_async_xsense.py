@@ -1,4 +1,7 @@
+import base64
+import hashlib
 import importlib
+import json
 import sys
 import types
 from pathlib import Path
@@ -94,6 +97,37 @@ def test_mqtt_helper_defers_tls_context_loading_until_connect_setup(monkeypatch)
     assert calls == ["created"]
     assert clients[0].contexts == ["ssl-context"]
     assert clients[0].ws_paths == ["/mqtt?sig=abc", "/mqtt?sig=abc"]
+
+
+def test_mqtt_helper_publish_uses_compact_utf8_json():
+    published = []
+
+    class FakeClient:
+        def publish(self, topic, payload, qos=0, retain=False):
+            published.append((topic, payload, qos, retain))
+            return "published"
+
+    helper = mqtt_helper.MQTTHelper(
+        signer=types.SimpleNamespace(
+            presign_url=lambda *args: "wss://mqtt.example/mqtt?sig=abc"
+        ),
+        house=types.SimpleNamespace(
+            mqtt_server="mqtt.example",
+            mqtt_region="us-east-1",
+        ),
+    )
+    helper.client = FakeClient()
+    payload = {"label": "中文", "enabled": True}
+
+    assert helper.publish("topic", payload) == "published"
+    assert published == [
+        (
+            "topic",
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            0,
+            False,
+        )
+    ]
 
 
 @pytest.mark.asyncio
@@ -1187,7 +1221,7 @@ async def test_do_thing_signs_and_sends_same_serialized_body():
 
     client._thing_request = thing_request
 
-    payload = {"state": {"desired": {"b": 2, "a": 1}}}
+    payload = {"state": {"desired": {"b": 2, "a": 1, "label": "中文"}}}
     result = await client.do_thing(
         FakeXSenseStation(), "2nd_selftest_device-sn", payload
     )
@@ -1198,7 +1232,9 @@ async def test_do_thing_signs_and_sends_same_serialized_body():
     assert session.calls[0]["json"] is None
     assert session.calls[0]["data"] == signed_payloads[0]
     assert session.calls[0]["data"] == async_xsense._shadow_update_body(payload)
-    assert session.calls[0]["data"] == '{"state":{"desired":{"b":2,"a":1}}}'
+    assert session.calls[0]["data"] == json.dumps(
+        payload, ensure_ascii=False, separators=(",", ":")
+    )
 
 
 @pytest.mark.asyncio
@@ -1638,7 +1674,18 @@ async def test_update_camera_data_updates_known_camera_from_addx_device_list():
 
 
 @pytest.mark.asyncio
-async def test_start_camera_live_uses_live_resolution_preference_not_recording_resolution():
+@pytest.mark.parametrize(
+    ("camera_data", "expected"),
+    [
+        ({"liveResolution": "VIDEO_SIZE_1920x1080"}, "1920x1080"),
+        ({"liveResolution": "HD"}, "1920x1080"),
+        ({"supportedRecordingResolutions": ["P1296", "P1080"]}, "2304x1296"),
+        ({"supportedRecordingResolutions": []}, "auto"),
+    ],
+)
+async def test_start_camera_live_uses_apk_live_resolution_fallback(
+    camera_data, expected
+):
     client = async_xsense.AsyncXSense()
     camera = device_module.Device(
         None,
@@ -1647,7 +1694,7 @@ async def test_start_camera_live_uses_live_resolution_preference_not_recording_r
         deviceSn="cam-sn",
         deviceType="SSC0A",
     )
-    camera.set_data({"recResolution": "HD"})
+    camera.set_data(camera_data)
     calls = []
 
     async def addx_call(endpoint, **kwargs):
@@ -1660,32 +1707,9 @@ async def test_start_camera_live_uses_live_resolution_preference_not_recording_r
     assert calls == [
         (
             "/device/newstartlive",
-            {"serialNumber": "cam-sn", "liveResolution": ""},
+            {"serialNumber": "cam-sn", "liveResolution": expected},
         )
     ]
-
-
-@pytest.mark.asyncio
-async def test_start_camera_live_uses_explicit_live_resolution_when_available():
-    client = async_xsense.AsyncXSense()
-    camera = device_module.Device(
-        None,
-        deviceId="cam-id",
-        deviceName="Camera",
-        deviceSn="cam-sn",
-        deviceType="SSC0A",
-    )
-    camera.set_data({"liveResolution": "FHD"})
-    calls = []
-
-    async def addx_call(endpoint, **kwargs):
-        calls.append((endpoint, kwargs))
-        return {"url": "rtsp://example/live"}
-
-    client.addx_call = addx_call
-
-    assert await client.start_camera_live(camera) == "rtsp://example/live"
-    assert calls[0][1]["liveResolution"] == "FHD"
 
 def test_addx_body_requires_ipc_country():
     client = async_xsense.AsyncXSense()
@@ -1705,6 +1729,152 @@ def test_addx_body_requires_ipc_language():
         client._addx_body({"countryNo": "US"}, {})
 
 
+class CapturePostResponse:
+    def __init__(self, body):
+        self.status = 200
+        self._body = body
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+    async def json(self):
+        return self._body
+
+
+class CapturePostSession:
+    def __init__(self, response_body):
+        self.response_body = response_body
+        self.posts = []
+        self.closed = False
+
+    def post(self, url, **kwargs):
+        self.posts.append((url, kwargs))
+        return CapturePostResponse(self.response_body)
+
+
+def test_calculate_mac_uses_compact_gson_json_for_container_values():
+    client = async_xsense.AsyncXSense()
+    client.clientsecret = b"secret"
+
+    data = {
+        "items": [{"name": "é", "value": 1}],
+        "settings": {"label": "中文", "enabled": True},
+        "plain": "x",
+    }
+
+    mac_input = "[{\"name\":\"é\",\"value\":1}]" + "{\"label\":\"中文\",\"enabled\":true}" + "x" + "secret"
+    assert client._calculate_mac(data) == hashlib.md5(
+        mac_input.encode("utf-8")
+    ).hexdigest()
+
+
+def test_calculate_mac_uses_java_scalar_text_for_bool_and_null():
+    client = async_xsense.AsyncXSense()
+    client.clientsecret = b"secret"
+
+    data = {"enabled": True, "disabled": False, "missing": None}
+
+    assert client._calculate_mac(data) == hashlib.md5(
+        b"truefalsenullsecret"
+    ).hexdigest()
+
+
+def test_calculate_mac_skips_empty_lists_like_apk():
+    client = async_xsense.AsyncXSense()
+    client.clientsecret = b"secret"
+
+    data = {"empty": [], "plain": "x"}
+
+    assert client._calculate_mac(data) == hashlib.md5(b"xsecret").hexdigest()
+
+
+def test_calculate_mac_string_led_lists_use_java_scalar_text():
+    client = async_xsense.AsyncXSense()
+    client.clientsecret = b"secret"
+
+    data = {"values": ["a", True, None], "plain": "z"}
+
+    assert client._calculate_mac(data) == hashlib.md5(
+        b"atruenullzsecret"
+    ).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_get_client_info_uses_apk_1360_client_metadata():
+    encoded_secret = base64.b64encode(b"1360secretx").decode()
+    session = CapturePostSession(
+        {
+            "reCode": 200,
+            "reData": {
+                "clientId": "client-id",
+                "clientSecret": encoded_secret,
+                "cgtRegion": "us-east-1",
+                "userPoolId": "pool-id",
+            },
+        }
+    )
+    client = async_xsense.AsyncXSense(session)
+
+    await client.get_client_info()
+
+    body = session.posts[0][1]["json"]
+    assert body["bizCode"] == "101001"
+    assert body["appCode"] == "1360"
+    assert body["appVersion"] == "v1.36.0_20260130"
+    assert body["clientType"] == "2"
+    assert client.clientid == "client-id"
+    assert client.clientsecret == b"secret"
+
+
+@pytest.mark.asyncio
+async def test_authenticated_app_call_uses_apk_1360_client_metadata():
+    session = CapturePostSession({"reCode": 200, "reData": {"ok": True}})
+    client = async_xsense.AsyncXSense(session)
+    client.access_token = "access-token"
+    client.access_token_expiry = async_xsense.datetime(
+        2099, 1, 1, tzinfo=async_xsense.timezone.utc
+    )
+    client.clientsecret = b"secret"
+
+    await client.api_call("102007", houseId="house-id")
+
+    body = session.posts[0][1]["json"]
+    assert body["bizCode"] == "102007"
+    assert body["appCode"] == "1360"
+    assert body["appVersion"] == "v1.36.0_20260130"
+    assert body["clientType"] == "2"
+    assert body["houseId"] == "house-id"
+    assert session.posts[0][1]["headers"] == {"Authorization": "access-token"}
+
+
+@pytest.mark.asyncio
+async def test_ipc_call_uses_same_apk_1360_client_metadata():
+    session = CapturePostSession({"reCode": 200, "reData": {"token": "token"}})
+    client = async_xsense.AsyncXSense(session)
+    client.access_token = "access-token"
+    client.access_token_expiry = async_xsense.datetime(
+        2099, 1, 1, tzinfo=async_xsense.timezone.utc
+    )
+    client.clientsecret = b"secret"
+
+    await client.ipc_call(
+        "C10101", userName="user@example.com", nodeType="US", language="en"
+    )
+
+    body = session.posts[0][1]["json"]
+    assert body["bizCode"] == "C10101"
+    assert body["appCode"] == "1360"
+    assert body["appVersion"] == "v1.36.0_20260130"
+    assert body["clientType"] == "2"
+    assert body["userName"] == "user@example.com"
+    assert body["nodeType"] == "US"
+    assert body["language"] == "en"
+    assert session.posts[0][1]["headers"] == {"Authorization": "access-token"}
+
+
 @pytest.mark.asyncio
 async def test_addx_call_rejects_unknown_node_type():
     client = async_xsense.AsyncXSense()
@@ -1715,10 +1885,10 @@ async def test_addx_call_rejects_unknown_node_type():
 
 
 @pytest.mark.asyncio
-async def test_register_ipc_uses_house_region_for_node_type_like_apk():
+async def test_register_ipc_uses_mqtt_region_for_node_type_like_apk():
     client = async_xsense.AsyncXSense()
     client.username = "user@example.com"
-    test_house = house.House(None, "house-id", "Home", "eu-central-1", "us-east-1", "mqtt")
+    test_house = house.House(None, "house-id", "Home", "Canada", "eu-central-1", "mqtt")
     client.houses = {"house-id": test_house}
     calls = []
 
@@ -1737,9 +1907,11 @@ async def test_register_ipc_uses_house_region_for_node_type_like_apk():
     ]
 
 
-def test_ipc_node_type_uses_apk_short_region_fallback():
-    assert async_xsense._ipc_node_type("DE") == "US"
-    assert async_xsense._ipc_node_type("US") == "US"
+def test_ipc_node_type_uses_apk_mqtt_region_prefix():
+    assert async_xsense._ipc_node_type("eu-central-1") == "EU"
+    assert async_xsense._ipc_node_type("us-east-1") == "US"
+    assert async_xsense._ipc_node_type("cn-north-1") == "CN"
+    assert async_xsense._ipc_node_type("Canada") == "US"
     assert async_xsense._ipc_node_type(None) == "US"
 
 
@@ -1830,7 +2002,7 @@ def test_camera_data_normalizes_apk_integer_support_flags():
         assert data[key] is True
 
 
-def test_camera_user_config_payload_preserves_known_config_like_apk():
+def test_camera_user_config_payload_sends_only_changed_cloud_fields_like_apk():
     camera = device_module.Device(
         None,
         deviceId="cam-id",
@@ -1841,7 +2013,6 @@ def test_camera_user_config_payload_preserves_known_config_like_apk():
     camera.set_data(
         {
             "needMotion": True,
-            "needVideo": False,
             "deviceCallToggleOn": True,
             "deviceSupportLanguage": ["en"],
             "supportDeviceCall": True,
@@ -1852,11 +2023,65 @@ def test_camera_user_config_payload_preserves_known_config_like_apk():
         camera, {"needVideo": 1, "supportDeviceCall": False}
     )
 
-    assert payload == {
+    assert payload == {"serialNumber": "cam-sn", "needVideo": 1}
+
+
+def test_camera_user_config_payload_adds_apk_toggle_companions():
+    camera = device_module.Device(
+        None,
+        deviceId="cam-id",
+        deviceName="Camera",
+        deviceSn="cam-sn",
+        deviceType="SSC0A",
+    )
+    camera.set_data(
+        {
+            "alarmSeconds": 20,
+            "motionSensitivity": None,
+            "nightThresholdLevel": 3,
+            "supportRocker": False,
+            "videoSeconds": 0,
+        }
+    )
+
+    assert async_xsense._camera_user_config_payload(camera, {"needMotion": 1}) == {
         "serialNumber": "cam-sn",
-        "deviceCallToggleOn": True,
         "needMotion": 1,
+        "motionSensitivity": 1,
+    }
+    assert async_xsense._camera_user_config_payload(camera, {"needVideo": 1}) == {
+        "serialNumber": "cam-sn",
         "needVideo": 1,
+        "videoSeconds": -1,
+    }
+    assert async_xsense._camera_user_config_payload(camera, {"needAlarm": 1}) == {
+        "serialNumber": "cam-sn",
+        "needAlarm": 1,
+        "alarmSeconds": 20,
+    }
+    assert async_xsense._camera_user_config_payload(
+        camera, {"needNightVision": 1}
+    ) == {
+        "serialNumber": "cam-sn",
+        "needNightVision": 1,
+        "nightThresholdLevel": 3,
+    }
+
+
+def test_camera_user_config_payload_uses_apk_rocker_alarm_seconds():
+    camera = device_module.Device(
+        None,
+        deviceId="cam-id",
+        deviceName="Camera",
+        deviceSn="cam-sn",
+        deviceType="SSC0A",
+    )
+    camera.set_data({"alarmSeconds": 20, "supportRocker": True})
+
+    assert async_xsense._camera_user_config_payload(camera, {"needAlarm": 1}) == {
+        "serialNumber": "cam-sn",
+        "needAlarm": 1,
+        "alarmSeconds": 10,
     }
 
 

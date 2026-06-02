@@ -245,12 +245,15 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ):
             return
 
-        self._camera_initialized = True
         self._last_camera_update_attempt = now
         try:
             await self.xsense.update_camera_data()
         except APIFailure as ex:
+            self._camera_initialized = False
+            self._last_camera_update_attempt = None
             LOGGER.warning("Could not update X-Sense camera data: %s", ex)
+        else:
+            self._camera_initialized = True
 
     async def _update_safe_mode(self, station) -> None:
         """Fetch safeMode from the 2nd_safemode AWS IoT shadow as a fallback."""
@@ -312,6 +315,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if station is None:
             station = self._get_station_by_device_sn(device_sn)
 
+        if station is None and _is_presence_topic(topic):
+            station = self._get_station_by_shadow_name(data.get("clientId"))
+
         if station is None and isinstance(topic, str):
             parts = topic.split("/")
             if len(parts) > 2:
@@ -319,6 +325,12 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if station is None:
             LOGGER.debug("No station found for MQTT topic: %s", topic)
+            return
+
+        if _is_presence_topic(topic):
+            if event_type := data.get("eventType"):
+                station._set_online(event_type == "connected")
+                self.async_update_listeners()
             return
 
         is_safemode_topic = "/shadow/name/2nd_safemode/update" in topic
@@ -431,7 +443,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             }
             await mqtt.async_publish(
                 f"$aws/things/{s.shadow_name}/shadow/name/2nd_apptempdata/update",
-                json.dumps(msg),
+                json.dumps(msg, ensure_ascii=False, separators=(",", ":")),
                 0,
                 False,
             )
@@ -471,3 +483,8 @@ def _is_self_test_topic(topic: str) -> bool:
             "selftestup_v2/update",
         )
     )
+
+
+def _is_presence_topic(topic: str) -> bool:
+    """Return if an MQTT topic is an AWS IoT presence update."""
+    return "/events/presence/" in topic

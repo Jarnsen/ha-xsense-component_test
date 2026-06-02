@@ -189,7 +189,12 @@ class XSenseAlarmControlPanel(
             raise HomeAssistantError("X-Sense MQTT is not connected")
 
         try:
-            await mqtt.async_publish(topic, json.dumps(payload), qos=0, retain=False)
+            await mqtt.async_publish(
+                topic,
+                json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                qos=0,
+                retain=False,
+            )
             LOGGER.debug(
                 "Station %s published appMode command %s on %s",
                 station.sn,
