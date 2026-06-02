@@ -432,6 +432,11 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         super().__init__(coordinator, entity, station_id)
 
     @property
+    def available(self) -> bool:
+        """Return if this control can be used."""
+        return self._current_entity_is_online()
+
+    @property
     def is_on(self) -> bool | None:
         """Return the state of the switch."""
         entity = self._current_entity()

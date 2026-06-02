@@ -267,6 +267,11 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         super().__init__(coordinator, entity, station_id)
 
     @property
+    def available(self) -> bool:
+        """Return if this control can be used."""
+        return self._current_entity_is_online()
+
+    @property
     def native_value(self) -> float | None:
         """Return the number value."""
         entity = self._current_entity()
