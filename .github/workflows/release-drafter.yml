@@ -2,10 +2,10 @@
 
 name: Release Drafter
 
+# Keep this manual only. Tagged releases are created by release.yaml from
+# GITHUB_REF_NAME, so the published version always comes from the tag instead
+# of Release Drafter guessing the next version on every main push.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
