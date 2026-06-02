@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
@@ -21,12 +22,55 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
 ]
 
+OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
+    "serial_number",
+    "station_sn",
+    "device_sn",
+    "language_count",
+    "language_index",
+    "device_mac",
+    "mac",
+    "bluetooth_mac",
+)
+
+
+def _sensor_unique_id(entity_id: str, key: str) -> str:
+    """Return the unique ID format used by X-Sense sensor entities."""
+    return f"{entity_id}-{key}".replace("_", "-").lower()
+
+
+def _obsolete_sensor_unique_ids(data) -> set[str]:
+    """Return obsolete static diagnostic sensor unique IDs from old releases."""
+    unique_ids: set[str] = set()
+    for entity in (
+        *data.get("stations", {}).values(),
+        *data.get("devices", {}).values(),
+    ):
+        unique_ids.update(
+            _sensor_unique_id(entity.entity_id, key) for key in OBSOLETE_SENSOR_KEYS
+        )
+    return unique_ids
+
+
+def _remove_obsolete_sensor_entities(hass: HomeAssistant, data) -> None:
+    """Remove old serial/MAC diagnostic sensors now stored as device metadata."""
+    entity_registry = er.async_get(hass)
+    for unique_id in _obsolete_sensor_unique_ids(data):
+        entity_id = entity_registry.async_get_entity_id(
+            Platform.SENSOR, DOMAIN, unique_id
+        )
+        if entity_id is not None:
+            entity_registry.async_remove(entity_id)
+
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up X-Sense Home Security from a config entry."""
     coordinator = XSenseDataUpdateCoordinator(hass, entry)
 
     await coordinator.async_config_entry_first_refresh()
+
+    _remove_obsolete_sensor_entities(hass, coordinator.data)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
