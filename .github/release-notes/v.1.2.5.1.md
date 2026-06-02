@@ -1,20 +1,17 @@
-## v.1.2.5.1
+## 🔧 v.1.2.5.1
 
-### Summary
+A focused MQTT startup hotfix. This release removes a Home Assistant event-loop warning introduced by the MQTT setup work in 1.2.5.
 
-This hotfix addresses a Home Assistant startup warning introduced by MQTT setup work after the 1.2.5 release.
+### ✨ Highlights
 
-### Fixed
+- 🏠 Moved MQTT connection preparation through the Home Assistant executor.
+- 🔐 Deferred TLS certificate loading so it no longer runs on the Home Assistant event loop.
 
-- Fixed MQTT TLS certificate setup so default certificate loading no longer runs on the Home Assistant event loop during integration setup.
-- Moved MQTT connection preparation through the Home Assistant executor for both initial connect and reconnect paths.
+### 🛠️ Fixed
 
-### Improved
+- Fixed MQTT TLS setup during both initial connect and reconnect paths.
 
-- Added regression coverage to ensure TLS setup is deferred until connection preparation.
-- Added regression coverage to ensure MQTT connection preparation is routed through the Home Assistant executor.
+### 🔎 Validation
 
-### Validation
-
-- git diff --check
-- Full test suite passed
+- ✅ Full test suite passed.
+- ✅ Diff checks passed.

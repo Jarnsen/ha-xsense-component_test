@@ -1,19 +1,18 @@
-## v.1.2.5.2
+## 📷 v.1.2.5.2
 
-### Summary
+A camera discovery hotfix for accounts where X-Sense cameras are returned through the APK/ADDX camera device list instead of the normal station list.
 
-This hotfix improves camera discovery for accounts where cameras are returned through the APK/ADDX camera device list.
+### ✨ Highlights
 
-### Fixed
+- 📷 Improved SSC0A and SSC0B camera discovery from the ADDX `/device/listuserdevices` response.
+- 🔍 Kept IPC/ADDX camera discovery errors visible so future camera API issues are easier to diagnose.
 
-- Fixed camera discovery for accounts where X-Sense cameras are returned through the same APK/ADDX camera device list used by the mobile app, but are not present in the normal X-Sense station list.
-- Created SSC0A and SSC0B camera entities from the ADDX /device/listuserdevices response before camera metadata is loaded.
-- Kept IPC/ADDX camera discovery errors visible instead of silently treating them as no camera support.
+### 🛠️ Fixed
 
-### Improved
+- Fixed camera creation before camera metadata is fully loaded.
+- Fixed accounts where APK-visible cameras were missing from Home Assistant.
 
-- Added regression coverage for APK-aligned camera discovery from the ADDX device list.
+### 🔎 Validation
 
-### Validation
-
-- Full test suite passed
+- ✅ Full test suite passed.
+- ✅ Added regression coverage for APK-aligned camera discovery.

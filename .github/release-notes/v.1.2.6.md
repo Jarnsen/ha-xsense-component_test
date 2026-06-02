@@ -1,21 +1,20 @@
-## v.1.2.6
+## 🌟 v.1.2.6
 
-### Summary
+A larger device-support and polish release. This version expands APK-aligned device behavior, improves camera setup, cleans up diagnostics, and refreshes translated documentation.
 
-This release expands APK-aligned device support, improves camera setup, and refreshes diagnostics and documentation.
+### ✨ Highlights
 
-### Fixed
+- 📱 Expanded APK-aligned update paths for station, child-device, and internal/alternate device payloads.
+- 📷 Improved camera discovery and camera entity setup for devices reported through Android app API paths.
+- 🧹 Cleaned up diagnostics so normal entity views stay useful without unnecessary serial/MAC-style clutter.
+- 🌍 Expanded translated README files with updated screenshots, supported-device guidance, and setup details.
 
-- Fixed additional APK-aligned device update paths so station, child-device, and alternate/internal device payloads update the correct Home Assistant entities more reliably.
-- Improved camera discovery and camera entity setup for devices reported through the X-Sense Android app API paths.
-- Cleaned up diagnostics so user-facing diagnostic sections avoid unnecessary serial/MAC-style identifiers while keeping useful troubleshooting data.
+### 🛠️ Improved
 
-### Improved
+- 🧪 Added and updated regression coverage for the API client, coordinator behavior, sensors, camera guards, and diagnostics.
+- 🔗 Improved documentation structure, link coverage, Markdown formatting, and translated README consistency.
 
-- Expanded and polished the translated README files, including setup screenshots, supported-device/entity guidance, and a canonical Simplified Chinese README with a legacy redirect.
-- Added and updated regression coverage for the X-Sense API client, coordinator behavior, sensors, camera guards, and diagnostics.
+### 🔎 Validation
 
-### Validation
-
-- Full test suite passed
-- Documentation structure, link coverage, Markdown code fences, YAML examples, and stale wording checks passed
+- ✅ Full test suite passed.
+- ✅ Documentation checks passed.
