@@ -85,7 +85,6 @@ class XSenseAlarmControlPanel(
             "name": station.name,
             "manufacturer": MANUFACTURER,
             "model": station.type,
-            "serial_number": station.sn,
         }
         self._safemode: str | None = None
 
