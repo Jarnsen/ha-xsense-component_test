@@ -117,6 +117,14 @@ def is_camera_entity(entity: Entity) -> bool:
     return entity.type in CAMERA_TYPES
 
 
+def _normalized_camera_serial(value) -> str | None:
+    """Return a camera serial in the comparison form used for ADDX matching."""
+    if value is None:
+        return None
+    serial = "".join(char for char in str(value).upper() if char.isalnum())
+    return serial or None
+
+
 def _camera_resolution(value) -> str | None:
     """Return an APK-style camera video resolution value."""
     if value is None:
@@ -139,7 +147,7 @@ def _camera_live_resolution(camera: Entity) -> str:
         for option in options:
             if resolution := _camera_resolution(option):
                 return resolution
-    return "auto"
+    return ""
 
 
 class AsyncXSense(XSenseBase):
@@ -405,24 +413,36 @@ class AsyncXSense(XSenseBase):
 
     async def update_camera_data(self):
         """Merge camera metadata and config from the Android app ADDX API."""
-        cameras = [
-            station
-            for house in self.houses.values()
-            for station in house.stations.values()
-            if is_camera_entity(station)
+        data = await self.addx_call("/device/listuserdevices")
+        devices = [
+            device
+            for device in (data or {}).get("list") or []
+            if _camera_type(device)
+            and _normalized_camera_serial(device.get("serialNumber"))
         ]
+        if not devices:
+            return
+
+        camera_serials = {
+            _normalized_camera_serial(device.get("serialNumber")) for device in devices
+        }
+        for house in self.houses.values():
+            for station_id, station in list(house.stations.items()):
+                if (
+                    is_camera_entity(station)
+                    and _normalized_camera_serial(station.sn) not in camera_serials
+                ):
+                    del house.stations[station_id]
+
+        cameras = []
+        for device in devices:
+            camera = self._camera_from_addx_device(device)
+            if camera is not None:
+                cameras.append((camera, device))
         if not cameras:
             return
 
-        data = await self.addx_call("/device/listuserdevices")
-        devices = (data or {}).get("list") or []
-        by_sn = {device.get("serialNumber"): device for device in devices}
-
-        for camera in cameras:
-            addx_device = by_sn.get(camera.sn)
-            if not addx_device:
-                continue
-
+        for camera, addx_device in cameras:
             camera.set_data(_camera_data(addx_device))
             try:
                 config = await self.addx_call(
@@ -464,6 +484,49 @@ class AsyncXSense(XSenseBase):
                     doorbell = None
                 if doorbell:
                     camera.set_data(_camera_doorbell_data(doorbell))
+
+    def _camera_from_addx_device(self, data: Dict) -> Station | None:
+        """Return the X-Sense camera entity backed by an ADDX DeviceBean."""
+        serial = data.get("serialNumber")
+        normalized_serial = _normalized_camera_serial(serial)
+        if normalized_serial is None:
+            return None
+
+        device_house_id = data.get("houseId")
+        target_houses = [
+            house
+            for house in self.houses.values()
+            if device_house_id in (None, "")
+            or str(device_house_id) == str(house.house_id)
+        ]
+        if not target_houses:
+            return None
+
+        for house in target_houses:
+            for station in house.stations.values():
+                if (
+                    is_camera_entity(station)
+                    and _normalized_camera_serial(station.sn) == normalized_serial
+                ):
+                    return station
+
+        house = target_houses[0]
+        station_id = str(serial)
+        station = Station(
+            house,
+            stationId=station_id,
+            stationSn=serial,
+            stationName=data.get("deviceName")
+            or data.get("displayModelNo")
+            or station_id,
+            category=_camera_type(data),
+            deviceType=_camera_type(data),
+            onLine=data.get("online", 1),
+            devices=[],
+        )
+        station.set_devices({"devices": []})
+        house.stations[station.entity_id] = station
+        return station
 
     async def update_camera_config(self, camera: Entity, **updates):
         """Write camera user config through the Android app endpoint."""
@@ -856,6 +919,16 @@ def _camera_type(data: Dict) -> str | None:
     return None
 
 
+def _camera_is_webrtc(data: Dict) -> bool:
+    """Return DeviceBean.isWebRTC() from the Android app."""
+    device_model = data.get("deviceModel") or {}
+    stream_protocol = device_model.get("streamProtocol")
+    if stream_protocol is None:
+        return True
+    protocol = str(stream_protocol).lower()
+    return "rtsp" not in protocol and "rtmp" not in protocol
+
+
 def _camera_data(data: Dict) -> Dict:
     device_model = data.get("deviceModel") or {}
     device_support = data.get("deviceSupport") or {}
@@ -927,7 +1000,7 @@ def _camera_data(data: Dict) -> Dict:
         ),
         "supportedRecordingResolutions": device_support.get("deviceSupportResolution"),
         "supportVoiceVolume": _addx_bool(device_support.get("supportVoiceVolume")),
-        "supportWebrtc": _addx_bool(device_support.get("supportWebrtc")),
+        "supportWebrtc": _camera_is_webrtc(data),
         "thumbImgTime": data.get("thumbImgTime"),
         "thumbImgUrl": data.get("thumbImgUrl"),
         "timeZone": data.get("timeZone"),

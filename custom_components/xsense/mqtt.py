@@ -711,6 +711,9 @@ class XSenseMQTT:
         # result is set make sure the first connection result is set
         self._async_connection_result(False)
         self.connected = False
+        if result_code == mqtt.MQTT_ERR_SUCCESS:
+            _LOGGER.debug("Disconnected from MQTT server cleanly")
+            return
         _LOGGER.warning(
             "Disconnected from MQTT server (%s)",
             result_code,

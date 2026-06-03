@@ -2,6 +2,7 @@ import base64
 import hashlib
 import importlib
 import json
+import logging
 import sys
 import types
 from pathlib import Path
@@ -128,6 +129,34 @@ def test_mqtt_helper_publish_uses_compact_utf8_json():
             False,
         )
     ]
+
+
+def test_xsense_mqtt_clean_disconnect_is_not_a_warning(caplog):
+    caplog.set_level(logging.DEBUG)
+    client = object.__new__(xsense_mqtt.XSenseMQTT)
+    client.connected = True
+    results = []
+    client._async_connection_result = results.append
+
+    client._async_on_disconnect(xsense_mqtt.mqtt.MQTT_ERR_SUCCESS)
+
+    assert client.connected is False
+    assert results == [False]
+    assert "Disconnected from MQTT server (0)" not in caplog.text
+    assert "Disconnected from MQTT server cleanly" in caplog.text
+
+
+def test_xsense_mqtt_nonzero_disconnect_still_warns(caplog):
+    client = object.__new__(xsense_mqtt.XSenseMQTT)
+    client.connected = True
+    results = []
+    client._async_connection_result = results.append
+
+    client._async_on_disconnect(7)
+
+    assert client.connected is False
+    assert results == [False]
+    assert "Disconnected from MQTT server (7)" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -1674,13 +1703,104 @@ async def test_update_camera_data_updates_known_camera_from_addx_device_list():
 
 
 @pytest.mark.asyncio
+async def test_update_camera_data_uses_addx_device_as_camera_authority():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "stub-id",
+                    "ipcSn": "stub-sn",
+                    "ipcName": "Stub Camera",
+                    "category": "SSC0A",
+                }
+            ],
+        }
+    )
+    client.houses = {"house-id": test_house}
+
+    async def addx_call(endpoint, **kwargs):
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "real-sn",
+                        "deviceName": "Front Camera",
+                        "houseId": "house-id",
+                        "modelNo": "SSC0A",
+                        "online": 1,
+                        "batteryLevel": 2,
+                        "deviceModel": {"streamProtocol": "webrtc"},
+                        "deviceSupport": {"supportWebrtc": 1},
+                    }
+                ]
+            }
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    assert "stub-id" not in test_house.stations
+    camera = test_house.get_station_by_sn("real-sn")
+    assert camera is not None
+    assert camera.entity_id == "real-sn"
+    assert camera.name == "Front Camera"
+    assert camera.type == "SSC0A"
+    assert camera.online is True
+    assert camera.data["batteryLevel"] == 2
+    assert camera.data["streamProtocol"] == "webrtc"
+
+
+@pytest.mark.asyncio
+async def test_update_camera_data_creates_camera_from_addx_without_home_stub():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "1234", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
+    client.houses = {"1234": test_house}
+
+    async def addx_call(endpoint, **kwargs):
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "camera-sn",
+                        "deviceName": "Driveway Camera",
+                        "houseId": 1234,
+                        "displayModelNo": "SSC0B",
+                        "online": 1,
+                        "deviceModel": {
+                            "modelName": "SSC0B",
+                            "streamProtocol": "webrtc",
+                        },
+                        "deviceSupport": {"supportWebrtc": 1},
+                    }
+                ]
+            }
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    camera = test_house.get_station_by_sn("camera-sn")
+    assert camera is not None
+    assert camera.name == "Driveway Camera"
+    assert camera.type == "SSC0B"
+    assert camera.data["streamProtocol"] == "webrtc"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("camera_data", "expected"),
     [
         ({"liveResolution": "VIDEO_SIZE_1920x1080"}, "1920x1080"),
         ({"liveResolution": "HD"}, "1920x1080"),
         ({"supportedRecordingResolutions": ["P1296", "P1080"]}, "2304x1296"),
-        ({"supportedRecordingResolutions": []}, "auto"),
+        ({"supportedRecordingResolutions": []}, ""),
     ],
 )
 async def test_start_camera_live_uses_apk_live_resolution_fallback(
@@ -1927,19 +2047,22 @@ async def test_register_ipc_requires_house_region_instead_of_defaulting_to_us():
 
 
 @pytest.mark.asyncio
-async def test_update_camera_data_skips_addx_when_normal_device_list_has_no_camera():
+async def test_update_camera_data_handles_empty_addx_camera_list():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
     test_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
     client.houses = {"house-id": test_house}
+    calls = []
 
     async def addx_call(endpoint, **kwargs):
-        raise AssertionError("ADDX should not be queried without APK camera entries")
+        calls.append((endpoint, kwargs))
+        return {"list": []}
 
     client.addx_call = addx_call
 
     await client.update_camera_data()
 
+    assert calls == [("/device/listuserdevices", {})]
     assert test_house.stations == {}
 
 
@@ -2000,6 +2123,28 @@ def test_camera_data_normalizes_apk_integer_support_flags():
         "supportWebrtc",
     ):
         assert data[key] is True
+
+
+def test_camera_data_uses_apk_webrtc_stream_protocol_rule():
+    assert async_xsense._camera_data({"deviceModel": {}})["supportWebrtc"] is True
+    assert (
+        async_xsense._camera_data(
+            {"deviceModel": {"streamProtocol": "webrtc"}}
+        )["supportWebrtc"]
+        is True
+    )
+    assert (
+        async_xsense._camera_data({"deviceModel": {"streamProtocol": "rtsp"}})[
+            "supportWebrtc"
+        ]
+        is False
+    )
+    assert (
+        async_xsense._camera_data({"deviceModel": {"streamProtocol": "RTMP"}})[
+            "supportWebrtc"
+        ]
+        is False
+    )
 
 
 def test_camera_user_config_payload_sends_only_changed_cloud_fields_like_apk():
