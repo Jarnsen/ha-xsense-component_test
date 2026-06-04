@@ -206,3 +206,12 @@ def test_alarm_status_is_unknown_until_reported():
     alarm.data["alarmStatus"] = "1"
 
     assert binary_sensor.alarm_status(alarm) is True
+
+
+def test_camera_platform_import_does_not_load_webrtc_bridge():
+    sys.modules.pop("custom_components.xsense.camera", None)
+    sys.modules.pop("custom_components.xsense.webrtc_signal", None)
+
+    from custom_components.xsense import camera  # noqa: F401
+
+    assert "custom_components.xsense.webrtc_signal" not in sys.modules

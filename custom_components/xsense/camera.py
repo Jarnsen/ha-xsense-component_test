@@ -24,10 +24,6 @@ from .api.async_xsense import is_camera_entity
 from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import XSenseEntity
-from .webrtc_signal import (
-    XSenseWebRTCSession,
-    XSenseWebRTCTicket,
-)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -70,7 +66,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         """Set up the camera entity."""
         Camera.__init__(self)
         self.entity_description = entity_description
-        self._webrtc_sessions: dict[str, XSenseWebRTCSession] = {}
+        self._webrtc_sessions: dict[str, object] = {}
         super().__init__(coordinator, entity)
 
     @property
@@ -159,6 +155,11 @@ class XSenseCameraEntity(XSenseEntity, Camera):
                 )
             )
             return
+
+        # Import the WebRTC bridge only when Home Assistant actually starts a
+        # camera WebRTC session. This keeps optional media-stack imports out of
+        # normal camera discovery and mirrors the app on-demand live-view path.
+        from .webrtc_signal import XSenseWebRTCSession, XSenseWebRTCTicket
 
         session = XSenseWebRTCSession(
             session=async_get_clientsession(self.hass),
