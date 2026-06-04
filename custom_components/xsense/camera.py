@@ -178,7 +178,8 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             send_message=send_message,
         )
         self._webrtc_sessions[session_id] = session
-        await session.start()
+        if not await session.start():
+            self._webrtc_sessions.pop(session_id, None)
 
     async def async_on_webrtc_candidate(self, session_id, candidate) -> None:
         """Forward a Home Assistant WebRTC candidate to X-Sense."""

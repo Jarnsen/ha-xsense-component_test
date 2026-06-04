@@ -292,3 +292,62 @@ def test_camera_entity_webrtc_protocol_default_matches_apk():
     assert camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "webrtc"}))
     assert not camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "rtsp"}))
     assert not camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "RTMP"}))
+
+
+async def test_failed_webrtc_start_is_removed_from_active_sessions(monkeypatch):
+    from custom_components.xsense import camera as camera_module
+    from custom_components.xsense.camera import CAMERA_DESCRIPTION, XSenseCameraEntity
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    async def get_camera_webrtc_ticket(entity):
+        return {"signalServer": "signal"}
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+            self.xsense = SimpleNamespace(
+                get_camera_webrtc_ticket=get_camera_webrtc_ticket
+            )
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    class FakeSession:
+        def __init__(self, **kwargs):
+            pass
+
+        async def start(self):
+            return False
+
+    fake_module = SimpleNamespace(
+        XSenseWebRTCTicket=SimpleNamespace(
+            from_api=lambda serial_number, data: SimpleNamespace()
+        ),
+        XSenseWebRTCSession=FakeSession,
+    )
+
+    class FakeHass:
+        async def async_add_import_executor_job(self, func, module):
+            return fake_module
+
+    monkeypatch.setattr(
+        camera_module, "async_get_clientsession", lambda hass: SimpleNamespace()
+    )
+
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.hass = FakeHass()
+
+    await camera.async_handle_async_webrtc_offer(
+        "v=0\r\n", "session-1", lambda message: None
+    )
+
+    assert camera._webrtc_sessions == {}
+    assert not camera.is_streaming

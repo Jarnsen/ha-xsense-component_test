@@ -7,7 +7,6 @@ from custom_components.xsense import webrtc_signal
 from custom_components.xsense.webrtc_signal import (
     SIGNAL_DATA_CHANNEL,
     XSenseWebRTCTicket,
-    make_ice_candidate_payload,
     make_sdp_offer_payload,
     make_start_live_data_channel_message,
     parse_signal_message,
@@ -24,7 +23,9 @@ def ticket(**overrides):
         "sign": "sig",
         "time": 123456,
         "expirationTime": 4_102_444_800_000,
-        "iceServer": [{"url": "turn:turn.example", "username": "user", "credential": "secret"}],
+        "iceServer": [
+            {"url": "turn:turn.example", "username": "user", "credential": "secret"}
+        ],
     }
     data.update(overrides)
     return XSenseWebRTCTicket.from_api("SSC0A123", data)
@@ -33,7 +34,9 @@ def ticket(**overrides):
 def test_ticket_connect_details_match_apk(monkeypatch):
     monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100.123)
 
-    signal_ticket = ticket(signalServer="https://signal.example:443", signalServerIpAddress="203.0.113.10")
+    signal_ticket = ticket(
+        signalServer="https://signal.example:443", signalServerIpAddress="203.0.113.10"
+    )
 
     assert signal_ticket.session_id == "Android-client123-100123"
     assert signal_ticket.signal_url() == (
@@ -63,19 +66,6 @@ def test_webrtc_offer_candidate_and_start_live_payloads_match_apk(monkeypatch):
             resolution="1280x720",
         )
     )
-    candidate = json.loads(
-        make_ice_candidate_payload(
-            candidate=RTCIceCandidateInit(
-                "candidate:1 1 udp 1 192.0.2.1 123 typ host",
-                sdp_mid="0",
-                sdp_m_line_index=0,
-            ),
-            ticket=ticket(),
-            recipient_client_id="SSC0A123",
-            session_id="Android-client123-100000",
-        )
-    )
-
     assert SIGNAL_DATA_CHANNEL == "data-channel-of-"
     assert offer | {"messagePayload": "<decoded>"} == {
         "messageType": "SDP_OFFER",
@@ -87,18 +77,9 @@ def test_webrtc_offer_candidate_and_start_live_payloads_match_apk(monkeypatch):
         "viewerType": "a4x_sdk",
         "resolution": "1280x720",
     }
-    assert json.loads(base64.b64decode(offer["messagePayload"])) == {"type": "offer", "sdp": "v=0\r\n"}
-    assert candidate | {"messagePayload": "<decoded>"} == {
-        "messageType": "ICE_CANDIDATE",
-        "messagePayload": "<decoded>",
-        "recipientClientId": "SSC0A123",
-        "senderClientId": "client123",
-        "sessionId": "Android-client123-100000",
-    }
-    assert json.loads(base64.b64decode(candidate["messagePayload"])) == {
-        "sdpMid": "0",
-        "sdpMLineIndex": 0,
-        "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+    assert json.loads(base64.b64decode(offer["messagePayload"])) == {
+        "type": "offer",
+        "sdp": "v=0\r\n",
     }
     assert make_start_live_data_channel_message("2560x1440") == {
         "requestID": "100000-321",
@@ -168,29 +149,101 @@ def test_parse_signal_message_accepts_apk_peer_event_wrappers():
     assert webrtc_signal._is_owned_peer_message("SSC0A123", "SSC0A123")
     assert not webrtc_signal._is_owned_peer_message("SSC0B456", "SSC0A123")
     assert parse_signal_message(
-        json.dumps({"type": "PEER_OUT", "message": json.dumps({"deviceSN": "SSC0B456"})})
+        json.dumps(
+            {"type": "PEER_OUT", "message": json.dumps({"deviceSN": "SSC0B456"})}
+        )
     ) == ("PEER_OUT", "SSC0B456")
 
 
-def test_localhost_ice_candidates_are_filtered_like_apk():
-    assert webrtc_signal._is_localhost_candidate(
-        RTCIceCandidateInit(
-            "candidate:1 1 udp 1 127.0.0.1 123 typ host",
-            sdp_mid="0",
-            sdp_m_line_index=0,
-        )
+
+def test_stop_live_data_channel_command_matches_apk(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+    monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
+
+    class FakeDataChannel:
+        readyState = "open"
+
+        def __init__(self):
+            self.messages = []
+
+        def send(self, message):
+            self.messages.append(message)
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._data_channel = FakeDataChannel()
+
+    session._send_stop_live()
+
+    assert [json.loads(message) for message in session._data_channel.messages] == [
+        {
+            "requestID": "100000-321",
+            "connectionID": "7893feb",
+            "timeStamp": 100,
+            "action": "stopLive",
+        }
+    ]
+
+
+def test_stop_live_is_not_sent_when_data_channel_is_not_open():
+    class FakeDataChannel:
+        readyState = "connecting"
+
+        def __init__(self):
+            self.messages = []
+
+        def send(self, message):
+            self.messages.append(message)
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._data_channel = FakeDataChannel()
+
+    session._send_stop_live()
+
+    assert session._data_channel.messages == []
+
+
+def test_dns_preload_covers_mdns_nsec_records(monkeypatch):
+    calls = []
+
+    def record_call(rdclass, rdtype):
+        calls.append((rdclass, rdtype))
+
+    monkeypatch.setattr(webrtc_signal.dns.rdata, "get_rdata_class", record_call)
+
+    webrtc_signal._preload_dns_rdata_classes()
+
+    assert (32769, 47) in calls
+    assert (255, 47) in calls
+
+
+async def test_browser_ice_candidates_wait_for_ha_remote_description():
+    class FakePeer:
+        def __init__(self):
+            self.remoteDescription = None
+            self.candidates = []
+
+        async def addIceCandidate(self, candidate):
+            if self.remoteDescription is None:
+                raise AssertionError("candidate added before remote description")
+            self.candidates.append(candidate)
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._ha_pc = FakePeer()
+    session._pending_ha_candidates = []
+
+    candidate = RTCIceCandidateInit(
+        "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+        sdp_mid="0",
+        sdp_m_line_index=0,
     )
-    assert webrtc_signal._is_localhost_candidate(
-        RTCIceCandidateInit(
-            "candidate:1 1 udp 1 ::1 123 typ host",
-            sdp_mid="0",
-            sdp_m_line_index=0,
-        )
-    )
-    assert not webrtc_signal._is_localhost_candidate(
-        RTCIceCandidateInit(
-            "candidate:1 1 udp 1 192.0.2.1 123 typ host",
-            sdp_mid="0",
-            sdp_m_line_index=0,
-        )
-    )
+
+    await session.add_candidate(candidate)
+
+    assert session._pending_ha_candidates
+    assert session._ha_pc.candidates == []
+
+    session._ha_pc.remoteDescription = object()
+    await session._flush_pending_ha_candidates()
+
+    assert session._pending_ha_candidates == []
+    assert len(session._ha_pc.candidates) == 1
