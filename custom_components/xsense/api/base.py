@@ -6,12 +6,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
 from pycognito import AWSSRP
 
 from .entity import Entity
 from .entity_map import entities
-from .exceptions import AuthFailed
+from .exceptions import APIFailure, AuthFailed
 from .station import Station
 from .house import House
 
@@ -28,6 +29,12 @@ def _mac_scalar(value) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
     return str(value)
+
+
+_COGNITO_CLIENT_CONFIG = Config(
+    connect_timeout=15,
+    read_timeout=15,
+)
 
 
 class XSenseBase:
@@ -76,7 +83,9 @@ class XSenseBase:
     def sync_login(self, username, password):
         self.username = username
         session = boto3.Session()
-        cognito = session.client("cognito-idp", region_name=self.region)
+        cognito = session.client(
+            "cognito-idp", region_name=self.region, config=_COGNITO_CLIENT_CONFIG
+        )
 
         aws_srp = AWSSRP(
             username=username,
@@ -98,6 +107,8 @@ class XSenseBase:
             )
         except ClientError as e:
             raise AuthFailed(self._parse_client_error(e)) from e
+        except BotoCoreError as e:
+            raise APIFailure(f"Cognito connection failed: {e}") from e
 
         self.userid = response["ChallengeParameters"]["USERNAME"]
 
@@ -127,6 +138,8 @@ class XSenseBase:
 
         except ClientError as e:
             raise AuthFailed(self._parse_client_error(e)) from e
+        except BotoCoreError as e:
+            raise APIFailure(f"Cognito connection failed: {e}") from e
 
     def restore_session(self, username, access_token, refresh_token, id_token):
         self.username = username

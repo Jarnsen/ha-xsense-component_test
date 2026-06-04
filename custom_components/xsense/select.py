@@ -99,9 +99,10 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="motionSensitivity",
         addx_key="motionSensitivity",
         options_key="motionSensitivityOptionList",
+        fixed_options=(1, 2, 3),
         name="Motion Sensitivity",
         icon="mdi:motion-sensor",
-        exists_fn=has_data("motionSensitivity", "motionSensitivityOptionList"),
+        exists_fn=has_data("motionSensitivity"),
     ),
     XSenseSelectEntityDescription(
         key="camera_video_seconds",
@@ -246,6 +247,10 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
         entity = self._current_entity()
         if entity is None:
             return []
+        if self.entity_description.key == "camera_motion_sensitivity":
+            options = entity.data.get("motionSensitivityOptionList")
+            if isinstance(options, list) and len(options) == 4:
+                return option_strings(options)
         if self.entity_description.fixed_options is not None:
             return option_strings(list(self.entity_description.fixed_options))
         return option_strings(entity.data.get(self.entity_description.options_key))

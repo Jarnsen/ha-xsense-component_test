@@ -1,0 +1,131 @@
+import base64
+import json
+
+from webrtc_models import RTCIceCandidateInit
+
+from custom_components.xsense import webrtc_signal
+from custom_components.xsense.webrtc_signal import (
+    SIGNAL_DATA_CHANNEL,
+    XSenseWebRTCTicket,
+    make_ice_candidate_payload,
+    make_sdp_offer_payload,
+    make_start_live_data_channel_message,
+    parse_signal_message,
+)
+
+
+def ticket(**overrides):
+    data = {
+        "signalServer": "https://signal.example",
+        "groupId": "group",
+        "role": "viewer",
+        "id": "client123",
+        "traceId": "trace",
+        "sign": "sig",
+        "time": 123456,
+        "expirationTime": 4_102_444_800_000,
+        "iceServer": [{"url": "turn:turn.example", "username": "user", "credential": "secret"}],
+    }
+    data.update(overrides)
+    return XSenseWebRTCTicket.from_api("SSC0A123", data)
+
+
+def test_ticket_connect_details_match_apk(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100.123)
+
+    signal_ticket = ticket(signalServer="https://signal.example:443", signalServerIpAddress="203.0.113.10")
+
+    assert signal_ticket.session_id == "Android-client123-100123"
+    assert signal_ticket.signal_url() == (
+        "wss://signal.example:443/group/viewer/client123"
+        "?traceId=trace&time=123456&sign=sig&name=test-123"
+    )
+    assert signal_ticket.signal_connect_options() == {
+        "url": (
+            "wss://203.0.113.10:443/group/viewer/client123"
+            "?traceId=trace&time=123456&sign=sig&name=test-123"
+        ),
+        "headers": {"Host": "signal.example:443"},
+        "server_hostname": "signal.example",
+    }
+
+
+def test_webrtc_offer_candidate_and_start_live_payloads_match_apk(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+
+    offer = json.loads(
+        make_sdp_offer_payload(
+            offer_sdp="v=0\r\n",
+            ticket=ticket(),
+            recipient_client_id="SSC0A123",
+            session_id="Android-client123-100000",
+            resolution="1280x720",
+        )
+    )
+    candidate = json.loads(
+        make_ice_candidate_payload(
+            candidate=RTCIceCandidateInit(
+                "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+                sdp_mid="0",
+                sdp_m_line_index=0,
+            ),
+            ticket=ticket(),
+            recipient_client_id="SSC0A123",
+            session_id="Android-client123-100000",
+        )
+    )
+
+    assert SIGNAL_DATA_CHANNEL == "data-channel-of-"
+    assert offer | {"messagePayload": "<decoded>"} == {
+        "messageType": "SDP_OFFER",
+        "messagePayload": "<decoded>",
+        "mode": "vicoo",
+        "recipientClientId": "SSC0A123",
+        "senderClientId": "client123",
+        "sessionId": "Android-client123-100000",
+        "viewerType": "a4x_sdk",
+        "resolution": "1280x720",
+    }
+    assert json.loads(base64.b64decode(offer["messagePayload"])) == {"type": "offer", "sdp": "v=0\r\n"}
+    assert candidate | {"messagePayload": "<decoded>"} == {
+        "messageType": "ICE_CANDIDATE",
+        "messagePayload": "<decoded>",
+        "recipientClientId": "SSC0A123",
+        "senderClientId": "client123",
+        "sessionId": "Android-client123-100000",
+    }
+    assert json.loads(base64.b64decode(candidate["messagePayload"])) == {
+        "sdpMid": "0",
+        "sdpMLineIndex": 0,
+        "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+    }
+    assert make_start_live_data_channel_message("2560x1440") == {
+        "requestID": "cmd_100",
+        "connectionID": "7893feb",
+        "timeStamp": 100,
+        "action": "startLive",
+        "size": "1920x1080",
+        "resolution": "2560x1440",
+    }
+    assert make_start_live_data_channel_message("auto")["size"] == "1280x720"
+    assert (
+        webrtc_signal._camera_rtc_configuration(ticket()).bundlePolicy.value
+        == "max-bundle"
+    )
+
+
+def test_parse_signal_message_decodes_answer_payload():
+    encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode()
+
+    assert parse_signal_message(
+        json.dumps({"messageType": "SDP_ANSWER", "messagePayload": encoded})
+    ) == ("SDP_ANSWER", {"sdp": "answer"})
+
+
+def test_parse_signal_message_accepts_apk_peer_event_wrappers():
+    assert parse_signal_message(
+        json.dumps({"event": "PEER_IN", "data": {"clientId": "SSC0A123"}})
+    ) == ("PEER_IN", "SSC0A123")
+    assert parse_signal_message(
+        json.dumps({"type": "PEER_OUT", "message": json.dumps({"deviceSN": "SSC0B456"})})
+    ) == ("PEER_OUT", "SSC0B456")
