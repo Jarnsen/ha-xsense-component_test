@@ -52,6 +52,7 @@ def test_ticket_connect_details_match_apk(monkeypatch):
 
 def test_webrtc_offer_candidate_and_start_live_payloads_match_apk(monkeypatch):
     monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+    monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
 
     offer = json.loads(
         make_sdp_offer_payload(
@@ -100,7 +101,7 @@ def test_webrtc_offer_candidate_and_start_live_payloads_match_apk(monkeypatch):
         "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
     }
     assert make_start_live_data_channel_message("2560x1440") == {
-        "requestID": "cmd_100",
+        "requestID": "100000-321",
         "connectionID": "7893feb",
         "timeStamp": 100,
         "action": "startLive",
@@ -114,18 +115,82 @@ def test_webrtc_offer_candidate_and_start_live_payloads_match_apk(monkeypatch):
     )
 
 
-def test_parse_signal_message_decodes_answer_payload():
+def test_parse_signal_message_preserves_answer_envelope_for_apk_validation():
+    encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode()
+    raw = json.dumps(
+        {
+            "messageType": "SDP_ANSWER",
+            "messagePayload": encoded,
+            "senderClientId": "SSC0A123",
+            "recipientClientId": "client123",
+        }
+    )
+
+    event, payload = parse_signal_message(raw)
+
+    assert event == "SDP_ANSWER"
+    assert payload["senderClientId"] == "SSC0A123"
+    assert payload["recipientClientId"] == "client123"
+    assert webrtc_signal._owned_answer_sdp(payload, ticket()) == "answer"
+
+
+def test_apk_sdp_answer_validation_rejects_other_camera_or_viewer():
     encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode()
 
-    assert parse_signal_message(
-        json.dumps({"messageType": "SDP_ANSWER", "messagePayload": encoded})
-    ) == ("SDP_ANSWER", {"sdp": "answer"})
+    assert (
+        webrtc_signal._owned_answer_sdp(
+            {
+                "messagePayload": encoded,
+                "senderClientId": "SSC0B456",
+                "recipientClientId": "client123",
+            },
+            ticket(),
+        )
+        is None
+    )
+    assert (
+        webrtc_signal._owned_answer_sdp(
+            {
+                "messagePayload": encoded,
+                "senderClientId": "SSC0A123",
+                "recipientClientId": "other-client",
+            },
+            ticket(),
+        )
+        is None
+    )
 
 
 def test_parse_signal_message_accepts_apk_peer_event_wrappers():
     assert parse_signal_message(
         json.dumps({"event": "PEER_IN", "data": {"clientId": "SSC0A123"}})
     ) == ("PEER_IN", "SSC0A123")
+    assert webrtc_signal._is_owned_peer_message("SSC0A123", "SSC0A123")
+    assert not webrtc_signal._is_owned_peer_message("SSC0B456", "SSC0A123")
     assert parse_signal_message(
         json.dumps({"type": "PEER_OUT", "message": json.dumps({"deviceSN": "SSC0B456"})})
     ) == ("PEER_OUT", "SSC0B456")
+
+
+def test_localhost_ice_candidates_are_filtered_like_apk():
+    assert webrtc_signal._is_localhost_candidate(
+        RTCIceCandidateInit(
+            "candidate:1 1 udp 1 127.0.0.1 123 typ host",
+            sdp_mid="0",
+            sdp_m_line_index=0,
+        )
+    )
+    assert webrtc_signal._is_localhost_candidate(
+        RTCIceCandidateInit(
+            "candidate:1 1 udp 1 ::1 123 typ host",
+            sdp_mid="0",
+            sdp_m_line_index=0,
+        )
+    )
+    assert not webrtc_signal._is_localhost_candidate(
+        RTCIceCandidateInit(
+            "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+            sdp_mid="0",
+            sdp_m_line_index=0,
+        )
+    )

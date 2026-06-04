@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from dataclasses import dataclass
+from importlib import import_module
 
 from homeassistant import config_entries
 from homeassistant.components.camera import (
@@ -68,6 +69,12 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         self.entity_description = entity_description
         self._webrtc_sessions: dict[str, object] = {}
         super().__init__(coordinator, entity)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle camera data updates and refresh HA stream capabilities."""
+        self._invalidate_camera_capabilities_cache()
+        super()._handle_coordinator_update()
 
     @property
     def model(self) -> str | None:
@@ -159,11 +166,13 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         # Import the WebRTC bridge only when Home Assistant actually starts a
         # camera WebRTC session. This keeps optional media-stack imports out of
         # normal camera discovery and mirrors the app on-demand live-view path.
-        from .webrtc_signal import XSenseWebRTCSession, XSenseWebRTCTicket
+        webrtc_signal = await self.hass.async_add_import_executor_job(
+            import_module, __package__ + ".webrtc_signal"
+        )
 
-        session = XSenseWebRTCSession(
+        session = webrtc_signal.XSenseWebRTCSession(
             session=async_get_clientsession(self.hass),
-            ticket=XSenseWebRTCTicket.from_api(entity.sn, ticket_data),
+            ticket=webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, ticket_data),
             offer_sdp=offer_sdp,
             resolution=_camera_live_resolution(entity),
             send_message=send_message,
@@ -221,7 +230,7 @@ def _is_webrtc_camera(entity) -> bool:
     """Return whether the ADDX device model says this camera streams over WebRTC."""
     protocol = _stream_protocol(entity)
     if protocol is None:
-        return entity.data.get("supportWebrtc") is True
+        return True
     return (
         protocol not in {"rtsp", "rtmp"}
         and "rtsp" not in protocol
@@ -231,7 +240,7 @@ def _is_webrtc_camera(entity) -> bool:
 
 def _camera_live_resolution(entity) -> str:
     """Return the live resolution string used by the ADDX player."""
-    value = entity.data.get("liveResolution") or entity.data.get("recResolution")
-    if isinstance(value, str) and "x" in value:
+    value = entity.data.get("liveResolution")
+    if isinstance(value, str) and (value == "auto" or "x" in value):
         return value
     return "auto"

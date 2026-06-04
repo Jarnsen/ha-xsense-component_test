@@ -43,6 +43,15 @@ def test_obsolete_sensor_cleanup_targets_static_identifier_entities_only():
     assert "device-1-wifi-rssi" not in unique_ids
 
 
+def test_software_version_is_device_info_not_sensor():
+    from custom_components.xsense.sensor import SENSORS
+
+    sensor_keys = {description.key for description in SENSORS}
+
+    assert "sw_version" not in sensor_keys
+    assert "sbs50_sw" not in sensor_keys
+
+
 def test_static_identifiers_are_not_exposed_in_device_info():
     from custom_components.xsense.entity import XSenseEntity
 
@@ -356,7 +365,6 @@ def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
         "xs01-wx-mute-status",
         "xs01-wx-report-time",
         "xs01-wx-signal-strength",
-        "xs01-wx-software-version",
         "xs01-wx-ssid",
     ]
     entries = [
@@ -382,6 +390,18 @@ def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
                 unique_id="xs01-wx-serial-number",
                 entity_id="sensor.xs01_wx_serial_number",
             ),
+            SimpleNamespace(
+                domain="sensor",
+                platform="xsense",
+                unique_id="xs01-wx-software-version",
+                entity_id="sensor.xs01_wx_software_version",
+            ),
+            SimpleNamespace(
+                domain="sensor",
+                platform="xsense",
+                unique_id="xs01-wx-sw-version",
+                entity_id="sensor.xs01_wx_sw_version",
+            ),
         ]
     )
 
@@ -400,7 +420,12 @@ def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
         SimpleNamespace(entry_id="entry-id"),
     )
 
-    assert removed == ["sensor.xs01_wx_online_time", "sensor.xs01_wx_serial_number"]
+    assert removed == [
+        "sensor.xs01_wx_online_time",
+        "sensor.xs01_wx_serial_number",
+        "sensor.xs01_wx_software_version",
+        "sensor.xs01_wx_sw_version",
+    ]
 
 
 def test_obsolete_sensor_cleanup_scans_all_xsense_sensor_entries(monkeypatch):

@@ -39,6 +39,18 @@ def has_supported_data(key: str, support_key: str) -> Callable[[Entity], bool]:
     )
 
 
+def has_supported_or_unspecified_data(
+    key: str, support_key: str
+) -> Callable[[Entity], bool]:
+    """Return if the APK exposes camera audio when support is unset or enabled."""
+    return lambda entity: (
+        is_camera_entity(entity)
+        and key in entity.data
+        and entity.data.get("isAdmin") is True
+        and entity.data.get(support_key) is not False
+    )
+
+
 def has_shadow_volume(key: str) -> Callable[[Entity], bool]:
     """Return if a non-camera X-Sense shadow exposes a writable volume field."""
     return lambda entity: not is_camera_entity(entity) and key in entity.data
@@ -151,7 +163,9 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_min_value=0,
         native_max_value=100,
         native_step=1,
-        exists_fn=has_supported_data("liveSpeakerVolume", "supportLiveSpeakerVolume"),
+        exists_fn=has_supported_or_unspecified_data(
+            "liveSpeakerVolume", "supportLiveSpeakerVolume"
+        ),
     ),
     XSenseNumberEntityDescription(
         key="camera_alarm_seconds",
