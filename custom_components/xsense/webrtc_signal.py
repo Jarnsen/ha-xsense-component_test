@@ -45,8 +45,8 @@ from .const import LOGGER
 
 def _preload_dns_rdata_classes() -> None:
     """Warm dnspython lazy imports used by aioice mDNS outside the event loop."""
-    mdns_classes = (1, 255, 32769)
-    mdns_types = (1, 12, 16, 28, 33, 47)
+    mdns_classes = (1, 255, 512, 1232, 1280, 1400, 1440, 1500, 4096, 32769)
+    mdns_types = (1, 12, 16, 28, 33, 41, 47)
     for rdclass in mdns_classes:
         for rdtype in mdns_types:
             with suppress(Exception):
@@ -189,7 +189,9 @@ def make_sdp_offer_payload(
     resolution: str | None,
 ) -> str:
     """Return the APK-compatible SDP offer envelope."""
-    payload = _b64_json({"type": "offer", "sdp": offer_sdp})
+    payload = _b64_json(
+        {"type": "offer", "sdp": _sdp_without_local_candidates(offer_sdp)}
+    )
     envelope: dict[str, Any] = {
         "messageType": "SDP_OFFER",
         "messagePayload": payload,
@@ -203,6 +205,32 @@ def make_sdp_offer_payload(
         envelope["resolution"] = resolution
     return json.dumps(envelope, separators=(",", ":"))
 
+
+def make_ice_candidate_payload(
+    *,
+    candidate: str,
+    sdp_mid: str | None,
+    sdp_m_line_index: int,
+    ticket: XSenseWebRTCTicket,
+    recipient_client_id: str,
+    session_id: str,
+) -> str:
+    """Return the APK-compatible ICE_CANDIDATE signal envelope."""
+    payload = _b64_json(
+        {
+            "sdpMid": sdp_mid,
+            "sdpMLineIndex": sdp_m_line_index,
+            "candidate": candidate,
+        }
+    )
+    envelope: dict[str, Any] = {
+        "messageType": "ICE_CANDIDATE",
+        "messagePayload": payload,
+        "recipientClientId": recipient_client_id,
+        "senderClientId": ticket.client_id,
+        "sessionId": session_id,
+    }
+    return json.dumps(envelope, separators=(",", ":"))
 
 
 def make_start_live_data_channel_message(resolution: str) -> dict[str, Any]:
@@ -298,6 +326,8 @@ class XSenseWebRTCSession:
         self._pending_camera_candidates: list[RTCIceCandidate] = []
         self._camera_peer_ready = False
         self._camera_offer_sent = False
+        self._camera_peer_connected = False
+        self._start_live_sent = False
 
     async def start(self) -> bool:
         """Connect both WebRTC peers and start the X-Sense camera stream."""
@@ -369,12 +399,28 @@ class XSenseWebRTCSession:
 
         @self._data_channel.on("open")
         def on_open():
-            self._data_channel.send(
-                json.dumps(
-                    make_start_live_data_channel_message(self._resolution),
-                    separators=(",", ":"),
-                )
+            self._send_start_live_if_ready()
+
+        @self._camera_pc.on("connectionstatechange")
+        def on_connectionstatechange():
+            self._camera_peer_connected = self._camera_pc.connectionState == "connected"
+            self._send_start_live_if_ready()
+
+    def _send_start_live_if_ready(self) -> None:
+        """Send startLive when the APK would: data channel open and peer connected."""
+        if (
+            self._start_live_sent
+            or not self._camera_peer_connected
+            or getattr(self._data_channel, "readyState", None) != "open"
+        ):
+            return
+        self._data_channel.send(
+            json.dumps(
+                make_start_live_data_channel_message(self._resolution),
+                separators=(",", ":"),
             )
+        )
+        self._start_live_sent = True
 
     async def _start_camera_peer(self) -> None:
         self._camera_pc.addTransceiver("video", direction="recvonly")
@@ -400,7 +446,24 @@ class XSenseWebRTCSession:
                 resolution=self._resolution,
             )
         )
+        await self._send_local_ice_candidates()
         self._camera_offer_sent = True
+
+    async def _send_local_ice_candidates(self) -> None:
+        """Send gathered local ICE candidates over the X-Sense signal server."""
+        if self._ws is None or self._camera_pc.localDescription is None:
+            return
+        for candidate in _local_sdp_candidates(self._camera_pc.localDescription.sdp):
+            await self._ws.send_str(
+                make_ice_candidate_payload(
+                    candidate=candidate["candidate"],
+                    sdp_mid=candidate["sdpMid"],
+                    sdp_m_line_index=candidate["sdpMLineIndex"],
+                    ticket=self._ticket,
+                    recipient_client_id=self._recipient_client_id,
+                    session_id=self._session_id,
+                )
+            )
 
     async def _read_loop(self) -> None:
         if self._ws is None:
@@ -496,6 +559,43 @@ def _is_owned_peer_message(payload: Any, serial_number: str) -> bool:
     """Return whether a PEER_IN/PEER_OUT payload belongs to this camera."""
     return isinstance(payload, str) and payload == serial_number
 
+
+def _sdp_without_local_candidates(sdp: str) -> str:
+    """Return the createOffer-style SDP before local ICE candidates are appended."""
+    lines = [
+        line
+        for line in sdp.splitlines()
+        if not line.startswith("a=candidate:")
+        and not line.startswith("a=end-of-candidates")
+    ]
+    ending = "\r\n" if "\r\n" in sdp else "\n"
+    return ending.join(lines) + (ending if sdp.endswith(("\r\n", "\n")) else "")
+
+
+def _local_sdp_candidates(sdp: str) -> list[dict[str, Any]]:
+    """Return APK-style candidate payloads from a gathered local SDP."""
+    candidates: list[dict[str, Any]] = []
+    current_mid: str | None = None
+    current_index = -1
+    for raw_line in sdp.splitlines():
+        line = raw_line.strip()
+        if line.startswith("m="):
+            current_index += 1
+            current_mid = None
+        elif line.startswith("a=mid:"):
+            current_mid = line.removeprefix("a=mid:")
+        elif line.startswith("a=candidate:"):
+            candidate = line.removeprefix("a=")
+            if "127.0.0.1" in candidate or "::1" in candidate:
+                continue
+            candidates.append(
+                {
+                    "sdpMid": current_mid,
+                    "sdpMLineIndex": current_index,
+                    "candidate": candidate,
+                }
+            )
+    return candidates
 
 
 def _candidate_payload_to_aiortc(payload: Any) -> RTCIceCandidate | None:
