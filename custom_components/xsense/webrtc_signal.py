@@ -6,22 +6,31 @@ import asyncio
 import base64
 import json
 import time
+import warnings
 from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse, urlunparse
 
 import aiohttp
-from aiortc import (
-    RTCBundlePolicy as AiortcRTCBundlePolicy,
-    RTCConfiguration as AiortcRTCConfiguration,
-    RTCIceCandidate,
-    RTCIceServer as AiortcRTCIceServer,
-    RTCPeerConnection,
-    RTCSessionDescription,
-)
-from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
-from aiortc.sdp import candidate_from_sdp, candidate_to_sdp
+
+with warnings.catch_warnings():
+    warnings.filterwarnings(
+        "ignore",
+        message="As the c extension couldn't be imported, `google-crc32c` is using a pure python implementation.*",
+        category=RuntimeWarning,
+        module="google_crc32c",
+    )
+    from aiortc import (
+        RTCBundlePolicy as AiortcRTCBundlePolicy,
+        RTCConfiguration as AiortcRTCConfiguration,
+        RTCIceCandidate,
+        RTCIceServer as AiortcRTCIceServer,
+        RTCPeerConnection,
+        RTCSessionDescription,
+    )
+    from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
+    from aiortc.sdp import candidate_from_sdp, candidate_to_sdp
 from homeassistant.components.camera.webrtc import (
     WebRTCAnswer,
     WebRTCError,
