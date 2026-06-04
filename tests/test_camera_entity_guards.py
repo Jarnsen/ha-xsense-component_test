@@ -87,9 +87,7 @@ def test_all_select_camera_controls_require_camera_entity():
         },
     )
 
-    assert not any(
-        description.exists_fn(non_camera) for description in select.SELECTS
-    )
+    assert not any(description.exists_fn(non_camera) for description in select.SELECTS)
 
 
 def test_number_camera_controls_require_camera_entity():
@@ -110,6 +108,45 @@ def test_read_only_camera_entities_require_camera_entity():
     assert binary_sensor.has_camera_data("needMotion")(camera)
 
 
+def test_camera_audio_controls_follow_apk_unspecified_support_rule():
+    live_audio = next(
+        description
+        for description in switch.SWITCHES
+        if description.key == "camera_live_audio"
+    )
+    recording_audio = next(
+        description
+        for description in switch.SWITCHES
+        if description.key == "camera_recording_audio"
+    )
+    live_speaker = next(
+        description
+        for description in number.NUMBERS
+        if description.key == "camera_live_speaker_volume"
+    )
+    camera = entity(
+        "SSC0A",
+        {
+            "isAdmin": True,
+            "liveAudioToggleOn": True,
+            "recordingAudioToggleOn": True,
+            "liveSpeakerVolume": 80,
+        },
+    )
+
+    assert live_audio.exists_fn(camera)
+    assert recording_audio.exists_fn(camera)
+    assert live_speaker.exists_fn(camera)
+
+    camera.data["supportLiveAudio"] = False
+    camera.data["supportRecordingAudio"] = False
+    camera.data["supportLiveSpeakerVolume"] = False
+
+    assert not live_audio.exists_fn(camera)
+    assert not recording_audio.exists_fn(camera)
+    assert not live_speaker.exists_fn(camera)
+
+
 def test_supported_camera_controls_require_explicit_support_flag():
     camera = entity(
         "SSC0B",
@@ -128,9 +165,9 @@ def test_supported_camera_controls_require_explicit_support_flag():
 
     assert switch.has_supported_data("recLamp", "supportRecLamp")(camera)
     assert number.has_supported_data("alarmVol", "supportAlarmVolume")(camera)
-    assert select.has_supported_data(
-        "antiflicker", support_key="supportAntiFlicker"
-    )(camera)
+    assert select.has_supported_data("antiflicker", support_key="supportAntiFlicker")(
+        camera
+    )
 
 
 def test_camera_write_controls_require_explicit_admin_flag():
@@ -215,3 +252,43 @@ def test_camera_platform_import_does_not_load_webrtc_bridge():
     from custom_components.xsense import camera  # noqa: F401
 
     assert "custom_components.xsense.webrtc_signal" not in sys.modules
+
+
+def test_camera_update_invalidates_capability_cache():
+    from custom_components.xsense.camera import XSenseCameraEntity, CAMERA_DESCRIPTION
+    from homeassistant.components.camera.const import StreamType
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "rtsp"})
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+
+    initial_capabilities = camera.camera_capabilities
+
+    camera_entity.data.update({"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera._invalidate_camera_capabilities_cache()
+
+    assert camera.camera_capabilities is not initial_capabilities
+    assert camera.camera_capabilities.frontend_stream_types == {StreamType.WEB_RTC}
+
+
+def test_camera_entity_webrtc_protocol_default_matches_apk():
+    from custom_components.xsense import camera
+
+    assert camera._is_webrtc_camera(entity("SSC0A", {}))
+    assert camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "webrtc"}))
+    assert not camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "rtsp"}))
+    assert not camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "RTMP"}))

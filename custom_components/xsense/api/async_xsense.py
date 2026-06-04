@@ -152,11 +152,6 @@ def _camera_live_resolution(camera: Entity) -> str:
     """Return the APK start-live resolution fallback for a camera."""
     if resolution := _camera_resolution(camera.data.get("liveResolution")):
         return resolution
-    options = camera.data.get("supportedRecordingResolutions")
-    if isinstance(options, list):
-        for option in options:
-            if resolution := _camera_resolution(option):
-                return resolution
     return "auto"
 
 
@@ -472,14 +467,16 @@ class AsyncXSense(XSenseBase):
             if setting_options:
                 camera.set_data(_camera_settings_options_data(setting_options))
 
-            if any(
-                camera.data.get(key)
-                for key in (
-                    "supportLiveAudio",
-                    "supportLiveSpeakerVolume",
-                    "supportRecordingAudio",
-                    "supportMechanicalDingDong",
+            if (
+                any(
+                    camera.data.get(key) is not False
+                    for key in (
+                        "supportLiveAudio",
+                        "supportLiveSpeakerVolume",
+                        "supportRecordingAudio",
+                    )
                 )
+                or camera.data.get("supportMechanicalDingDong") is True
             ):
                 try:
                     audio = await self.addx_call(
@@ -510,12 +507,14 @@ class AsyncXSense(XSenseBase):
             return None
 
         device_house_id = data.get("houseId")
-        target_houses = [
-            house
-            for house in self.houses.values()
-            if device_house_id in (None, "")
-            or str(device_house_id) == str(house.house_id)
-        ]
+        if device_house_id in (None, ""):
+            target_houses = list(self.houses.values())
+        else:
+            target_houses = [
+                house
+                for house in self.houses.values()
+                if str(device_house_id) == str(house.house_id)
+            ]
         if not target_houses:
             return None
 
@@ -526,6 +525,9 @@ class AsyncXSense(XSenseBase):
                     and _normalized_camera_serial(station.sn) == normalized_serial
                 ):
                     return station
+
+        if device_house_id in (None, "") and len(target_houses) != 1:
+            return None
 
         house = target_houses[0]
         station_id = str(serial)
@@ -538,7 +540,7 @@ class AsyncXSense(XSenseBase):
             or station_id,
             category=_camera_type(data),
             deviceType=_camera_type(data),
-            onLine=data.get("online", 1),
+            onLine=data.get("online"),
             devices=[],
         )
         station.set_devices({"devices": []})
@@ -1124,6 +1126,8 @@ def _add_camera_config_companions(camera: Entity, payload: Dict) -> None:
             payload["alarmSeconds"] = 10
         elif camera.data.get("alarmSeconds") is not None:
             payload["alarmSeconds"] = camera.data["alarmSeconds"]
+        else:
+            raise XSenseError("Camera alarm duration is unknown")
     if (
         "needNightVision" in payload
         and camera.data.get("nightThresholdLevel") is not None

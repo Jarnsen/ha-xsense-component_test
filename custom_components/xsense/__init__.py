@@ -37,6 +37,9 @@ OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
     "mac",
     "bluetooth_mac",
     "online_time",
+    "software_version",
+    "sw_version",
+    "sbs50_sw",
 )
 
 

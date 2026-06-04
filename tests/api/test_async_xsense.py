@@ -9,10 +9,7 @@ from pathlib import Path
 
 import pytest
 
-
-API_PATH = (
-    Path(__file__).resolve().parents[2] / "custom_components" / "xsense" / "api"
-)
+API_PATH = Path(__file__).resolve().parents[2] / "custom_components" / "xsense" / "api"
 
 
 def load_api_module(module_name: str):
@@ -476,19 +473,19 @@ def test_station_set_devices_uses_house_room_names_like_apk():
 def test_initial_online_state_uses_strict_boolean_values():
     station_obj = station.Station(
         None,
-        stationId='station-id',
-        stationName='Station',
-        stationSn='station-sn',
-        category='SBS50',
-        onLine='0',
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+        onLine="0",
     )
     device_obj = device_module.Device(
         station_obj,
-        deviceId='device-id',
-        deviceName='Device',
-        deviceSn='device-sn',
-        deviceType='SD11-MR',
-        online='1',
+        deviceId="device-id",
+        deviceName="Device",
+        deviceSn="device-sn",
+        deviceType="SD11-MR",
+        online="1",
     )
 
     assert station_obj.online is False
@@ -498,10 +495,10 @@ def test_initial_online_state_uses_strict_boolean_values():
 def test_online_update_accepts_on_line_without_inventing_unknown_values():
     device_obj = entity.Entity()
 
-    device_obj.set_data({'onLine': '0'})
+    device_obj.set_data({"onLine": "0"})
     assert device_obj.online is False
 
-    device_obj.set_data({'onLine': 'unexpected'})
+    device_obj.set_data({"onLine": "unexpected"})
     assert device_obj.online is False
 
 
@@ -524,17 +521,17 @@ def test_parse_get_state_does_not_use_stale_alarm_status_when_missing():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(
         None,
-        stationId='station-id',
-        stationName='Station',
-        stationSn='station-sn',
-        category='SBS50',
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
     )
 
     client.parse_get_state(station_obj, {"alarmStatus": "1"})
     assert station_obj.has_alarm is True
 
-    client.parse_get_state(station_obj, {'wifiRSSI': -55})
-    assert station_obj.data['alarmStatus'] is True
+    client.parse_get_state(station_obj, {"wifiRSSI": -55})
+    assert station_obj.data["alarmStatus"] is True
     assert station_obj.has_alarm is False
 
 
@@ -542,13 +539,13 @@ def test_parse_get_state_uses_current_activate_without_alarm_status():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(
         None,
-        stationId='station-id',
-        stationName='Station',
-        stationSn='station-sn',
-        category='SBS50',
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
     )
 
-    client.parse_get_state(station_obj, {'activate': '1'})
+    client.parse_get_state(station_obj, {"activate": "1"})
 
     assert station_obj.has_alarm is True
 
@@ -762,7 +759,9 @@ class FakeXSenseStation:
     def __init__(self, station_type: str = "SBS50") -> None:
         self.type = station_type
         self.sn = "station-sn"
-        self.shadow_name = "SBS50station-sn" if station_type == "SBS50" else "station-sn"
+        self.shadow_name = (
+            "SBS50station-sn" if station_type == "SBS50" else "station-sn"
+        )
         self.data = {}
 
 
@@ -807,16 +806,116 @@ async def _capture_action(client, target, action):
         "expected_station_shadow",
     ),
     [
-        ("XS0B-MR", entity_map.EntityType.SMOKE, {}, None, "2nd_selftest_device-sn", "app2ndSelfTest", "source=1", 13, None),
-        ("XS01-WX", entity_map.EntityType.SMOKE, {}, "XS01-WX", "appselftest_device-sn", "appSelfTest", None, None, None),
-        ("XS01-WX", entity_map.EntityType.SMOKE, {}, None, "2nd_selftest_device-sn", "appSelfTest", None, 13, None),
-        ("XS01-M", entity_map.EntityType.SMOKE, {"smokeEdition": "9"}, None, "2nd_selftest_device-sn", "app2ndSelfTest", "source=1", 13, None),
-        ("XS01-M", entity_map.EntityType.SMOKE, {"smokeEdition": "8"}, None, "2nd_selftest_device-sn", "appSelfTest", None, 13, None),
-        ("XP0J-iA", entity_map.EntityType.COMBI, {}, None, "2nd_selftest_device-sn", "appSelfTest", "source=1", 13, "XP0J-iA-station-sn"),
-        ("SD11-MR", entity_map.EntityType.SMOKE, {}, None, "2nd_selftest_device-sn", "app2ndSelfTest", "source=1", 13, None),
-        ("SWS0A", entity_map.EntityType.WATER, {}, None, "2nd_selftest_device-sn", "waterSelfTest", "source=1", 13, None),
-        ("SDS0A", entity_map.EntityType.DOOR, {}, None, "2nd_selftest_device-sn", "app2ndSelfTest", "source=1", 13, None),
-        ("SAL51", entity_map.EntityType.LISTENER, {}, None, "2nd_selftest_device-sn", "listenerSelfTest", None, 13, None),
+        (
+            "XS0B-MR",
+            entity_map.EntityType.SMOKE,
+            {},
+            None,
+            "2nd_selftest_device-sn",
+            "app2ndSelfTest",
+            "source=1",
+            13,
+            None,
+        ),
+        (
+            "XS01-WX",
+            entity_map.EntityType.SMOKE,
+            {},
+            "XS01-WX",
+            "appselftest_device-sn",
+            "appSelfTest",
+            None,
+            None,
+            None,
+        ),
+        (
+            "XS01-WX",
+            entity_map.EntityType.SMOKE,
+            {},
+            None,
+            "2nd_selftest_device-sn",
+            "appSelfTest",
+            None,
+            13,
+            None,
+        ),
+        (
+            "XS01-M",
+            entity_map.EntityType.SMOKE,
+            {"smokeEdition": "9"},
+            None,
+            "2nd_selftest_device-sn",
+            "app2ndSelfTest",
+            "source=1",
+            13,
+            None,
+        ),
+        (
+            "XS01-M",
+            entity_map.EntityType.SMOKE,
+            {"smokeEdition": "8"},
+            None,
+            "2nd_selftest_device-sn",
+            "appSelfTest",
+            None,
+            13,
+            None,
+        ),
+        (
+            "XP0J-iA",
+            entity_map.EntityType.COMBI,
+            {},
+            None,
+            "2nd_selftest_device-sn",
+            "appSelfTest",
+            "source=1",
+            13,
+            "XP0J-iA-station-sn",
+        ),
+        (
+            "SD11-MR",
+            entity_map.EntityType.SMOKE,
+            {},
+            None,
+            "2nd_selftest_device-sn",
+            "app2ndSelfTest",
+            "source=1",
+            13,
+            None,
+        ),
+        (
+            "SWS0A",
+            entity_map.EntityType.WATER,
+            {},
+            None,
+            "2nd_selftest_device-sn",
+            "waterSelfTest",
+            "source=1",
+            13,
+            None,
+        ),
+        (
+            "SDS0A",
+            entity_map.EntityType.DOOR,
+            {},
+            None,
+            "2nd_selftest_device-sn",
+            "app2ndSelfTest",
+            "source=1",
+            13,
+            None,
+        ),
+        (
+            "SAL51",
+            entity_map.EntityType.LISTENER,
+            {},
+            None,
+            "2nd_selftest_device-sn",
+            "listenerSelfTest",
+            None,
+            13,
+            None,
+        ),
     ],
 )
 async def test_self_test_uses_apk_payload_shape(
@@ -941,9 +1040,7 @@ async def test_wifi_device_mute_uses_apk_factory_payload_shape(
         ("XC0C-MR", "app2ndMute"),
     ],
 )
-async def test_sbs50_child_mute_uses_apk_payload_shape(
-    device_type, expected_shadow
-):
+async def test_sbs50_child_mute_uses_apk_payload_shape(device_type, expected_shadow):
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
     device = FakeXSenseDevice(device_type)
@@ -1137,7 +1234,14 @@ async def _capture_volume_update(client, target, volume_key, volume):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("station_type", "station_data", "volume_key", "volume", "expected_page", "expected_desired"),
+    (
+        "station_type",
+        "station_data",
+        "volume_key",
+        "volume",
+        "expected_page",
+        "expected_desired",
+    ),
     [
         (
             "SBS50",
@@ -1181,7 +1285,14 @@ async def test_station_volume_uses_apk_station_payload_shape(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("device_type", "entity_type", "device_data", "volume_key", "volume", "expected_desired"),
+    (
+        "device_type",
+        "entity_type",
+        "device_data",
+        "volume_key",
+        "volume",
+        "expected_desired",
+    ),
     [
         (
             "XS0B-MR",
@@ -1416,6 +1527,69 @@ def test_house_set_stations_preserves_all_apk_camera_entries_before_model_checks
 
 
 @pytest.mark.asyncio
+async def test_update_camera_data_does_not_place_new_camera_without_house_id_in_multi_house_account():
+    client = async_xsense.AsyncXSense()
+    first_house = house.House(None, "house-a", "Home A", "US", "us-east-1", "mqtt-a")
+    second_house = house.House(None, "house-b", "Home B", "US", "us-east-1", "mqtt-b")
+    first_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
+    second_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
+    client.houses = {"house-a": first_house, "house-b": second_house}
+
+    async def addx_call(endpoint, **kwargs):
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "cam-sn",
+                        "deviceName": "Front Camera",
+                        "modelNo": "SSC0A",
+                        "online": 1,
+                        "deviceModel": {"streamProtocol": "webrtc"},
+                    }
+                ]
+            }
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    assert first_house.get_station_by_sn("cam-sn") is None
+    assert second_house.get_station_by_sn("cam-sn") is None
+
+
+@pytest.mark.asyncio
+async def test_update_camera_data_does_not_assume_missing_camera_online_state():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
+    client.houses = {"house-id": test_house}
+
+    async def addx_call(endpoint, **kwargs):
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "cam-sn",
+                        "deviceName": "Front Camera",
+                        "houseId": "house-id",
+                        "modelNo": "SSC0A",
+                        "deviceModel": {"streamProtocol": "webrtc"},
+                    }
+                ]
+            }
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    camera = test_house.get_station_by_sn("cam-sn")
+    assert camera is not None
+    assert camera.online is None
+
+
+@pytest.mark.asyncio
 async def test_update_camera_data_updates_known_camera_from_addx_device_list():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
@@ -1464,7 +1638,10 @@ async def test_update_camera_data_updates_known_camera_from_addx_device_list():
     assert camera.data["batteryLevel"] == 3
     assert camera.data["streamProtocol"] == "webrtc"
     assert ("/device/listuserdevices", {}) in calls
-    assert ("/device/getuserconfig", {"serialNumber": "cam-sn", "voiceReminder": False}) in calls
+    assert (
+        "/device/getuserconfig",
+        {"serialNumber": "cam-sn", "voiceReminder": False},
+    ) in calls
 
 
 @pytest.mark.asyncio
@@ -1564,13 +1741,11 @@ async def test_update_camera_data_creates_camera_from_addx_without_home_stub():
     [
         ({"liveResolution": "VIDEO_SIZE_1920x1080"}, "1920x1080"),
         ({"liveResolution": "HD"}, "1920x1080"),
-        ({"supportedRecordingResolutions": ["P1296", "P1080"]}, "2304x1296"),
+        ({"supportedRecordingResolutions": ["P1296", "P1080"]}, "auto"),
         ({"supportedRecordingResolutions": []}, "auto"),
     ],
 )
-async def test_start_camera_live_uses_apk_live_resolution_fallback(
-    camera_data, expected
-):
+async def test_start_camera_live_uses_apk_live_resolution(camera_data, expected):
     client = async_xsense.AsyncXSense()
     camera = device_module.Device(
         None,
@@ -1644,6 +1819,49 @@ async def test_update_camera_data_loads_apk_form_options():
 
 
 @pytest.mark.asyncio
+async def test_update_camera_data_queries_audio_when_apk_support_is_unspecified():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
+    client.houses = {"house-id": test_house}
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "cam-sn",
+                        "deviceName": "Front Camera",
+                        "houseId": "house-id",
+                        "modelNo": "SSC0A",
+                        "online": 1,
+                        "deviceModel": {"streamProtocol": "webrtc"},
+                        "deviceSupport": {},
+                    }
+                ]
+            }
+        if endpoint == "/device/config/querydeviceaudio":
+            return {
+                "liveAudioToggleOn": True,
+                "recordingAudioToggleOn": True,
+                "liveSpeakerVolume": 80,
+            }
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    camera = test_house.get_station_by_sn("cam-sn")
+    assert camera.data["liveAudioToggleOn"] is True
+    assert camera.data["recordingAudioToggleOn"] is True
+    assert camera.data["liveSpeakerVolume"] == 80
+    assert ("/device/config/querydeviceaudio", {"serialNumber": "cam-sn"}) in calls
+
+
+@pytest.mark.asyncio
 async def test_get_camera_webrtc_ticket_fetches_on_demand_and_reuses_cache():
     client = async_xsense.AsyncXSense()
     camera = entity.Entity()
@@ -1671,7 +1889,12 @@ async def test_get_camera_webrtc_ticket_fetches_on_demand_and_reuses_cache():
     second = await client.get_camera_webrtc_ticket(camera)
 
     assert first == second
-    assert calls == [("/device/getWebrtcTicket", {"serialNumber": "cam-sn", "verifyDormancyStatus": True})]
+    assert calls == [
+        (
+            "/device/getWebrtcTicket",
+            {"serialNumber": "cam-sn", "verifyDormancyStatus": True},
+        )
+    ]
 
 
 def test_addx_body_requires_ipc_country():
@@ -1728,10 +1951,13 @@ def test_calculate_mac_uses_compact_gson_json_for_container_values():
         "plain": "x",
     }
 
-    mac_input = "[{\"name\":\"é\",\"value\":1}]" + "{\"label\":\"中文\",\"enabled\":true}" + "x" + "secret"
-    assert client._calculate_mac(data) == hashlib.md5(
-        mac_input.encode("utf-8")
-    ).hexdigest()
+    mac_input = (
+        '[{"name":"é","value":1}]' + '{"label":"中文","enabled":true}' + "x" + "secret"
+    )
+    assert (
+        client._calculate_mac(data)
+        == hashlib.md5(mac_input.encode("utf-8")).hexdigest()
+    )
 
 
 def test_calculate_mac_uses_java_scalar_text_for_bool_and_null():
@@ -1740,9 +1966,9 @@ def test_calculate_mac_uses_java_scalar_text_for_bool_and_null():
 
     data = {"enabled": True, "disabled": False, "missing": None}
 
-    assert client._calculate_mac(data) == hashlib.md5(
-        b"truefalsenullsecret"
-    ).hexdigest()
+    assert (
+        client._calculate_mac(data) == hashlib.md5(b"truefalsenullsecret").hexdigest()
+    )
 
 
 def test_calculate_mac_skips_empty_lists_like_apk():
@@ -1760,9 +1986,7 @@ def test_calculate_mac_string_led_lists_use_java_scalar_text():
 
     data = {"values": ["a", True, None], "plain": "z"}
 
-    assert client._calculate_mac(data) == hashlib.md5(
-        b"atruenullzsecret"
-    ).hexdigest()
+    assert client._calculate_mac(data) == hashlib.md5(b"atruenullzsecret").hexdigest()
 
 
 @pytest.mark.asyncio
@@ -1984,9 +2208,9 @@ def test_camera_data_normalizes_apk_integer_support_flags():
 def test_camera_data_uses_apk_webrtc_stream_protocol_rule():
     assert async_xsense._camera_data({"deviceModel": {}})["supportWebrtc"] is True
     assert (
-        async_xsense._camera_data(
-            {"deviceModel": {"streamProtocol": "webrtc"}}
-        )["supportWebrtc"]
+        async_xsense._camera_data({"deviceModel": {"streamProtocol": "webrtc"}})[
+            "supportWebrtc"
+        ]
         is True
     )
     assert (
@@ -2060,9 +2284,7 @@ def test_camera_user_config_payload_adds_apk_toggle_companions():
         "needAlarm": 1,
         "alarmSeconds": 20,
     }
-    assert async_xsense._camera_user_config_payload(
-        camera, {"needNightVision": 1}
-    ) == {
+    assert async_xsense._camera_user_config_payload(camera, {"needNightVision": 1}) == {
         "serialNumber": "cam-sn",
         "needNightVision": 1,
         "nightThresholdLevel": 3,
@@ -2084,6 +2306,22 @@ def test_camera_user_config_payload_uses_apk_rocker_alarm_seconds():
         "needAlarm": 1,
         "alarmSeconds": 10,
     }
+
+
+def test_camera_user_config_payload_requires_alarm_seconds_for_non_rocker():
+    camera = device_module.Device(
+        None,
+        deviceId="cam-id",
+        deviceName="Camera",
+        deviceSn="cam-sn",
+        deviceType="SSC0A",
+    )
+    camera.set_data({"supportRocker": False})
+
+    with pytest.raises(
+        async_xsense.XSenseError, match="Camera alarm duration is unknown"
+    ):
+        async_xsense._camera_user_config_payload(camera, {"needAlarm": 1})
 
 
 def test_camera_config_write_value_uses_apk_field_types():
@@ -2128,30 +2366,22 @@ def test_camera_config_data_normalizes_boolean_fields():
 
 def test_camera_data_requires_apk_sd_card_support_status():
     assert (
-        async_xsense._camera_data({"sdCard": {"formatStatus": 0}})[
-            "supportSdCard"
-        ]
+        async_xsense._camera_data({"sdCard": {"formatStatus": 0}})["supportSdCard"]
         is True
     )
     assert (
-        async_xsense._camera_data({"sdCard": {"formatStatus": 1}})[
-            "supportSdCard"
-        ]
+        async_xsense._camera_data({"sdCard": {"formatStatus": 1}})["supportSdCard"]
         is False
     )
     assert (
-        async_xsense._camera_data({"sdCard": {"formatStatus": 23}})[
-            "supportSdCard"
-        ]
+        async_xsense._camera_data({"sdCard": {"formatStatus": 23}})["supportSdCard"]
         is False
     )
     assert async_xsense._camera_data({})["supportSdCard"] is False
 
 
 def test_camera_data_requires_apk_sleep_support_code():
-    data = async_xsense._camera_data(
-        {"deviceSupport": {"deviceDormancySupport": 2}}
-    )
+    data = async_xsense._camera_data({"deviceSupport": {"deviceDormancySupport": 2}})
 
     assert data["supportSleep"] is False
 

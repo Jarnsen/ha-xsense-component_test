@@ -169,13 +169,6 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         value_fn=lambda entity: entity.data["ssid"],
     ),
     XSenseSensorEntityDescription(
-        key="sw_version",
-        translation_key="sw_version",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        exists_fn=lambda device: "sw" in device.data,
-        value_fn=lambda station: station.data["sw"],
-    ),
-    XSenseSensorEntityDescription(
         key="wifi_sw",
         translation_key="wifi_sw",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -773,14 +766,6 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         icon="mdi:shield-home",
         value_fn=data_value("safeMode"),
         exists_fn=has_data("safeMode"),
-    ),
-    XSenseSensorEntityDescription(
-        key="sbs50_sw",
-        name="SBS50 Software Version",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:chip",
-        value_fn=data_value("sbs50Sw"),
-        exists_fn=has_data("sbs50Sw"),
     ),
     XSenseSensorEntityDescription(
         key="camera_model",

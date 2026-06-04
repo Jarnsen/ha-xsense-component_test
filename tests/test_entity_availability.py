@@ -25,8 +25,8 @@ class Coordinator:
     xsense = None
     mqtt_servers = {}
 
-    def __init__(self, entity):
-        self.data = {"stations": {entity.entity_id: entity}, "devices": {}}
+    def __init__(self, entity, devices=None):
+        self.data = {"stations": {entity.entity_id: entity}, "devices": devices or {}}
 
     def mqtt_server(self, host):
         return self.mqtt_servers.get(host)
@@ -135,6 +135,34 @@ def test_xs01_wx_controls_are_available_when_shadow_reports_online_time():
     assert switch.available
 
 
+def test_child_controls_require_parent_station_online():
+    station = _xs01_wx_from_real_shadow()
+    station.entity_id = "station-id"
+    child = station.__class__(
+        station.house,
+        stationId="child-id",
+        stationName="Child Device",
+        stationSn="child-sn",
+        category="SD11-MR",
+        online=1,
+    )
+    child.entity_id = "child-id"
+    child.station = station
+    coordinator = Coordinator(station, {child.entity_id: child})
+    button = XSenseButtonEntity(
+        coordinator,
+        child,
+        XSenseButtonEntityDescription(key="test", press_fn=_noop_press),
+        station_id=station.entity_id,
+    )
+
+    assert button.available
+
+    station.online = False
+
+    assert not button.available
+
+
 def test_controls_are_unavailable_when_online_state_is_unknown():
     station = _xs01_wx_from_real_shadow()
     station.online = None
@@ -160,7 +188,6 @@ def test_controls_are_unavailable_when_online_state_is_unknown():
     assert not switch.available
 
 
-
 def test_alarm_control_panel_requires_reported_online_station():
     station = _xs01_wx_from_real_shadow()
     station.type = "SBS50"
@@ -174,7 +201,6 @@ def test_alarm_control_panel_requires_reported_online_station():
 
     station.online = False
     assert not panel.available
-
 
 
 def test_connected_sensor_does_not_assume_unknown_online_state():
