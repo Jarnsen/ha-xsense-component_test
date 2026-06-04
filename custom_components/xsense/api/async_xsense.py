@@ -1,7 +1,7 @@
 import asyncio
 import json
 from datetime import datetime, timezone
-from typing import Dict
+from typing import Any, Dict
 
 import aiohttp
 
@@ -138,6 +138,16 @@ def _camera_resolution(value) -> str | None:
     return _CAMERA_RESOLUTION_ALIASES.get(normalized.upper())
 
 
+def _camera_webrtc_ticket_valid(ticket: dict) -> bool:
+    expiration = ticket.get("expirationTime")
+    if expiration in (None, ""):
+        return True
+    try:
+        return int(expiration) > int(datetime.now().timestamp() * 1000) + 60_000
+    except (TypeError, ValueError):
+        return False
+
+
 def _camera_live_resolution(camera: Entity) -> str:
     """Return the APK start-live resolution fallback for a camera."""
     if resolution := _camera_resolution(camera.data.get("liveResolution")):
@@ -147,7 +157,7 @@ def _camera_live_resolution(camera: Entity) -> str:
         for option in options:
             if resolution := _camera_resolution(option):
                 return resolution
-    return ""
+    return "auto"
 
 
 class AsyncXSense(XSenseBase):
@@ -420,9 +430,6 @@ class AsyncXSense(XSenseBase):
             if _camera_type(device)
             and _normalized_camera_serial(device.get("serialNumber"))
         ]
-        if not devices:
-            return
-
         camera_serials = {
             _normalized_camera_serial(device.get("serialNumber")) for device in devices
         }
@@ -454,6 +461,16 @@ class AsyncXSense(XSenseBase):
                 config = None
             if config:
                 camera.set_data(_camera_config_data(config))
+
+            try:
+                setting_options = await self.addx_call(
+                    "/user/getFormOptions",
+                    serialNumber=camera.sn,
+                )
+            except APIFailure:
+                setting_options = None
+            if setting_options:
+                camera.set_data(_camera_settings_options_data(setting_options))
 
             if any(
                 camera.data.get(key)
@@ -587,6 +604,22 @@ class AsyncXSense(XSenseBase):
         )
         camera.set_data({"cooldownEnabled": user_enable, "cooldownValue": value})
 
+    async def get_camera_webrtc_ticket(self, camera: Entity) -> dict | None:
+        """Return an APK WebRTC ticket, reusing it until it is near expiry."""
+        cached = camera.data.get("cameraWebrtcTicket")
+        if isinstance(cached, dict) and _camera_webrtc_ticket_valid(cached):
+            return cached
+
+        data = await self.addx_call(
+            "/device/getWebrtcTicket",
+            serialNumber=camera.sn,
+            verifyDormancyStatus=True,
+        )
+        if isinstance(data, dict):
+            camera.set_data({"cameraWebrtcTicket": data})
+            return data
+        return None
+
     async def start_camera_live(self, camera: Entity) -> str | None:
         """Return the direct live URL from the ADDX start-live endpoint."""
         live_started_at = camera.data.get("cameraLiveStartedAt")
@@ -604,15 +637,17 @@ class AsyncXSense(XSenseBase):
             liveResolution=_camera_live_resolution(camera),
         )
         if isinstance(data, dict):
+            live_url = _camera_live_url(data)
             camera.set_data(
                 {
                     "cameraAudioUrl": data.get("audioUrl"),
                     "cameraLiveId": data.get("liveId"),
                     "cameraLiveStartedAt": datetime.now(),
-                    "cameraLiveUrl": data.get("liveUrl") or data.get("url"),
+                    "cameraLiveUrl": live_url,
+                    "cameraLiveProtocol": _url_scheme(live_url),
                 }
             )
-            return data.get("liveUrl") or data.get("url")
+            return live_url
         return None
 
     async def stop_camera_live(self, camera: Entity) -> None:
@@ -626,6 +661,7 @@ class AsyncXSense(XSenseBase):
                     "cameraLiveId": None,
                     "cameraLiveStartedAt": None,
                     "cameraLiveUrl": None,
+                    "cameraLiveProtocol": None,
                 }
             )
 
@@ -849,6 +885,23 @@ class AsyncXSense(XSenseBase):
         if callable(shadow):
             shadow = shadow(entity)
         return await self.set_state(entity, shadow, topic, action_def)
+
+
+def _url_scheme(url: str | None) -> str | None:
+    """Return the URL scheme without logging or exposing the full URL."""
+    if not isinstance(url, str) or "://" not in url:
+        return None
+    return url.split("://", 1)[0].lower()
+
+
+def _camera_live_url(data: Dict) -> str | None:
+    """Return the live URL transformed the same way as the APK RTMP player."""
+    live_url = data.get("liveUrl") or data.get("url")
+    if not isinstance(live_url, str) or not live_url:
+        return None
+    if live_url.startswith("rtmp://"):
+        return live_url.replace("rtmp://", "rtmps://", 1)
+    return live_url
 
 
 def _shadow_config_topic(entity: Entity) -> str:
@@ -1101,6 +1154,35 @@ def _addx_bool(value) -> bool | None:
     if isinstance(value, int):
         return value == 1
     return None
+
+
+def _enabled_option_values(options: Any) -> list[Any]:
+    """Return enabled option values from the APK SettingOptionsResponse shape."""
+    if not isinstance(options, list):
+        return []
+    values: list[Any] = []
+    for option in options:
+        if not isinstance(option, dict):
+            continue
+        if option.get("enabled") is False:
+            continue
+        value = option.get("value")
+        if value is not None:
+            values.append(value)
+    return values
+
+
+def _camera_settings_options_data(data: Dict) -> Dict:
+    """Return APK camera form options from /user/getFormOptions."""
+    form_options = data.get("deviceFormOptions") or {} if isinstance(data, dict) else {}
+    video_seconds = _enabled_option_values(form_options.get("videoSeconds"))
+    cooldown = _enabled_option_values(form_options.get("cooldown_in_s"))
+    result: Dict[str, Any] = {}
+    if video_seconds:
+        result["videoSecondsValues"] = video_seconds
+    if cooldown:
+        result["cooldownOptions"] = cooldown
+    return result
 
 
 def _camera_config_data(data: Dict) -> Dict:

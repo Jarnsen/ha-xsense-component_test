@@ -11,6 +11,7 @@
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "requirements": [
+    "aiortc>=1.14.0,<2",
     "boto3",
     "botocore",
     "pycognito",
@@ -19,5 +20,5 @@
   "homeassistant": "2025.3.0",
   "ssdp": [],
   "zeroconf": [],
-  "version": "1.2.6.3"
+  "version": "1.2.6.4"
 }
