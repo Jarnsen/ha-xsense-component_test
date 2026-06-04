@@ -32,7 +32,7 @@ with warnings.catch_warnings():
         RTCSessionDescription,
     )
     from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
-    from aiortc.sdp import candidate_from_sdp, candidate_to_sdp
+    from aiortc.sdp import candidate_from_sdp
 from homeassistant.components.camera.webrtc import (
     WebRTCAnswer,
     WebRTCError,
@@ -45,9 +45,12 @@ from .const import LOGGER
 
 def _preload_dns_rdata_classes() -> None:
     """Warm dnspython lazy imports used by aioice mDNS outside the event loop."""
-    for rdclass, rdtype in ((32769, 1), (255, 1), (1, 1), (1, 28)):
-        with suppress(Exception):
-            dns.rdata.get_rdata_class(rdclass, rdtype)
+    mdns_classes = (1, 255, 32769)
+    mdns_types = (1, 12, 16, 28, 33, 47)
+    for rdclass in mdns_classes:
+        for rdtype in mdns_types:
+            with suppress(Exception):
+                dns.rdata.get_rdata_class(rdclass, rdtype)
 
 
 _preload_dns_rdata_classes()
@@ -151,7 +154,9 @@ class _ProxyTrack(MediaStreamTrack):
     def __init__(self, kind: str) -> None:
         super().__init__()
         self.kind = kind
-        self._source: asyncio.Future[MediaStreamTrack] = asyncio.get_running_loop().create_future()
+        self._source: asyncio.Future[MediaStreamTrack] = (
+            asyncio.get_running_loop().create_future()
+        )
 
     def set_source(self, track: MediaStreamTrack) -> None:
         """Set the source track once the camera peer receives it."""
@@ -199,46 +204,26 @@ def make_sdp_offer_payload(
     return json.dumps(envelope, separators=(",", ":"))
 
 
-def make_ice_candidate_payload(
-    *,
-    candidate: RTCIceCandidate | RTCIceCandidateInit,
-    ticket: XSenseWebRTCTicket,
-    recipient_client_id: str,
-    session_id: str,
-) -> str:
-    """Return the APK-compatible ICE candidate envelope."""
-    candidate_sdp = _candidate_to_sdp(candidate)
-    sdp_mid = getattr(candidate, "sdpMid", None) or getattr(candidate, "sdp_mid", None)
-    sdp_m_line_index = getattr(candidate, "sdpMLineIndex", None)
-    if sdp_m_line_index is None:
-        sdp_m_line_index = getattr(candidate, "sdp_m_line_index", None)
-    payload = _b64_json(
-        {
-            "sdpMid": sdp_mid,
-            "sdpMLineIndex": sdp_m_line_index,
-            "candidate": candidate_sdp,
-        }
-    )
-    envelope = {
-        "messageType": "ICE_CANDIDATE",
-        "messagePayload": payload,
-        "recipientClientId": recipient_client_id,
-        "senderClientId": ticket.client_id,
-        "sessionId": session_id,
-    }
-    return json.dumps(envelope, separators=(",", ":"))
-
 
 def make_start_live_data_channel_message(resolution: str) -> dict[str, Any]:
     """Return the APK-compatible data-channel startLive command."""
-    timestamp = int(time.time())
+    message = make_data_channel_command("startLive")
+    message.update(
+        {
+            "size": _map_video_size(resolution),
+            "resolution": resolution,
+        }
+    )
+    return message
+
+
+def make_data_channel_command(action: str) -> dict[str, Any]:
+    """Return the APK-compatible base data-channel command."""
     return {
         "requestID": f"{int(time.time() * 1000)}-{random.randint(0, 999)}",
         "connectionID": "7893feb",
-        "timeStamp": timestamp,
-        "action": "startLive",
-        "size": _map_video_size(resolution),
-        "resolution": resolution,
+        "timeStamp": int(time.time()),
+        "action": action,
     }
 
 
@@ -309,11 +294,12 @@ class XSenseWebRTCSession:
         self._video = _ProxyTrack("video")
         self._audio = _ProxyTrack("audio")
         self._data_channel = None
+        self._pending_ha_candidates: list[RTCIceCandidate] = []
         self._pending_camera_candidates: list[RTCIceCandidate] = []
         self._camera_peer_ready = False
         self._camera_offer_sent = False
 
-    async def start(self) -> None:
+    async def start(self) -> bool:
         """Connect both WebRTC peers and start the X-Sense camera stream."""
         try:
             self._setup_camera_peer()
@@ -322,6 +308,7 @@ class XSenseWebRTCSession:
             await self._ha_pc.setRemoteDescription(
                 RTCSessionDescription(sdp=self._offer_sdp, type="offer")
             )
+            await self._flush_pending_ha_candidates()
             answer = await self._ha_pc.createAnswer()
             await self._ha_pc.setLocalDescription(answer)
             self._send_message(WebRTCAnswer(self._ha_pc.localDescription.sdp))
@@ -333,17 +320,24 @@ class XSenseWebRTCSession:
             )
             self._reader_task = asyncio.create_task(self._read_loop())
             await self._start_camera_peer()
+            return True
         except Exception as err:  # noqa: BLE001 - surface cleanly to HA frontend
             LOGGER.debug("Unable to start X-Sense WebRTC bridge", exc_info=err)
             self._send_message(WebRTCError("xsense_webrtc_start_failed", str(err)))
             await self.close()
+            return False
 
     async def add_candidate(self, candidate: RTCIceCandidateInit) -> None:
-        """Forward a browser ICE candidate to the HA-facing peer."""
-        await self._ha_pc.addIceCandidate(_candidate_init_to_aiortc(candidate))
+        """Forward a browser ICE candidate after the HA offer has been applied."""
+        parsed = _candidate_init_to_aiortc(candidate)
+        if self._ha_pc.remoteDescription is None:
+            self._pending_ha_candidates.append(parsed)
+            return
+        await self._ha_pc.addIceCandidate(parsed)
 
     async def close(self) -> None:
         """Close the X-Sense signaling and WebRTC sessions."""
+        self._send_stop_live()
         if self._reader_task:
             self._reader_task.cancel()
         if self._ws and not self._ws.closed:
@@ -351,24 +345,19 @@ class XSenseWebRTCSession:
         await self._camera_pc.close()
         await self._ha_pc.close()
 
-    def _setup_camera_peer(self) -> None:
-        @self._camera_pc.on("icecandidate")
-        async def on_icecandidate(candidate):
-            if (
-                candidate is not None
-                and self._ws is not None
-                and not self._ws.closed
-                and not _is_localhost_candidate(candidate)
-            ):
-                await self._ws.send_str(
-                    make_ice_candidate_payload(
-                        candidate=candidate,
-                        ticket=self._ticket,
-                        recipient_client_id=self._recipient_client_id,
-                        session_id=self._session_id,
-                    )
+    def _send_stop_live(self) -> None:
+        """Send the APK stopLive data-channel command before closing."""
+        if getattr(self._data_channel, "readyState", None) != "open":
+            return
+        with suppress(Exception):
+            self._data_channel.send(
+                json.dumps(
+                    make_data_channel_command("stopLive"),
+                    separators=(",", ":"),
                 )
+            )
 
+    def _setup_camera_peer(self) -> None:
         @self._camera_pc.on("track")
         def on_track(track):
             if track.kind == "video":
@@ -447,10 +436,17 @@ class XSenseWebRTCSession:
                         )
                     )
 
+    async def _flush_pending_ha_candidates(self) -> None:
+        """Apply queued browser ICE candidates after the HA offer is set."""
+        while self._pending_ha_candidates:
+            await self._ha_pc.addIceCandidate(self._pending_ha_candidates.pop(0))
+
     async def _flush_pending_camera_candidates(self) -> None:
         """Apply queued camera ICE candidates after the APK-style SDP answer gate."""
         while self._pending_camera_candidates:
-            await self._camera_pc.addIceCandidate(self._pending_camera_candidates.pop(0))
+            await self._camera_pc.addIceCandidate(
+                self._pending_camera_candidates.pop(0)
+            )
 
 
 def _camera_rtc_configuration(ticket: XSenseWebRTCTicket) -> AiortcRTCConfiguration:
@@ -501,11 +497,6 @@ def _is_owned_peer_message(payload: Any, serial_number: str) -> bool:
     return isinstance(payload, str) and payload == serial_number
 
 
-def _is_localhost_candidate(candidate: RTCIceCandidate | RTCIceCandidateInit) -> bool:
-    """Return whether the candidate is filtered by the Android app."""
-    candidate_sdp = _candidate_to_sdp(candidate)
-    return "127.0.0.1" in candidate_sdp or "::1" in candidate_sdp
-
 
 def _candidate_payload_to_aiortc(payload: Any) -> RTCIceCandidate | None:
     if not isinstance(payload, dict):
@@ -524,12 +515,6 @@ def _candidate_init_to_aiortc(candidate: RTCIceCandidateInit) -> RTCIceCandidate
     parsed.sdpMid = candidate.sdp_mid
     parsed.sdpMLineIndex = candidate.sdp_m_line_index
     return parsed
-
-
-def _candidate_to_sdp(candidate: RTCIceCandidate | RTCIceCandidateInit) -> str:
-    if isinstance(candidate, RTCIceCandidateInit):
-        return candidate.candidate
-    return candidate_to_sdp(candidate)
 
 
 def _b64_json(data: dict[str, Any]) -> str:
