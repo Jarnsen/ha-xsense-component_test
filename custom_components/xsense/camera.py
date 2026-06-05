@@ -21,7 +21,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .api.async_xsense import is_camera_entity
+from .api.async_xsense import camera_live_resolution, is_camera_entity
 from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import XSenseEntity
@@ -170,9 +170,19 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             import_module, __package__ + ".webrtc_signal"
         )
 
+        ticket = webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, ticket_data)
+        if not ticket.is_valid:
+            send_message(
+                WebRTCError(
+                    "xsense_webrtc_ticket_expired",
+                    "X-Sense WebRTC ticket expired",
+                )
+            )
+            return
+
         session = webrtc_signal.XSenseWebRTCSession(
             session=async_get_clientsession(self.hass),
-            ticket=webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, ticket_data),
+            ticket=ticket,
             offer_sdp=offer_sdp,
             resolution=_camera_live_resolution(entity),
             send_message=send_message,
@@ -241,7 +251,4 @@ def _is_webrtc_camera(entity) -> bool:
 
 def _camera_live_resolution(entity) -> str:
     """Return the live resolution string used by the ADDX player."""
-    value = entity.data.get("liveResolution")
-    if isinstance(value, str) and (value == "auto" or "x" in value):
-        return value
-    return "auto"
+    return camera_live_resolution(entity)

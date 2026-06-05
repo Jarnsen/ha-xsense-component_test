@@ -34,6 +34,7 @@ def _mac_scalar(value) -> str:
 _COGNITO_CLIENT_CONFIG = Config(
     connect_timeout=15,
     read_timeout=15,
+    retries={"total_max_attempts": 4, "mode": "standard"},
 )
 
 

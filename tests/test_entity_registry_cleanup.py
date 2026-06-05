@@ -10,7 +10,9 @@ if not hasattr(sys.modules.get("custom_components"), "__path__"):
     sys.modules.pop("custom_components", None)
 
 from custom_components.xsense import (
+    OBSOLETE_BINARY_SENSOR_KEYS,
     OBSOLETE_SENSOR_KEYS,
+    _is_obsolete_binary_sensor_entry,
     _is_obsolete_sensor_entry,
     _migrate_legacy_none_entity_ids,
     _obsolete_sensor_unique_ids,
@@ -295,6 +297,41 @@ def test_obsolete_sensor_entry_detection_is_scoped_to_xsense_sensors():
     )
 
 
+def test_obsolete_binary_sensor_entry_detection_is_scoped_to_xsense_led_binary_sensor():
+    assert _is_obsolete_binary_sensor_entry(
+        SimpleNamespace(
+            entity_id='binary_sensor.old_device_led_light',
+            platform='xsense',
+            unique_id='old-device-led-light',
+        )
+    )
+    assert not _is_obsolete_binary_sensor_entry(
+        SimpleNamespace(
+            domain='sensor',
+            platform='xsense',
+            unique_id='old-device-led-light',
+        )
+    )
+    assert not _is_obsolete_binary_sensor_entry(
+        SimpleNamespace(
+            domain='binary_sensor',
+            platform='other',
+            unique_id='old-device-led-light',
+        )
+    )
+    assert not _is_obsolete_binary_sensor_entry(
+        SimpleNamespace(
+            domain='binary_sensor',
+            platform='xsense',
+            unique_id='old-device-connected',
+        )
+    )
+
+
+def test_obsolete_binary_sensor_keys_only_remove_removed_led_binary_sensor():
+    assert OBSOLETE_BINARY_SENSOR_KEYS == ('led_light',)
+
+
 def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
     removed = []
 
@@ -308,40 +345,56 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
     registry = FakeEntityRegistry()
     entries = [
         SimpleNamespace(
-            domain="sensor",
-            platform="xsense",
-            unique_id="missing-device-serial-number",
-            entity_id="sensor.missing_device_serial_number",
+            domain='sensor',
+            platform='xsense',
+            unique_id='missing-device-serial-number',
+            entity_id='sensor.missing_device_serial_number',
         ),
         SimpleNamespace(
-            domain="sensor",
-            platform="xsense",
-            unique_id="station-1-ip",
-            entity_id="sensor.station_1_ip",
+            domain='sensor',
+            platform='xsense',
+            unique_id='station-1-ip',
+            entity_id='sensor.station_1_ip',
+        ),
+        SimpleNamespace(
+            domain='binary_sensor',
+            platform='xsense',
+            unique_id='kitchen-smoke-alarm-led-light',
+            entity_id='binary_sensor.kitchen_smoke_alarm_led_light',
+        ),
+        SimpleNamespace(
+            domain='binary_sensor',
+            platform='xsense',
+            unique_id='kitchen-smoke-alarm-connected',
+            entity_id='binary_sensor.kitchen_smoke_alarm_connected',
         ),
     ]
 
     import custom_components.xsense as xsense
 
-    monkeypatch.setattr(xsense.er, "async_get", lambda hass: registry)
+    monkeypatch.setattr(xsense.er, 'async_get', lambda hass: registry)
     monkeypatch.setattr(
         xsense.er,
-        "async_entries_for_config_entry",
+        'async_entries_for_config_entry',
         lambda entity_registry, entry_id: entries,
     )
 
     _remove_obsolete_sensor_entities(
         SimpleNamespace(),
         {
-            "stations": {
-                "station_1": SimpleNamespace(entity_id="station_1")
+            'stations': {
+                'station_1': SimpleNamespace(entity_id='station_1')
             },
-            "devices": {},
+            'devices': {},
         },
-        SimpleNamespace(entry_id="entry-id"),
+        SimpleNamespace(entry_id='entry-id'),
     )
 
-    assert removed == ["sensor.missing_device_serial_number"]
+    assert removed == [
+        'sensor.missing_device_serial_number',
+        'binary_sensor.kitchen_smoke_alarm_led_light',
+    ]
+
 
 
 def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
@@ -354,78 +407,90 @@ def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
         def async_remove(self, entity_id):
             removed.append(entity_id)
 
-    current_unique_ids = [
-        "xs01-wx-alarm-status",
-        "xs01-wx-battery",
-        "xs01-wx-connected",
-        "xs01-wx-ip-address",
-        "xs01-wx-last-self-test",
-        "xs01-wx-last-self-test-time",
-        "xs01-wx-led-light",
-        "xs01-wx-mute-status",
-        "xs01-wx-report-time",
-        "xs01-wx-signal-strength",
-        "xs01-wx-ssid",
+    current_sensor_unique_ids = [
+        'xs01-wx-alarm-status',
+        'xs01-wx-battery',
+        'xs01-wx-ip-address',
+        'xs01-wx-last-self-test',
+        'xs01-wx-last-self-test-time',
+        'xs01-wx-mute-status',
+        'xs01-wx-report-time',
+        'xs01-wx-signal-strength',
+        'xs01-wx-ssid',
     ]
     entries = [
         SimpleNamespace(
-            domain="sensor",
-            platform="xsense",
+            domain='sensor',
+            platform='xsense',
             unique_id=unique_id,
-            entity_id="sensor." + unique_id.replace("-", "_"),
+            entity_id='sensor.' + unique_id.replace('-', '_'),
         )
-        for unique_id in current_unique_ids
+        for unique_id in current_sensor_unique_ids
     ]
     entries.extend(
         [
             SimpleNamespace(
-                domain="sensor",
-                platform="xsense",
-                unique_id="xs01-wx-online-time",
-                entity_id="sensor.xs01_wx_online_time",
+                domain='binary_sensor',
+                platform='xsense',
+                unique_id='xs01-wx-connected',
+                entity_id='binary_sensor.xs01_wx_connected',
             ),
             SimpleNamespace(
-                domain="sensor",
-                platform="xsense",
-                unique_id="xs01-wx-serial-number",
-                entity_id="sensor.xs01_wx_serial_number",
+                domain='sensor',
+                platform='xsense',
+                unique_id='xs01-wx-online-time',
+                entity_id='sensor.xs01_wx_online_time',
             ),
             SimpleNamespace(
-                domain="sensor",
-                platform="xsense",
-                unique_id="xs01-wx-software-version",
-                entity_id="sensor.xs01_wx_software_version",
+                domain='sensor',
+                platform='xsense',
+                unique_id='xs01-wx-serial-number',
+                entity_id='sensor.xs01_wx_serial_number',
             ),
             SimpleNamespace(
-                domain="sensor",
-                platform="xsense",
-                unique_id="xs01-wx-sw-version",
-                entity_id="sensor.xs01_wx_sw_version",
+                domain='sensor',
+                platform='xsense',
+                unique_id='xs01-wx-software-version',
+                entity_id='sensor.xs01_wx_software_version',
+            ),
+            SimpleNamespace(
+                domain='sensor',
+                platform='xsense',
+                unique_id='xs01-wx-sw-version',
+                entity_id='sensor.xs01_wx_sw_version',
+            ),
+            SimpleNamespace(
+                domain='binary_sensor',
+                platform='xsense',
+                unique_id='xs01-wx-led-light',
+                entity_id='binary_sensor.xs01_wx_led_light',
             ),
         ]
     )
 
     import custom_components.xsense as xsense
 
-    monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
+    monkeypatch.setattr(xsense.er, 'async_get', lambda hass: FakeEntityRegistry())
     monkeypatch.setattr(
         xsense.er,
-        "async_entries_for_config_entry",
+        'async_entries_for_config_entry',
         lambda entity_registry, entry_id: entries,
     )
 
     _remove_obsolete_sensor_entities(
         SimpleNamespace(),
-        {"stations": {}, "devices": {"xs01_wx": SimpleNamespace(entity_id="xs01_wx")}},
-        SimpleNamespace(entry_id="entry-id"),
+        {'stations': {}, 'devices': {'xs01_wx': SimpleNamespace(entity_id='xs01_wx')}},
+        SimpleNamespace(entry_id='entry-id'),
     )
 
     assert removed == [
-        "sensor.xs01_wx_online_time",
-        "sensor.xs01_wx_serial_number",
-        "sensor.xs01_wx_software_version",
-        "sensor.xs01_wx_sw_version",
+        'sensor.xs01_wx_online_time',
+        'sensor.xs01_wx_serial_number',
+        'sensor.xs01_wx_software_version',
+        'sensor.xs01_wx_sw_version',
+        'binary_sensor.xs01_wx_led_light',
     ]
+
 
 
 def test_obsolete_sensor_cleanup_scans_all_xsense_sensor_entries(monkeypatch):
@@ -433,17 +498,29 @@ def test_obsolete_sensor_cleanup_scans_all_xsense_sensor_entries(monkeypatch):
 
     class FakeEntityRegistry:
         entities = {
-            "sensor.orphan_serial_number": SimpleNamespace(
-                domain="sensor",
-                platform="xsense",
-                unique_id="orphan-serial-number",
-                entity_id="sensor.orphan_serial_number",
+            'sensor.orphan_serial_number': SimpleNamespace(
+                domain='sensor',
+                platform='xsense',
+                unique_id='orphan-serial-number',
+                entity_id='sensor.orphan_serial_number',
             ),
-            "sensor.orphan_ip": SimpleNamespace(
-                domain="sensor",
-                platform="xsense",
-                unique_id="orphan-ip",
-                entity_id="sensor.orphan_ip",
+            'sensor.orphan_ip': SimpleNamespace(
+                domain='sensor',
+                platform='xsense',
+                unique_id='orphan-ip',
+                entity_id='sensor.orphan_ip',
+            ),
+            'binary_sensor.orphan_led_light': SimpleNamespace(
+                domain='binary_sensor',
+                platform='xsense',
+                unique_id='orphan-led-light',
+                entity_id='binary_sensor.orphan_led_light',
+            ),
+            'binary_sensor.orphan_connected': SimpleNamespace(
+                domain='binary_sensor',
+                platform='xsense',
+                unique_id='orphan-connected',
+                entity_id='binary_sensor.orphan_connected',
             ),
         }
 
@@ -455,20 +532,21 @@ def test_obsolete_sensor_cleanup_scans_all_xsense_sensor_entries(monkeypatch):
 
     import custom_components.xsense as xsense
 
-    monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
+    monkeypatch.setattr(xsense.er, 'async_get', lambda hass: FakeEntityRegistry())
     monkeypatch.setattr(
         xsense.er,
-        "async_entries_for_config_entry",
+        'async_entries_for_config_entry',
         lambda entity_registry, entry_id: [],
     )
 
     _remove_obsolete_sensor_entities(
         SimpleNamespace(),
-        {"stations": {}, "devices": {}},
-        SimpleNamespace(entry_id="entry-id"),
+        {'stations': {}, 'devices': {}},
+        SimpleNamespace(entry_id='entry-id'),
     )
 
-    assert removed == ["sensor.orphan_serial_number"]
+    assert removed == ['sensor.orphan_serial_number', 'binary_sensor.orphan_led_light']
+
 
 
 def test_legacy_none_entity_id_migration_renames_safe_entries(monkeypatch):

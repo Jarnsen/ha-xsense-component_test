@@ -24,10 +24,9 @@ from .const import (
     CAMERA_SCAN_INTERVAL,
     DOMAIN,
     LOGGER,
-    LOGIN_TIMEOUT,
     POLL_INTERVAL_MIN,
 )
-from .mqtt import DEFAULT_ENCODING, DEFAULT_QOS, XSenseMQTT
+from .mqtt import DEFAULT_ENCODING, DEFAULT_SUBSCRIBE_QOS, XSenseMQTT
 
 _IGNORED_TOPIC_SUFFIXES = ("/update/accepted", "/update/documents", "/update/rejected")
 
@@ -86,15 +85,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         xsense = AsyncXSense(async_get_clientsession(self.hass))
 
         try:
-            await asyncio.wait_for(
-                _async_init_and_login(xsense, email, password), timeout=LOGIN_TIMEOUT
-            )
+            await _async_init_and_login(xsense, email, password)
         except AuthFailed as ex:
             raise ConfigEntryAuthFailed(f"Login failed: {ex!s}") from ex
         except APIFailure as ex:
             raise UpdateFailed(f"XSense API Issue: {ex}") from ex
-        except TimeoutError as ex:
-            raise UpdateFailed("Timed out connecting to X-Sense") from ex
 
         self.xsense = xsense
         self._initialized = False
@@ -410,7 +405,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     f"'{msg.topic}': '{msg.payload}'"
                 ),
             ),
-            DEFAULT_QOS,
+            DEFAULT_SUBSCRIBE_QOS,
             DEFAULT_ENCODING,
         )
 

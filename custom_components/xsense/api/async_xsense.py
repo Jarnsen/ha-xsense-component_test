@@ -143,16 +143,14 @@ def _camera_webrtc_ticket_valid(ticket: dict) -> bool:
     if expiration in (None, ""):
         return True
     try:
-        return int(expiration) > int(datetime.now().timestamp() * 1000) + 60_000
+        return int(expiration) > int(datetime.now().timestamp() * 1000)
     except (TypeError, ValueError):
         return False
 
 
-def _camera_live_resolution(camera: Entity) -> str:
+def camera_live_resolution(camera: Entity) -> str:
     """Return the APK start-live resolution fallback for a camera."""
-    if resolution := _camera_resolution(camera.data.get("liveResolution")):
-        return resolution
-    return "auto"
+    return _camera_resolution(camera.data.get("liveResolution")) or "auto"
 
 
 class AsyncXSense(XSenseBase):
@@ -636,7 +634,7 @@ class AsyncXSense(XSenseBase):
         data = await self.addx_call(
             "/device/newstartlive",
             serialNumber=camera.sn,
-            liveResolution=_camera_live_resolution(camera),
+            liveResolution=camera_live_resolution(camera),
         )
         if isinstance(data, dict):
             live_url = _camera_live_url(data)

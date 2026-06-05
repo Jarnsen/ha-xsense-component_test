@@ -1,4 +1,5 @@
 import base64
+from collections import defaultdict
 import hashlib
 import importlib
 import json
@@ -98,6 +99,31 @@ def test_mqtt_helper_defers_tls_context_loading_until_connect_setup(monkeypatch)
     assert clients[0].ws_paths == ["/mqtt?sig=abc", "/mqtt?sig=abc"]
 
 
+def test_mqtt_helper_subscribe_uses_apk_qos1_by_default():
+    subscribed = []
+
+    class FakeClient:
+        def subscribe(self, topic, qos=0):
+            subscribed.append((topic, qos))
+            return "subscribed"
+
+    helper = mqtt_helper.MQTTHelper(
+        signer=types.SimpleNamespace(
+            presign_url=lambda *args: "wss://mqtt.example/mqtt?sig=abc"
+        ),
+        house=types.SimpleNamespace(
+            house_id="house-id",
+            mqtt_server="mqtt.example",
+            mqtt_region="us-east-1",
+            stations={},
+        ),
+    )
+    helper.client = FakeClient()
+
+    assert helper.subscribe("topic/name") == "subscribed"
+    assert subscribed == [("topic/name", 1)]
+
+
 def test_mqtt_helper_publish_uses_compact_utf8_json():
     published = []
 
@@ -155,6 +181,53 @@ def test_xsense_mqtt_nonzero_disconnect_still_warns(caplog):
     assert client.connected is False
     assert results == [False]
     assert "Disconnected from MQTT server (7)" in caplog.text
+
+
+def _subscription_test_client():
+    client = object.__new__(xsense_mqtt.XSenseMQTT)
+    client._simple_subscriptions = defaultdict(set)
+    client._wildcard_subscriptions = set()
+    client._retained_topics = defaultdict(set)
+    client._subscription_id = 0
+    client.connected = False
+    return client
+
+
+@pytest.mark.asyncio
+async def test_xsense_mqtt_uses_incrementing_subscription_ids(monkeypatch):
+    created = []
+
+    class FakeSubscription:
+        def __init__(
+            self,
+            topic,
+            is_simple_match,
+            complex_matcher,
+            job,
+            qos=0,
+            encoding="utf-8",
+            subscription_id=None,
+        ):
+            self.topic = topic
+            self.is_simple_match = is_simple_match
+            self.complex_matcher = complex_matcher
+            self.job = job
+            self.qos = qos
+            self.encoding = encoding
+            self.subscription_id = subscription_id
+            created.append(subscription_id)
+
+    monkeypatch.setattr(xsense_mqtt, "Subscription", FakeSubscription)
+    client = _subscription_test_client()
+
+    async def callback(msg):
+        return None
+
+    await client.async_subscribe("x/sense/one", callback, 0)
+    await client.async_subscribe("x/sense/two", callback, 1)
+
+    assert created == [1, 2]
+    assert client._subscription_id == 2
 
 
 class FakeAWSSRP:
@@ -221,7 +294,7 @@ def test_sync_login_uses_bounded_cognito_network_config(monkeypatch):
     assert kwargs["region_name"] == "us-east-1"
     assert config.connect_timeout == 15
     assert config.read_timeout == 15
-    assert config.retries is None
+    assert config.retries == {"total_max_attempts": 4, "mode": "standard"}
     assert client.access_token == "access"
 
 

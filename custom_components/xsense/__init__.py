@@ -43,6 +43,11 @@ OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
 )
 
 
+OBSOLETE_BINARY_SENSOR_KEYS: tuple[str, ...] = (
+    "led_light",
+)
+
+
 def _sensor_unique_id(entity_id: str, key: str) -> str:
     """Return the unique ID format used by X-Sense sensor entities."""
     return f"{entity_id}-{key}".replace("_", "-").lower()
@@ -61,19 +66,46 @@ def _obsolete_sensor_unique_ids(data) -> set[str]:
     return unique_ids
 
 
-def _obsolete_sensor_unique_id_suffixes() -> set[str]:
-    """Return old sensor unique ID suffixes independent of the device prefix."""
-    return {f"-{key.replace('_', '-')}" for key in OBSOLETE_SENSOR_KEYS}
+def _obsolete_unique_id_suffixes(keys: tuple[str, ...]) -> set[str]:
+    """Return old unique ID suffixes independent of the device prefix."""
+    return {f"-{key.replace('_', '-')}" for key in keys}
+
+
+def _registry_entry_domain(registry_entry) -> str:
+    """Return a registry entry domain from the stable entity ID shape."""
+    entity_id = getattr(registry_entry, "entity_id", "")
+    if "." in entity_id:
+        return entity_id.split(".", 1)[0]
+    return str(getattr(registry_entry, "domain", ""))
+
+
+def _registry_entry_unique_id(registry_entry) -> str:
+    """Return the registry unique ID as a string."""
+    return str(getattr(registry_entry, "unique_id", ""))
 
 
 def _is_obsolete_sensor_entry(registry_entry) -> bool:
     """Return whether a registry entry is an obsolete X-Sense sensor."""
+    unique_id = _registry_entry_unique_id(registry_entry)
     return (
-        registry_entry.domain == Platform.SENSOR
-        and registry_entry.platform == DOMAIN
+        _registry_entry_domain(registry_entry) == Platform.SENSOR
+        and getattr(registry_entry, "platform", None) == DOMAIN
         and any(
-            registry_entry.unique_id.endswith(suffix)
-            for suffix in _obsolete_sensor_unique_id_suffixes()
+            unique_id.endswith(suffix)
+            for suffix in _obsolete_unique_id_suffixes(OBSOLETE_SENSOR_KEYS)
+        )
+    )
+
+
+def _is_obsolete_binary_sensor_entry(registry_entry) -> bool:
+    """Return whether a registry entry is an obsolete X-Sense binary sensor."""
+    unique_id = _registry_entry_unique_id(registry_entry)
+    return (
+        _registry_entry_domain(registry_entry) == Platform.BINARY_SENSOR
+        and getattr(registry_entry, "platform", None) == DOMAIN
+        and any(
+            unique_id.endswith(suffix)
+            for suffix in _obsolete_unique_id_suffixes(OBSOLETE_BINARY_SENSOR_KEYS)
         )
     )
 
@@ -96,7 +128,10 @@ def _remove_obsolete_sensor_entities(
             continue
         seen_entity_ids.add(registry_entry.entity_id)
         checked_unique_ids.add(registry_entry.unique_id)
-        if _is_obsolete_sensor_entry(registry_entry):
+        if (
+            _is_obsolete_sensor_entry(registry_entry)
+            or _is_obsolete_binary_sensor_entry(registry_entry)
+        ):
             entity_registry.async_remove(registry_entry.entity_id)
 
     for unique_id in _obsolete_sensor_unique_ids(data) - checked_unique_ids:

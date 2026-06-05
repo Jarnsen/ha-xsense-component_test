@@ -329,7 +329,7 @@ async def test_failed_webrtc_start_is_removed_from_active_sessions(monkeypatch):
 
     fake_module = SimpleNamespace(
         XSenseWebRTCTicket=SimpleNamespace(
-            from_api=lambda serial_number, data: SimpleNamespace()
+            from_api=lambda serial_number, data: SimpleNamespace(is_valid=True)
         ),
         XSenseWebRTCSession=FakeSession,
     )
