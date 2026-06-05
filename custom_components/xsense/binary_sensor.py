@@ -359,13 +359,6 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         value_fn=data_bool("mute"),
     ),
     XSenseBinarySensorEntityDescription(
-        key="led_light",
-        name="LED Light",
-        icon="mdi:led-on",
-        exists_fn=has_data("ledLight"),
-        value_fn=data_bool("ledLight"),
-    ),
-    XSenseBinarySensorEntityDescription(
         key="await_enabled",
         name="Await Enabled",
         entity_category=EntityCategory.DIAGNOSTIC,

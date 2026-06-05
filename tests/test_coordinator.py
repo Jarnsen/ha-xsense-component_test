@@ -21,6 +21,26 @@ def test_self_test_topic_detection_matches_apk_markers():
     )
 
 
+@pytest.mark.asyncio
+async def test_subscribe_topic_uses_apk_qos1():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    calls = []
+
+    class FakeMQTT:
+        async def async_subscribe(self, topic, callback, qos, encoding):
+            calls.append((topic, qos, encoding))
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+
+    async def callback(topic, payload):
+        return None
+
+    await coordinator.subscribe_topic(FakeMQTT(), "topic/name", callback)
+
+    assert calls == [("topic/name", 1, "utf-8")]
+
+
 class CameraUpdateFailureClient:
     def __init__(self):
         self.calls = 0

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
 
@@ -16,7 +15,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AsyncXSense
 from .api.exceptions import APIFailure, AuthFailed
-from .const import DOMAIN, LOGIN_TIMEOUT
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,12 +52,10 @@ async def validate_input(hass: HomeAssistant, email, password) -> dict[str, Any]
     session = AsyncXSense(async_get_clientsession(hass))
 
     try:
-        await asyncio.wait_for(
-            _async_init_and_login(session, email, password), timeout=LOGIN_TIMEOUT
-        )
+        await _async_init_and_login(session, email, password)
     except AuthFailed as ex:
         raise InvalidAuth(f"Login failed: {str(ex)}") from ex
-    except (TimeoutError, APIFailure) as ex:
+    except APIFailure as ex:
         raise CannotConnect from ex
     if not session.access_token:
         raise InvalidAuth

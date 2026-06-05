@@ -1,3 +1,4 @@
+from contextlib import suppress
 import base64
 import json
 
@@ -52,6 +53,22 @@ def test_ticket_connect_details_match_apk(monkeypatch):
         "headers": {"Host": "signal.example:443"},
         "server_hostname": "signal.example",
     }
+
+
+def test_webrtc_ticket_accepts_unexpired_ticket_like_apk(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+
+    valid = ticket(expirationTime=100_001)
+
+    assert valid.is_valid is True
+
+
+def test_webrtc_ticket_rejects_expired_ticket(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+
+    expired = ticket(expirationTime=99_000)
+
+    assert expired.is_valid is False
 
 
 def test_webrtc_offer_candidate_and_start_live_payloads_match_apk(monkeypatch):
@@ -155,6 +172,7 @@ m=video 9 UDP/TLS/RTP/SAVPF 96
 a=mid:0
 a=candidate:1 1 udp 1 192.0.2.1 123 typ host
 a=candidate:2 1 udp 1 127.0.0.1 456 typ host
+a=candidate:5 1 tcp 1 192.0.2.1 457 typ host tcptype passive
 m=audio 9 UDP/TLS/RTP/SAVPF 111
 a=mid:1
 a=candidate:3 1 udp 1 2001:db8::1 789 typ host
@@ -172,6 +190,8 @@ a=candidate:4 1 udp 1 ::1 790 typ host
 
 async def test_send_offer_sends_apk_offer_then_local_ice_candidates():
     class FakeWs:
+        closed = False
+
         def __init__(self):
             self.messages = []
 
@@ -191,6 +211,9 @@ a=candidate:1 1 udp 1 192.0.2.1 123 typ host
     session = object.__new__(webrtc_signal.XSenseWebRTCSession)
     session._ws = FakeWs()
     session._camera_pc = FakePeer()
+    session._closed = False
+    session._camera_offer_sdp = FakeDescription.sdp
+    session._camera_local_description_task = None
     session._camera_peer_ready = True
     session._camera_offer_sent = False
     session._ticket = ticket()
@@ -335,7 +358,29 @@ def test_dns_preload_covers_mdns_nsec_records(monkeypatch):
     assert (1440, 41) in calls
 
 
-def test_start_live_waits_for_data_channel_and_connected_camera_peer(monkeypatch):
+def test_camera_webrtc_resolution_uses_apk_normalization():
+    from types import SimpleNamespace
+
+    from custom_components.xsense.camera import _camera_live_resolution
+
+    assert (
+        _camera_live_resolution(SimpleNamespace(data={"liveResolution": "HD"}))
+        == "1920x1080"
+    )
+    assert (
+        _camera_live_resolution(
+            SimpleNamespace(data={"liveResolution": "VIDEO_SIZE_1440P"})
+        )
+        == "2560x1440"
+    )
+    assert (
+        _camera_live_resolution(SimpleNamespace(data={"liveResolution": "auto"}))
+        == "auto"
+    )
+    assert _camera_live_resolution(SimpleNamespace(data={})) == "auto"
+
+
+def test_start_live_waits_only_for_data_channel_open(monkeypatch):
     monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
     monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
 
@@ -350,17 +395,13 @@ def test_start_live_waits_for_data_channel_and_connected_camera_peer(monkeypatch
     session = object.__new__(webrtc_signal.XSenseWebRTCSession)
     session._resolution = "2560x1440"
     session._data_channel = FakeDataChannel()
-    session._camera_peer_connected = False
     session._start_live_sent = False
+    session._create_task = lambda coro: (coro.close(), None)[1]
 
     session._send_start_live_if_ready()
     assert session._data_channel.messages == []
 
     session._data_channel.readyState = "open"
-    session._send_start_live_if_ready()
-    assert session._data_channel.messages == []
-
-    session._camera_peer_connected = True
     session._send_start_live_if_ready()
     session._send_start_live_if_ready()
 
@@ -389,6 +430,7 @@ async def test_browser_ice_candidates_wait_for_ha_remote_description():
 
     session = object.__new__(webrtc_signal.XSenseWebRTCSession)
     session._ha_pc = FakePeer()
+    session._closed = False
     session._pending_ha_candidates = []
 
     candidate = RTCIceCandidateInit(
@@ -407,3 +449,184 @@ async def test_browser_ice_candidates_wait_for_ha_remote_description():
 
     assert session._pending_ha_candidates == []
     assert len(session._ha_pc.candidates) == 1
+
+
+async def test_closed_session_ignores_late_browser_ice_candidates():
+    class FakePeer:
+        remoteDescription = object()
+
+        async def addIceCandidate(self, candidate):
+            raise AssertionError("closed session should ignore late candidates")
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = True
+    session._ha_pc = FakePeer()
+    session._pending_ha_candidates = []
+
+    candidate = RTCIceCandidateInit(
+        "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+        sdp_mid="0",
+        sdp_m_line_index=0,
+    )
+
+    await session.add_candidate(candidate)
+
+    assert session._pending_ha_candidates == []
+
+
+async def test_close_is_idempotent_and_waits_for_reader_task():
+    class FakeWs:
+        closed = False
+
+        async def close(self):
+            self.closed = True
+
+    class FakePeer:
+        def __init__(self):
+            self.closed = 0
+
+        async def close(self):
+            self.closed += 1
+
+    class FakeDataChannel:
+        readyState = "open"
+
+        def __init__(self):
+            self.closed = False
+            self.messages = []
+
+        def send(self, message):
+            self.messages.append(json.loads(message))
+
+        def close(self):
+            self.closed = True
+
+    async def reader():
+        try:
+            while True:
+                await asyncio.sleep(1)
+        finally:
+            reader.done = True
+
+    import asyncio
+
+    reader.done = False
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._close_lock = asyncio.Lock()
+    session._reader_task = asyncio.create_task(reader())
+    session._camera_local_description_task = None
+    session._ws = FakeWs()
+    session._data_channel = FakeDataChannel()
+    session._camera_pc = FakePeer()
+    session._ha_pc = FakePeer()
+    session._pending_ha_candidates = [object()]
+    session._pending_camera_candidates = [object()]
+
+    await asyncio.sleep(0)
+    await session.close()
+    await session.close()
+
+    assert session._closed is True
+    assert reader.done is True
+    assert session._ws.closed is True
+    assert session._data_channel.closed is True
+    assert session._camera_pc.closed == 1
+    assert session._ha_pc.closed == 1
+    assert session._pending_ha_candidates == []
+    assert session._pending_camera_candidates == []
+    assert session._data_channel.messages[0]["action"] == "stopLive"
+
+async def test_closed_session_ignores_late_signal_events():
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = True
+    session._ticket = ticket()
+    session._recipient_client_id = "SSC0A123"
+    session._camera_peer_ready = False
+
+    await session._handle_signal_event("PEER_IN", "SSC0A123")
+
+    assert session._camera_peer_ready is False
+
+
+async def test_camera_offer_is_sent_before_waiting_for_local_ice_gathering():
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+    async def never_finishes():
+        await asyncio.Future()
+
+    import asyncio
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._ws = FakeWs()
+    session._camera_offer_sdp = "v=0\r\n"
+    session._camera_local_description_task = asyncio.create_task(never_finishes())
+    session._camera_pc = object()
+    session._camera_peer_ready = True
+    session._camera_offer_sent = False
+    session._ticket = ticket()
+    session._recipient_client_id = "SSC0A123"
+    session._session_id = "Android-client123-100000"
+    session._resolution = "1280x720"
+
+    task = asyncio.create_task(session._send_offer())
+    await asyncio.sleep(0)
+
+    assert [message["messageType"] for message in session._ws.messages] == ["SDP_OFFER"]
+    assert session._camera_offer_sent is True
+
+    session._camera_local_description_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
+
+
+async def test_webrtc_timeout_reports_error_and_closes_session():
+    import asyncio
+
+    messages = []
+    closed = []
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._send_message = messages.append
+
+    async def close():
+        closed.append(True)
+        session._closed = True
+
+    session.close = close
+
+    await session._fail_after_timeout(0, "test_timeout", "Timed out")
+
+    assert messages[0].code == "test_timeout"
+    assert messages[0].message == "Timed out"
+    assert closed == [True]
+
+
+async def test_first_video_frame_cancels_first_frame_timeout():
+    import asyncio
+
+    class FakeSource:
+        async def recv(self):
+            return object()
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._first_frame_received = False
+    session._first_frame_timeout_task = asyncio.create_task(asyncio.sleep(60))
+    session._play_timeout_task = asyncio.create_task(asyncio.sleep(60))
+    track = webrtc_signal._ProxyTrack("video", session._mark_first_frame_received)
+    track.set_source(FakeSource())
+
+    await track.recv()
+
+    assert session._first_frame_received is True
+    await asyncio.sleep(0)
+    assert session._first_frame_timeout_task.cancelled()
+    assert session._play_timeout_task.cancelled()
