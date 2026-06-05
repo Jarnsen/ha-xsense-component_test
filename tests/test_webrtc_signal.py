@@ -588,6 +588,39 @@ async def test_camera_offer_is_sent_before_waiting_for_local_ice_gathering():
         await task
 
 
+async def test_webrtc_close_does_not_cancel_current_timeout_task():
+    import asyncio
+
+    class FakePeerConnection:
+        def __init__(self):
+            self.closed = False
+
+        async def close(self):
+            self.closed = True
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._close_lock = asyncio.Lock()
+    session._reader_task = None
+    session._peer_in_timeout_task = None
+    session._play_timeout_task = asyncio.current_task()
+    session._first_frame_timeout_task = None
+    session._camera_local_description_task = None
+    session._ws = None
+    session._data_channel = None
+    session._camera_pc = FakePeerConnection()
+    session._ha_pc = FakePeerConnection()
+    session._pending_ha_candidates = []
+    session._pending_camera_candidates = []
+
+    await session.close()
+
+    assert session._closed is True
+    assert session._camera_pc.closed is True
+    assert session._ha_pc.closed is True
+    assert not asyncio.current_task().cancelled()
+
+
 async def test_webrtc_timeout_reports_error_and_closes_session():
     import asyncio
 

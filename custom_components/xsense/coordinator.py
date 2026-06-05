@@ -355,13 +355,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ):
             dev.set_data(station_data)
         else:
-            if isinstance(children, list):
+            if isinstance(children, (dict, list)):
                 station_data["devs"] = children
             self.xsense.parse_get_state(station, station_data)
-        if isinstance(children, dict):
-            for k, v in children.items():
-                if dev := station.get_device_by_sn(k):
-                    dev.set_data(v)
 
         self.async_update_listeners()
 

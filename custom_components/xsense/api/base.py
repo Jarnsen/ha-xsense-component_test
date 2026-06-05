@@ -287,9 +287,9 @@ class XSenseBase:
             has_alarm_status and _is_active_state(station.data.get("alarmStatus"))
         )
         if isinstance(children, dict):
-            for sn, i in children.items():
-                if dev := station.get_device_by_sn(sn):
-                    dev.set_data(i)
+            for child_key, child_state in children.items():
+                if dev := _state_child_device(station, child_key, child_state):
+                    dev.set_data(child_state)
 
     def _parse_get_house_state(self, house: House, data: Dict):
         for sn, i in data.items():
@@ -302,6 +302,39 @@ class XSenseBase:
                 a for a in entity_def.get("actions", []) if a.get("action") == action
             )
         return False
+
+
+def _state_child_device(station: Station, child_key, child_state):
+    """Return the child device targeted by an APK shadow payload."""
+    for value in _child_state_identifiers(child_key, child_state):
+        if dev := station.get_device_by_sn(value):
+            return dev
+    return None
+
+
+def _child_state_identifiers(child_key, child_state) -> tuple[str, ...]:
+    """Return device serial identifiers used by X-Sense child shadows."""
+    values = [child_key]
+    if isinstance(child_state, dict):
+        values.extend(
+            child_state.get(key)
+            for key in (
+                "deviceSN",
+                "deviceSn",
+                "_deviceSN",
+                "_deviceSn",
+            )
+        )
+    seen = set()
+    result = []
+    for value in values:
+        if value is None:
+            continue
+        text = str(value)
+        if text and text not in seen:
+            seen.add(text)
+            result.append(text)
+    return tuple(result)
 
 
 def _apply_group_light_state(station: Station, station_data: Dict, children) -> bool:

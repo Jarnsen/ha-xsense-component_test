@@ -3,6 +3,17 @@ import pytest
 from custom_components.xsense.coordinator import _is_self_test_topic
 
 
+def test_connect_path_does_not_reintroduce_integration_login_timeout():
+    import inspect
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    source = inspect.getsource(XSenseDataUpdateCoordinator._connect)
+
+    assert "wait_for" not in source
+    assert "LOGIN_TIMEOUT" not in source
+    assert "Timed out connecting" not in source
+
+
 def test_self_test_topic_detection_matches_apk_markers():
     assert _is_self_test_topic(
         "$aws/things/SBS50sn/shadow/name/selftestup/update"
@@ -86,6 +97,45 @@ class PresenceHouse:
 
     def get_station_by_sn(self, _identifier):
         return None
+
+
+def test_mqtt_child_devs_payload_is_routed_to_apk_state_parser():
+    from types import SimpleNamespace
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Station:
+        sn = "station-sn"
+        shadow_name = "SBS10station-sn"
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    station = Station()
+    parsed = []
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/SBS10station-sn/shadow/name/mainpage/update",
+        (
+            '{"state":{"reported":{"stationSN":"station-sn",'
+            '"devs":{"shadow-key":{"_deviceSN":"child-sn","onLine":"1"}}}}}'
+        ).encode(),
+    )
+
+    assert parsed == [
+        (
+            station,
+            {
+                "stationSN": "station-sn",
+                "devs": {"shadow-key": {"_deviceSN": "child-sn", "onLine": "1"}},
+            },
+        )
+    ]
 
 
 def test_presence_topic_updates_station_online_like_apk():
