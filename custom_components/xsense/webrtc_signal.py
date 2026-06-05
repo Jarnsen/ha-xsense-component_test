@@ -437,10 +437,11 @@ class XSenseWebRTCSession:
             return None
 
     async def _cancel_task(self, task: asyncio.Task[Any] | None) -> None:
-        if task and not task.done():
-            task.cancel()
-            with suppress(asyncio.CancelledError, Exception):
-                await task
+        if task is None or task.done() or task is asyncio.current_task():
+            return
+        task.cancel()
+        with suppress(asyncio.CancelledError, Exception):
+            await task
 
     async def _fail_after_timeout(self, delay: int, code: str, message: str) -> None:
         try:

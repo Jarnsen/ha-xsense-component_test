@@ -590,6 +590,63 @@ def test_station_alarm_data_preserves_explicit_falsy_values():
     assert station_obj.alarm_data["forceArm"] is False
 
 
+def test_parse_get_state_updates_child_from_apk_device_serial_field():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS10",
+    )
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "device-id",
+                    "deviceName": "Door",
+                    "deviceSn": "child-sn",
+                    "deviceType": "SDS0A",
+                }
+            ]
+        }
+    )
+
+    client.parse_get_state(
+        station_obj,
+        {"devs": {"state-key": {"_deviceSN": "child-sn", "onLine": "1"}}},
+    )
+
+    assert station_obj.devices["device-id"].online is True
+
+
+def test_parse_get_state_updates_child_when_apk_key_is_device_serial():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "device-id",
+                    "deviceName": "Sensor",
+                    "deviceSn": "child-sn",
+                    "deviceType": "XS03-iWX",
+                }
+            ]
+        }
+    )
+
+    client.parse_get_state(station_obj, {"devs": {"child-sn": {"onLine": "0"}}})
+
+    assert station_obj.devices["device-id"].online is False
+
+
 def test_parse_get_state_does_not_use_stale_alarm_status_when_missing():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(
