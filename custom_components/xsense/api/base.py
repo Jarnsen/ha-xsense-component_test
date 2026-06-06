@@ -273,8 +273,12 @@ class XSenseBase:
             )
 
     def parse_get_state(self, station: Station, data: Dict):
-        station_data = data.copy()
-        children = station_data.pop("devs", {}) or {}
+        if isinstance(data, list):
+            station_data = {}
+            children = data
+        else:
+            station_data = data.copy()
+            children = station_data.pop("devs", {}) or {}
 
         if _apply_group_light_state(station, station_data, children):
             return
@@ -283,13 +287,12 @@ class XSenseBase:
         if station_data:
             station.set_data(station_data)
 
-        station.has_alarm = _is_active_state(data.get("activate")) or (
+        station.has_alarm = _is_active_state(station_data.get("activate")) or (
             has_alarm_status and _is_active_state(station.data.get("alarmStatus"))
         )
-        if isinstance(children, dict):
-            for child_key, child_state in children.items():
-                if dev := _state_child_device(station, child_key, child_state):
-                    dev.set_data(child_state)
+        for child_key, child_state in _child_state_items(children):
+            if dev := _state_child_device(station, child_key, child_state):
+                dev.set_data(child_state)
 
     def _parse_get_house_state(self, house: House, data: Dict):
         for sn, i in data.items():
@@ -310,6 +313,16 @@ def _state_child_device(station: Station, child_key, child_state):
         if dev := station.get_device_by_sn(value):
             return dev
     return None
+
+
+def _child_state_items(children):
+    """Yield child device shadow records in the list/dict forms used by the app."""
+    if isinstance(children, dict):
+        yield from children.items()
+    elif isinstance(children, list):
+        for child_state in children:
+            if isinstance(child_state, dict):
+                yield None, child_state
 
 
 def _child_state_identifiers(child_key, child_state) -> tuple[str, ...]:

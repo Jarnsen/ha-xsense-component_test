@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
@@ -22,7 +23,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api.async_xsense import camera_live_resolution, is_camera_entity
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import XSenseEntity
 
@@ -68,6 +69,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         Camera.__init__(self)
         self.entity_description = entity_description
         self._webrtc_sessions: dict[str, object] = {}
+        self._webrtc_close_tasks: set[asyncio.Task] = set()
         super().__init__(coordinator, entity)
 
     @callback
@@ -125,13 +127,9 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         entity = self._current_entity()
         if entity is None:
             return None
-        source = await self.coordinator.xsense.start_camera_live(entity)
-        if _url_scheme(source) == "webrtc":
-            LOGGER.info(
-                "X-Sense camera %s returned an ADDX WebRTC stream that Home Assistant's native stream worker cannot open",
-                entity.entity_id,
-            )
+        if _is_webrtc_camera(entity):
             return None
+        source = await self.coordinator.xsense.start_camera_live(entity)
         return source
 
     @callback
@@ -180,16 +178,22 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             )
             return
 
+        def remove_session() -> None:
+            if self._webrtc_sessions.get(session_id) is session:
+                self._webrtc_sessions.pop(session_id, None)
+
         session = webrtc_signal.XSenseWebRTCSession(
             session=async_get_clientsession(self.hass),
             ticket=ticket,
             offer_sdp=offer_sdp,
             resolution=_camera_live_resolution(entity),
             send_message=send_message,
+            on_close=remove_session,
         )
         self._webrtc_sessions[session_id] = session
         if not await session.start():
-            self._webrtc_sessions.pop(session_id, None)
+            await session.close()
+            remove_session()
 
     async def async_on_webrtc_candidate(self, session_id, candidate) -> None:
         """Forward a Home Assistant WebRTC candidate to X-Sense."""
@@ -200,25 +204,27 @@ class XSenseCameraEntity(XSenseEntity, Camera):
     def close_webrtc_session(self, session_id: str) -> None:
         """Close an X-Sense WebRTC session."""
         if session := self._webrtc_sessions.pop(session_id, None):
-            self.hass.async_create_task(session.close())
+            task = self.hass.async_create_task(session.close())
+            self._webrtc_close_tasks.add(task)
+            task.add_done_callback(self._webrtc_close_tasks.discard)
         super().close_webrtc_session(session_id)
 
     async def async_will_remove_from_hass(self) -> None:
         """Stop any live view session when Home Assistant removes the entity."""
-        for session_id in list(self._webrtc_sessions):
-            self.close_webrtc_session(session_id)
+        sessions = list(self._webrtc_sessions.values())
+        self._webrtc_sessions.clear()
+        for session in sessions:
+            await session.close()
+        close_tasks = list(self._webrtc_close_tasks)
+        self._webrtc_close_tasks.clear()
+        for task in close_tasks:
+            with suppress(asyncio.CancelledError, Exception):
+                await task
         entity = self._current_entity()
         if entity is not None and entity.data.get("cameraLiveUrl"):
             with suppress(Exception):
                 await self.coordinator.xsense.stop_camera_live(entity)
         await super().async_will_remove_from_hass()
-
-
-def _url_scheme(url: str | None) -> str | None:
-    """Return the URL scheme without exposing the full stream URL."""
-    if not isinstance(url, str) or "://" not in url:
-        return None
-    return url.split("://", 1)[0].lower()
 
 
 def _stream_protocol(entity) -> str | None:

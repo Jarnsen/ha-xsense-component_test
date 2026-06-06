@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator, Callable, Coroutine, Iterable
 import contextlib
 from functools import lru_cache, partial
 from itertools import chain
+import inspect
 import logging
 from typing import Any
 
@@ -45,6 +46,14 @@ MAX_PACKETS_TO_READ = 500
 
 type SocketType = mqtt.WebsocketWrapper | Any
 type PublishPayloadType = str | bytes | int | float | None
+
+
+def _subscription_accepts_id() -> bool:
+    """Return whether this Home Assistant version wants subscription_id."""
+    try:
+        return "subscription_id" in inspect.signature(Subscription).parameters
+    except (TypeError, ValueError):
+        return False
 
 
 class XSenseMQTT:
@@ -492,6 +501,9 @@ class XSenseMQTT:
         matcher = None if is_simple_match else _matcher_for_topic(topic)
 
         self._subscription_id += 1
+        subscription_kwargs = {}
+        if _subscription_accepts_id():
+            subscription_kwargs["subscription_id"] = self._subscription_id
         subscription = Subscription(
             topic,
             is_simple_match,
@@ -499,7 +511,7 @@ class XSenseMQTT:
             job,
             qos,
             encoding,
-            self._subscription_id,
+            **subscription_kwargs,
         )
 
         self._async_track_subscription(subscription)

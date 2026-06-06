@@ -1,4 +1,7 @@
-from custom_components.xsense.alarm_control_panel import XSenseAlarmControlPanel
+from custom_components.xsense.alarm_control_panel import (
+    XSenseAlarmControlPanel,
+    station_supports_alarm_panel,
+)
 from custom_components.xsense.api.station import Station
 from custom_components.xsense.binary_sensor import (
     XSenseBinarySensorEntity,
@@ -212,3 +215,40 @@ def test_connected_sensor_does_not_assume_unknown_online_state():
 
     assert connected.available
     assert connected.is_on is None
+
+
+def test_alarm_control_panel_requires_security_device_family():
+    smoke_station = _xs01_wx_from_real_shadow()
+    smoke_station.type = "SBS50"
+    smoke_station.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "smoke-id",
+                    "deviceName": "Smoke",
+                    "deviceSn": "smoke-sn",
+                    "deviceType": "XP0A-MR",
+                    "roomName": "Kitchen",
+                }
+            ]
+        }
+    )
+
+    security_station = _xs01_wx_from_real_shadow()
+    security_station.type = "SBS50"
+    security_station.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "door-id",
+                    "deviceName": "Door",
+                    "deviceSn": "door-sn",
+                    "deviceType": "SDS0A",
+                    "roomName": "Kitchen",
+                }
+            ]
+        }
+    )
+
+    assert not station_supports_alarm_panel(smoke_station)
+    assert station_supports_alarm_panel(security_station)

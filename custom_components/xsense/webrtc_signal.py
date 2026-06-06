@@ -315,12 +315,14 @@ class XSenseWebRTCSession:
         resolution: str | None,
         send_message: WebRTCSendMessage,
         session_id: str | None = None,
+        on_close: Callable[[], None] | None = None,
     ) -> None:
         self._session = session
         self._ticket = ticket
         self._offer_sdp = offer_sdp
         self._resolution = resolution or _DEFAULT_RESOLUTION
         self._send_message = send_message
+        self._on_close = on_close
         self._session_id = session_id or ticket.session_id
         self._recipient_client_id = ticket.serial_number
         self._ws: aiohttp.ClientWebSocketResponse | None = None
@@ -421,11 +423,42 @@ class XSenseWebRTCSession:
                 with suppress(Exception):
                     self._data_channel.close()
             with suppress(Exception):
-                await self._camera_pc.close()
+                self._video.stop()
             with suppress(Exception):
-                await self._ha_pc.close()
+                self._audio.stop()
+            await self._stop_peer_connection(self._camera_pc)
+            await self._stop_peer_connection(self._ha_pc)
             self._pending_ha_candidates.clear()
             self._pending_camera_candidates.clear()
+            on_close = getattr(self, "_on_close", None)
+            if on_close:
+                with suppress(Exception):
+                    on_close()
+
+    async def _stop_peer_connection(self, peer_connection: RTCPeerConnection) -> None:
+        """Stop media transports before closing, matching the APK stop path."""
+        get_transceivers = getattr(peer_connection, "getTransceivers", lambda: [])
+        get_senders = getattr(peer_connection, "getSenders", lambda: [])
+        get_receivers = getattr(peer_connection, "getReceivers", lambda: [])
+        for transceiver in list(get_transceivers()):
+            with suppress(Exception):
+                await transceiver.stop()
+            sender = getattr(transceiver, "sender", None)
+            if sender is not None:
+                with suppress(Exception):
+                    await sender.stop()
+            receiver = getattr(transceiver, "receiver", None)
+            if receiver is not None:
+                with suppress(Exception):
+                    await receiver.stop()
+        for sender in list(get_senders()):
+            with suppress(Exception):
+                await sender.stop()
+        for receiver in list(get_receivers()):
+            with suppress(Exception):
+                await receiver.stop()
+        with suppress(Exception):
+            await peer_connection.close()
 
     def _create_task(
         self, coro: Coroutine[Any, Any, Any]
