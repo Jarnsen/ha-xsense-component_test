@@ -214,7 +214,7 @@ a=candidate:1 1 udp 1 192.0.2.1 123 typ host
     session._closed = False
     session._camera_offer_sdp = FakeDescription.sdp
     session._camera_local_description_task = None
-    session._camera_peer_ready = True
+    session._camera_peer_ready = False
     session._camera_offer_sent = False
     session._ticket = ticket()
     session._recipient_client_id = "SSC0A123"
@@ -380,7 +380,7 @@ def test_camera_webrtc_resolution_uses_apk_normalization():
     assert _camera_live_resolution(SimpleNamespace(data={})) == "auto"
 
 
-def test_start_live_waits_only_for_data_channel_open(monkeypatch):
+def test_start_live_waits_for_data_channel_and_peer_connection(monkeypatch):
     monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
     monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
 
@@ -392,13 +392,21 @@ def test_start_live_waits_only_for_data_channel_open(monkeypatch):
         def send(self, message):
             self.messages.append(message)
 
+    class FakePeerConnection:
+        def __init__(self):
+            self.connectionState = "connecting"
+
     session = object.__new__(webrtc_signal.XSenseWebRTCSession)
     session._resolution = "2560x1440"
+    session._camera_pc = FakePeerConnection()
     session._data_channel = FakeDataChannel()
     session._start_live_sent = False
     session._create_task = lambda coro: (coro.close(), None)[1]
 
     session._send_start_live_if_ready()
+    assert session._data_channel.messages == []
+
+    session._camera_pc.connectionState = "connected"
     assert session._data_channel.messages == []
 
     session._data_channel.readyState = "open"
@@ -549,7 +557,7 @@ async def test_closed_session_ignores_late_signal_events():
     assert session._camera_peer_ready is False
 
 
-async def test_camera_offer_is_sent_before_waiting_for_local_ice_gathering():
+async def test_camera_offer_is_sent_before_peer_in_and_local_ice_gathering():
     class FakeWs:
         closed = False
 
@@ -570,7 +578,7 @@ async def test_camera_offer_is_sent_before_waiting_for_local_ice_gathering():
     session._camera_offer_sdp = "v=0\r\n"
     session._camera_local_description_task = asyncio.create_task(never_finishes())
     session._camera_pc = object()
-    session._camera_peer_ready = True
+    session._camera_peer_ready = False
     session._camera_offer_sent = False
     session._ticket = ticket()
     session._recipient_client_id = "SSC0A123"
@@ -602,7 +610,6 @@ async def test_webrtc_close_does_not_cancel_current_timeout_task():
     session._closed = False
     session._close_lock = asyncio.Lock()
     session._reader_task = None
-    session._peer_in_timeout_task = None
     session._play_timeout_task = asyncio.current_task()
     session._first_frame_timeout_task = None
     session._camera_local_description_task = None
@@ -665,7 +672,6 @@ async def test_webrtc_close_stops_peer_transports_before_closing():
     session._closed = False
     session._close_lock = asyncio.Lock()
     session._reader_task = None
-    session._peer_in_timeout_task = None
     session._play_timeout_task = None
     session._first_frame_timeout_task = None
     session._camera_local_description_task = None
@@ -747,3 +753,50 @@ async def test_first_video_frame_cancels_first_frame_timeout():
     await asyncio.sleep(0)
     assert session._first_frame_timeout_task.cancelled()
     assert session._play_timeout_task.cancelled()
+
+
+async def test_offline_camera_waits_for_peer_in_before_offer_like_apk():
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+    class FakePeer:
+        localDescription = None
+
+        def addTransceiver(self, *args, **kwargs):
+            return None
+
+        async def createOffer(self):
+            class Offer:
+                sdp = "v=0\r\n"
+
+            return Offer()
+
+        async def setLocalDescription(self, offer):
+            self.localDescription = offer
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._ws = FakeWs()
+    session._camera_pc = FakePeer()
+    session._camera_offer_sdp = None
+    session._camera_local_description_task = None
+    session._camera_peer_ready = False
+    session._camera_offer_sent = False
+    session._ticket = ticket()
+    session._recipient_client_id = "SSC0A123"
+    session._session_id = "Android-client123-100000"
+    session._resolution = "1280x720"
+    session._peer_in_timeout_task = None
+
+    assert session._ws.messages == []
+
+    await session._handle_signal_event("PEER_IN", "SSC0A123")
+
+    assert [message["messageType"] for message in session._ws.messages] == ["SDP_OFFER"]
+    assert session._camera_offer_sent is True
