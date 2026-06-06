@@ -1115,7 +1115,7 @@ def _camera_user_config_payload(camera: Entity, updates: Dict) -> Dict:
 
 def _add_camera_config_companions(camera: Entity, payload: Dict) -> None:
     """Add companion config fields the APK sends with selected toggles."""
-    if "needMotion" in payload and camera.data.get("motionSensitivity") is None:
+    if "needMotion" in payload and camera.data.get("motionSensitivity") in (None, 0):
         payload["motionSensitivity"] = 1
     if "needVideo" in payload and camera.data.get("videoSeconds") == 0:
         payload["videoSeconds"] = -1
@@ -1212,7 +1212,9 @@ def _camera_config_data(data: Dict) -> Dict:
         "mechanicalDingDongDuration": data.get("mechanicalDingDongDuration"),
         "mechanicalDingDongSwitch": _addx_bool(data.get("mechanicalDingDongSwitch")),
         "mirrorFlip": _addx_bool(data.get("mirrorFlip")),
-        "motionSensitivity": data.get("motionSensitivity"),
+        "motionSensitivity": _camera_motion_sensitivity_value(
+            data.get("motionSensitivity")
+        ),
         "motionSensitivityOptionList": data.get("motionSensitivityOptionList"),
         "motionTrack": _addx_bool(data.get("motionTrack")),
         "motionTrackMode": data.get("motionTrackMode"),
@@ -1225,12 +1227,22 @@ def _camera_config_data(data: Dict) -> Dict:
         "recLamp": _addx_bool(data.get("recLamp")),
         "timeZone": data.get("timeZone"),
         "timeZoneArea": data.get("timeZoneArea"),
-        "videoSeconds": data.get("videoSeconds"),
+        "videoSeconds": _camera_video_seconds_value(data.get("videoSeconds")),
         "videoSecondsValues": data.get("videoSecondsValues"),
         "voiceVol": data.get("voiceVolume"),
         "voiceVolumeSwitch": _addx_bool(data.get("voiceVolumeSwitch")),
         "whiteLightScintillation": _addx_bool(data.get("whiteLightScintillation")),
     }
+
+
+def _camera_motion_sensitivity_value(value):
+    """Return the APK default for unset camera motion sensitivity."""
+    return 1 if value in (None, 0) else value
+
+
+def _camera_video_seconds_value(value):
+    """Return the APK default for unset camera recording duration."""
+    return -1 if value in (None, 0) else value
 
 
 def _camera_audio_data(data: Dict) -> Dict:

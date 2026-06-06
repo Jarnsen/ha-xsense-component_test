@@ -2056,7 +2056,7 @@ async def test_update_camera_data_loads_apk_form_options():
                 ]
             }
         if endpoint == "/device/getuserconfig":
-            return {"motionSensitivity": 1, "videoSeconds": -1}
+            return {"motionSensitivity": 0, "videoSeconds": 0}
         if endpoint == "/user/getFormOptions":
             return {
                 "deviceFormOptions": {
@@ -2071,6 +2071,8 @@ async def test_update_camera_data_loads_apk_form_options():
     await client.update_camera_data()
 
     camera = test_house.get_station_by_sn("cam-sn")
+    assert camera.data["motionSensitivity"] == 1
+    assert camera.data["videoSeconds"] == -1
     assert camera.data["videoSecondsValues"] == [-1]
     assert camera.data["cooldownOptions"] == [10]
     assert "cameraWebrtcTicket" not in camera.data
@@ -2522,7 +2524,7 @@ def test_camera_user_config_payload_adds_apk_toggle_companions():
     camera.set_data(
         {
             "alarmSeconds": 20,
-            "motionSensitivity": None,
+            "motionSensitivity": 0,
             "nightThresholdLevel": 3,
             "supportRocker": False,
             "videoSeconds": 0,

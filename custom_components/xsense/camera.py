@@ -189,6 +189,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             resolution=_camera_live_resolution(entity),
             send_message=send_message,
             on_close=remove_session,
+            camera_online=_camera_online(entity),
         )
         self._webrtc_sessions[session_id] = session
         if not await session.start():
@@ -225,6 +226,14 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             with suppress(Exception):
                 await self.coordinator.xsense.stop_camera_live(entity)
         await super().async_will_remove_from_hass()
+
+
+def _camera_online(entity) -> bool:
+    """Return whether ADDX currently reports the camera online."""
+    online = entity.data.get("online")
+    if isinstance(online, bool):
+        return online
+    return online == 1
 
 
 def _stream_protocol(entity) -> str | None:

@@ -316,6 +316,7 @@ class XSenseWebRTCSession:
         send_message: WebRTCSendMessage,
         session_id: str | None = None,
         on_close: Callable[[], None] | None = None,
+        camera_online: bool = False,
     ) -> None:
         self._session = session
         self._ticket = ticket
@@ -325,6 +326,7 @@ class XSenseWebRTCSession:
         self._on_close = on_close
         self._session_id = session_id or ticket.session_id
         self._recipient_client_id = ticket.serial_number
+        self._camera_online = camera_online
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._reader_task: asyncio.Task[None] | None = None
         self._ha_pc = RTCPeerConnection()
@@ -366,21 +368,23 @@ class XSenseWebRTCSession:
                 connect_url, heartbeat=30, **connect_options
             )
             self._reader_task = asyncio.create_task(self._read_loop())
-            self._peer_in_timeout_task = asyncio.create_task(
-                self._fail_after_timeout(
-                    _PEER_IN_TIMEOUT,
-                    "xsense_webrtc_peer_in_timeout",
-                    "Camera did not join the WebRTC session",
-                )
-            )
             self._play_timeout_task = asyncio.create_task(
                 self._fail_after_timeout(
                     _PLAY_TIMEOUT,
                     "xsense_webrtc_play_timeout",
-                    "Camera live view did not start",
+                    "Camera did not start the WebRTC stream",
                 )
             )
-            await self._start_camera_peer()
+            if self._camera_online:
+                await self._start_camera_peer()
+            else:
+                self._peer_in_timeout_task = asyncio.create_task(
+                    self._fail_after_timeout(
+                        _PEER_IN_TIMEOUT,
+                        "xsense_webrtc_peer_in_timeout",
+                        "Camera did not join the WebRTC session",
+                    )
+                )
             return True
         except Exception as err:  # noqa: BLE001 - surface cleanly to HA frontend
             LOGGER.debug("Unable to start X-Sense WebRTC bridge", exc_info=err)
@@ -459,6 +463,7 @@ class XSenseWebRTCSession:
                 await receiver.stop()
         with suppress(Exception):
             await peer_connection.close()
+        await asyncio.sleep(0)
 
     def _create_task(
         self, coro: Coroutine[Any, Any, Any]
@@ -526,6 +531,9 @@ class XSenseWebRTCSession:
         @self._camera_pc.on("connectionstatechange")
         def on_connectionstatechange():
             state = self._camera_pc.connectionState
+            if state == "connected":
+                self._send_start_live_if_ready()
+                return
             if state in {"failed", "closed"} and not self._closed:
                 self._send_message(
                     WebRTCError(
@@ -536,10 +544,12 @@ class XSenseWebRTCSession:
                 self._create_task(self.close())
 
     def _send_start_live_if_ready(self) -> None:
-        """Send startLive when the APK would: after the data channel opens."""
+        """Send startLive when the APK would: data channel ready and peer connected."""
         if self._start_live_sent or getattr(
             self._data_channel, "readyState", None
         ) != "open":
+            return
+        if self._camera_pc.connectionState != "connected":
             return
         try:
             self._data_channel.send(
@@ -576,7 +586,6 @@ class XSenseWebRTCSession:
             or self._ws is None
             or getattr(self._ws, "closed", False)
             or self._camera_offer_sdp is None
-            or not self._camera_peer_ready
             or self._camera_offer_sent
         ):
             return
@@ -644,7 +653,10 @@ class XSenseWebRTCSession:
                 task = getattr(self, "_peer_in_timeout_task", None)
                 if task:
                     task.cancel()
-                await self._send_offer()
+                if self._camera_offer_sdp is None:
+                    await self._start_camera_peer()
+                else:
+                    await self._send_offer()
         elif event == "SDP_ANSWER":
             answer = _owned_answer_sdp(payload, self._ticket)
             if answer:
