@@ -322,10 +322,13 @@ async def test_failed_webrtc_start_is_removed_from_active_sessions(monkeypatch):
 
     class FakeSession:
         def __init__(self, **kwargs):
-            pass
+            self.closed = False
 
         async def start(self):
             return False
+
+        async def close(self):
+            self.closed = True
 
     fake_module = SimpleNamespace(
         XSenseWebRTCTicket=SimpleNamespace(
@@ -351,3 +354,32 @@ async def test_failed_webrtc_start_is_removed_from_active_sessions(monkeypatch):
 
     assert camera._webrtc_sessions == {}
     assert not camera.is_streaming
+
+
+async def test_webrtc_camera_stream_source_does_not_start_native_live_url():
+    from custom_components.xsense.camera import CAMERA_DESCRIPTION, XSenseCameraEntity
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class XSense:
+        async def start_camera_live(self, entity):
+            raise AssertionError("WebRTC cameras use getWebrtcTicket, not newstartlive")
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+            self.xsense = XSense()
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+
+    assert await camera.stream_source() is None

@@ -99,6 +99,42 @@ class PresenceHouse:
         return None
 
 
+def test_mqtt_reported_device_list_is_routed_to_apk_state_parser():
+    from types import SimpleNamespace
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Station:
+        sn = "station-sn"
+        shadow_name = "SBS10station-sn"
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    station = Station()
+    parsed = []
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/SBS10station-sn/shadow/name/mainpage/update",
+        (
+            '{"state":{"reported":[{"deviceSn":"child-sn",'
+            '"deviceType":"XS03-iWX","onLine":"1"}]}}'
+        ).encode(),
+    )
+
+    assert parsed == [
+        (
+            station,
+            [{"deviceSn": "child-sn", "deviceType": "XS03-iWX", "onLine": "1"}],
+        )
+    ]
+
+
 def test_mqtt_child_devs_payload_is_routed_to_apk_state_parser():
     from types import SimpleNamespace
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator

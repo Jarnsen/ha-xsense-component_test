@@ -69,11 +69,20 @@ def _smoke_rf_test_shadow(entity) -> str:
 
 
 def _smoke_rf_test_extra(entity) -> Dict:
-    return {"userParam": "source=1"} if _is_smoke_v9(entity) else {}
+    return {"userParam": "source=1"}
+
+
+def _smoke_rf_test_target(entity):
+    station = getattr(entity, "station", entity)
+    if _is_smoke_v9(entity) or getattr(station, "type", None) == "SBS50":
+        return station
+    return _ThingTarget(station, f"{entity.type}{station.sn}")
 
 
 def SmokeRFTestAction():
-    return TestAction(_smoke_rf_test_shadow, extra=_smoke_rf_test_extra)
+    return TestAction(
+        _smoke_rf_test_shadow, extra=_smoke_rf_test_extra, target=_smoke_rf_test_target
+    )
 
 
 class _ThingTarget:

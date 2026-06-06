@@ -621,6 +621,90 @@ async def test_webrtc_close_does_not_cancel_current_timeout_task():
     assert not asyncio.current_task().cancelled()
 
 
+
+async def test_webrtc_close_stops_peer_transports_before_closing():
+    import asyncio
+
+    calls = []
+
+    class StopPart:
+        def __init__(self, name):
+            self.name = name
+
+        async def stop(self):
+            calls.append(self.name)
+
+    class FakeTransceiver:
+        def __init__(self):
+            self.sender = StopPart("transceiver-sender")
+            self.receiver = StopPart("transceiver-receiver")
+
+        async def stop(self):
+            calls.append("transceiver")
+
+    class FakePeerConnection:
+        def __init__(self, name):
+            self.name = name
+            self.transceiver = FakeTransceiver()
+            self.sender = StopPart(f"{name}-sender")
+            self.receiver = StopPart(f"{name}-receiver")
+
+        def getTransceivers(self):
+            return [self.transceiver]
+
+        def getSenders(self):
+            return [self.sender]
+
+        def getReceivers(self):
+            return [self.receiver]
+
+        async def close(self):
+            calls.append(f"{self.name}-close")
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._close_lock = asyncio.Lock()
+    session._reader_task = None
+    session._peer_in_timeout_task = None
+    session._play_timeout_task = None
+    session._first_frame_timeout_task = None
+    session._camera_local_description_task = None
+    session._ws = None
+    session._data_channel = None
+    class TrackPart:
+        def __init__(self, name):
+            self.name = name
+
+        def stop(self):
+            calls.append(self.name)
+
+    session._video = TrackPart("video")
+    session._audio = TrackPart("audio")
+    session._camera_pc = FakePeerConnection("camera")
+    session._ha_pc = FakePeerConnection("ha")
+    session._pending_ha_candidates = []
+    session._pending_camera_candidates = []
+    session._on_close = None
+
+    await session.close()
+
+    assert calls == [
+        "video",
+        "audio",
+        "transceiver",
+        "transceiver-sender",
+        "transceiver-receiver",
+        "camera-sender",
+        "camera-receiver",
+        "camera-close",
+        "transceiver",
+        "transceiver-sender",
+        "transceiver-receiver",
+        "ha-sender",
+        "ha-receiver",
+        "ha-close",
+    ]
+
 async def test_webrtc_timeout_reports_error_and_closes_session():
     import asyncio
 

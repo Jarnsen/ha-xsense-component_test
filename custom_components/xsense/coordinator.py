@@ -303,8 +303,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         station_data = _mqtt_reported_data(data)
 
-        station_sn = station_data.get("stationSN") or station_data.get("_stationSN")
-        device_sn = station_data.get("deviceSN") or station_data.get("_deviceSN")
+        station_sn = None
+        device_sn = None
+        if isinstance(station_data, dict):
+            station_sn = station_data.get("stationSN") or station_data.get("_stationSN")
+            device_sn = station_data.get("deviceSN") or station_data.get("_deviceSN")
 
         station = self._get_station_by_id(station_sn)
         if station is None:
@@ -326,6 +329,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if event_type := data.get("eventType"):
                 station._set_online(event_type == "connected")
                 self.async_update_listeners()
+            return
+
+        if isinstance(station_data, list):
+            self.xsense.parse_get_state(station, station_data)
+            self.async_update_listeners()
             return
 
         is_safemode_topic = "/shadow/name/2nd_safemode/update" in topic
@@ -446,11 +454,13 @@ def _apply_safe_mode(station, safe_mode: str) -> None:
     station._data["safeMode"] = safe_mode
 
 
-def _mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any]:
+def _mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any] | list[Any]:
     """Return device data from either shadow reports or X-Sense event payloads."""
     reported = data.get("state", {}).get("reported")
     if isinstance(reported, dict):
         return reported.copy()
+    if isinstance(reported, list):
+        return list(reported)
 
     event_data = data.get("eventData")
     if isinstance(event_data, dict):

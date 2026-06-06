@@ -194,6 +194,40 @@ def _subscription_test_client():
 
 
 @pytest.mark.asyncio
+async def test_xsense_mqtt_omits_subscription_id_when_ha_signature_lacks_it(monkeypatch):
+    created = []
+
+    class FakeSubscription:
+        def __init__(
+            self,
+            topic,
+            is_simple_match,
+            complex_matcher,
+            job,
+            qos=0,
+            encoding="utf-8",
+        ):
+            self.topic = topic
+            self.is_simple_match = is_simple_match
+            self.complex_matcher = complex_matcher
+            self.job = job
+            self.qos = qos
+            self.encoding = encoding
+            created.append(topic)
+
+    monkeypatch.setattr(xsense_mqtt, "Subscription", FakeSubscription)
+    client = _subscription_test_client()
+
+    async def callback(msg):
+        return None
+
+    await client.async_subscribe("x/sense/one", callback, 0)
+
+    assert created == ["x/sense/one"]
+    assert client._subscription_id == 1
+
+
+@pytest.mark.asyncio
 async def test_xsense_mqtt_uses_incrementing_subscription_ids(monkeypatch):
     created = []
 
@@ -647,6 +681,91 @@ def test_parse_get_state_updates_child_when_apk_key_is_device_serial():
     assert station_obj.devices["device-id"].online is False
 
 
+def test_parse_get_state_accepts_apk_reported_device_list():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS10",
+    )
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "device-id",
+                    "deviceName": "Smoke",
+                    "deviceSn": "child-sn",
+                    "deviceType": "XS03-iWX",
+                }
+            ]
+        }
+    )
+
+    client.parse_get_state(
+        station_obj,
+        [
+            {
+                "deviceSn": "child-sn",
+                "deviceType": "XS03-iWX",
+                "alarmStatus": "0",
+                "muteStatus": "1",
+                "onLine": "1",
+            }
+        ],
+    )
+
+    child = station_obj.devices["device-id"]
+    assert child.online is True
+    assert child.data["alarmStatus"] is False
+    assert child.data["muteStatus"] is True
+
+
+def test_parse_get_state_updates_sbs10_child_from_apk_device_list():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS10",
+    )
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "device-id",
+                    "deviceName": "Smoke",
+                    "deviceSn": "child-sn",
+                    "deviceType": "XS03-iWX",
+                }
+            ]
+        }
+    )
+
+    client.parse_get_state(
+        station_obj,
+        {
+            "stationSN": "station-sn",
+            "devs": [
+                {
+                    "deviceSn": "child-sn",
+                    "deviceType": "XS03-iWX",
+                    "alarmStatus": "0",
+                    "muteStatus": "1",
+                    "onLine": "1",
+                }
+            ],
+        },
+    )
+
+    child = station_obj.devices["device-id"]
+    assert child.online is True
+    assert child.data["alarmStatus"] is False
+    assert child.data["muteStatus"] is True
+
+
 def test_parse_get_state_does_not_use_stale_alarm_status_when_missing():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(
@@ -984,12 +1103,23 @@ async def _capture_action(client, target, action):
             "XS01-M",
             entity_map.EntityType.SMOKE,
             {"smokeEdition": "8"},
-            None,
+            "SBS10",
             "2nd_selftest_device-sn",
             "appSelfTest",
-            None,
+            "source=1",
             13,
-            None,
+            "XS01-Mstation-sn",
+        ),
+        (
+            "XS03-iWX",
+            entity_map.EntityType.SMOKE,
+            {},
+            "SBS10",
+            "2nd_selftest_device-sn",
+            "appSelfTest",
+            "source=1",
+            13,
+            "XS03-iWXstation-sn",
         ),
         (
             "XP0J-iA",
