@@ -198,3 +198,32 @@ def test_presence_topic_updates_station_online_like_apk():
     )
     assert station.online is False
     assert len(updates) == 2
+
+
+@pytest.mark.asyncio
+async def test_cached_addx_cameras_remain_in_coordinator_data_when_camera_refresh_is_skipped():
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    camera = SimpleNamespace(
+        entity_id="camera-id",
+        sn="camera-sn",
+        type="SSC0A",
+        devices={},
+        online=True,
+    )
+    house = SimpleNamespace(stations={"camera-id": camera})
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(houses={"house-id": house})
+    coordinator._camera_initialized = True
+    coordinator._last_camera_update_attempt = datetime.now(timezone.utc)
+    coordinator._camera_station_cache = {"camera-id": camera}
+
+    assert await coordinator._update_cameras() is False
+
+    stations = {}
+    coordinator._merge_cached_camera_stations(stations)
+
+    assert stations == {"camera-id": camera}
