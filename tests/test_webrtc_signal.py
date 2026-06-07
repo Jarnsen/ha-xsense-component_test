@@ -174,7 +174,7 @@ def test_webrtc_ice_candidate_payload_matches_apk():
     }
 
 
-def test_local_sdp_candidates_extracts_apk_payloads_and_skips_loopback():
+def test_local_sdp_candidates_match_apk_loopback_and_tcp_filters():
     sdp = """v=0
 m=video 9 UDP/TLS/RTP/SAVPF 96
 a=mid:0
@@ -183,7 +183,7 @@ a=candidate:2 1 udp 1 127.0.0.1 456 typ host
 a=candidate:5 1 tcp 1 192.0.2.1 457 typ host tcptype passive
 m=audio 9 UDP/TLS/RTP/SAVPF 111
 a=mid:1
-a=candidate:3 1 udp 1 2001:db8::1 789 typ host
+a=candidate:3 1 udp 1 2001:db8::2 789 typ host
 a=candidate:4 1 udp 1 ::1 790 typ host
 """
 
@@ -192,6 +192,11 @@ a=candidate:4 1 udp 1 ::1 790 typ host
             "sdpMid": "0",
             "sdpMLineIndex": 0,
             "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+        },
+        {
+            "sdpMid": "1",
+            "sdpMLineIndex": 1,
+            "candidate": "candidate:3 1 udp 1 2001:db8::2 789 typ host",
         },
     ]
 
@@ -245,6 +250,32 @@ a=candidate:1 1 udp 1 192.0.2.1 123 typ host
     assert session._camera_offer_sent is True
 
 
+async def test_proxy_track_stop_wakes_pending_receiver():
+    track = webrtc_signal._ProxyTrack("video")
+
+    receive_task = webrtc_signal.asyncio.create_task(track.recv())
+    await webrtc_signal.asyncio.sleep(0)
+
+    track.stop()
+
+    with suppress(webrtc_signal.MediaStreamError):
+        await receive_task
+    assert receive_task.done()
+
+
+def test_send_ha_message_ignores_closed_browser_socket():
+    def send_message(message):
+        raise ConnectionResetError("browser websocket closed")
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._send_message = send_message
+
+    message = webrtc_signal.WebRTCError("closed", "closed")
+
+    assert session._send_ha_message(message) is False
+
+
 def test_parse_signal_message_preserves_answer_envelope_for_apk_validation():
     encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode()
     raw = json.dumps(
@@ -262,6 +293,25 @@ def test_parse_signal_message_preserves_answer_envelope_for_apk_validation():
     assert payload["senderClientId"] == "SSC0A123"
     assert payload["recipientClientId"] == "client123"
     assert webrtc_signal._owned_answer_sdp(payload, ticket()) == "answer"
+
+
+def test_apk_sdp_answer_validation_allows_missing_optional_ids():
+    encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode()
+
+    assert (
+        webrtc_signal._owned_answer_sdp(
+            {"messagePayload": encoded, "senderClientId": "SSC0A123"},
+            ticket(),
+        )
+        == "answer"
+    )
+    assert (
+        webrtc_signal._owned_answer_sdp(
+            {"messagePayload": encoded, "recipientClientId": "client123"},
+            ticket(),
+        )
+        == "answer"
+    )
 
 
 def test_apk_sdp_answer_validation_rejects_other_camera_or_viewer():
@@ -409,7 +459,15 @@ def test_start_live_waits_for_data_channel_and_peer_connection(monkeypatch):
     session._camera_pc = FakePeerConnection()
     session._data_channel = FakeDataChannel()
     session._start_live_sent = False
-    session._create_task = lambda coro: (coro.close(), None)[1]
+    session._data_channel_connected = False
+    created_tasks = []
+
+    def create_task(coro):
+        created_tasks.append(coro)
+        coro.close()
+        return None
+
+    session._create_task = create_task
 
     session._send_start_live_if_ready()
     assert session._data_channel.messages == []
@@ -419,6 +477,9 @@ def test_start_live_waits_for_data_channel_and_peer_connection(monkeypatch):
 
     session._data_channel.readyState = "open"
     session._send_start_live_if_ready()
+    assert session._data_channel.messages == []
+
+    session._handle_data_channel_message(json.dumps({"action": "dataChannelConnected"}))
     session._send_start_live_if_ready()
 
     assert [json.loads(message) for message in session._data_channel.messages] == [
@@ -431,6 +492,7 @@ def test_start_live_waits_for_data_channel_and_peer_connection(monkeypatch):
             "resolution": "2560x1440",
         }
     ]
+    assert created_tasks == []
 
 
 async def test_browser_ice_candidates_wait_for_ha_remote_description():
@@ -619,7 +681,6 @@ async def test_webrtc_close_does_not_cancel_current_timeout_task():
     session._close_lock = asyncio.Lock()
     session._reader_task = None
     session._play_timeout_task = asyncio.current_task()
-    session._first_frame_timeout_task = None
     session._camera_local_description_task = None
     session._ws = None
     session._data_channel = None
@@ -681,7 +742,6 @@ async def test_webrtc_close_stops_peer_transports_before_closing():
     session._close_lock = asyncio.Lock()
     session._reader_task = None
     session._play_timeout_task = None
-    session._first_frame_timeout_task = None
     session._camera_local_description_task = None
     session._ws = None
     session._data_channel = None
@@ -741,7 +801,7 @@ async def test_webrtc_timeout_reports_error_and_closes_session():
     assert closed == [True]
 
 
-async def test_first_video_frame_cancels_first_frame_timeout():
+async def test_first_video_frame_cancels_play_timeout():
     import asyncio
 
     class FakeSource:
@@ -750,7 +810,6 @@ async def test_first_video_frame_cancels_first_frame_timeout():
 
     session = object.__new__(webrtc_signal.XSenseWebRTCSession)
     session._first_frame_received = False
-    session._first_frame_timeout_task = asyncio.create_task(asyncio.sleep(60))
     session._play_timeout_task = asyncio.create_task(asyncio.sleep(60))
     track = webrtc_signal._ProxyTrack("video", session._mark_first_frame_received)
     track.set_source(FakeSource())
@@ -759,7 +818,6 @@ async def test_first_video_frame_cancels_first_frame_timeout():
 
     assert session._first_frame_received is True
     await asyncio.sleep(0)
-    assert session._first_frame_timeout_task.cancelled()
     assert session._play_timeout_task.cancelled()
 
 

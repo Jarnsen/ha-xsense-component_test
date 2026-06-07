@@ -907,12 +907,10 @@ def _url_scheme(url: str | None) -> str | None:
 
 
 def _camera_live_url(data: Dict) -> str | None:
-    """Return the live URL transformed the same way as the APK RTMP player."""
+    """Return the live URL from the APK LiveResponse data model."""
     live_url = data.get("liveUrl") or data.get("url")
     if not isinstance(live_url, str) or not live_url:
         return None
-    if live_url.startswith("rtmp://"):
-        return live_url.replace("rtmp://", "rtmps://", 1)
     return live_url
 
 
@@ -992,7 +990,6 @@ def _camera_type(data: Dict) -> str | None:
         if model:
             return model
     return None
-
 
 
 def _camera_data(data: Dict) -> Dict:
