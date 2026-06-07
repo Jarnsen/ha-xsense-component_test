@@ -431,3 +431,27 @@ def test_camera_online_uses_parsed_entity_online_state_like_apk():
     camera_entity.online = False
     camera_entity.data["online"] = 1
     assert camera._camera_online(camera_entity) is False
+
+
+def test_camera_metadata_fields_are_kept_out_of_entity_registry():
+    forbidden = {
+        "camera_model",
+        "camera_status_code",
+        "camera_device_status",
+        "camera_sleep_message",
+        "camera_wake_time",
+        "camera_firmware_status",
+        "camera_firmware_version",
+        "camera_network_name",
+        "camera_stream_protocol",
+        "camera_codec",
+        "camera_time_zone",
+        "camera_time_zone_area",
+        "camera_awake",
+        "camera_webrtc_supported",
+    }
+    exposed = {description.key for description in sensor.SENSORS} | {
+        description.key for description in binary_sensor.SENSORS
+    }
+
+    assert forbidden.isdisjoint(exposed)

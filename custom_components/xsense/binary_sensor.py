@@ -198,14 +198,6 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         value_fn=data_bool("isCharging"),
     ),
     XSenseBinarySensorEntityDescription(
-        key="camera_awake",
-        name="Camera Awake",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:cctv",
-        exists_fn=has_camera_data("awake"),
-        value_fn=data_bool("awake"),
-    ),
-    XSenseBinarySensorEntityDescription(
         key="camera_sleeping",
         name="Camera Sleeping",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -259,14 +251,6 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         icon="mdi:check-circle-outline",
         exists_fn=has_data("test"),
         value_fn=data_bool("test"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="camera_webrtc_supported",
-        name="WebRTC Supported",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:video-wireless-outline",
-        exists_fn=has_camera_data("supportWebrtc"),
-        value_fn=data_bool("supportWebrtc"),
     ),
     XSenseBinarySensorEntityDescription(
         key="on",

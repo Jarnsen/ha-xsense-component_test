@@ -48,6 +48,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._initialized: bool = False
         self._camera_initialized: bool = False
         self._last_camera_update_attempt: datetime | None = None
+        self._camera_station_cache: dict[str, Any] = {}
         super().__init__(
             hass,
             LOGGER,
@@ -97,6 +98,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._initialized = False
         self._camera_initialized = False
         self._last_camera_update_attempt = None
+        self._camera_station_cache = {}
 
     async def _async_update_data(self) -> dict[str, Any]:
         if self.xsense is None:
@@ -204,7 +206,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._initialized = True
                 LOGGER.debug("Initial XSense discovery complete")
 
-            await self._update_cameras()
+            camera_data_refreshed = await self._update_cameras()
+            if camera_data_refreshed:
+                self._cache_camera_stations()
 
             for h in self.xsense.houses.values():
                 stations.update(h.stations.items())
@@ -217,6 +221,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     if s.type == "SBS50":
                         await self._update_safe_mode(s)
                     devices.update(s.devices.items())
+
+            self._merge_cached_camera_stations(stations)
 
         except (SessionExpired, AuthFailed) as ex:
             if not retry:
@@ -231,8 +237,14 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             return {"stations": stations, "devices": devices}
 
-    async def _update_cameras(self) -> None:
-        """Fetch camera metadata from the Android app IPC/ADDX APIs when present."""
+    async def _update_cameras(self) -> bool:
+        """Fetch camera metadata from the Android app IPC/ADDX APIs when present.
+
+        Return True only when the camera API was actually refreshed. Normal
+        coordinator refreshes may skip this expensive path, but cached ADDX
+        camera stations still need to stay in coordinator data so Home Assistant
+        does not mark their entities unavailable.
+        """
         now = datetime.now(timezone.utc)
         if (
             self._camera_initialized
@@ -240,7 +252,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             and now - self._last_camera_update_attempt
             < timedelta(seconds=CAMERA_SCAN_INTERVAL)
         ):
-            return
+            return False
 
         self._last_camera_update_attempt = now
         try:
@@ -249,8 +261,23 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._camera_initialized = False
             self._last_camera_update_attempt = None
             LOGGER.warning("Could not update X-Sense camera data: %s", ex)
+            return False
         else:
             self._camera_initialized = True
+            return True
+
+    def _cache_camera_stations(self) -> None:
+        """Remember ADDX camera stations between camera API refreshes."""
+        self._camera_station_cache = {
+            station.entity_id: station
+            for house in self.xsense.houses.values()
+            for station in house.stations.values()
+            if is_camera_entity(station)
+        }
+
+    def _merge_cached_camera_stations(self, stations: dict[str, Any]) -> None:
+        """Keep ADDX-only cameras present when the camera API refresh is skipped."""
+        stations.update(self._camera_station_cache)
 
     async def _update_safe_mode(self, station) -> None:
         """Fetch safeMode from the 2nd_safemode AWS IoT shadow as a fallback."""

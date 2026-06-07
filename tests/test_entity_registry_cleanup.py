@@ -328,7 +328,7 @@ def test_obsolete_binary_sensor_entry_detection_is_scoped_to_xsense_led_binary_s
     )
 
 
-def test_obsolete_binary_sensor_keys_only_remove_removed_led_binary_sensor():
+def test_obsolete_binary_sensor_keys_only_remove_removed_binary_sensors():
     assert OBSOLETE_BINARY_SENSOR_KEYS == (
         'led_light',
         'motion_required',
@@ -341,6 +341,8 @@ def test_obsolete_binary_sensor_keys_only_remove_removed_led_binary_sensor():
         'camera_live_audio',
         'camera_voice_volume',
         'camera_cooldown_enabled',
+        "camera_awake",
+        "camera_webrtc_supported",
     )
 
 
@@ -817,3 +819,24 @@ def test_legacy_none_entity_id_migration_skips_existing_target(monkeypatch):
     )
 
     assert renamed == []
+
+
+def test_camera_metadata_entities_are_obsolete_registry_entries():
+    sensor_keys = {
+        "camera_model",
+        "camera_status_code",
+        "camera_device_status",
+        "camera_sleep_message",
+        "camera_wake_time",
+        "camera_firmware_status",
+        "camera_firmware_version",
+        "camera_network_name",
+        "camera_stream_protocol",
+        "camera_codec",
+        "camera_time_zone",
+        "camera_time_zone_area",
+    }
+    binary_sensor_keys = {"camera_awake", "camera_webrtc_supported"}
+
+    assert sensor_keys.issubset(set(OBSOLETE_SENSOR_KEYS))
+    assert binary_sensor_keys.issubset(set(OBSOLETE_BINARY_SENSOR_KEYS))

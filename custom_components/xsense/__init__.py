@@ -50,6 +50,18 @@ OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
     "camera_alarm_seconds",
     "camera_motion_sensitivity",
     "camera_night_vision_mode",
+    "camera_model",
+    "camera_status_code",
+    "camera_device_status",
+    "camera_sleep_message",
+    "camera_wake_time",
+    "camera_firmware_status",
+    "camera_firmware_version",
+    "camera_network_name",
+    "camera_stream_protocol",
+    "camera_codec",
+    "camera_time_zone",
+    "camera_time_zone_area",
 )
 
 
@@ -65,6 +77,8 @@ OBSOLETE_BINARY_SENSOR_KEYS: tuple[str, ...] = (
     "camera_live_audio",
     "camera_voice_volume",
     "camera_cooldown_enabled",
+    "camera_awake",
+    "camera_webrtc_supported",
 )
 
 
