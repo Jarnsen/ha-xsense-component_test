@@ -231,6 +231,35 @@ def _payload_debug(payload: Any) -> str:
     return type(payload).__name__
 
 
+def _peer_event_debug(payload: Any, serial_number: str) -> dict[str, Any]:
+    text = payload.strip() if isinstance(payload, str) else None
+    return {
+        "payload": _payload_debug(payload),
+        "payload_matches_camera": text == serial_number,
+        "camera": _short_id(serial_number),
+        "peer": _short_id(text),
+    }
+
+
+def _answer_reject_reason(payload: Any, ticket: XSenseWebRTCTicket) -> str:
+    if not isinstance(payload, dict):
+        return "payload_not_dict"
+    sender = payload.get("senderClientId")
+    recipient = payload.get("recipientClientId")
+    if sender and sender != ticket.serial_number:
+        return "sender_mismatch"
+    if recipient and recipient != ticket.client_id:
+        return "recipient_mismatch"
+    encoded = payload.get("messagePayload")
+    if not isinstance(encoded, str):
+        return "missing_message_payload"
+    with suppress(Exception):
+        decoded = json.loads(base64.b64decode(encoded).decode())
+        if isinstance(decoded.get("sdp"), str):
+            return "accepted"
+    return "invalid_sdp_payload"
+
+
 def make_sdp_offer_payload(
     *,
     offer_sdp: str,
@@ -336,14 +365,39 @@ def _signal_payload(data: dict[str, Any]) -> Any:
 
 def _signal_peer_payload(payload: Any) -> Any:
     if isinstance(payload, str):
-        with suppress(Exception):
-            payload = json.loads(payload)
+        payload = _decode_signal_peer_payload(payload)
     if isinstance(payload, dict):
         for key in ("clientId", "serialNumber", "deviceSn", "deviceSN", "sn"):
             value = payload.get(key)
             if value:
                 return str(value)
     return payload
+
+
+def _decode_signal_peer_payload(payload: str) -> Any:
+    """Return the APK-style PEER_IN/PEER_OUT payload from signal JSON."""
+    with suppress(Exception):
+        return json.loads(payload)
+    if not _looks_like_encoded_peer_payload(payload):
+        return payload
+    decoded = _base64_decode_text(payload)
+    if decoded:
+        with suppress(Exception):
+            return json.loads(decoded)
+        return decoded
+    return payload
+
+
+def _looks_like_encoded_peer_payload(value: str) -> bool:
+    return any(char in value for char in "=+/") or value.startswith("eyJ")
+
+
+def _base64_decode_text(value: str) -> str | None:
+    with suppress(Exception):
+        decoded = base64.b64decode(value, validate=True).decode()
+        if decoded:
+            return decoded
+    return None
 
 
 class XSenseWebRTCSession:
@@ -717,7 +771,13 @@ class XSenseWebRTCSession:
             or self._camera_offer_sent
         ):
             return
-        LOGGER.debug("X-Sense WebRTC sending SDP offer: %s", self._debug_context())
+        LOGGER.debug(
+            "X-Sense WebRTC sending SDP offer: %s",
+            self._debug_context(
+                recipient=_short_id(self._recipient_client_id),
+                offer_sdp_len=len(self._camera_offer_sdp),
+            ),
+        )
         await self._ws.send_str(
             make_sdp_offer_payload(
                 offer_sdp=self._camera_offer_sdp,
@@ -791,9 +851,12 @@ class XSenseWebRTCSession:
             if _is_owned_peer_message(payload, self._ticket.serial_number):
                 LOGGER.debug(
                     "X-Sense WebRTC peer event matched camera: %s",
-                    self._debug_context(event=event),
+                    self._debug_context(
+                        event=event,
+                        **_peer_event_debug(payload, self._ticket.serial_number),
+                    ),
                 )
-                self._recipient_client_id = str(payload)
+                self._recipient_client_id = str(payload).strip()
                 self._camera_peer_ready = True
                 task = getattr(self, "_peer_in_timeout_task", None)
                 if task:
@@ -802,6 +865,14 @@ class XSenseWebRTCSession:
                     await self._start_camera_peer()
                 else:
                     await self._send_offer()
+            else:
+                LOGGER.debug(
+                    "X-Sense WebRTC ignored foreign peer event: %s",
+                    self._debug_context(
+                        event=event,
+                        **_peer_event_debug(payload, self._ticket.serial_number),
+                    ),
+                )
         elif event == "SDP_ANSWER":
             answer = _owned_answer_sdp(payload, self._ticket)
             if answer:
@@ -816,7 +887,10 @@ class XSenseWebRTCSession:
             else:
                 LOGGER.debug(
                     "X-Sense WebRTC ignored invalid or foreign SDP answer: %s",
-                    self._debug_context(payload=_payload_debug(payload)),
+                    self._debug_context(
+                        payload=_payload_debug(payload),
+                        reason=_answer_reject_reason(payload, self._ticket),
+                    ),
                 )
         elif event == "ICE_CANDIDATE":
             candidate = _candidate_payload_to_aiortc(payload)
@@ -843,6 +917,14 @@ class XSenseWebRTCSession:
                     WebRTCError(
                         "xsense_webrtc_peer_offline", "Camera peer went offline"
                     )
+                )
+            else:
+                LOGGER.debug(
+                    "X-Sense WebRTC ignored foreign peer event: %s",
+                    self._debug_context(
+                        event=event,
+                        **_peer_event_debug(payload, self._ticket.serial_number),
+                    ),
                 )
 
     async def _flush_pending_ha_candidates(self) -> None:
@@ -905,7 +987,7 @@ def _owned_answer_sdp(payload: Any, ticket: XSenseWebRTCTicket) -> str | None:
 
 def _is_owned_peer_message(payload: Any, serial_number: str) -> bool:
     """Return whether a PEER_IN/PEER_OUT payload belongs to this camera."""
-    return isinstance(payload, str) and payload == serial_number
+    return isinstance(payload, str) and payload.strip() == serial_number
 
 
 def _sdp_without_local_candidates(sdp: str) -> str:
