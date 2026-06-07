@@ -194,7 +194,9 @@ def _subscription_test_client():
 
 
 @pytest.mark.asyncio
-async def test_xsense_mqtt_omits_subscription_id_when_ha_signature_lacks_it(monkeypatch):
+async def test_xsense_mqtt_omits_subscription_id_when_ha_signature_lacks_it(
+    monkeypatch,
+):
     created = []
 
     class FakeSubscription:
@@ -931,7 +933,6 @@ async def test_get_station_state_does_not_guess_second_info_for_unknown_types():
 
     assert calls == ["info_station-sn"]
     assert station.data == {}
-
 
 
 @pytest.mark.asyncio
@@ -2108,6 +2109,18 @@ async def test_start_camera_live_uses_apk_live_resolution(camera_data, expected)
     ]
 
 
+def test_camera_live_url_uses_apk_response_fields_without_scheme_rewrite():
+    assert (
+        async_xsense._camera_live_url({"liveUrl": "rtmp://example/live"})
+        == "rtmp://example/live"
+    )
+    assert (
+        async_xsense._camera_live_url({"url": "rtsp://example/live"})
+        == "rtsp://example/live"
+    )
+    assert async_xsense._camera_live_url({"liveUrl": ""}) is None
+
+
 @pytest.mark.asyncio
 async def test_update_camera_data_loads_apk_form_options():
     client = async_xsense.AsyncXSense()
@@ -2153,7 +2166,7 @@ async def test_update_camera_data_loads_apk_form_options():
     assert camera.data["cooldownOptions"] == [10]
     assert "cameraWebrtcTicket" not in camera.data
     assert ("/user/getFormOptions", {"serialNumber": "cam-sn"}) in calls
-    assert ("/device/getWebrtcTicket", {"serialNumber": "cam-sn"}) not in calls
+    assert ("/device/getWebrtcTicket", {"serialNumber": "cam-sn", "verifyDormancyStatus": True}) not in calls
 
 
 @pytest.mark.asyncio
@@ -2560,7 +2573,6 @@ def test_camera_data_normalizes_apk_integer_support_flags():
         }
     )
 
-
     for key in (
         "supportAntiFlicker",
         "supportAlarm",
@@ -2591,15 +2603,24 @@ def test_camera_data_normalizes_apk_integer_support_flags():
 
 
 def test_camera_data_uses_explicit_apk_webrtc_support_flag():
-    assert async_xsense._camera_data({"deviceSupport": {"supportWebrtc": 1}})[
-        "supportWebrtc"
-    ] is True
-    assert async_xsense._camera_data({"deviceSupport": {"supportWebrtc": 0}})[
-        "supportWebrtc"
-    ] is False
-    assert async_xsense._camera_data({"deviceModel": {"streamProtocol": "webrtc"}})[
-        "supportWebrtc"
-    ] is None
+    assert (
+        async_xsense._camera_data({"deviceSupport": {"supportWebrtc": 1}})[
+            "supportWebrtc"
+        ]
+        is True
+    )
+    assert (
+        async_xsense._camera_data({"deviceSupport": {"supportWebrtc": 0}})[
+            "supportWebrtc"
+        ]
+        is False
+    )
+    assert (
+        async_xsense._camera_data({"deviceModel": {"streamProtocol": "webrtc"}})[
+            "supportWebrtc"
+        ]
+        is None
+    )
 
 
 def test_camera_user_config_payload_sends_only_changed_cloud_fields_like_apk():

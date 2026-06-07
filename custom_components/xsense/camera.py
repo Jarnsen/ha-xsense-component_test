@@ -23,7 +23,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api.async_xsense import camera_live_resolution, is_camera_entity
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import XSenseEntity
 
@@ -151,7 +151,15 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             )
             return
 
+        LOGGER.debug(
+            "X-Sense camera WebRTC offer received: %s",
+            _camera_debug_context(entity, session_id),
+        )
         ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(entity)
+        LOGGER.debug(
+            "X-Sense camera WebRTC ticket response: %s",
+            _ticket_data_debug_context(ticket_data),
+        )
         if not isinstance(ticket_data, dict):
             send_message(
                 WebRTCError(
@@ -168,8 +176,25 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             import_module, __package__ + ".webrtc_signal"
         )
 
-        ticket = webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, ticket_data)
+        try:
+            ticket = webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, ticket_data)
+        except (KeyError, TypeError, ValueError) as err:
+            LOGGER.debug(
+                "X-Sense camera WebRTC ticket parse failed: %s",
+                _camera_debug_context(entity, session_id, error=type(err).__name__),
+            )
+            send_message(
+                WebRTCError(
+                    "xsense_webrtc_ticket_failed",
+                    "Unable to parse X-Sense WebRTC ticket",
+                )
+            )
+            return
         if not ticket.is_valid:
+            LOGGER.debug(
+                "X-Sense camera WebRTC ticket expired or incomplete: %s",
+                _camera_debug_context(entity, session_id),
+            )
             send_message(
                 WebRTCError(
                     "xsense_webrtc_ticket_expired",
@@ -190,6 +215,10 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             send_message=send_message,
             on_close=remove_session,
             camera_online=_camera_online(entity),
+        )
+        LOGGER.debug(
+            "X-Sense camera WebRTC bridge created: %s",
+            _camera_debug_context(entity, session_id),
         )
         self._webrtc_sessions[session_id] = session
         if not await session.start():
@@ -256,13 +285,45 @@ def _is_webrtc_camera(entity) -> bool:
     protocol = _stream_protocol(entity)
     if protocol is None:
         return True
-    return (
-        protocol not in {"rtsp", "rtmp"}
-        and "rtsp" not in protocol
-        and "rtmp" not in protocol
-    )
+    return "rtsp" not in protocol and "rtmp" not in protocol
 
 
 def _camera_live_resolution(entity) -> str:
     """Return the live resolution string used by the ADDX player."""
     return camera_live_resolution(entity)
+
+
+def _short_id(value):
+    """Return a short diagnostic id without logging full serial-like values."""
+    if value in (None, ""):
+        return None
+    text = str(value)
+    return text if len(text) <= 6 else f"...{text[-6:]}"
+
+
+def _camera_debug_context(entity, session_id, **extra):
+    """Return debug-only camera context without SDP, tokens, or full serials."""
+    context = {
+        "camera": _short_id(getattr(entity, "sn", None)),
+        "session": _short_id(session_id),
+        "model": entity.data.get("cameraModel") or entity.data.get("modelNo"),
+        "protocol": entity.data.get("streamProtocol"),
+        "online": getattr(entity, "online", None),
+        "data_online": entity.data.get("online"),
+        "resolution": _camera_live_resolution(entity),
+    }
+    context.update(extra)
+    return context
+
+
+def _ticket_data_debug_context(ticket_data):
+    """Return safe ticket metadata for debug logs."""
+    if not isinstance(ticket_data, dict):
+        return {"type": type(ticket_data).__name__}
+    return {
+        "keys": sorted(key for key in ticket_data if key not in {"sign"}),
+        "has_sign": bool(ticket_data.get("sign")),
+        "has_signal_ip": bool(ticket_data.get("signalServerIpAddress")),
+        "ice_servers": len(ticket_data.get("iceServer") or []),
+        "has_expiration": ticket_data.get("expirationTime") not in (None, ""),
+    }
