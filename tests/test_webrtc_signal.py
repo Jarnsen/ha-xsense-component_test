@@ -439,6 +439,33 @@ def test_parse_signal_message_does_not_decode_plain_serial_like_peer_id():
     ) == ("PEER_IN", "MTAwMDA0")
 
 
+def test_object_peer_event_matches_camera_by_apk_signal_id():
+    event, payload = parse_signal_message(
+        json.dumps(
+            {
+                "messageType": "PEER_IN",
+                "messagePayload": {
+                    "group": "camera-group",
+                    "id": "SSC0A123",
+                    "name": "test-123",
+                    "role": "device",
+                },
+            }
+        )
+    )
+
+    assert event == "PEER_IN"
+    assert webrtc_signal._is_owned_peer_message(payload, "SSC0A123")
+    assert not webrtc_signal._is_owned_peer_message(payload, "SSC0B456")
+    assert webrtc_signal._peer_event_debug(payload, "SSC0A123") == {
+        "payload": "dict_keys=['group', 'id', 'name', 'role']",
+        "payload_matches_camera": True,
+        "camera": "...C0A123",
+        "peer": "...C0A123",
+        "peer_candidates": ["...C0A123", "...st-123"],
+    }
+
+
 
 def test_stop_live_data_channel_command_matches_apk(monkeypatch):
     monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)

@@ -232,12 +232,15 @@ def _payload_debug(payload: Any) -> str:
 
 
 def _peer_event_debug(payload: Any, serial_number: str) -> dict[str, Any]:
-    text = payload.strip() if isinstance(payload, str) else None
+    match = _matching_peer_id(payload, serial_number)
     return {
         "payload": _payload_debug(payload),
-        "payload_matches_camera": text == serial_number,
+        "payload_matches_camera": match is not None,
         "camera": _short_id(serial_number),
-        "peer": _short_id(text),
+        "peer": _short_id(match),
+        "peer_candidates": [
+            _short_id(value) for value in _peer_payload_candidates(payload)
+        ],
     }
 
 
@@ -856,7 +859,10 @@ class XSenseWebRTCSession:
                         **_peer_event_debug(payload, self._ticket.serial_number),
                     ),
                 )
-                self._recipient_client_id = str(payload).strip()
+                self._recipient_client_id = (
+                    _matching_peer_id(payload, self._ticket.serial_number)
+                    or self._ticket.serial_number
+                )
                 self._camera_peer_ready = True
                 task = getattr(self, "_peer_in_timeout_task", None)
                 if task:
@@ -987,7 +993,38 @@ def _owned_answer_sdp(payload: Any, ticket: XSenseWebRTCTicket) -> str | None:
 
 def _is_owned_peer_message(payload: Any, serial_number: str) -> bool:
     """Return whether a PEER_IN/PEER_OUT payload belongs to this camera."""
-    return isinstance(payload, str) and payload.strip() == serial_number
+    return _matching_peer_id(payload, serial_number) is not None
+
+
+def _matching_peer_id(payload: Any, serial_number: str) -> str | None:
+    for value in _peer_payload_candidates(payload):
+        if value == serial_number:
+            return value
+    return None
+
+
+def _peer_payload_candidates(payload: Any) -> list[str]:
+    if isinstance(payload, str):
+        return [payload.strip()]
+    if not isinstance(payload, dict):
+        return []
+    candidates: list[str] = []
+    for key in (
+        "clientId",
+        "serialNumber",
+        "deviceSn",
+        "deviceSN",
+        "sn",
+        "id",
+        "name",
+    ):
+        value = payload.get(key)
+        if value in (None, ""):
+            continue
+        text = str(value).strip()
+        if text and text not in candidates:
+            candidates.append(text)
+    return candidates
 
 
 def _sdp_without_local_candidates(sdp: str) -> str:
