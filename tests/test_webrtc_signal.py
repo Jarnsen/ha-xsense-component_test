@@ -739,7 +739,7 @@ async def test_closed_session_ignores_late_signal_events():
     assert session._camera_peer_ready is False
 
 
-async def test_camera_offer_is_sent_before_peer_in_and_local_ice_gathering():
+async def test_camera_offer_does_not_wait_for_local_ice_gathering():
     class FakeWs:
         closed = False
 
@@ -931,6 +931,133 @@ async def test_first_video_frame_cancels_play_timeout():
     assert session._first_frame_received is True
     await asyncio.sleep(0)
     assert session._play_timeout_task.cancelled()
+
+
+async def test_online_camera_waits_for_peer_in_during_start_like_apk():
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+        async def close(self):
+            self.closed = True
+
+    class FakeSession:
+        def __init__(self):
+            self.ws = FakeWs()
+            self.connect_url = None
+
+        async def ws_connect(self, url, **kwargs):
+            self.connect_url = url
+            return self.ws
+
+    class FakeHaPeer:
+        def __init__(self):
+            self.localDescription = None
+            self.tracks = []
+
+        def addTrack(self, track):
+            self.tracks.append(track)
+
+        async def setRemoteDescription(self, description):
+            self.remoteDescription = description
+
+        async def createAnswer(self):
+            class Answer:
+                sdp = "v=0\r\n"
+
+            return Answer()
+
+        async def setLocalDescription(self, answer):
+            self.localDescription = answer
+
+        async def close(self):
+            return None
+
+    class FakeCameraPeer:
+        async def close(self):
+            return None
+
+    class FakeTask:
+        def __init__(self, coro):
+            self.coro = coro
+            self.cancelled = False
+            coro.close()
+
+        def cancel(self):
+            self.cancelled = True
+
+        def done(self):
+            return True
+
+    import asyncio
+
+    started = []
+    sent_messages = []
+    tasks = []
+
+    async def start_camera_peer():
+        started.append(True)
+
+    async def noop_async(*args):
+        return None
+
+    def create_task(coro):
+        task = FakeTask(coro)
+        tasks.append(task)
+        return task
+
+    aio_session = FakeSession()
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._session = aio_session
+    session._send_message = sent_messages.append
+    session._offer_sdp = "v=0\r\n"
+    session._ticket = ticket()
+    session._camera_online = True
+    session._session_id = "Android-client123-100000"
+    session._recipient_client_id = "SSC0A123"
+    session._resolution = "1280x720"
+    session._ws = None
+    session._reader_task = None
+    session._ha_pc = FakeHaPeer()
+    session._camera_pc = FakeCameraPeer()
+    session._video = object()
+    session._audio = object()
+    session._pending_ha_candidates = []
+    session._pending_camera_candidates = []
+    session._camera_peer_ready = False
+    session._data_channel_connected = False
+    session._camera_offer_sent = False
+    session._camera_offer_sdp = None
+    session._camera_local_description_task = None
+    session._peer_in_timeout_task = None
+    session._play_timeout_task = None
+    session._start_live_sent = False
+    session._first_frame_received = False
+    session._closed = False
+    session._close_lock = asyncio.Lock()
+    session._setup_camera_peer = lambda: None
+    session._flush_pending_ha_candidates = noop_async
+    session._read_loop = noop_async
+    session._fail_after_timeout = noop_async
+    session._start_camera_peer = start_camera_peer
+
+    original_create_task = webrtc_signal.asyncio.create_task
+    webrtc_signal.asyncio.create_task = create_task
+    try:
+        assert await session.start() is True
+    finally:
+        webrtc_signal.asyncio.create_task = original_create_task
+
+    assert aio_session.ws.messages == []
+    assert started == []
+    assert session._peer_in_timeout_task is tasks[-1]
+    assert len(tasks) == 3
+    assert sent_messages[0].answer == "v=0\r\n"
 
 
 async def test_offline_camera_waits_for_peer_in_before_offer_like_apk():
