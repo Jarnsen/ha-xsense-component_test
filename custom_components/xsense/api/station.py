@@ -35,7 +35,6 @@ class Station(Entity):
             device_data["stationId"] = self.entity_id
             if not device_data.get("roomName") and self.house is not None:
                 device_data["roomName"] = self.house.room_name(device_data.get("roomId"))
-            device_data["online"] = 1
             if "isActivate" in device_data:
                 device_data["activate"] = device_data["isActivate"]
             source_devices.append(device_data)
@@ -130,7 +129,12 @@ def _light_group_device_data(
 
 
 def _has_light_on(devices: List[Dict]) -> bool:
-    return any(i.get("online") == 1 and i.get("on") == "1" for i in devices)
+    return any(_is_not_reported_offline(i) and i.get("on") == "1" for i in devices)
+
+
+def _is_not_reported_offline(device: Dict) -> bool:
+    online = device.get("online", device.get("onLine"))
+    return online not in (0, "0", False, "false", "False")
 
 
 def _light_group_device_sn(group_id) -> str:

@@ -67,14 +67,18 @@ class XSenseEntity(CoordinatorEntity):
     def _current_entity_is_online(self) -> bool:
         """Return if the current X-Sense entity and parent station are online."""
         entity = self._current_entity()
-        if entity is None or entity.online is not True or not super().available:
+        if entity is None or not super().available:
             return False
 
         if self._station_id:
             station = self.coordinator.data["stations"].get(self._station_id)
-            return station is not None and station.online is True
+            return (
+                station is not None
+                and station.online is True
+                and entity.online is not False
+            )
 
-        return True
+        return entity.online is True
 
     @property
     def available(self) -> bool:

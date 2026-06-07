@@ -18,7 +18,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import XSenseDataUpdateCoordinator
-from .api.entity_map import EntityType, entities as entity_definitions
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,25 +55,18 @@ async def async_setup_entry(
         )
 
 
-ALARM_PANEL_DEVICE_TYPES = {
-    EntityType.DOOR,
-    EntityType.KEYPAD,
-    EntityType.MOTION,
-    EntityType.REMOTE,
-}
+ALARM_PANEL_SECURITY_DEVICE_TYPES = {"SDS0A", "SMS0A", "SKP0A"}
 
 
 def station_supports_alarm_panel(station) -> bool:
-    """Return whether the app exposes SBS50 security alarm modes for this station."""
+    """Return whether the APK exposes SBS50 security alarm modes."""
     if station.type != "SBS50":
         return False
 
-    for device in station.devices.values():
-        definition = entity_definitions.get(device.type)
-        if definition and definition.get("type") in ALARM_PANEL_DEVICE_TYPES:
-            return True
-
-    return False
+    return any(
+        device.type in ALARM_PANEL_SECURITY_DEVICE_TYPES
+        for device in station.devices.values()
+    )
 
 
 class XSenseAlarmControlPanel(

@@ -397,6 +397,7 @@ def test_station_shadow_names_follow_apk_factory_rules():
             category=device_type,
         )
 
+    assert make_station("SBS10").shadow_name == "serial"
     assert make_station("SBS50").shadow_name == "SBS50serial"
     assert make_station("STH0C").shadow_name == "STH0C-serial"
     assert make_station("SWS0B").shadow_name == "SWS0B-serial"
@@ -408,6 +409,30 @@ def test_station_shadow_names_follow_apk_factory_rules():
     assert make_station("XS03-WX").shadow_name == "XS03-WXserial"
     assert make_station("XS01-WX", "ABC123").shadow_name == "XS01-WXABC123"
     assert make_station("XS01-WX", "ABCEN123").shadow_name == "XS01-WX-ABCEN123"
+
+
+def test_thing_request_uses_apk_sbs10_station_serial_thing_name():
+    client = async_xsense.AsyncXSense()
+    client.aws_session_token = "token"
+
+    class Signer:
+        def sign_headers(self, method, url, region, headers, data):
+            return {}
+
+    client.signer = Signer()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    station_obj = station.Station(
+        test_house,
+        stationId="station-id",
+        stationName="SBS10",
+        stationSn="station-sn",
+        category="SBS10",
+    )
+
+    url, _headers = client._thing_request(station_obj, "mainpage")
+
+    assert "/things/station-sn/shadow?name=mainpage" in url
+    assert "SBS10station-sn" not in url
 
 
 def test_entity_online_state_uses_online_time_report_without_explicit_status():
@@ -471,7 +496,7 @@ def test_station_set_devices_matches_apk_child_device_normalization():
     )
 
     device_obj = station_obj.devices["device-id"]
-    assert device_obj.online is True
+    assert device_obj.online is None
     assert device_obj.station is station_obj
     assert device_obj.data["activate"] is True
     assert device_obj.data["isActivate"] is True
@@ -890,25 +915,23 @@ async def test_get_station_state_uses_second_info_for_new_wifi_devices_like_apk(
 
 
 @pytest.mark.asyncio
-async def test_get_station_state_falls_back_to_second_info_for_unknown_legacy_types():
+async def test_get_station_state_does_not_guess_second_info_for_unknown_types():
     client = async_xsense.AsyncXSense()
     station = FakeStation("XS01-M")
     calls = []
 
     async def get_thing(station_arg, page):
         calls.append(page)
-        if page == "info_station-sn":
-            client._lastres = FakeResponse(404, "missing")
-            return {"message": "missing"}
-        client._lastres = FakeResponse(200)
-        return {"state": {"reported": {"rfLevel": 2}}}
+        client._lastres = FakeResponse(404, "missing")
+        return {"message": "missing"}
 
     client.get_thing = get_thing
 
     await client.get_station_state(station)
 
-    assert calls == ["info_station-sn", "2nd_info_station-sn"]
-    assert station.data == {"rfLevel": 2}
+    assert calls == ["info_station-sn"]
+    assert station.data == {}
+
 
 
 @pytest.mark.asyncio
@@ -1288,6 +1311,27 @@ async def test_wifi_device_mute_uses_apk_factory_payload_shape(
 
 
 @pytest.mark.asyncio
+async def test_mailbox_mute_uses_apk_payload_shape():
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    device = FakeXSenseDevice("SMA51", entity_map.EntityType.MAILBOX)
+
+    station_arg, page, desired = await _capture_action(client, device, "mute")
+
+    assert station_arg is device.station
+    assert page == "2nd_appmailmute"
+    assert desired["shadow"] == "appMailMute"
+    assert desired["stationSN"] == "station-sn"
+    assert desired["deviceSN"] == "device-sn"
+    assert desired["userId"] == "user-id"
+    assert desired["muteType"] == "1"
+    assert "silenceTime" not in desired
+    assert "setType" not in desired
+    assert desired["time"].isdigit()
+    assert len(desired["time"]) == 14
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("device_type", "expected_shadow"),
     [
@@ -1298,6 +1342,9 @@ async def test_wifi_device_mute_uses_apk_factory_payload_shape(
         ("XP02S-MR", "appMute"),
         ("XS0D-MR", "appMute"),
         ("XC0C-MR", "app2ndMute"),
+        ("SC01-MR", "appSc07mrMute"),
+        ("XP0H-MR", "appSc07mrMute"),
+        ("XP0P-MR", "appSc07mrMute"),
     ],
 )
 async def test_sbs50_child_mute_uses_apk_payload_shape(device_type, expected_shadow):
@@ -1783,7 +1830,7 @@ def test_house_set_stations_preserves_all_apk_camera_entries_before_model_checks
     assert camera.sn == "future-cam-sn"
     assert camera.type == "SSC99"
     assert camera.online is True
-    assert not async_xsense.is_camera_entity(camera)
+    assert async_xsense.is_camera_entity(camera)
 
 
 @pytest.mark.asyncio
@@ -1847,6 +1894,35 @@ async def test_update_camera_data_does_not_assume_missing_camera_online_state():
     camera = test_house.get_station_by_sn("cam-sn")
     assert camera is not None
     assert camera.online is None
+
+
+@pytest.mark.asyncio
+async def test_update_camera_data_does_not_create_unknown_model_from_general_device_list():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
+    client.houses = {"house-id": test_house}
+
+    async def addx_call(endpoint, **kwargs):
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "future-device-sn",
+                        "deviceName": "Future Device",
+                        "houseId": "house-id",
+                        "modelNo": "SSC99",
+                        "online": 1,
+                    }
+                ]
+            }
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    assert test_house.get_station_by_sn("future-device-sn") is None
 
 
 @pytest.mark.asyncio
@@ -2159,6 +2235,42 @@ async def test_get_camera_webrtc_ticket_fetches_on_demand_and_reuses_cache():
     ]
 
 
+@pytest.mark.asyncio
+async def test_get_camera_webrtc_ticket_refetches_missing_expiration_like_apk():
+    client = async_xsense.AsyncXSense()
+    camera = entity.Entity()
+    camera.sn = "cam-sn"
+    camera.type = "SSC0A"
+    camera.set_data({"webrtcTicket": {"signalServer": "https://cached.example"}})
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        return {
+            "signalServer": "https://signal.example",
+            "groupId": "group",
+            "role": "viewer",
+            "id": "client123",
+            "traceId": "trace",
+            "sign": "sig",
+            "time": 123456,
+            "expirationTime": 4102444800000,
+            "iceServer": [],
+        }
+
+    client.addx_call = addx_call
+
+    ticket_data = await client.get_camera_webrtc_ticket(camera)
+
+    assert ticket_data["signalServer"] == "https://signal.example"
+    assert calls == [
+        (
+            "/device/getWebrtcTicket",
+            {"serialNumber": "cam-sn", "verifyDormancyStatus": True},
+        )
+    ]
+
+
 def test_addx_body_requires_ipc_country():
     client = async_xsense.AsyncXSense()
 
@@ -2334,8 +2446,8 @@ async def test_addx_call_rejects_unknown_node_type():
 
 
 @pytest.mark.asyncio
-async def test_register_ipc_uses_mqtt_region_for_node_type_like_apk():
-    client = async_xsense.AsyncXSense()
+async def test_register_ipc_uses_mqtt_region_and_app_language_like_apk():
+    client = async_xsense.AsyncXSense(language="de-DE")
     client.username = "user@example.com"
     test_house = house.House(None, "house-id", "Home", "Canada", "eu-central-1", "mqtt")
     client.houses = {"house-id": test_house}
@@ -2351,9 +2463,16 @@ async def test_register_ipc_uses_mqtt_region_for_node_type_like_apk():
     assert calls == [
         (
             "C10101",
-            {"userName": "user@example.com", "nodeType": "EU", "language": "en"},
+            {"userName": "user@example.com", "nodeType": "EU", "language": "de"},
         )
     ]
+
+
+def test_ipc_language_uses_simple_apk_app_language_code():
+    assert async_xsense._ipc_language("de-DE") == "de"
+    assert async_xsense._ipc_language("pt_BR") == "pt"
+    assert async_xsense._ipc_language("") == "en"
+    assert async_xsense._ipc_language(None) == "en"
 
 
 def test_ipc_node_type_uses_apk_mqtt_region_prefix():
@@ -2415,6 +2534,7 @@ def test_camera_data_normalizes_apk_integer_support_flags():
                 "canStandby": 1,
                 "whiteLight": 1,
                 "supportMotionTrack": 1,
+                "devicePersonDetect": True,
                 "canRotate": 1,
             },
             "deviceSupport": {
@@ -2439,6 +2559,7 @@ def test_camera_data_normalizes_apk_integer_support_flags():
             "sdCard": {"formatStatus": 0},
         }
     )
+
 
     for key in (
         "supportAntiFlicker",
@@ -2466,27 +2587,19 @@ def test_camera_data_normalizes_apk_integer_support_flags():
     ):
         assert data[key] is True
 
+    assert data["supportPersonDetect"] is False
 
-def test_camera_data_uses_apk_webrtc_stream_protocol_rule():
-    assert async_xsense._camera_data({"deviceModel": {}})["supportWebrtc"] is True
-    assert (
-        async_xsense._camera_data({"deviceModel": {"streamProtocol": "webrtc"}})[
-            "supportWebrtc"
-        ]
-        is True
-    )
-    assert (
-        async_xsense._camera_data({"deviceModel": {"streamProtocol": "rtsp"}})[
-            "supportWebrtc"
-        ]
-        is False
-    )
-    assert (
-        async_xsense._camera_data({"deviceModel": {"streamProtocol": "RTMP"}})[
-            "supportWebrtc"
-        ]
-        is False
-    )
+
+def test_camera_data_uses_explicit_apk_webrtc_support_flag():
+    assert async_xsense._camera_data({"deviceSupport": {"supportWebrtc": 1}})[
+        "supportWebrtc"
+    ] is True
+    assert async_xsense._camera_data({"deviceSupport": {"supportWebrtc": 0}})[
+        "supportWebrtc"
+    ] is False
+    assert async_xsense._camera_data({"deviceModel": {"streamProtocol": "webrtc"}})[
+        "supportWebrtc"
+    ] is None
 
 
 def test_camera_user_config_payload_sends_only_changed_cloud_fields_like_apk():
@@ -2570,7 +2683,7 @@ def test_camera_user_config_payload_uses_apk_rocker_alarm_seconds():
     }
 
 
-def test_camera_user_config_payload_requires_alarm_seconds_for_non_rocker():
+def test_camera_user_config_payload_uses_apk_non_rocker_alarm_seconds_default():
     camera = device_module.Device(
         None,
         deviceId="cam-id",
@@ -2580,10 +2693,11 @@ def test_camera_user_config_payload_requires_alarm_seconds_for_non_rocker():
     )
     camera.set_data({"supportRocker": False})
 
-    with pytest.raises(
-        async_xsense.XSenseError, match="Camera alarm duration is unknown"
-    ):
-        async_xsense._camera_user_config_payload(camera, {"needAlarm": 1})
+    assert async_xsense._camera_user_config_payload(camera, {"needAlarm": 1}) == {
+        "serialNumber": "cam-sn",
+        "needAlarm": 1,
+        "alarmSeconds": 5,
+    }
 
 
 def test_camera_config_write_value_uses_apk_field_types():
@@ -2633,7 +2747,7 @@ def test_camera_data_requires_apk_sd_card_support_status():
     )
     assert (
         async_xsense._camera_data({"sdCard": {"formatStatus": 1}})["supportSdCard"]
-        is False
+        is True
     )
     assert (
         async_xsense._camera_data({"sdCard": {"formatStatus": 23}})["supportSdCard"]

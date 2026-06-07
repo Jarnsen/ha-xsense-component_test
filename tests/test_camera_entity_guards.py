@@ -9,7 +9,7 @@ for module_name in list(sys.modules):
 if not hasattr(sys.modules.get("custom_components"), "__path__"):
     sys.modules.pop("custom_components", None)
 
-from custom_components.xsense import binary_sensor, number, select, sensor, switch
+from custom_components.xsense import binary_sensor, button, number, select, sensor, switch
 from custom_components.xsense.api import mapping
 
 
@@ -108,7 +108,7 @@ def test_read_only_camera_entities_require_camera_entity():
     assert binary_sensor.has_camera_data("needMotion")(camera)
 
 
-def test_camera_audio_controls_follow_apk_unspecified_support_rule():
+def test_camera_audio_controls_follow_apk_missing_or_enabled_support_rule():
     live_audio = next(
         description
         for description in switch.SWITCHES
@@ -133,6 +133,14 @@ def test_camera_audio_controls_follow_apk_unspecified_support_rule():
             "liveSpeakerVolume": 80,
         },
     )
+
+    assert live_audio.exists_fn(camera)
+    assert recording_audio.exists_fn(camera)
+    assert live_speaker.exists_fn(camera)
+
+    camera.data["supportLiveAudio"] = True
+    camera.data["supportRecordingAudio"] = True
+    camera.data["supportLiveSpeakerVolume"] = True
 
     assert live_audio.exists_fn(camera)
     assert recording_audio.exists_fn(camera)
@@ -191,6 +199,34 @@ def test_camera_write_controls_require_explicit_admin_flag():
     assert switch.has_camera_data("needMotion")(camera)
     assert number.has_supported_data("alarmVol", "supportAlarmVolume")(camera)
     assert select.has_data("deviceLanguage", "deviceSupportLanguage")(camera)
+
+
+def test_camera_wake_button_follows_apk_admin_support_and_sleep_state():
+    camera = entity(
+        "SSC0A",
+        {"deviceStatus": 3, "isAdmin": True, "supportSleep": True},
+    )
+
+    assert button.can_wake_camera(camera, None)
+    assert button.camera_is_sleeping(camera)
+
+    camera.data["deviceStatus"] = 1
+    assert button.can_wake_camera(camera, None)
+    assert not button.camera_is_sleeping(camera)
+
+    camera.data["deviceStatus"] = 3
+    camera.data["isAdmin"] = False
+    assert not button.can_wake_camera(camera, None)
+
+    camera.data["isAdmin"] = True
+    camera.data["supportSleep"] = False
+    assert not button.can_wake_camera(camera, None)
+
+    non_camera = entity(
+        "XS01-WX",
+        {"deviceStatus": 3, "isAdmin": True, "supportSleep": True},
+    )
+    assert not button.can_wake_camera(non_camera, None)
 
 
 def test_camera_default_codec_requires_explicit_codec_change_support():
@@ -383,3 +419,15 @@ async def test_webrtc_camera_stream_source_does_not_start_native_live_url():
     camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
 
     assert await camera.stream_source() is None
+
+
+def test_camera_online_uses_parsed_entity_online_state_like_apk():
+    from custom_components.xsense import camera
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc"})
+    camera_entity.online = True
+    assert camera._camera_online(camera_entity) is True
+
+    camera_entity.online = False
+    camera_entity.data["online"] = 1
+    assert camera._camera_online(camera_entity) is False

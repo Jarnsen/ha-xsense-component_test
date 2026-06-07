@@ -329,7 +329,19 @@ def test_obsolete_binary_sensor_entry_detection_is_scoped_to_xsense_led_binary_s
 
 
 def test_obsolete_binary_sensor_keys_only_remove_removed_led_binary_sensor():
-    assert OBSOLETE_BINARY_SENSOR_KEYS == ('led_light',)
+    assert OBSOLETE_BINARY_SENSOR_KEYS == (
+        'led_light',
+        'motion_required',
+        'video_recording_enabled',
+        'night_vision_enabled',
+        'recording_light_enabled',
+        'camera_alarm_enabled',
+        'camera_mirror_flip',
+        'camera_antiflicker',
+        'camera_live_audio',
+        'camera_voice_volume',
+        'camera_cooldown_enabled',
+    )
 
 
 def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
@@ -460,6 +472,30 @@ def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
                 entity_id='sensor.xs01_wx_sw_version',
             ),
             SimpleNamespace(
+                domain='sensor',
+                platform='xsense',
+                unique_id='xs01-wx-alarm-vol',
+                entity_id='sensor.xs01_wx_alarm_vol',
+            ),
+            SimpleNamespace(
+                domain='sensor',
+                platform='xsense',
+                unique_id='xs01-wx-voice-vol',
+                entity_id='sensor.xs01_wx_voice_vol',
+            ),
+            SimpleNamespace(
+                domain='sensor',
+                platform='xsense',
+                unique_id='xs01-wx-chirp-vol',
+                entity_id='sensor.xs01_wx_chirp_vol',
+            ),
+            SimpleNamespace(
+                domain='sensor',
+                platform='xsense',
+                unique_id='xs01-wx-reminder-vol',
+                entity_id='sensor.xs01_wx_reminder_vol',
+            ),
+            SimpleNamespace(
                 domain='binary_sensor',
                 platform='xsense',
                 unique_id='xs01-wx-led-light',
@@ -488,6 +524,10 @@ def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
         'sensor.xs01_wx_serial_number',
         'sensor.xs01_wx_software_version',
         'sensor.xs01_wx_sw_version',
+        'sensor.xs01_wx_alarm_vol',
+        'sensor.xs01_wx_voice_vol',
+        'sensor.xs01_wx_chirp_vol',
+        'sensor.xs01_wx_reminder_vol',
         'binary_sensor.xs01_wx_led_light',
     ]
 

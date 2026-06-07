@@ -71,6 +71,14 @@ def test_webrtc_ticket_rejects_expired_ticket(monkeypatch):
     assert expired.is_valid is False
 
 
+def test_webrtc_ticket_rejects_missing_expiration_like_apk(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+
+    missing_expiration = ticket(expirationTime=None)
+
+    assert missing_expiration.is_valid is False
+
+
 def test_webrtc_offer_candidate_and_start_live_payloads_match_apk(monkeypatch):
     monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
     monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)

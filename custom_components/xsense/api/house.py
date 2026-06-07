@@ -3,6 +3,7 @@ from typing import List, Dict
 from .aws_signer import AWSSigner
 from .station import Station
 from .mqtt_helper import MQTTHelper
+from .entity_map import EntityType
 
 
 class House:
@@ -88,6 +89,7 @@ class House:
                 "devices": [],
             }
             s = Station(self, **station_data)
+            s.entity_type = EntityType.CAMERA
             s.set_devices(station_data)
             stations[station_id] = s
 

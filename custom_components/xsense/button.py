@@ -33,11 +33,26 @@ async def wake_camera(entity: Entity, xsense: AsyncXSense) -> None:
     await xsense.wake_camera(entity)
 
 
+def can_wake_camera(entity: Entity, xsense: AsyncXSense) -> bool:
+    """Return if a camera supports the APK wake action."""
+    return (
+        is_camera_entity(entity)
+        and entity.data.get("isAdmin") is True
+        and entity.data.get("supportSleep") is True
+    )
+
+
+def camera_is_sleeping(entity: Entity) -> bool:
+    """Return if the APK considers the camera to be sleeping."""
+    return entity.data.get("deviceStatus") == 3
+
+
 @dataclass(kw_only=True, frozen=True)
 class XSenseButtonEntityDescription(ButtonEntityDescription):
     """Describes XSense button entity."""
 
     exists_fn: Callable[[Entity, AsyncXSense], bool] = lambda entity, api: True
+    available_fn: Callable[[Entity], bool] = lambda entity: True
     press_fn: Callable[[Entity, AsyncXSense], Awaitable[None]]
 
 
@@ -71,9 +86,8 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
         name="Wake Camera",
         icon="mdi:power-sleep",
         entity_category=EntityCategory.CONFIG,
-        exists_fn=lambda entity, xsense: (
-            is_camera_entity(entity) and entity.data.get("supportSleep") is True
-        ),
+        exists_fn=can_wake_camera,
+        available_fn=camera_is_sleeping,
         press_fn=wake_camera,
     ),
 )
@@ -129,7 +143,12 @@ class XSenseButtonEntity(XSenseEntity, ButtonEntity):
     @property
     def available(self) -> bool:
         """Return if this control can be used."""
-        return self._current_entity_is_online()
+        device = self._current_entity()
+        return (
+            device is not None
+            and self._current_entity_is_online()
+            and self.entity_description.available_fn(device)
+        )
 
     async def async_press(self) -> None:
         """Press the button."""

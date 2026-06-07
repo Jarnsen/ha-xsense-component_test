@@ -108,7 +108,7 @@ class XSenseWebRTCTicket:
     def is_valid(self) -> bool:
         """Return whether the ticket has enough lifetime left to start playback."""
         if self.expiration_time is None:
-            return True
+            return False
         return self.expiration_time > int(time.time() * 1000)
 
     @property

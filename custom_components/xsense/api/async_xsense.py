@@ -109,12 +109,15 @@ def _station_info_shadow_names(station: Station) -> tuple[str, ...]:
         return (f"info_{station.sn}",)
     if station.type == "SBS50" or station.type in _SECOND_INFO_DEVICE_TYPES:
         return (f"2nd_info_{station.sn}",)
-    return (f"info_{station.sn}", f"2nd_info_{station.sn}")
+    return (f"info_{station.sn}",)
 
 
 def is_camera_entity(entity: Entity) -> bool:
-    """Return if an entity is an APK-supported IPC camera."""
-    return entity.type in CAMERA_TYPES
+    """Return if an entity came from the APK camera sources."""
+    return (
+        getattr(entity, "entity_type", None) == EntityType.CAMERA
+        or entity.type in CAMERA_TYPES
+    )
 
 
 def _normalized_camera_serial(value) -> str | None:
@@ -141,7 +144,7 @@ def _camera_resolution(value) -> str | None:
 def _camera_webrtc_ticket_valid(ticket: dict) -> bool:
     expiration = ticket.get("expirationTime")
     if expiration in (None, ""):
-        return True
+        return False
     try:
         return int(expiration) > int(datetime.now().timestamp() * 1000)
     except (TypeError, ValueError):
@@ -154,10 +157,11 @@ def camera_live_resolution(camera: Entity) -> str:
 
 
 class AsyncXSense(XSenseBase):
-    def __init__(self, session=None):
+    def __init__(self, session=None, language: str | None = None):
         super().__init__()
         self.session = session
         self._owns_session = session is None
+        self.language = _ipc_language(language)
 
     async def _get_session(self):
         if self.session is None or self.session.closed:
@@ -411,17 +415,23 @@ class AsyncXSense(XSenseBase):
             "C10101",
             userName=self.username,
             nodeType=node_type,
-            language="en",
+            language=self.language,
         )
 
     async def update_camera_data(self):
         """Merge camera metadata and config from the Android app ADDX API."""
         data = await self.addx_call("/device/listuserdevices")
+        known_camera_serials = {
+            _normalized_camera_serial(station.sn)
+            for house in self.houses.values()
+            for station in house.stations.values()
+            if is_camera_entity(station)
+        }
         devices = [
             device
             for device in (data or {}).get("list") or []
-            if _camera_type(device)
-            and _normalized_camera_serial(device.get("serialNumber"))
+            if (serial := _normalized_camera_serial(device.get("serialNumber")))
+            and (_camera_type(device) in CAMERA_TYPES or serial in known_camera_serials)
         ]
         camera_serials = {
             _normalized_camera_serial(device.get("serialNumber")) for device in devices
@@ -529,6 +539,7 @@ class AsyncXSense(XSenseBase):
 
         house = target_houses[0]
         station_id = str(serial)
+        camera_type = _camera_type(data)
         station = Station(
             house,
             stationId=station_id,
@@ -536,11 +547,12 @@ class AsyncXSense(XSenseBase):
             stationName=data.get("deviceName")
             or data.get("displayModelNo")
             or station_id,
-            category=_camera_type(data),
-            deviceType=_camera_type(data),
+            category=camera_type,
+            deviceType=camera_type,
             onLine=data.get("online"),
             devices=[],
         )
+        station.entity_type = EntityType.CAMERA
         station.set_devices({"devices": []})
         house.stations[station.entity_id] = station
         return station
@@ -959,6 +971,16 @@ def _ipc_node_type(mqtt_region: str | None) -> str:
     return node_type if node_type in {"CN", "EU", "US"} else "US"
 
 
+def _ipc_language(language: str | None) -> str:
+    """Return the simple app language code the APK sends to IPC registration."""
+    if not language:
+        return "en"
+    normalized = str(language).strip().replace("_", "-")
+    if not normalized:
+        return "en"
+    return normalized.split("-", 1)[0].lower()
+
+
 def _camera_type(data: Dict) -> str | None:
     device_model = data.get("deviceModel") or {}
     for value in (
@@ -966,20 +988,11 @@ def _camera_type(data: Dict) -> str | None:
         data.get("displayModelNo"),
         device_model.get("modelName"),
     ):
-        model = str(value or "").upper()
-        if model in CAMERA_TYPES:
+        model = str(value or "").strip().upper()
+        if model:
             return model
     return None
 
-
-def _camera_is_webrtc(data: Dict) -> bool:
-    """Return DeviceBean.isWebRTC() from the Android app."""
-    device_model = data.get("deviceModel") or {}
-    stream_protocol = device_model.get("streamProtocol")
-    if stream_protocol is None:
-        return True
-    protocol = str(stream_protocol).lower()
-    return "rtsp" not in protocol and "rtmp" not in protocol
 
 
 def _camera_data(data: Dict) -> Dict:
@@ -1046,14 +1059,14 @@ def _camera_data(data: Dict) -> Dict:
             device_support.get("supportRecordingAudioToggle")
         ),
         "supportRocker": _addx_bool(device_model.get("canRotate")),
-        "supportSdCard": sd_card.get("formatStatus") == 0,
+        "supportSdCard": bool(sd_card) and sd_card.get("formatStatus") != 23,
         "supportSleep": device_support.get("deviceDormancySupport") == 1,
         "supportLiveSpeakerVolume": _addx_bool(
             device_support.get("supportLiveSpeakerVolume")
         ),
         "supportedRecordingResolutions": device_support.get("deviceSupportResolution"),
         "supportVoiceVolume": _addx_bool(device_support.get("supportVoiceVolume")),
-        "supportWebrtc": _camera_is_webrtc(data),
+        "supportWebrtc": _addx_bool(device_support.get("supportWebrtc")),
         "thumbImgTime": data.get("thumbImgTime"),
         "thumbImgUrl": data.get("thumbImgUrl"),
         "timeZone": data.get("timeZone"),
@@ -1122,10 +1135,10 @@ def _add_camera_config_companions(camera: Entity, payload: Dict) -> None:
     if "needAlarm" in payload:
         if camera.data.get("supportRocker") is True:
             payload["alarmSeconds"] = 10
-        elif camera.data.get("alarmSeconds") is not None:
-            payload["alarmSeconds"] = camera.data["alarmSeconds"]
+        elif camera.data.get("alarmSeconds") in (None, 0):
+            payload["alarmSeconds"] = 5
         else:
-            raise XSenseError("Camera alarm duration is unknown")
+            payload["alarmSeconds"] = camera.data["alarmSeconds"]
     if (
         "needNightVision" in payload
         and camera.data.get("nightThresholdLevel") is not None

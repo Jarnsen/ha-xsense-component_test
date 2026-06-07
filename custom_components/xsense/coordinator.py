@@ -82,7 +82,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.xsense is not None:
             await self.xsense.close()
 
-        xsense = AsyncXSense(async_get_clientsession(self.hass))
+        xsense = AsyncXSense(
+            async_get_clientsession(self.hass), language=self.hass.config.language
+        )
 
         try:
             await _async_init_and_login(xsense, email, password)

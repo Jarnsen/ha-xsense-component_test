@@ -40,11 +40,31 @@ OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
     "software_version",
     "sw_version",
     "sbs50_sw",
+    "alarm_vol",
+    "voice_vol",
+    "chirp_vol",
+    "reminder_vol",
+    "camera_recording_resolution",
+    "camera_default_codec",
+    "camera_video_seconds",
+    "camera_alarm_seconds",
+    "camera_motion_sensitivity",
+    "camera_night_vision_mode",
 )
 
 
 OBSOLETE_BINARY_SENSOR_KEYS: tuple[str, ...] = (
     "led_light",
+    "motion_required",
+    "video_recording_enabled",
+    "night_vision_enabled",
+    "recording_light_enabled",
+    "camera_alarm_enabled",
+    "camera_mirror_flip",
+    "camera_antiflicker",
+    "camera_live_audio",
+    "camera_voice_volume",
+    "camera_cooldown_enabled",
 )
 
 
