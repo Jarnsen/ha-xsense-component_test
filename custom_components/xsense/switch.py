@@ -70,10 +70,10 @@ def has_supported_data(key: str, support_key: str) -> Callable[[Entity], bool]:
     )
 
 
-def has_supported_or_unspecified_data(
+def has_apk_default_supported_data(
     key: str, support_key: str
 ) -> Callable[[Entity], bool]:
-    """Return if the APK exposes camera audio when support is unset or enabled."""
+    """Return if the APK shows a camera setting when support is missing or enabled."""
     return lambda entity: (
         is_camera_entity(entity)
         and key in entity.data
@@ -275,15 +275,6 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         value_fn=data_bool("antiflickerSwitch"),
     ),
     XSenseSwitchEntityDescription(
-        key="camera_person_detection",
-        data_key="devicePersonDetect",
-        addx_key="devicePersonDetect",
-        name="Person Detection",
-        icon="mdi:account-search",
-        exists_fn=has_supported_data("devicePersonDetect", "supportPersonDetect"),
-        value_fn=data_bool("devicePersonDetect"),
-    ),
-    XSenseSwitchEntityDescription(
         key="camera_cry_detection",
         data_key="cryDetect",
         addx_key="cryDetect",
@@ -352,7 +343,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         addx_key="audio.liveAudioToggleOn",
         name="Live Audio",
         icon="mdi:volume-high",
-        exists_fn=has_supported_or_unspecified_data(
+        exists_fn=has_apk_default_supported_data(
             "liveAudioToggleOn", "supportLiveAudio"
         ),
         value_fn=data_bool("liveAudioToggleOn"),
@@ -363,7 +354,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         addx_key="audio.recordingAudioToggleOn",
         name="Recording Audio",
         icon="mdi:microphone",
-        exists_fn=has_supported_or_unspecified_data(
+        exists_fn=has_apk_default_supported_data(
             "recordingAudioToggleOn", "supportRecordingAudio"
         ),
         value_fn=data_bool("recordingAudioToggleOn"),

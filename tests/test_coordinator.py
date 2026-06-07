@@ -105,7 +105,7 @@ def test_mqtt_reported_device_list_is_routed_to_apk_state_parser():
 
     class Station:
         sn = "station-sn"
-        shadow_name = "SBS10station-sn"
+        shadow_name = "station-sn"
 
         def get_device_by_sn(self, _identifier):
             return None
@@ -120,7 +120,7 @@ def test_mqtt_reported_device_list_is_routed_to_apk_state_parser():
     coordinator.async_update_listeners = lambda: None
 
     coordinator.async_event_received(
-        "$aws/things/SBS10station-sn/shadow/name/mainpage/update",
+        "$aws/things/station-sn/shadow/name/mainpage/update",
         (
             '{"state":{"reported":[{"deviceSn":"child-sn",'
             '"deviceType":"XS03-iWX","onLine":"1"}]}}'
@@ -141,7 +141,7 @@ def test_mqtt_child_devs_payload_is_routed_to_apk_state_parser():
 
     class Station:
         sn = "station-sn"
-        shadow_name = "SBS10station-sn"
+        shadow_name = "station-sn"
 
         def get_device_by_sn(self, _identifier):
             return None
@@ -156,7 +156,7 @@ def test_mqtt_child_devs_payload_is_routed_to_apk_state_parser():
     coordinator.async_update_listeners = lambda: None
 
     coordinator.async_event_received(
-        "$aws/things/SBS10station-sn/shadow/name/mainpage/update",
+        "$aws/things/station-sn/shadow/name/mainpage/update",
         (
             '{"state":{"reported":{"stationSN":"station-sn",'
             '"devs":{"shadow-key":{"_deviceSN":"child-sn","onLine":"1"}}}}}'

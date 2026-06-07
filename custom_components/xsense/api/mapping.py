@@ -201,7 +201,6 @@ type_mapping: dict[str, Callable[[typing.Any], typing.Any]] = {
     "supportMechanicalDingDong": bool_state,
     "supportMirrorFlip": bool_state,
     "supportMotionTrack": bool_state,
-    "supportPersonDetect": bool_state,
     "supportPirCooldown": bool_state,
     "supportRecLamp": bool_state,
     "supportRecordingAudio": bool_state,

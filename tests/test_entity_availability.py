@@ -217,6 +217,20 @@ def test_connected_sensor_does_not_assume_unknown_online_state():
     assert connected.is_on is None
 
 
+def test_malformed_online_time_does_not_invent_online_state():
+    station = Station(
+        House(),
+        stationId="station-id",
+        stationName="Smoke Alarm",
+        stationSn="station-sn",
+        category="XS01-WX",
+    )
+
+    station.set_data({"onlineTime": "not-a-time", "utcTime": "20260602063103"})
+
+    assert station.online is None
+
+
 def test_alarm_control_panel_requires_security_device_family():
     smoke_station = _xs01_wx_from_real_shadow()
     smoke_station.type = "SBS50"
@@ -250,5 +264,38 @@ def test_alarm_control_panel_requires_security_device_family():
         }
     )
 
+    remote_station = _xs01_wx_from_real_shadow()
+    remote_station.type = "SBS50"
+    remote_station.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "remote-id",
+                    "deviceName": "Remote",
+                    "deviceSn": "remote-sn",
+                    "deviceType": "SKF01",
+                    "roomName": "Kitchen",
+                }
+            ]
+        }
+    )
+
     assert not station_supports_alarm_panel(smoke_station)
+    assert not station_supports_alarm_panel(remote_station)
     assert station_supports_alarm_panel(security_station)
+
+    for security_type in ("SDS0A", "SMS0A", "SKP0A"):
+        security_station.set_devices(
+            {
+                "devices": [
+                    {
+                        "deviceId": f"{security_type}-id",
+                        "deviceName": security_type,
+                        "deviceSn": f"{security_type}-sn",
+                        "deviceType": security_type,
+                        "roomName": "Kitchen",
+                    }
+                ]
+            }
+        )
+        assert station_supports_alarm_panel(security_station)

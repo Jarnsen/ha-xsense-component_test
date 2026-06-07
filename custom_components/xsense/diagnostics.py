@@ -105,7 +105,6 @@ DIAGNOSTIC_DATA_KEYS = {
     "supportMechanicalDingDong",
     "supportMirrorFlip",
     "supportMotionTrack",
-    "supportPersonDetect",
     "supportPirCooldown",
     "supportRecLamp",
     "supportRecordingAudio",

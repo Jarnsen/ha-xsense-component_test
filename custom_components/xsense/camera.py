@@ -230,10 +230,9 @@ class XSenseCameraEntity(XSenseEntity, Camera):
 
 def _camera_online(entity) -> bool:
     """Return whether ADDX currently reports the camera online."""
-    online = entity.data.get("online")
-    if isinstance(online, bool):
-        return online
-    return online == 1
+    if entity.online is not None:
+        return entity.online is True
+    return entity.data.get("online") == 1
 
 
 def _stream_protocol(entity) -> str | None:

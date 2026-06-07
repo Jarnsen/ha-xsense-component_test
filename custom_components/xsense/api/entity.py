@@ -33,7 +33,7 @@ def _online_from_report_time(data: dict, entity_type: str | None) -> bool | None
     reported = _parse_xsense_time(online_time)
     utc_time = _parse_xsense_time(data.get("utcTime")) or datetime.now(UTC)
     if reported is None:
-        return True
+        return None
 
     return utc_time <= reported + timedelta(hours=_offline_over_hours(entity_type))
 
@@ -94,6 +94,8 @@ class Entity:
     @property
     def shadow_name(self):
         """Return the AWS IoT thing name used by the X-Sense app."""
+        if self.type == "SBS10":
+            return self.sn
         if self.type in _SBS50_THING_TYPES:
             return f"SBS50{self._station_sn()}"
         if self.type in _DASHED_THING_TYPES:

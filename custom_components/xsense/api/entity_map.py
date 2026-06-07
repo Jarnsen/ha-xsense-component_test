@@ -278,7 +278,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            MuteAction("appSc07mrMute", mute_type="1", extra={"userParam": "source=1"}),
             FireDrillAction(),
         ],
     },
@@ -360,12 +360,7 @@ entities = {
     "SMA51": {
         "type": EntityType.MAILBOX,
         "actions": [
-            {
-                "action": "mute",
-                "topic": lambda x: "2nd_appmailmute",
-                "shadow": "appMailMute",
-                "data": {"silenceTime": "", "setType": ""},
-            },
+            MuteAction("appMailMute", "2nd_appmailmute", mute_type="1"),
         ],
     },
     "SMS0A": {
@@ -581,7 +576,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            MuteAction("appSc07mrMute", mute_type="1", extra={"userParam": "source=1"}),
             FireDrillAction(),
         ],
     },
@@ -601,7 +596,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            MuteAction("appSc07mrMute", mute_type="1", extra={"userParam": "source=1"}),
             FireDrillAction(),
         ],
     },
