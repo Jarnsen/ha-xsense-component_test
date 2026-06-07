@@ -1898,7 +1898,7 @@ async def test_update_camera_data_does_not_assume_missing_camera_online_state():
 
 
 @pytest.mark.asyncio
-async def test_update_camera_data_does_not_create_unknown_model_from_general_device_list():
+async def test_update_camera_data_accepts_addx_camera_list_as_authority():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
     test_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
@@ -1909,10 +1909,43 @@ async def test_update_camera_data_does_not_create_unknown_model_from_general_dev
             return {
                 "list": [
                     {
-                        "serialNumber": "future-device-sn",
-                        "deviceName": "Future Device",
+                        "serialNumber": "future-camera-sn",
+                        "deviceName": "Future Camera",
                         "houseId": "house-id",
                         "modelNo": "SSC99",
+                        "online": 1,
+                        "deviceModel": {"streamProtocol": "webrtc"},
+                    }
+                ]
+            }
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    camera = test_house.get_station_by_sn("future-camera-sn")
+    assert camera is not None
+    assert camera.entity_type == async_xsense.EntityType.CAMERA
+    assert camera.type == "SSC99"
+    assert camera.online is True
+
+
+@pytest.mark.asyncio
+async def test_update_camera_data_accepts_addx_camera_without_model_metadata():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
+    client.houses = {"house-id": test_house}
+
+    async def addx_call(endpoint, **kwargs):
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "camera-sn",
+                        "deviceName": "Garage Camera",
+                        "houseId": "house-id",
                         "online": 1,
                     }
                 ]
@@ -1923,7 +1956,93 @@ async def test_update_camera_data_does_not_create_unknown_model_from_general_dev
 
     await client.update_camera_data()
 
-    assert test_house.get_station_by_sn("future-device-sn") is None
+    camera = test_house.get_station_by_sn("camera-sn")
+    assert camera is not None
+    assert camera.entity_type == async_xsense.EntityType.CAMERA
+    assert camera.name == "Garage Camera"
+    assert camera.type is None
+    assert camera.online is True
+
+
+@pytest.mark.asyncio
+async def test_update_camera_data_updates_existing_camera_when_addx_house_id_differs():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "xsense-house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "cam-id",
+                    "ipcSn": "cam-sn",
+                    "ipcName": "Garage Camera",
+                    "category": "SSC0A",
+                }
+            ],
+        }
+    )
+    client.houses = {"xsense-house-id": test_house}
+
+    async def addx_call(endpoint, **kwargs):
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "cam-sn",
+                        "deviceName": "Garage Camera",
+                        "houseId": "addx-location-id",
+                        "modelNo": "SSC0A",
+                        "online": 1,
+                        "batteryLevel": 4,
+                    }
+                ]
+            }
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    camera = test_house.get_station_by_sn("cam-sn")
+    assert camera is not None
+    assert camera.entity_id == "cam-id"
+    assert camera.name == "Garage Camera"
+    assert camera.type == "SSC0A"
+    assert camera.online is True
+    assert camera.data["batteryLevel"] == 4
+
+
+@pytest.mark.asyncio
+async def test_update_camera_data_places_addx_camera_with_mismatched_house_in_single_house_account():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "xsense-house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
+    client.houses = {"xsense-house-id": test_house}
+
+    async def addx_call(endpoint, **kwargs):
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "camera-sn",
+                        "deviceName": "Garage Camera",
+                        "houseId": "addx-location-id",
+                        "modelNo": "SSC0A",
+                        "online": 1,
+                    }
+                ]
+            }
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    camera = test_house.get_station_by_sn("camera-sn")
+    assert camera is not None
+    assert camera.entity_type == async_xsense.EntityType.CAMERA
+    assert camera.online is True
 
 
 @pytest.mark.asyncio
@@ -1982,7 +2101,7 @@ async def test_update_camera_data_updates_known_camera_from_addx_device_list():
 
 
 @pytest.mark.asyncio
-async def test_update_camera_data_uses_addx_device_as_camera_authority():
+async def test_update_camera_data_keeps_existing_camera_stations_not_in_addx_list():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
     test_house.set_stations(
@@ -2023,7 +2142,7 @@ async def test_update_camera_data_uses_addx_device_as_camera_authority():
 
     await client.update_camera_data()
 
-    assert "stub-id" not in test_house.stations
+    assert test_house.get_station_by_sn("stub-sn") is not None
     camera = test_house.get_station_by_sn("real-sn")
     assert camera is not None
     assert camera.entity_id == "real-sn"
@@ -2508,7 +2627,7 @@ async def test_register_ipc_requires_house_region_instead_of_defaulting_to_us():
 
 
 @pytest.mark.asyncio
-async def test_update_camera_data_handles_empty_addx_camera_list():
+async def test_update_camera_data_keeps_existing_cameras_on_empty_addx_camera_list():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
     test_house.set_stations(
@@ -2537,7 +2656,7 @@ async def test_update_camera_data_handles_empty_addx_camera_list():
     await client.update_camera_data()
 
     assert calls == [("/device/listuserdevices", {})]
-    assert test_house.stations == {}
+    assert test_house.get_station_by_sn("stale-cam-sn") is not None
 
 
 def test_camera_data_normalizes_apk_integer_support_flags():

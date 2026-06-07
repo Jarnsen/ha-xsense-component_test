@@ -421,28 +421,13 @@ class AsyncXSense(XSenseBase):
     async def update_camera_data(self):
         """Merge camera metadata and config from the Android app ADDX API."""
         data = await self.addx_call("/device/listuserdevices")
-        known_camera_serials = {
-            _normalized_camera_serial(station.sn)
-            for house in self.houses.values()
-            for station in house.stations.values()
-            if is_camera_entity(station)
-        }
         devices = [
             device
             for device in (data or {}).get("list") or []
-            if (serial := _normalized_camera_serial(device.get("serialNumber")))
-            and (_camera_type(device) in CAMERA_TYPES or serial in known_camera_serials)
+            if _normalized_camera_serial(device.get("serialNumber"))
         ]
-        camera_serials = {
-            _normalized_camera_serial(device.get("serialNumber")) for device in devices
-        }
-        for house in self.houses.values():
-            for station_id, station in list(house.stations.items()):
-                if (
-                    is_camera_entity(station)
-                    and _normalized_camera_serial(station.sn) not in camera_serials
-                ):
-                    del house.stations[station_id]
+        if not devices:
+            return
 
         cameras = []
         for device in devices:
@@ -514,6 +499,19 @@ class AsyncXSense(XSenseBase):
         if normalized_serial is None:
             return None
 
+        for house in self.houses.values():
+            for station in house.stations.values():
+                if (
+                    is_camera_entity(station)
+                    and _normalized_camera_serial(station.sn) == normalized_serial
+                ):
+                    camera_type = _camera_type(data)
+                    if camera_type:
+                        station.type = camera_type
+                    if data.get("deviceName"):
+                        station.name = data["deviceName"]
+                    return station
+
         device_house_id = data.get("houseId")
         if device_house_id in (None, ""):
             target_houses = list(self.houses.values())
@@ -523,18 +521,10 @@ class AsyncXSense(XSenseBase):
                 for house in self.houses.values()
                 if str(device_house_id) == str(house.house_id)
             ]
-        if not target_houses:
-            return None
+            if not target_houses and len(self.houses) == 1:
+                target_houses = list(self.houses.values())
 
-        for house in target_houses:
-            for station in house.stations.values():
-                if (
-                    is_camera_entity(station)
-                    and _normalized_camera_serial(station.sn) == normalized_serial
-                ):
-                    return station
-
-        if device_house_id in (None, "") and len(target_houses) != 1:
+        if len(target_houses) != 1:
             return None
 
         house = target_houses[0]
