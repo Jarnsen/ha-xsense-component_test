@@ -155,6 +155,14 @@ def test_mqtt_helper_publish_uses_compact_utf8_json():
     ]
 
 
+def test_xsense_mqtt_debug_title_redacts_account_email():
+    assert (
+        xsense_mqtt._redact_account_title("XSense Account user@example.com")
+        == "XSense Account <redacted>"
+    )
+    assert xsense_mqtt._redact_account_title("Other title") == "Other title"
+
+
 def test_xsense_mqtt_clean_disconnect_is_not_a_warning(caplog):
     caplog.set_level(logging.DEBUG)
     client = object.__new__(xsense_mqtt.XSenseMQTT)

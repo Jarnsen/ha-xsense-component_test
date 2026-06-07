@@ -48,6 +48,12 @@ type SocketType = mqtt.WebsocketWrapper | Any
 type PublishPayloadType = str | bytes | int | float | None
 
 
+def _redact_account_title(title: str) -> str:
+    if title.startswith("XSense Account "):
+        return "XSense Account <redacted>"
+    return title
+
+
 def _subscription_accepts_id() -> bool:
     """Return whether this Home Assistant version wants subscription_id."""
     try:
@@ -90,6 +96,7 @@ class XSenseMQTT:
 
         # self.topics: list[str] = []
         self.on_data: Callable[[str, bytes], None] | None = None
+        self._debug_name = _redact_account_title(config_entry.title)
 
         self.connected = False
         self._connection_lock = asyncio.Lock()
@@ -165,7 +172,7 @@ class XSenseMQTT:
     def _async_start_misc_periodic(self) -> None:
         """Start the misc periodic."""
         assert self._misc_timer is None, "Misc periodic already started"
-        _LOGGER.debug("%s: Starting client misc loop", self.config_entry.title)
+        _LOGGER.debug("%s: Starting client misc loop", self._debug_name)
         # pylint: disable=import-outside-toplevel
         # import paho.mqtt.client as mqtt
 
@@ -197,7 +204,7 @@ class XSenseMQTT:
     ) -> None:
         """Handle socket open."""
         fileno = sock.fileno()
-        _LOGGER.debug("%s: connection opened %s", self.config_entry.title, fileno)
+        _LOGGER.debug("%s: connection opened %s", self._debug_name, fileno)
         if fileno > -1:
             self.loop.add_reader(sock, partial(self._async_reader_callback, client))
         if not self._misc_timer:
@@ -213,7 +220,7 @@ class XSenseMQTT:
     ) -> None:
         """Handle socket close."""
         fileno = sock.fileno()
-        _LOGGER.debug("%s: connection closed %s", self.config_entry.title, fileno)
+        _LOGGER.debug("%s: connection closed %s", self._debug_name, fileno)
         # If socket close is called before the connect
         # result is set make sure the first connection result is set
         self._async_connection_result(False)
@@ -245,7 +252,7 @@ class XSenseMQTT:
     ) -> None:
         """Register the socket for writing."""
         fileno = sock.fileno()
-        _LOGGER.debug("%s: register write %s", self.config_entry.title, fileno)
+        _LOGGER.debug("%s: register write %s", self._debug_name, fileno)
         if fileno > -1:
             self.loop.add_writer(sock, partial(self._async_writer_callback, client))
 
@@ -256,7 +263,7 @@ class XSenseMQTT:
     ) -> None:
         """Unregister the socket for writing."""
         fileno = sock.fileno()
-        _LOGGER.debug("%s: unregister write %s", self.config_entry.title, fileno)
+        _LOGGER.debug("%s: unregister write %s", self._debug_name, fileno)
         if fileno > -1:
             self.loop.remove_writer(sock)
 
