@@ -341,6 +341,63 @@ def test_apk_sdp_answer_validation_rejects_other_camera_or_viewer():
     )
 
 
+def test_sdp_answer_reject_reason_keeps_debug_actionable():
+    encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode()
+    signal_ticket = ticket()
+
+    assert (
+        webrtc_signal._answer_reject_reason(
+            {
+                "messagePayload": encoded,
+                "senderClientId": "SSC0B456",
+                "recipientClientId": "client123",
+            },
+            signal_ticket,
+        )
+        == "sender_mismatch"
+    )
+    assert (
+        webrtc_signal._answer_reject_reason(
+            {
+                "messagePayload": encoded,
+                "senderClientId": "SSC0A123",
+                "recipientClientId": "other-client",
+            },
+            signal_ticket,
+        )
+        == "recipient_mismatch"
+    )
+    assert (
+        webrtc_signal._answer_reject_reason(
+            {"senderClientId": "SSC0A123", "recipientClientId": "client123"},
+            signal_ticket,
+        )
+        == "missing_message_payload"
+    )
+    assert (
+        webrtc_signal._answer_reject_reason(
+            {
+                "messagePayload": base64.b64encode(b"not-json").decode(),
+                "senderClientId": "SSC0A123",
+                "recipientClientId": "client123",
+            },
+            signal_ticket,
+        )
+        == "invalid_sdp_payload"
+    )
+    assert (
+        webrtc_signal._answer_reject_reason(
+            {
+                "messagePayload": encoded,
+                "senderClientId": "SSC0A123",
+                "recipientClientId": "client123",
+            },
+            signal_ticket,
+        )
+        == "accepted"
+    )
+
+
 def test_parse_signal_message_accepts_apk_peer_event_wrappers():
     assert parse_signal_message(
         json.dumps({"event": "PEER_IN", "data": {"clientId": "SSC0A123"}})
@@ -352,6 +409,34 @@ def test_parse_signal_message_accepts_apk_peer_event_wrappers():
             {"type": "PEER_OUT", "message": json.dumps({"deviceSN": "SSC0B456"})}
         )
     ) == ("PEER_OUT", "SSC0B456")
+
+
+def test_parse_signal_message_decodes_base64_peer_events_from_signal_server():
+    encoded_serial = base64.b64encode(b"SSC0A123").decode()
+
+    assert parse_signal_message(
+        json.dumps({"messageType": "PEER_IN", "messagePayload": encoded_serial})
+    ) == ("PEER_IN", "SSC0A123")
+
+    encoded_json = base64.b64encode(
+        json.dumps({"serialNumber": "SSC0A123"}).encode()
+    ).decode()
+
+    assert parse_signal_message(
+        json.dumps({"messageType": "PEER_OUT", "messagePayload": encoded_json})
+    ) == ("PEER_OUT", "SSC0A123")
+
+
+def test_parse_signal_message_keeps_plain_peer_payloads_from_apk_callback():
+    assert parse_signal_message(
+        json.dumps({"messageType": "PEER_IN", "messagePayload": "SSC0A123"})
+    ) == ("PEER_IN", "SSC0A123")
+
+
+def test_parse_signal_message_does_not_decode_plain_serial_like_peer_id():
+    assert parse_signal_message(
+        json.dumps({"messageType": "PEER_IN", "messagePayload": "MTAwMDA0"})
+    ) == ("PEER_IN", "MTAwMDA0")
 
 
 
