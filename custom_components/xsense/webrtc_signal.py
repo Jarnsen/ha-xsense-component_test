@@ -319,24 +319,50 @@ def make_ice_candidate_payload(
 
 def make_start_live_data_channel_message(resolution: str) -> dict[str, Any]:
     """Return the APK-compatible data-channel startLive command."""
-    message = make_data_channel_command("startLive")
-    message.update(
-        {
+    return make_data_channel_command(
+        "startLive",
+        top_level_parameters={
             "size": _map_video_size(resolution),
             "resolution": resolution,
-        }
+        },
     )
-    return message
 
 
-def make_data_channel_command(action: str) -> dict[str, Any]:
+def make_data_channel_command(
+    action: str,
+    *,
+    request_id: str | None = None,
+    parameters: dict[str, Any] | None = None,
+    top_level_parameters: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Return the APK-compatible base data-channel command."""
-    return {
-        "requestID": f"{int(time.time() * 1000)}-{random.randint(0, 999)}",
+    message: dict[str, Any] = {
+        "requestID": request_id
+        or f"{int(time.time() * 1000)}-{random.randint(0, 999)}",
         "connectionID": "7893feb",
         "timeStamp": int(time.time()),
         "action": action,
     }
+    if top_level_parameters:
+        message.update(top_level_parameters)
+    elif parameters:
+        message["parameters"] = parameters
+    return message
+
+
+def make_change_transceiver_offer_command(offer_sdp: str) -> dict[str, Any]:
+    """Return the APK-compatible changeTransceiverOffer command."""
+    encoded_offer = _b64_json({"type": "offer", "sdp": offer_sdp})
+    return make_data_channel_command(
+        "changeTransceiverOffer", parameters={"offer": encoded_offer}
+    )
+
+
+def make_data_channel_answer_command(request_id: str, action: str) -> dict[str, Any]:
+    """Return the APK-compatible data-channel command acknowledgement."""
+    return make_data_channel_command(
+        action, request_id=request_id, parameters={"returnValue": "0"}
+    )
 
 
 def parse_signal_message(raw: str | bytes) -> tuple[str | None, Any]:
@@ -674,13 +700,7 @@ class XSenseWebRTCSession:
         """Send the APK stopLive data-channel command before closing."""
         if getattr(self._data_channel, "readyState", None) != "open":
             return
-        with suppress(Exception):
-            self._data_channel.send(
-                json.dumps(
-                    make_data_channel_command("stopLive"),
-                    separators=(",", ":"),
-                )
-            )
+        self._send_data_channel_json(make_data_channel_command("stopLive"))
 
     def _setup_camera_peer(self) -> None:
         @self._camera_pc.on("track")
@@ -727,9 +747,62 @@ class XSenseWebRTCSession:
             )
         except (TypeError, json.JSONDecodeError):
             return
-        if payload.get("action") == "dataChannelConnected":
+        action = payload.get("action")
+        if action == "dataChannelConnected":
             self._data_channel_connected = True
             self._send_start_live_if_ready()
+        elif action == "requestChangeTransceiverOffer":
+            request_id = payload.get("requestID")
+            if isinstance(request_id, str):
+                self._send_data_channel_json(
+                    make_data_channel_answer_command(
+                        request_id, "requestChangeTransceiverOffer"
+                    )
+                )
+            self._create_task(self._send_change_transceiver_offer())
+        elif action == "changeTransceiverOffer":
+            self._create_task(self._apply_change_transceiver_answer(payload))
+
+    def _send_data_channel_json(self, payload: dict[str, Any]) -> bool:
+        if getattr(self._data_channel, "readyState", None) != "open":
+            return False
+        try:
+            self._data_channel.send(json.dumps(payload, separators=(",", ":")))
+        except Exception as err:
+            LOGGER.debug("Unable to send X-Sense data-channel command", exc_info=err)
+            return False
+        return True
+
+    async def _send_change_transceiver_offer(self) -> None:
+        """Respond to requestChangeTransceiverOffer like the Android app."""
+        if self._closed or getattr(self._data_channel, "readyState", None) != "open":
+            return
+        offer = await self._camera_pc.createOffer()
+        await self._camera_pc.setLocalDescription(offer)
+        if self._send_data_channel_json(
+            make_change_transceiver_offer_command(offer.sdp)
+        ):
+            LOGGER.debug(
+                "X-Sense WebRTC sent changeTransceiverOffer: %s",
+                self._debug_context(offer_sdp_len=len(offer.sdp)),
+            )
+
+    async def _apply_change_transceiver_answer(self, payload: dict[str, Any]) -> None:
+        """Apply the APK changeTransceiverOffer answer from the data channel."""
+        answer = _data_channel_answer_sdp(payload)
+        if not answer:
+            LOGGER.debug(
+                "X-Sense WebRTC ignored invalid changeTransceiverOffer answer: %s",
+                self._debug_context(payload=_payload_debug(payload)),
+            )
+            return
+        await self._camera_pc.setRemoteDescription(
+            RTCSessionDescription(sdp=answer, type="answer")
+        )
+        LOGGER.debug(
+            "X-Sense WebRTC applied changeTransceiverOffer answer: %s",
+            self._debug_context(),
+        )
 
     def _send_start_live_if_ready(self) -> None:
         """Send startLive when the APK would: after dataChannelConnected."""
@@ -742,15 +815,9 @@ class XSenseWebRTCSession:
             return
         if self._camera_pc.connectionState != "connected":
             return
-        try:
-            self._data_channel.send(
-                json.dumps(
-                    make_start_live_data_channel_message(self._resolution),
-                    separators=(",", ":"),
-                )
-            )
-        except Exception as err:
-            LOGGER.debug("Unable to send X-Sense startLive command", exc_info=err)
+        if not self._send_data_channel_json(
+            make_start_live_data_channel_message(self._resolution)
+        ):
             return
         self._start_live_sent = True
         LOGGER.debug(
@@ -760,6 +827,9 @@ class XSenseWebRTCSession:
 
     async def _start_camera_peer(self) -> None:
         LOGGER.debug("X-Sense WebRTC creating camera offer: %s", self._debug_context())
+        # The Android app asks createOffer to receive both video and audio.
+        # aiortc has no offer constraints, so recvonly transceivers are the
+        # equivalent offer shape.
         self._camera_pc.addTransceiver("video", direction="recvonly")
         self._camera_pc.addTransceiver("audio", direction="recvonly")
         offer = await self._camera_pc.createOffer()
@@ -1013,6 +1083,24 @@ def _owned_answer_sdp(payload: Any, ticket: XSenseWebRTCTicket) -> str | None:
     if recipient and recipient != ticket.client_id:
         return None
     return _answer_sdp(payload)
+
+
+def _data_channel_answer_sdp(payload: Any) -> str | None:
+    """Return the APK changeTransceiverOffer answer SDP from data-channel JSON."""
+    if not isinstance(payload, dict):
+        return None
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return None
+    encoded = data.get("answer")
+    if not isinstance(encoded, str):
+        return None
+    with suppress(Exception):
+        decoded = json.loads(base64.b64decode(encoded).decode())
+        sdp = decoded.get("sdp")
+        if isinstance(sdp, str):
+            return sdp
+    return None
 
 
 def _is_owned_peer_message(payload: Any, serial_number: str) -> bool:
