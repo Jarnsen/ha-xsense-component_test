@@ -374,10 +374,20 @@ def parse_signal_message(raw: str | bytes) -> tuple[str | None, Any]:
     except (TypeError, json.JSONDecodeError):
         return None, raw
 
-    event = data.get("messageType") or data.get("event") or data.get("type")
+    event = (
+        data.get("messageType")
+        or data.get("event")
+        or data.get("type")
+        or data.get("method")
+    )
     payload: Any = _signal_payload(data)
     if isinstance(payload, str) and event == "SDP_ANSWER":
-        payload = data
+        with suppress(Exception):
+            decoded = json.loads(payload)
+            if isinstance(decoded, dict):
+                payload = decoded
+        if isinstance(payload, str):
+            payload = data
     elif isinstance(payload, str) and event == "ICE_CANDIDATE":
         with suppress(Exception):
             payload = json.loads(base64.b64decode(payload).decode())
@@ -387,7 +397,7 @@ def parse_signal_message(raw: str | bytes) -> tuple[str | None, Any]:
 
 
 def _signal_payload(data: dict[str, Any]) -> Any:
-    for key in ("messagePayload", "payload", "data", "message", "body"):
+    for key in ("messagePayload", "payload", "data", "message", "body", "value"):
         if key in data:
             return data[key]
     return data

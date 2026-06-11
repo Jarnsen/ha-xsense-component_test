@@ -430,6 +430,50 @@ def test_send_ha_message_ignores_closed_browser_socket():
     assert session._send_ha_message(message) is False
 
 
+def test_parse_signal_message_accepts_signal_method_value_events():
+    raw = json.dumps(
+        {
+            "id": "message-1",
+            "method": "SDP_ANSWER",
+            "name": "test-123",
+            "time": 123,
+            "value": json.dumps(
+                {
+                    "messagePayload": base64.b64encode(
+                        json.dumps({"type": "answer", "sdp": "v=0\r\n"}).encode()
+                    ).decode(),
+                    "senderClientId": "SSC0A123",
+                    "recipientClientId": "client123",
+                    "sessionId": "Android-client123-100000",
+                }
+            ),
+        }
+    )
+
+    event, payload = parse_signal_message(raw)
+
+    assert event == "SDP_ANSWER"
+    assert payload["senderClientId"] == "SSC0A123"
+    assert payload["recipientClientId"] == "client123"
+
+
+def test_parse_signal_message_keeps_unknown_method_value_for_debug():
+    raw = json.dumps(
+        {
+            "id": "message-2",
+            "method": "cameraStatus",
+            "name": "test-123",
+            "time": 123,
+            "value": json.dumps({"value": 1}),
+        }
+    )
+
+    event, payload = parse_signal_message(raw)
+
+    assert event == "cameraStatus"
+    assert payload == json.dumps({"value": 1})
+
+
 def test_parse_signal_message_preserves_answer_envelope_for_apk_validation():
     encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode()
     raw = json.dumps(
