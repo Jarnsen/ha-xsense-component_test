@@ -933,7 +933,7 @@ async def test_first_video_frame_cancels_play_timeout():
     assert session._play_timeout_task.cancelled()
 
 
-async def test_online_camera_waits_for_peer_in_during_start_like_apk():
+async def test_online_camera_starts_peer_without_waiting_for_peer_in_like_apk():
     class FakeWs:
         closed = False
 
@@ -1054,9 +1054,9 @@ async def test_online_camera_waits_for_peer_in_during_start_like_apk():
         webrtc_signal.asyncio.create_task = original_create_task
 
     assert aio_session.ws.messages == []
-    assert started == []
-    assert session._peer_in_timeout_task is tasks[-1]
-    assert len(tasks) == 3
+    assert started == [True]
+    assert session._peer_in_timeout_task is None
+    assert len(tasks) == 2
     assert sent_messages[0].answer == "v=0\r\n"
 
 
