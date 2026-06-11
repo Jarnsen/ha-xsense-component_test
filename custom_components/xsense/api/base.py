@@ -53,6 +53,14 @@ class XSenseBase:
     IPC_APPCODE = APPCODE
     IPC_CLIENTTYPE = CLIENTYPE
 
+    ADDX_APP_NAME = "VicoHome"
+    ADDX_APP_BUNDLE = "com.ai.vicoo"
+    ADDX_APP_CHANNEL_ID = 1000
+    ADDX_APP_COUNTLY_ID = "b940908f19b8e858"
+    ADDX_APP_TENANT_ID = "guard"
+    ADDX_APP_VERSION = 200700500
+    ADDX_APP_VERSION_NAME = "2.7.5"
+
     userid = None
     username = None
     clientid = None

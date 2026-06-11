@@ -223,6 +223,15 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     devices.update(s.devices.items())
 
             self._merge_cached_camera_stations(stations)
+            LOGGER.debug(
+                "X-Sense coordinator refresh summary: stations=%s devices=%s camera_initialized=%s camera_cache=%s mqtt_servers=%s mqtt_connected=%s",
+                len(stations),
+                len(devices),
+                self._camera_initialized,
+                len(self._camera_station_cache),
+                len(self.mqtt_servers),
+                sum(1 for mqtt in self.mqtt_servers.values() if mqtt.connected),
+            )
 
         except (SessionExpired, AuthFailed) as ex:
             if not retry:
@@ -264,6 +273,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return False
         else:
             self._camera_initialized = True
+            LOGGER.debug("X-Sense camera metadata refresh completed")
             return True
 
     def _cache_camera_stations(self) -> None:

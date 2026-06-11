@@ -1,4 +1,5 @@
 from contextlib import suppress
+import asyncio
 import base64
 import json
 
@@ -8,6 +9,8 @@ from custom_components.xsense import webrtc_signal
 from custom_components.xsense.webrtc_signal import (
     SIGNAL_DATA_CHANNEL,
     XSenseWebRTCTicket,
+    make_change_transceiver_offer_command,
+    make_data_channel_answer_command,
     make_ice_candidate_payload,
     make_sdp_offer_payload,
     make_start_live_data_channel_message,
@@ -199,6 +202,157 @@ a=candidate:4 1 udp 1 ::1 790 typ host
             "candidate": "candidate:3 1 udp 1 2001:db8::2 789 typ host",
         },
     ]
+
+
+def test_change_transceiver_commands_match_apk(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+    monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
+
+    ack = make_data_channel_answer_command("request-1", "requestChangeTransceiverOffer")
+    assert ack == {
+        "requestID": "request-1",
+        "connectionID": "7893feb",
+        "timeStamp": 100,
+        "action": "requestChangeTransceiverOffer",
+        "parameters": {"returnValue": "0"},
+    }
+
+    command = make_change_transceiver_offer_command("v=0\r\n")
+    assert command | {"parameters": {"offer": "<decoded>"}} == {
+        "requestID": "100000-321",
+        "connectionID": "7893feb",
+        "timeStamp": 100,
+        "action": "changeTransceiverOffer",
+        "parameters": {"offer": "<decoded>"},
+    }
+    assert json.loads(
+        base64.b64decode(command["parameters"]["offer"]).decode()
+    ) == {"type": "offer", "sdp": "v=0\r\n"}
+
+
+async def test_data_channel_request_change_transceiver_offer_matches_apk(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+    monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
+
+    class Offer:
+        sdp = "v=0\r\n"
+
+    class FakePeerConnection:
+        connectionState = "connected"
+
+        def __init__(self):
+            self.local_descriptions = []
+            self.remote_descriptions = []
+
+        async def createOffer(self):
+            return Offer()
+
+        async def setLocalDescription(self, offer):
+            self.local_descriptions.append(offer)
+
+        async def setRemoteDescription(self, answer):
+            self.remote_descriptions.append(answer)
+
+    class FakeDataChannel:
+        readyState = "open"
+
+        def __init__(self):
+            self.messages = []
+
+        def send(self, message):
+            self.messages.append(json.loads(message))
+
+    created_tasks = []
+
+    def create_task(coro):
+        task = asyncio.create_task(coro)
+        created_tasks.append(task)
+        return task
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._camera_pc = FakePeerConnection()
+    session._data_channel = FakeDataChannel()
+    session._create_task = create_task
+    session._debug_context = lambda **kwargs: kwargs
+
+    session._handle_data_channel_message(
+        json.dumps({"action": "requestChangeTransceiverOffer", "requestID": "req-1"})
+    )
+    await asyncio.gather(*created_tasks)
+
+    assert session._data_channel.messages[0] == {
+        "requestID": "req-1",
+        "connectionID": "7893feb",
+        "timeStamp": 100,
+        "action": "requestChangeTransceiverOffer",
+        "parameters": {"returnValue": "0"},
+    }
+    second_message = session._data_channel.messages[1]
+    assert second_message | {"parameters": {"offer": "<decoded>"}} == {
+        "requestID": "100000-321",
+        "connectionID": "7893feb",
+        "timeStamp": 100,
+        "action": "changeTransceiverOffer",
+        "parameters": {"offer": "<decoded>"},
+    }
+
+    encoded_answer = base64.b64encode(
+        json.dumps({"sdp": "v=0\r\nanswer"}).encode()
+    ).decode()
+    created_tasks.clear()
+    session._handle_data_channel_message(
+        json.dumps(
+            {
+                "action": "changeTransceiverOffer",
+                "data": {"answer": encoded_answer},
+            }
+        )
+    )
+    await asyncio.gather(*created_tasks)
+
+    assert session._camera_pc.remote_descriptions[0].type == "answer"
+    assert session._camera_pc.remote_descriptions[0].sdp == "v=0\r\nanswer"
+
+
+async def test_start_camera_peer_uses_apk_receive_media_offer_shape(monkeypatch):
+    class FakePeer:
+        def __init__(self):
+            self.transceivers = []
+
+        def addTransceiver(self, kind, **kwargs):
+            self.transceivers.append((kind, kwargs))
+
+        async def createOffer(self):
+            class Offer:
+                sdp = "v=0\r\n"
+
+            return Offer()
+
+        async def setLocalDescription(self, offer):
+            self.localDescription = offer
+
+    async def noop_send_offer():
+        return None
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._camera_pc = FakePeer()
+    session._debug_context = lambda **kwargs: {}
+    session._send_offer = noop_send_offer
+    session._camera_local_description_task = None
+    session._camera_offer_sdp = None
+
+    await session._start_camera_peer()
+
+    assert session._camera_pc.transceivers == [
+        ("video", {"direction": "recvonly"}),
+        ("audio", {"direction": "recvonly"}),
+    ]
+    assert session._camera_offer_sdp == "v=0\r\n"
+    assert session._camera_local_description_task is not None
+    session._camera_local_description_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await session._camera_local_description_task
 
 
 async def test_send_offer_sends_apk_offer_then_local_ice_candidates():

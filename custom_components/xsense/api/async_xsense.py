@@ -12,6 +12,7 @@ from .entity_map import EntityType, entities
 from .exceptions import SessionExpired, APIFailure, XSenseError
 from .house import House
 from .station import Station
+from ..const import LOGGER
 
 CAMERA_TYPES = {"SSC0A", "SSC0B"}
 CAMERA_LIVE_URL_MAX_AGE_SECONDS = 240
@@ -92,6 +93,25 @@ _SECOND_INFO_DEVICE_TYPES = {
     "XP0J-iA",
     "XR0A-iR",
 }
+
+
+def _debug_keys(value: Any) -> list[str]:
+    """Return sorted mapping keys for debug logs without dumping values."""
+    if not isinstance(value, dict):
+        return []
+    return sorted(str(key) for key in value)
+
+
+def _debug_data_shape(value: Any) -> dict[str, Any]:
+    """Return compact response shape details for debug logs."""
+    if isinstance(value, dict):
+        shape: dict[str, Any] = {"keys": _debug_keys(value)}
+        if isinstance(value.get("list"), list):
+            shape["list_count"] = len(value["list"])
+        return shape
+    if isinstance(value, list):
+        return {"list_count": len(value)}
+    return {"type": type(value).__name__}
 
 
 def _station_state_shadow_names(station: Station) -> tuple[str, ...]:
@@ -210,14 +230,33 @@ class AsyncXSense(XSenseBase):
             data = await response.json()
 
             if response.status >= 400:
+                LOGGER.debug(
+                    "X-Sense API failure context: code=%s status=%s keys=%s",
+                    code,
+                    response.status,
+                    _debug_keys(data),
+                )
                 message = data.get("message") or "unknown error"
                 raise APIFailure(f"API failure: {response.status}/{message}")
 
             if "reCode" not in data:
+                LOGGER.debug(
+                    "X-Sense API unexpected response context: code=%s status=%s keys=%s",
+                    code,
+                    response.status,
+                    _debug_keys(data),
+                )
                 raise APIFailure("API failure: Cannot understand response")
 
             if data["reCode"] != 200:
                 errCode = data.get("errCode", 0)
+                LOGGER.debug(
+                    "X-Sense API error context: code=%s reCode=%s errCode=%s keys=%s",
+                    code,
+                    data["reCode"],
+                    errCode,
+                    _debug_keys(data),
+                )
                 if errCode in ("10000008", "10000020"):
                     raise SessionExpired(data.get("reMsg"))
                 raise APIFailure(
@@ -240,11 +279,24 @@ class AsyncXSense(XSenseBase):
             data = await response.json()
 
             if response.status >= 400:
+                LOGGER.debug(
+                    "X-Sense IPC failure context: code=%s status=%s keys=%s",
+                    code,
+                    response.status,
+                    _debug_keys(data),
+                )
                 message = data.get("message") or data.get("reMsg") or "unknown error"
                 raise APIFailure(f"IPC API failure: {response.status}/{message}")
 
             if str(data.get("reCode")) != "200":
                 err_code = data.get("errCode", 0)
+                LOGGER.debug(
+                    "X-Sense IPC error context: code=%s reCode=%s errCode=%s keys=%s",
+                    code,
+                    data.get("reCode"),
+                    err_code,
+                    _debug_keys(data),
+                )
                 if err_code in ("10000008", "10000020"):
                     raise SessionExpired(data.get("reMsg"))
                 raise APIFailure(
@@ -277,6 +329,14 @@ class AsyncXSense(XSenseBase):
             result = await response.json()
 
             if response.status >= 400:
+                LOGGER.debug(
+                    "X-Sense ADDX failure context: endpoint=%s status=%s node=%s keys=%s data_shape=%s",
+                    endpoint,
+                    response.status,
+                    node,
+                    _debug_keys(result),
+                    _debug_data_shape(result.get("data")),
+                )
                 if response.status in (401, 403) and _retry:
                     self._addx_session = await self.register_ipc()
                     return await self.addx_call(endpoint, _retry=False, **kwargs)
@@ -284,6 +344,14 @@ class AsyncXSense(XSenseBase):
                 raise APIFailure(f"ADDX API failure: {response.status}/{message}")
 
             if result.get("result") not in (0, None):
+                LOGGER.debug(
+                    "X-Sense ADDX error context: endpoint=%s result=%s node=%s keys=%s data_shape=%s",
+                    endpoint,
+                    result.get("result"),
+                    node,
+                    _debug_keys(result),
+                    _debug_data_shape(result.get("data")),
+                )
                 raise APIFailure(
                     f"ADDX request for {endpoint} failed with error {result.get('result')}/{result.get('msg')}"
                 )
@@ -298,17 +366,17 @@ class AsyncXSense(XSenseBase):
         language = addx_session.get("language")
         if not language:
             raise APIFailure("Missing ADDX language from IPC registration")
-        tenant = addx_session.get("tenantId")
         result["countryNo"] = country
         result["language"] = language
         result["app"] = {
-            "appName": "X-Sense Home Security",
+            "appName": self.ADDX_APP_NAME,
             "appType": "Android",
-            "bundle": "com.xsense.security",
-            "channelId": 0,
-            "tenantId": tenant,
-            "version": int(self.IPC_APPCODE),
-            "versionName": self.IPC_VERSION,
+            "bundle": self.ADDX_APP_BUNDLE,
+            "channelId": self.ADDX_APP_CHANNEL_ID,
+            "countlyId": self.ADDX_APP_COUNTLY_ID,
+            "tenantId": self.ADDX_APP_TENANT_ID,
+            "version": self.ADDX_APP_VERSION,
+            "versionName": self.ADDX_APP_VERSION_NAME,
         }
         return result
 

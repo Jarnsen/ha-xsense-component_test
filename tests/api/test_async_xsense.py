@@ -2964,3 +2964,32 @@ async def test_update_camera_data_reraises_real_camera_api_errors():
 
     with pytest.raises(exceptions.APIFailure):
         await client.update_camera_data()
+
+def test_addx_body_uses_apk_app_info():
+    """ADDX camera requests use the app info object from the Android SDK."""
+    api = async_xsense.AsyncXSense()
+
+    body = api._addx_body(
+        {
+            "countryNo": "US",
+            "language": "en",
+            "tenantId": "ignored-session-tenant",
+        },
+        {"serialNumber": "SSC0A123"},
+    )
+
+    assert body == {
+        "serialNumber": "SSC0A123",
+        "countryNo": "US",
+        "language": "en",
+        "app": {
+            "appName": "VicoHome",
+            "appType": "Android",
+            "bundle": "com.ai.vicoo",
+            "channelId": 1000,
+            "countlyId": "b940908f19b8e858",
+            "tenantId": "guard",
+            "version": 200700500,
+            "versionName": "2.7.5",
+        },
+    }

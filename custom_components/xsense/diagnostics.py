@@ -142,6 +142,46 @@ def entity_diagnostics(entity) -> dict[str, Any]:
     }
 
 
+def _type_counts(entities) -> dict[str, int]:
+    """Return compact type counts for diagnostics."""
+    counts: dict[str, int] = {}
+    for entity in entities:
+        entity_type = str(getattr(entity, "type", "") or "unknown")
+        counts[entity_type] = counts.get(entity_type, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def coordinator_diagnostics(
+    coordinator: XSenseDataUpdateCoordinator,
+) -> dict[str, Any]:
+    """Return compact coordinator state for future support reports."""
+    stations = (coordinator.data or {}).get("stations", {})
+    devices = (coordinator.data or {}).get("devices", {})
+    last_camera_update = coordinator._last_camera_update_attempt
+    return {
+        "last_update_success": coordinator.last_update_success,
+        "last_exception": (
+            type(coordinator.last_exception).__name__
+            if coordinator.last_exception
+            else None
+        ),
+        "initialized": coordinator._initialized,
+        "camera_initialized": coordinator._camera_initialized,
+        "last_camera_update_attempt": (
+            last_camera_update.isoformat() if last_camera_update else None
+        ),
+        "camera_station_cache_count": len(coordinator._camera_station_cache),
+        "mqtt_server_count": len(coordinator.mqtt_servers),
+        "mqtt_connected_count": sum(
+            1 for mqtt in coordinator.mqtt_servers.values() if mqtt.connected
+        ),
+        "station_count": len(stations),
+        "device_count": len(devices),
+        "station_types": _type_counts(stations.values()),
+        "device_types": _type_counts(devices.values()),
+    }
+
+
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
@@ -151,6 +191,7 @@ async def async_get_config_entry_diagnostics(
 
     return {
         "entry": async_redact_data(entry.as_dict(), TO_REDACT),
+        "coordinator": coordinator_diagnostics(coordinator),
         "data": {
             "stations": [
                 entity_diagnostics(station)
