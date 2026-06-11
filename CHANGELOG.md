@@ -1,0 +1,21 @@
+# Changelog
+
+Release notes for each published X-Sense Home Security version.
+
+- [1.2.6.20](.github/release-notes/1.2.6.20.md)
+- [1.2.6.19](.github/release-notes/v1.2.6.19.md)
+- [1.2.6.11](.github/release-notes/v.1.2.6.11.md)
+- [1.2.6.10](.github/release-notes/v.1.2.6.10.md)
+- [1.2.6.9](.github/release-notes/v.1.2.6.9.md)
+- [1.2.6.4](.github/release-notes/v.1.2.6.4.md)
+- [1.2.6.3](.github/release-notes/v.1.2.6.3.md)
+- [1.2.6.2](.github/release-notes/v.1.2.6.2.md)
+- [1.2.6.1](.github/release-notes/v.1.2.6.1.md)
+- [1.2.6](.github/release-notes/v.1.2.6.md)
+- [1.2.5.2](.github/release-notes/v.1.2.5.2.md)
+- [1.2.5.1](.github/release-notes/v.1.2.5.1.md)
+- [1.2.5](.github/release-notes/v.1.2.5.md)
+- [1.2.4](.github/release-notes/v.1.2.4.md)
+- [1.2.3](.github/release-notes/v.1.2.3.md)
+- [1.2.2](.github/release-notes/v.1.2.2.md)
+- [1.2.1](.github/release-notes/v.1.2.1.md)

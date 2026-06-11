@@ -13,8 +13,3 @@ A larger device-support and polish release. This version expands APK-aligned dev
 
 - 🧪 Added and updated regression coverage for the API client, coordinator behavior, sensors, camera guards, and diagnostics.
 - 🔗 Improved documentation structure, link coverage, Markdown formatting, and translated README consistency.
-
-### 🔎 Validation
-
-- ✅ Full test suite passed.
-- ✅ Documentation checks passed.

@@ -14,8 +14,3 @@ A hotfix release for setup and control issues reported after 1.2.1. This version
 - Fixed the setup 404 path for affected standalone Wi-Fi devices.
 - Fixed smoke control payloads that were using the wrong timestamp or target shape.
 - Cleaned up the Release Drafter template so future draft notes render correctly.
-
-### 🔎 Validation
-
-- ✅ Added focused regression tests for setup 404 behavior.
-- ✅ Added focused regression tests for smoke control payloads.

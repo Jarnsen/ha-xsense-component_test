@@ -9,6 +9,7 @@ import random
 import time
 import warnings
 from contextlib import suppress
+from collections import Counter
 from dataclasses import dataclass
 from collections.abc import Coroutine
 from typing import Any, Callable
@@ -440,6 +441,11 @@ class XSenseWebRTCSession:
         self._data_channel_connected = False
         self._camera_offer_sent = False
         self._camera_offer_sdp: str | None = None
+        self._sdp_answer_received = False
+        self._camera_local_candidate_count = 0
+        self._camera_remote_candidate_count = 0
+        self._last_signal_event: str | None = None
+        self._signal_event_counts: Counter[str] = Counter()
         self._camera_local_description_task: asyncio.Task[None] | None = None
         self._peer_in_timeout_task: asyncio.Task[None] | None = None
         self._play_timeout_task: asyncio.Task[None] | None = None
@@ -463,6 +469,11 @@ class XSenseWebRTCSession:
                 "camera_pc": getattr(camera_pc, "connectionState", None),
                 "ha_pc": getattr(ha_pc, "connectionState", None),
                 "data_channel": getattr(data_channel, "readyState", None),
+                "camera_peer_ready": getattr(self, "_camera_peer_ready", None),
+                "offer_sent": getattr(self, "_camera_offer_sent", None),
+                "sdp_answer_received": getattr(self, "_sdp_answer_received", None),
+                "first_frame_received": getattr(self, "_first_frame_received", None),
+                "last_signal_event": getattr(self, "_last_signal_event", None),
             }
         )
         context.update(extra)
@@ -506,24 +517,17 @@ class XSenseWebRTCSession:
                     "Camera did not start the WebRTC stream",
                 )
             )
-            if self._camera_online:
-                LOGGER.debug(
-                    "X-Sense WebRTC camera online, starting peer: %s",
-                    self._debug_context(),
+            LOGGER.debug(
+                "X-Sense WebRTC waiting for PEER_IN: %s",
+                self._debug_context(),
+            )
+            self._peer_in_timeout_task = asyncio.create_task(
+                self._fail_after_timeout(
+                    _PEER_IN_TIMEOUT,
+                    "xsense_webrtc_peer_in_timeout",
+                    "Camera did not join the WebRTC session",
                 )
-                await self._start_camera_peer()
-            else:
-                LOGGER.debug(
-                    "X-Sense WebRTC waiting for PEER_IN: %s",
-                    self._debug_context(),
-                )
-                self._peer_in_timeout_task = asyncio.create_task(
-                    self._fail_after_timeout(
-                        _PEER_IN_TIMEOUT,
-                        "xsense_webrtc_peer_in_timeout",
-                        "Camera did not join the WebRTC session",
-                    )
-                )
+            )
             return True
         except Exception as err:  # noqa: BLE001 - surface cleanly to HA frontend
             LOGGER.debug(
@@ -805,6 +809,7 @@ class XSenseWebRTCSession:
         ):
             return
         candidates = _local_sdp_candidates(self._camera_pc.localDescription.sdp)
+        self._camera_local_candidate_count = len(candidates)
         LOGGER.debug(
             "X-Sense WebRTC sending local ICE candidates: %s",
             self._debug_context(candidate_count=len(candidates)),
@@ -836,6 +841,9 @@ class XSenseWebRTCSession:
                 ):
                     continue
                 event, payload = parse_signal_message(message.data)
+                if event:
+                    self._last_signal_event = event
+                    self._signal_event_counts[event] += 1
                 LOGGER.debug(
                     "X-Sense WebRTC signal event received: %s",
                     self._debug_context(event=event, payload=_payload_debug(payload)),
@@ -889,6 +897,7 @@ class XSenseWebRTCSession:
                 await self._camera_pc.setRemoteDescription(
                     RTCSessionDescription(sdp=answer, type="answer")
                 )
+                self._sdp_answer_received = True
                 await self._flush_pending_camera_candidates()
             else:
                 LOGGER.debug(
@@ -901,6 +910,7 @@ class XSenseWebRTCSession:
         elif event == "ICE_CANDIDATE":
             candidate = _candidate_payload_to_aiortc(payload)
             if candidate:
+                self._camera_remote_candidate_count += 1
                 if self._camera_pc.remoteDescription is None:
                     self._pending_camera_candidates.append(candidate)
                     LOGGER.debug(
@@ -919,6 +929,20 @@ class XSenseWebRTCSession:
                     )
         elif event == "PEER_OUT":
             if _is_owned_peer_message(payload, self._ticket.serial_number):
+                LOGGER.debug(
+                    "X-Sense WebRTC peer went offline before stream: %s",
+                    self._debug_context(
+                        event=event,
+                        signal_events=dict(self._signal_event_counts),
+                        local_candidate_count=self._camera_local_candidate_count,
+                        remote_candidate_count=self._camera_remote_candidate_count,
+                        pending_ha_candidates=len(self._pending_ha_candidates),
+                        pending_camera_candidates=len(
+                            self._pending_camera_candidates
+                        ),
+                        **_peer_event_debug(payload, self._ticket.serial_number),
+                    ),
+                )
                 self._send_ha_message(
                     WebRTCError(
                         "xsense_webrtc_peer_offline", "Camera peer went offline"

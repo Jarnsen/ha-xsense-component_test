@@ -252,7 +252,6 @@ class XSenseMQTT:
     ) -> None:
         """Register the socket for writing."""
         fileno = sock.fileno()
-        _LOGGER.debug("%s: register write %s", self._debug_name, fileno)
         if fileno > -1:
             self.loop.add_writer(sock, partial(self._async_writer_callback, client))
 
@@ -263,7 +262,6 @@ class XSenseMQTT:
     ) -> None:
         """Unregister the socket for writing."""
         fileno = sock.fileno()
-        _LOGGER.debug("%s: unregister write %s", self._debug_name, fileno)
         if fileno > -1:
             self.loop.remove_writer(sock)
 

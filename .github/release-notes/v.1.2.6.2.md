@@ -15,9 +15,3 @@ A focused stability release for X-Sense cloud/API communication. This version br
 - 🔁 Camera data loading now retries after a failed update instead of suppressing later attempts.
 - ✅ XS01-WX live readback was verified before release.
 - 🏠 Home Assistant config check passed before publishing.
-
-### 🔎 Validation
-
-- ✅ Installed and checked on Steve Home Assistant before release.
-- ✅ Home Assistant restarted successfully after install.
-- ✅ Full test suite passed.

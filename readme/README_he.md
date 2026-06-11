@@ -6,6 +6,9 @@
 
 # ha-xsense-component_test
 
+[Changelog](../CHANGELOG.md) - linked release notes for every published version.
+
+
 ## סקירה כללית
 האינטגרציה הזו של Home Assistant מאפשרת להשתמש במכשירי X-Sense בבית החכם. היא מבוססת על העבודה המקורית של Theo Snel ומותקנת דרך HACS.
 

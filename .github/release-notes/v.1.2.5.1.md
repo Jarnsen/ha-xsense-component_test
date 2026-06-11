@@ -10,8 +10,3 @@ A focused MQTT startup hotfix. This release removes a Home Assistant event-loop 
 ### 🛠️ Fixed
 
 - Fixed MQTT TLS setup during both initial connect and reconnect paths.
-
-### 🔎 Validation
-
-- ✅ Full test suite passed.
-- ✅ Diff checks passed.

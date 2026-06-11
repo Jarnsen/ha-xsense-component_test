@@ -12,9 +12,3 @@ A focused hotfix for X-Sense Test and Fire Drill controls after reports that 1.2
 
 - Fixed mismatches between SigV4 payload hashes and transmitted shadow update bodies.
 - Fixed silent success behavior when X-Sense rejected a shadow update.
-
-### 🔎 Validation
-
-- ✅ Added regression coverage proving the signed body and sent body are identical.
-- ✅ Added regression coverage for rejected shadow update responses.
-- ✅ Ran API tests and Python compilation checks.
