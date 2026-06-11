@@ -317,6 +317,11 @@ def make_ice_candidate_payload(
     return json.dumps(envelope, separators=(",", ":"))
 
 
+def make_signal_wire_payload(event: str, envelope: str) -> str:
+    """Return the signal-server wire message around an APK event envelope."""
+    return json.dumps({"method": event, "value": envelope}, separators=(",", ":"))
+
+
 def make_start_live_data_channel_message(resolution: str) -> dict[str, Any]:
     """Return the APK-compatible data-channel startLive command."""
     return make_data_channel_command(
@@ -720,6 +725,9 @@ class XSenseWebRTCSession:
             elif track.kind == "audio":
                 self._audio.set_source(track)
 
+        # APK creates the audio transceiver during peer setup, before the
+        # data channel and before createOffer. Video is requested at offer time.
+        self._camera_pc.addTransceiver("audio", direction="recvonly")
         self._data_channel = self._camera_pc.createDataChannel(SIGNAL_DATA_CHANNEL)
 
         @self._data_channel.on("message")
@@ -837,11 +845,9 @@ class XSenseWebRTCSession:
 
     async def _start_camera_peer(self) -> None:
         LOGGER.debug("X-Sense WebRTC creating camera offer: %s", self._debug_context())
-        # The Android app asks createOffer to receive both video and audio.
-        # aiortc has no offer constraints, so recvonly transceivers are the
-        # equivalent offer shape.
+        # APK createOffer asks to receive video; audio is already present from
+        # peer setup, matching the SDK transceiver timing.
         self._camera_pc.addTransceiver("video", direction="recvonly")
-        self._camera_pc.addTransceiver("audio", direction="recvonly")
         offer = await self._camera_pc.createOffer()
         self._camera_offer_sdp = offer.sdp
         self._camera_local_description_task = asyncio.create_task(
@@ -865,15 +871,14 @@ class XSenseWebRTCSession:
                 offer_sdp_len=len(self._camera_offer_sdp),
             ),
         )
-        await self._ws.send_str(
-            make_sdp_offer_payload(
-                offer_sdp=self._camera_offer_sdp,
-                ticket=self._ticket,
-                recipient_client_id=self._recipient_client_id,
-                session_id=self._session_id,
-                resolution=self._resolution,
-            )
+        offer_payload = make_sdp_offer_payload(
+            offer_sdp=self._camera_offer_sdp,
+            ticket=self._ticket,
+            recipient_client_id=self._recipient_client_id,
+            session_id=self._session_id,
+            resolution=self._resolution,
         )
+        await self._ws.send_str(make_signal_wire_payload("SDP_OFFER", offer_payload))
         self._camera_offer_sent = True
         if self._camera_local_description_task:
             await self._camera_local_description_task
@@ -897,15 +902,16 @@ class XSenseWebRTCSession:
         for candidate in candidates:
             if self._closed or self._ws is None or getattr(self._ws, "closed", False):
                 return
+            candidate_payload = make_ice_candidate_payload(
+                candidate=candidate["candidate"],
+                sdp_mid=candidate["sdpMid"],
+                sdp_m_line_index=candidate["sdpMLineIndex"],
+                ticket=self._ticket,
+                recipient_client_id=self._recipient_client_id,
+                session_id=self._session_id,
+            )
             await self._ws.send_str(
-                make_ice_candidate_payload(
-                    candidate=candidate["candidate"],
-                    sdp_mid=candidate["sdpMid"],
-                    sdp_m_line_index=candidate["sdpMLineIndex"],
-                    ticket=self._ticket,
-                    recipient_client_id=self._recipient_client_id,
-                    session_id=self._session_id,
-                )
+                make_signal_wire_payload("ICE_CANDIDATE", candidate_payload)
             )
 
     async def _read_loop(self) -> None:
