@@ -176,6 +176,19 @@ def test_webrtc_ice_candidate_payload_matches_apk():
         "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
     }
 
+def test_signal_wire_payload_wraps_apk_envelope_for_raw_websocket():
+    envelope = make_sdp_offer_payload(
+        offer_sdp="v=0\r\n",
+        ticket=ticket(),
+        recipient_client_id="SSC0A123",
+        session_id="Android-client123-100000",
+        resolution="1280x720",
+    )
+
+    wire = json.loads(webrtc_signal.make_signal_wire_payload("SDP_OFFER", envelope))
+
+    assert wire == {"method": "SDP_OFFER", "value": envelope}
+
 
 def test_local_sdp_candidates_match_apk_loopback_and_tcp_filters():
     sdp = """v=0
@@ -346,7 +359,6 @@ async def test_start_camera_peer_uses_apk_receive_media_offer_shape(monkeypatch)
 
     assert session._camera_pc.transceivers == [
         ("video", {"direction": "recvonly"}),
-        ("audio", {"direction": "recvonly"}),
     ]
     assert session._camera_offer_sdp == "v=0\r\n"
     assert session._camera_local_description_task is not None
@@ -390,11 +402,12 @@ a=candidate:1 1 udp 1 192.0.2.1 123 typ host
 
     await session._send_offer()
 
-    assert [message["messageType"] for message in session._ws.messages] == [
+    assert [message["method"] for message in session._ws.messages] == [
         "SDP_OFFER",
         "ICE_CANDIDATE",
     ]
-    assert session._ws.messages[1] | {"messagePayload": "<decoded>"} == {
+    candidate_message = json.loads(session._ws.messages[1]["value"])
+    assert candidate_message | {"messagePayload": "<decoded>"} == {
         "messageType": "ICE_CANDIDATE",
         "messagePayload": "<decoded>",
         "recipientClientId": "SSC0A123",
@@ -968,7 +981,7 @@ async def test_camera_offer_does_not_wait_for_local_ice_gathering():
     task = asyncio.create_task(session._send_offer())
     await asyncio.sleep(0)
 
-    assert [message["messageType"] for message in session._ws.messages] == ["SDP_OFFER"]
+    assert [message["method"] for message in session._ws.messages] == ["SDP_OFFER"]
     assert session._camera_offer_sent is True
 
     session._camera_local_description_task.cancel()
@@ -1306,5 +1319,5 @@ async def test_offline_camera_waits_for_peer_in_before_offer_like_apk():
 
     await session._handle_signal_event("PEER_IN", "SSC0A123")
 
-    assert [message["messageType"] for message in session._ws.messages] == ["SDP_OFFER"]
+    assert [message["method"] for message in session._ws.messages] == ["SDP_OFFER"]
     assert session._camera_offer_sent is True
