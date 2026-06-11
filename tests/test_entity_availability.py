@@ -231,6 +231,21 @@ def test_malformed_online_time_does_not_invent_online_state():
     assert station.online is None
 
 
+def test_stale_shadow_online_time_does_not_override_explicit_online_state():
+    station = Station(
+        House(),
+        stationId="station-id",
+        stationName="Smoke Alarm",
+        stationSn="station-sn",
+        category="XS01-WX",
+        online=1,
+    )
+
+    station.set_data({"onlineTime": "20260601000000", "utcTime": "20260603000000"})
+
+    assert station.online is True
+
+
 def test_alarm_control_panel_requires_security_device_family():
     smoke_station = _xs01_wx_from_real_shadow()
     smoke_station.type = "SBS50"

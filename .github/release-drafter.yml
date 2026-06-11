@@ -34,10 +34,10 @@ categories:
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 no-changes-template: 'No changes'
 
-tag-prefix: 'v.'
+tag-prefix: 'v'
 version-template: '$MAJOR.$MINOR.$PATCH'
-tag-template: 'v.$RESOLVED_VERSION'
-name-template: 'Release v.$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+name-template: 'Release v$RESOLVED_VERSION'
 
 exclude-labels:
   - 'wontfix'

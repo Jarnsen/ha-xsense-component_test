@@ -506,17 +506,24 @@ class XSenseWebRTCSession:
                     "Camera did not start the WebRTC stream",
                 )
             )
-            LOGGER.debug(
-                "X-Sense WebRTC waiting for PEER_IN: %s",
-                self._debug_context(),
-            )
-            self._peer_in_timeout_task = asyncio.create_task(
-                self._fail_after_timeout(
-                    _PEER_IN_TIMEOUT,
-                    "xsense_webrtc_peer_in_timeout",
-                    "Camera did not join the WebRTC session",
+            if self._camera_online:
+                LOGGER.debug(
+                    "X-Sense WebRTC camera online, starting peer: %s",
+                    self._debug_context(),
                 )
-            )
+                await self._start_camera_peer()
+            else:
+                LOGGER.debug(
+                    "X-Sense WebRTC waiting for PEER_IN: %s",
+                    self._debug_context(),
+                )
+                self._peer_in_timeout_task = asyncio.create_task(
+                    self._fail_after_timeout(
+                        _PEER_IN_TIMEOUT,
+                        "xsense_webrtc_peer_in_timeout",
+                        "Camera did not join the WebRTC session",
+                    )
+                )
             return True
         except Exception as err:  # noqa: BLE001 - surface cleanly to HA frontend
             LOGGER.debug(
