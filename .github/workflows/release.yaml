@@ -30,7 +30,7 @@ jobs:
           title="Release ${tag}"
 
           if gh release view "$tag" >/dev/null 2>&1; then
-            args=(--verify-tag --title "$title" --draft=false --latest)
+            args=(--verify-tag --title "$title" --draft=false)
             if [[ -f "$notes_file" ]]; then
               args+=(--notes-file "$notes_file")
             fi
@@ -39,7 +39,7 @@ jobs:
           fi
 
           if [[ -f "$notes_file" ]]; then
-            gh release create "$tag" --verify-tag --title "$title" --notes-file "$notes_file" --latest
+            gh release create "$tag" --verify-tag --title "$title" --notes-file "$notes_file"
           else
-            gh release create "$tag" --verify-tag --title "$title" --generate-notes --latest
+            gh release create "$tag" --verify-tag --title "$title" --generate-notes
           fi
