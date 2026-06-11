@@ -18,8 +18,3 @@ A focused camera and MQTT polish release. This version improves APK-aligned came
 - Fixed unnecessary Home Assistant log warnings for clean MQTT disconnects.
 - Fixed live-stream startup payloads to match the APK when no saved live ratio exists.
 - Fixed WebRTC support reporting for RTSP/RTMP cameras using the APK DeviceBean.isWebRTC() rule.
-
-### 🔎 Validation
-
-- ✅ Deep APK-alignment pass completed for API metadata, ADDX camera paths, shadow commands, MQTT topics, thing names, and online-state behavior.
-- ✅ Full test suite passed.

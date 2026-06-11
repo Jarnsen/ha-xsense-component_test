@@ -13,8 +13,3 @@ A polish and follow-up release after 1.2.0. This version improves XS01-WX state 
 
 - Fixed the XS01-WX alarm-status report path connected to issue #90.
 - Cleaned up translated README coverage and language navigation.
-
-### 🔎 Validation
-
-- ✅ Issue #90 was left open for reporter confirmation instead of being closed prematurely.
-- ✅ Release prepared through the upstream PR flow.

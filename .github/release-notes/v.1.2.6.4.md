@@ -17,9 +17,3 @@ A camera playback and login reliability polish release. This version tightens th
 - Fixed stale camera cleanup when the ADDX camera list is valid but empty.
 - Fixed login attempts waiting too long or surfacing poorly when Cognito cannot be reached.
 - Fixed camera motion sensitivity controls when the settings response omits the option list.
-
-### 🔎 Validation
-
-- ✅ Installed and restarted on a live Home Assistant instance before release prep.
-- ✅ X-Sense platforms loaded cleanly after restart.
-- ✅ Full test suite passed.

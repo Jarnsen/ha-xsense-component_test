@@ -6,8 +6,3 @@
 - Matched the APK startLive timing by waiting for both the data channel and camera peer connection before sending the live command.
 - Tightened WebRTC close cleanup after failed stream attempts to reduce leftover aioice retry/session errors.
 - Normalized camera motion sensitivity and recording duration defaults the same way the Android app does, avoiding unknown `0` values for those controls.
-
-### ✅ Validation
-- Full test suite passed: 220 tests.
-- Python compile check passed.
-- APK-alignment pass completed for WebRTC offer timing, recipient handling, data-channel `startLive`, stream cleanup, and camera config defaults.

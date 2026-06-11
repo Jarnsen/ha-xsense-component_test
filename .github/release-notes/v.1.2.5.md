@@ -14,8 +14,3 @@ A major APK-alignment release after the 1.2.4 cloud/API refactor. This version i
 - Fixed Wi-Fi action thing names, including dashed/non-dashed models and the special XS01-WX EN/UL serial path.
 - Fixed Wi-Fi fire-drill and self-test action targets to use the same shadow targets as the APK.
 - Fixed camera-only entities so camera controls and diagnostics appear only for APK-supported camera models.
-
-### 🔎 Validation
-
-- ✅ Full test suite passed.
-- ✅ Diff, JSON, translation, AST, and duplicate-key checks passed.

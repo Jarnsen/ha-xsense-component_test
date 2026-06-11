@@ -15,9 +15,3 @@ A larger APK-alignment release for camera discovery, supported device actions, d
 - 🔊 Added alarm, voice, chirp, and reminder volume controls where devices report writable settings.
 - 📷 Kept camera support scoped to the IPC models explicitly supported by the APK: SSC0A and SSC0B.
 - 🔁 Improved initialization defaults for accounts where camera devices are discovered through the camera API path.
-
-### 🔎 Validation
-
-- ✅ Added regression tests for camera discovery, unsupported camera filtering, action payloads, volume payloads, signed shadow updates, and report-time sensor handling.
-- ✅ Diff checks passed.
-- ✅ Full test suite passed.

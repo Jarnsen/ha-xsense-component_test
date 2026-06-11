@@ -13,8 +13,3 @@ A cleanup and availability hotfix after 1.2.6. This release removes stale identi
 - Hardened obsolete sensor cleanup so stale identifier entries are removed without touching current device entities.
 - Renamed legacy X-Sense entities that were left with old none-suffixed IDs when a clean device-based entity ID is available.
 - Kept static identifiers out of normal sensors and visible device metadata while leaving them available in Home Assistant diagnostics.
-
-### 🔎 Validation
-
-- ✅ Installed and checked on Steve Home Assistant before release.
-- ✅ Full test suite passed.

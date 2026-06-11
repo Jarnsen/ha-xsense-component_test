@@ -11,8 +11,3 @@ A camera discovery hotfix for accounts where X-Sense cameras are returned throug
 
 - Fixed camera creation before camera metadata is fully loaded.
 - Fixed accounts where APK-visible cameras were missing from Home Assistant.
-
-### 🔎 Validation
-
-- ✅ Full test suite passed.
-- ✅ Added regression coverage for APK-aligned camera discovery.
