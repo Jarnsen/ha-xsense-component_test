@@ -9,7 +9,7 @@ for module_name in list(sys.modules):
 if not hasattr(sys.modules.get("custom_components"), "__path__"):
     sys.modules.pop("custom_components", None)
 
-from custom_components.xsense import binary_sensor, button, number, select, sensor, switch
+from custom_components.xsense import binary_sensor, button, camera, number, select, sensor, switch
 from custom_components.xsense.api import mapping
 
 
@@ -106,6 +106,31 @@ def test_read_only_camera_entities_require_camera_entity():
     assert sensor.has_camera_data("batteryLevel")(camera)
     assert not binary_sensor.has_camera_data("needMotion")(non_camera)
     assert binary_sensor.has_camera_data("needMotion")(camera)
+
+
+async def test_webrtc_offer_sends_initial_keepalive_before_ticket():
+    calls = []
+
+    class FakeXsense:
+        async def keep_camera_live_alive(self, entity):
+            calls.append(("keepalive", entity.sn))
+
+        async def get_camera_webrtc_ticket(self, entity):
+            calls.append(("ticket", entity.sn))
+            return None
+
+    entity = SimpleNamespace(sn="SSC0A123", online=True, data={})
+    camera_entity = object.__new__(camera.XSenseCameraEntity)
+    camera_entity.coordinator = SimpleNamespace(xsense=FakeXsense())
+    camera_entity._current_entity = lambda: entity
+    messages = []
+
+    await camera_entity.async_handle_async_webrtc_offer(
+        "v=0\r\n", "session-1", messages.append
+    )
+
+    assert calls == [("keepalive", "SSC0A123"), ("ticket", "SSC0A123")]
+    assert messages[0].code == "xsense_webrtc_ticket_failed"
 
 
 def test_camera_audio_controls_follow_apk_missing_or_enabled_support_rule():
