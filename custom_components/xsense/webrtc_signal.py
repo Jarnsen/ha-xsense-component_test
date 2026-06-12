@@ -317,11 +317,6 @@ def make_ice_candidate_payload(
     return json.dumps(envelope, separators=(",", ":"))
 
 
-def make_signal_wire_payload(event: str, envelope: str) -> str:
-    """Return the signal-server wire message around an APK event envelope."""
-    return json.dumps({"method": event, "value": envelope}, separators=(",", ":"))
-
-
 def make_start_live_data_channel_message(resolution: str) -> dict[str, Any]:
     """Return the APK-compatible data-channel startLive command."""
     return make_data_channel_command(
@@ -831,8 +826,6 @@ class XSenseWebRTCSession:
             or getattr(self._data_channel, "readyState", None) != "open"
         ):
             return
-        if self._camera_pc.connectionState != "connected":
-            return
         if not self._send_data_channel_json(
             make_start_live_data_channel_message(self._resolution)
         ):
@@ -878,7 +871,7 @@ class XSenseWebRTCSession:
             session_id=self._session_id,
             resolution=self._resolution,
         )
-        await self._ws.send_str(make_signal_wire_payload("SDP_OFFER", offer_payload))
+        await self._ws.send_str(offer_payload)
         self._camera_offer_sent = True
         if self._camera_local_description_task:
             await self._camera_local_description_task
@@ -916,9 +909,7 @@ class XSenseWebRTCSession:
                 ConnectionError,
                 RuntimeError,
             ):
-                await self._ws.send_str(
-                    make_signal_wire_payload("ICE_CANDIDATE", candidate_payload)
-                )
+                await self._ws.send_str(candidate_payload)
                 continue
             LOGGER.debug(
                 "X-Sense WebRTC stopped sending ICE candidates because signal closed: %s",

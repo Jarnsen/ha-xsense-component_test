@@ -177,19 +177,6 @@ def test_webrtc_ice_candidate_payload_matches_apk():
         "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
     }
 
-def test_signal_wire_payload_wraps_apk_envelope_for_raw_websocket():
-    envelope = make_sdp_offer_payload(
-        offer_sdp="v=0\r\n",
-        ticket=ticket(),
-        recipient_client_id="SSC0A123",
-        session_id="Android-client123-100000",
-        resolution="1280x720",
-    )
-
-    wire = json.loads(webrtc_signal.make_signal_wire_payload("SDP_OFFER", envelope))
-
-    assert wire == {"method": "SDP_OFFER", "value": envelope}
-
 
 def test_local_sdp_candidates_match_apk_loopback_and_tcp_filters():
     sdp = """v=0
@@ -403,11 +390,11 @@ a=candidate:1 1 udp 1 192.0.2.1 123 typ host
 
     await session._send_offer()
 
-    assert [message["method"] for message in session._ws.messages] == [
+    assert [message["messageType"] for message in session._ws.messages] == [
         "SDP_OFFER",
         "ICE_CANDIDATE",
     ]
-    candidate_message = json.loads(session._ws.messages[1]["value"])
+    candidate_message = session._ws.messages[1]
     assert candidate_message | {"messagePayload": "<decoded>"} == {
         "messageType": "ICE_CANDIDATE",
         "messagePayload": "<decoded>",
@@ -762,7 +749,7 @@ def test_camera_webrtc_resolution_uses_apk_normalization():
     assert _camera_live_resolution(SimpleNamespace(data={})) == "auto"
 
 
-def test_start_live_waits_for_data_channel_and_peer_connection(monkeypatch):
+def test_start_live_waits_for_data_channel_connected_like_apk(monkeypatch):
     monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
     monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
 
@@ -796,15 +783,11 @@ def test_start_live_waits_for_data_channel_and_peer_connection(monkeypatch):
     session._send_start_live_if_ready()
     assert session._data_channel.messages == []
 
-    session._camera_pc.connectionState = "connected"
-    assert session._data_channel.messages == []
-
     session._data_channel.readyState = "open"
     session._send_start_live_if_ready()
     assert session._data_channel.messages == []
 
     session._handle_data_channel_message(json.dumps({"action": "dataChannelConnected"}))
-    session._send_start_live_if_ready()
 
     assert [json.loads(message) for message in session._data_channel.messages] == [
         {
@@ -926,7 +909,7 @@ a=candidate:2 1 udp 1 192.0.2.2 124 typ host
 
     await session._send_offer()
 
-    assert [message["method"] for message in session._ws.messages] == [
+    assert [message["messageType"] for message in session._ws.messages] == [
         "SDP_OFFER",
         "ICE_CANDIDATE",
     ]
@@ -1037,7 +1020,7 @@ async def test_camera_offer_does_not_wait_for_local_ice_gathering():
     task = asyncio.create_task(session._send_offer())
     await asyncio.sleep(0)
 
-    assert [message["method"] for message in session._ws.messages] == ["SDP_OFFER"]
+    assert [message["messageType"] for message in session._ws.messages] == ["SDP_OFFER"]
     assert session._camera_offer_sent is True
 
     session._camera_local_description_task.cancel()
@@ -1375,5 +1358,5 @@ async def test_offline_camera_waits_for_peer_in_before_offer_like_apk():
 
     await session._handle_signal_event("PEER_IN", "SSC0A123")
 
-    assert [message["method"] for message in session._ws.messages] == ["SDP_OFFER"]
+    assert [message["messageType"] for message in session._ws.messages] == ["SDP_OFFER"]
     assert session._camera_offer_sent is True
