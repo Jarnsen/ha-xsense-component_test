@@ -1,5 +1,6 @@
 from contextlib import suppress
 import asyncio
+import aiohttp
 import base64
 import json
 
@@ -874,6 +875,61 @@ async def test_closed_session_ignores_late_browser_ice_candidates():
 
     assert session._pending_ha_candidates == []
 
+
+
+async def test_send_offer_stops_cleanly_when_signal_closes_during_ice():
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._ticket = ticket()
+    session._recipient_client_id = "SSC0A123"
+    session._session_id = "Android-client123-100000"
+    session._resolution = "auto"
+    session._camera_local_candidate_count = 0
+    session._camera_offer_sent = False
+    session._camera_local_description_task = None
+    session._camera_pc = type(
+        "FakePeer",
+        (),
+        {
+            "localDescription": type(
+                "LocalDescription",
+                (),
+                {
+                    "sdp": """v=0
+a=ice-ufrag:test
+a=candidate:1 1 udp 1 192.0.2.1 123 typ host
+a=candidate:2 1 udp 1 192.0.2.2 124 typ host
+"""
+                },
+            )()
+        },
+    )()
+    session._debug_context = lambda **kwargs: kwargs
+    session._camera_offer_sdp = """v=0
+a=ice-ufrag:test
+a=candidate:1 1 udp 1 192.0.2.1 123 typ host
+a=candidate:2 1 udp 1 192.0.2.2 124 typ host
+"""
+
+    class ClosingWebSocket:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+            if len(self.messages) > 1:
+                raise aiohttp.ClientConnectionResetError("Cannot write to closing transport")
+
+    session._ws = ClosingWebSocket()
+
+    await session._send_offer()
+
+    assert [message["method"] for message in session._ws.messages] == [
+        "SDP_OFFER",
+        "ICE_CANDIDATE",
+    ]
 
 async def test_close_is_idempotent_and_waits_for_reader_task():
     class FakeWs:
