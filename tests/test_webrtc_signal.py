@@ -771,14 +771,25 @@ def test_start_live_waits_for_data_channel_connected_like_apk(monkeypatch):
     session._data_channel = FakeDataChannel()
     session._start_live_sent = False
     session._data_channel_connected = False
+    session._first_frame_received = False
+    session._first_frame_timeout_task = None
     created_tasks = []
 
-    def create_task(coro):
-        created_tasks.append(coro)
-        coro.close()
-        return None
+    class FakeTask:
+        def __init__(self, coro):
+            self.coro = coro
+            self.cancelled = False
+            coro.close()
 
-    session._create_task = create_task
+        def cancel(self):
+            self.cancelled = True
+
+    def create_task(coro):
+        task = FakeTask(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "create_task", create_task)
 
     session._send_start_live_if_ready()
     assert session._data_channel.messages == []
@@ -799,7 +810,8 @@ def test_start_live_waits_for_data_channel_connected_like_apk(monkeypatch):
             "resolution": "2560x1440",
         }
     ]
-    assert created_tasks == []
+    assert len(created_tasks) == 1
+    assert session._first_frame_timeout_task is created_tasks[0]
 
 
 async def test_browser_ice_candidates_wait_for_ha_remote_description():
@@ -1173,6 +1185,7 @@ async def test_first_video_frame_cancels_play_timeout():
     session = object.__new__(webrtc_signal.XSenseWebRTCSession)
     session._first_frame_received = False
     session._play_timeout_task = asyncio.create_task(asyncio.sleep(60))
+    session._first_frame_timeout_task = asyncio.create_task(asyncio.sleep(60))
     track = webrtc_signal._ProxyTrack("video", session._mark_first_frame_received)
     track.set_source(FakeSource())
 
@@ -1181,6 +1194,7 @@ async def test_first_video_frame_cancels_play_timeout():
     assert session._first_frame_received is True
     await asyncio.sleep(0)
     assert session._play_timeout_task.cancelled()
+    assert session._first_frame_timeout_task.cancelling()
 
 
 async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
