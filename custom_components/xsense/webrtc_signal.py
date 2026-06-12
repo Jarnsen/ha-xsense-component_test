@@ -11,7 +11,7 @@ import warnings
 from contextlib import suppress
 from collections import Counter
 from dataclasses import dataclass
-from collections.abc import Coroutine
+from collections.abc import Awaitable, Coroutine
 from typing import Any, Callable
 from urllib.parse import urlparse, urlunparse
 
@@ -67,6 +67,7 @@ _PEER_IN_TIMEOUT = 20
 _PLAY_TIMEOUT = 40
 _FIRST_FRAME_TIMEOUT = 10
 _DEFAULT_SIGNAL_HEARTBEAT = 30
+_CAMERA_KEEPALIVE_INTERVAL = 5
 
 
 @dataclass(slots=True)
@@ -468,6 +469,7 @@ class XSenseWebRTCSession:
         session_id: str | None = None,
         on_close: Callable[[], None] | None = None,
         camera_online: bool = False,
+        keep_alive: Callable[[], Awaitable[Any]] | None = None,
     ) -> None:
         self._session = session
         self._ticket = ticket
@@ -478,6 +480,7 @@ class XSenseWebRTCSession:
         self._session_id = session_id or ticket.session_id
         self._recipient_client_id = ticket.serial_number
         self._camera_online = camera_online
+        self._keep_alive = keep_alive
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._reader_task: asyncio.Task[None] | None = None
         self._ha_pc = RTCPeerConnection()
@@ -500,6 +503,7 @@ class XSenseWebRTCSession:
         self._peer_in_timeout_task: asyncio.Task[None] | None = None
         self._play_timeout_task: asyncio.Task[None] | None = None
         self._first_frame_timeout_task: asyncio.Task[None] | None = None
+        self._keep_alive_task: asyncio.Task[None] | None = None
         self._start_live_sent = False
         self._first_frame_received = False
         self._closed = False
@@ -564,6 +568,7 @@ class XSenseWebRTCSession:
                 return False
 
             LOGGER.debug("X-Sense WebRTC HA answer ready: %s", self._debug_context())
+            self._start_keep_alive()
             connect_options = self._ticket.signal_connect_options()
             connect_url = connect_options.pop("url", self._ticket.signal_url())
             LOGGER.debug(
@@ -637,6 +642,7 @@ class XSenseWebRTCSession:
             await self._cancel_task(getattr(self, "_peer_in_timeout_task", None))
             await self._cancel_task(getattr(self, "_play_timeout_task", None))
             await self._cancel_task(getattr(self, "_first_frame_timeout_task", None))
+            await self._cancel_task(getattr(self, "_keep_alive_task", None))
             if self._camera_local_description_task:
                 self._camera_local_description_task.cancel()
                 with suppress(asyncio.CancelledError, Exception):
@@ -699,6 +705,30 @@ class XSenseWebRTCSession:
         task.cancel()
         with suppress(asyncio.CancelledError, Exception):
             await task
+
+    def _start_keep_alive(self) -> None:
+        """Start the APK-style camera live keepalive loop."""
+        if self._keep_alive is None or self._keep_alive_task is not None:
+            return
+        self._keep_alive_task = asyncio.create_task(self._keep_alive_loop())
+
+    async def _keep_alive_loop(self) -> None:
+        while not self._closed:
+            try:
+                await self._keep_alive()
+                LOGGER.debug(
+                    "X-Sense WebRTC live keepalive sent: %s",
+                    self._debug_context(keepalive_seconds=30),
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as err:  # noqa: BLE001 - keepalive is best-effort
+                LOGGER.debug(
+                    "X-Sense WebRTC live keepalive failed: %s",
+                    self._debug_context(error=type(err).__name__),
+                    exc_info=err,
+                )
+            await asyncio.sleep(_CAMERA_KEEPALIVE_INTERVAL)
 
     def _send_ha_message(self, message: WebRTCAnswer | WebRTCError) -> bool:
         """Send a Home Assistant WebRTC message if the browser socket is open."""

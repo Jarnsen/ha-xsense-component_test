@@ -53,6 +53,7 @@ def test_ticket_connect_details_match_apk(monkeypatch):
     assert webrtc_signal._signal_heartbeat(signal_ticket) == 15.0
     assert webrtc_signal._signal_heartbeat(ticket(signalPingInterval=15000)) == 15.0
     assert webrtc_signal._signal_heartbeat(ticket(signalPingInterval=0)) == 30
+    assert webrtc_signal._CAMERA_KEEPALIVE_INTERVAL == 5
     assert signal_ticket.signal_connect_options() == {
         "url": (
             "wss://203.0.113.10:443/group/viewer/client123"
@@ -1058,6 +1059,8 @@ async def test_webrtc_close_does_not_cancel_current_timeout_task():
     session._closed = False
     session._close_lock = asyncio.Lock()
     session._reader_task = None
+    session._keep_alive = None
+    session._keep_alive_task = None
     session._play_timeout_task = asyncio.current_task()
     session._camera_local_description_task = None
     session._ws = None
@@ -1119,7 +1122,10 @@ async def test_webrtc_close_stops_peer_transports_before_closing():
     session._closed = False
     session._close_lock = asyncio.Lock()
     session._reader_task = None
+    session._keep_alive = None
+    session._keep_alive_task = None
     session._play_timeout_task = None
+    session._first_frame_timeout_task = None
     session._camera_local_description_task = None
     session._ws = None
     session._data_channel = None
@@ -1199,6 +1205,33 @@ async def test_first_video_frame_cancels_play_timeout():
     await asyncio.sleep(0)
     assert session._play_timeout_task.cancelled()
     assert session._first_frame_timeout_task.cancelling()
+
+
+async def test_session_sends_apk_live_keepalive_until_close():
+    keepalive_calls = 0
+
+    async def keep_alive():
+        nonlocal keepalive_calls
+        keepalive_calls += 1
+
+    session = webrtc_signal.XSenseWebRTCSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0",
+        resolution="auto",
+        send_message=lambda message: None,
+        keep_alive=keep_alive,
+    )
+
+    session._closed = False
+    task = asyncio.create_task(session._keep_alive_loop())
+    await asyncio.sleep(0)
+    session._closed = True
+    task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
+
+    assert keepalive_calls == 1
 
 
 async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
@@ -1292,6 +1325,8 @@ async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
     session._resolution = "1280x720"
     session._ws = None
     session._reader_task = None
+    session._keep_alive = None
+    session._keep_alive_task = None
     session._ha_pc = FakeHaPeer()
     session._camera_pc = FakeCameraPeer()
     session._video = object()
@@ -1299,12 +1334,14 @@ async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
     session._pending_ha_candidates = []
     session._pending_camera_candidates = []
     session._camera_peer_ready = False
+    session._data_channel = None
     session._data_channel_connected = False
     session._camera_offer_sent = False
     session._camera_offer_sdp = None
     session._camera_local_description_task = None
     session._peer_in_timeout_task = None
     session._play_timeout_task = None
+    session._first_frame_timeout_task = None
     session._start_live_sent = False
     session._first_frame_received = False
     session._closed = False

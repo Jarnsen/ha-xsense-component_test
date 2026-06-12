@@ -720,6 +720,12 @@ class AsyncXSense(XSenseBase):
             return live_url
         return None
 
+    async def keep_camera_live_alive(self, camera: Entity) -> None:
+        """Send the APK camera live-view keepalive request."""
+        await self.addx_call(
+            "/device/keepalive", serialNumber=camera.sn, seconds=30
+        )
+
     async def stop_camera_live(self, camera: Entity) -> None:
         """Stop camera live view through the Android app endpoint."""
         try:

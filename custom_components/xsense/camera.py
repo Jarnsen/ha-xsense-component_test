@@ -207,6 +207,9 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             if self._webrtc_sessions.get(session_id) is session:
                 self._webrtc_sessions.pop(session_id, None)
 
+        async def keep_alive() -> None:
+            await self.coordinator.xsense.keep_camera_live_alive(entity)
+
         session = webrtc_signal.XSenseWebRTCSession(
             session=async_get_clientsession(self.hass),
             ticket=ticket,
@@ -215,6 +218,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             send_message=send_message,
             on_close=remove_session,
             camera_online=_camera_online(entity),
+            keep_alive=keep_alive,
         )
         LOGGER.debug(
             "X-Sense camera WebRTC bridge created: %s",
