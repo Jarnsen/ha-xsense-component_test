@@ -6,6 +6,7 @@ on:
   push:
     tags:
       - "v*.*.*"
+      - "[0-9]*.[0-9]*.[0-9]*"
   workflow_dispatch:
 
 permissions:
@@ -29,8 +30,16 @@ jobs:
           notes_file=".github/release-notes/${tag}.md"
           title="Release ${tag}"
 
+          release_args=(--verify-tag --title "$title")
+          version="${tag#v}"
+          version="${version#v.}"
+          IFS='.' read -r -a version_parts <<< "$version"
+          if (( ${#version_parts[@]} >= 4 )); then
+            release_args+=(--prerelease)
+          fi
+
           if gh release view "$tag" >/dev/null 2>&1; then
-            args=(--verify-tag --title "$title" --draft=false)
+            args=("${release_args[@]}" --draft=false)
             if [[ -f "$notes_file" ]]; then
               args+=(--notes-file "$notes_file")
             fi
@@ -39,7 +48,7 @@ jobs:
           fi
 
           if [[ -f "$notes_file" ]]; then
-            gh release create "$tag" --verify-tag --title "$title" --notes-file "$notes_file"
+            gh release create "$tag" "${release_args[@]}" --notes-file "$notes_file"
           else
-            gh release create "$tag" --verify-tag --title "$title" --generate-notes
+            gh release create "$tag" "${release_args[@]}" --generate-notes
           fi

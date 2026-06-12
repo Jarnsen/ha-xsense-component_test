@@ -910,9 +910,21 @@ class XSenseWebRTCSession:
                 recipient_client_id=self._recipient_client_id,
                 session_id=self._session_id,
             )
-            await self._ws.send_str(
-                make_signal_wire_payload("ICE_CANDIDATE", candidate_payload)
+            with suppress(
+                aiohttp.ClientConnectionError,
+                aiohttp.ClientConnectionResetError,
+                ConnectionError,
+                RuntimeError,
+            ):
+                await self._ws.send_str(
+                    make_signal_wire_payload("ICE_CANDIDATE", candidate_payload)
+                )
+                continue
+            LOGGER.debug(
+                "X-Sense WebRTC stopped sending ICE candidates because signal closed: %s",
+                self._debug_context(candidate_count=len(candidates)),
             )
+            return
 
     async def _read_loop(self) -> None:
         if self._ws is None:
