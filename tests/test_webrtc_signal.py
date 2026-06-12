@@ -29,6 +29,7 @@ def ticket(**overrides):
         "sign": "sig",
         "time": 123456,
         "expirationTime": 4_102_444_800_000,
+        "signalPingInterval": 15,
         "iceServer": [
             {"url": "turn:turn.example", "username": "user", "credential": "secret"}
         ],
@@ -49,6 +50,9 @@ def test_ticket_connect_details_match_apk(monkeypatch):
         "wss://signal.example:443/group/viewer/client123"
         "?traceId=trace&time=123456&sign=sig&name=test-123"
     )
+    assert webrtc_signal._signal_heartbeat(signal_ticket) == 15.0
+    assert webrtc_signal._signal_heartbeat(ticket(signalPingInterval=15000)) == 15.0
+    assert webrtc_signal._signal_heartbeat(ticket(signalPingInterval=0)) == 30
     assert signal_ticket.signal_connect_options() == {
         "url": (
             "wss://203.0.113.10:443/group/viewer/client123"
@@ -1217,6 +1221,7 @@ async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
 
         async def ws_connect(self, url, **kwargs):
             self.connect_url = url
+            self.connect_kwargs = kwargs
             return self.ws
 
     class FakeHaPeer:
@@ -1318,6 +1323,7 @@ async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
         webrtc_signal.asyncio.create_task = original_create_task
 
     assert aio_session.ws.messages == []
+    assert aio_session.connect_kwargs["heartbeat"] == 15.0
     assert started == []
     assert session._peer_in_timeout_task is tasks[-1]
     assert len(tasks) == 3

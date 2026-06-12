@@ -66,6 +66,7 @@ _DEFAULT_RESOLUTION = "auto"
 _PEER_IN_TIMEOUT = 20
 _PLAY_TIMEOUT = 40
 _FIRST_FRAME_TIMEOUT = 10
+_DEFAULT_SIGNAL_HEARTBEAT = 30
 
 
 @dataclass(slots=True)
@@ -217,12 +218,24 @@ def _ticket_debug_context(ticket: XSenseWebRTCTicket) -> dict[str, Any]:
         "signal_host": _safe_host(ticket.signal_server),
         "signal_ip_override": bool(ticket.signal_server_ip_address),
         "ice_servers": len(ticket.ice_servers or []),
+        "signal_ping_interval": ticket.signal_ping_interval,
+        "signal_heartbeat_s": _signal_heartbeat(ticket),
         "ticket_expires_in_s": (
             round((ticket.expiration_time - int(time.time() * 1000)) / 1000)
             if ticket.expiration_time is not None
             else None
         ),
     }
+
+
+def _signal_heartbeat(ticket: XSenseWebRTCTicket) -> float:
+    """Return the signal websocket heartbeat interval from the APK ticket."""
+    interval = ticket.signal_ping_interval
+    if not interval or interval <= 0:
+        return _DEFAULT_SIGNAL_HEARTBEAT
+    # Older and newer ticket responses have used seconds and milliseconds.
+    heartbeat = interval / 1000 if interval > 1000 else float(interval)
+    return max(1.0, heartbeat)
 
 
 def _payload_debug(payload: Any) -> str:
@@ -557,8 +570,9 @@ class XSenseWebRTCSession:
                 "X-Sense WebRTC signal connecting: %s",
                 self._debug_context(connect_host=_safe_host(connect_url)),
             )
+            signal_heartbeat = _signal_heartbeat(self._ticket)
             self._ws = await self._session.ws_connect(
-                connect_url, heartbeat=30, **connect_options
+                connect_url, heartbeat=signal_heartbeat, **connect_options
             )
             LOGGER.debug("X-Sense WebRTC signal connected: %s", self._debug_context())
             self._reader_task = asyncio.create_task(self._read_loop())
