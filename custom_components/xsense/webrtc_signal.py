@@ -65,6 +65,7 @@ _SIGNAL_NAME = "test-123"
 _DEFAULT_RESOLUTION = "auto"
 _PEER_IN_TIMEOUT = 20
 _PLAY_TIMEOUT = 40
+_FIRST_FRAME_TIMEOUT = 10
 
 
 @dataclass(slots=True)
@@ -317,11 +318,6 @@ def make_ice_candidate_payload(
     return json.dumps(envelope, separators=(",", ":"))
 
 
-def make_signal_wire_payload(event: str, envelope: str) -> str:
-    """Return the signal-server wire message around an APK event envelope."""
-    return json.dumps({"method": event, "value": envelope}, separators=(",", ":"))
-
-
 def make_start_live_data_channel_message(resolution: str) -> dict[str, Any]:
     """Return the APK-compatible data-channel startLive command."""
     return make_data_channel_command(
@@ -490,6 +486,7 @@ class XSenseWebRTCSession:
         self._camera_local_description_task: asyncio.Task[None] | None = None
         self._peer_in_timeout_task: asyncio.Task[None] | None = None
         self._play_timeout_task: asyncio.Task[None] | None = None
+        self._first_frame_timeout_task: asyncio.Task[None] | None = None
         self._start_live_sent = False
         self._first_frame_received = False
         self._closed = False
@@ -514,7 +511,21 @@ class XSenseWebRTCSession:
                 "offer_sent": getattr(self, "_camera_offer_sent", None),
                 "sdp_answer_received": getattr(self, "_sdp_answer_received", None),
                 "first_frame_received": getattr(self, "_first_frame_received", None),
+                "start_live_sent": getattr(self, "_start_live_sent", None),
                 "last_signal_event": getattr(self, "_last_signal_event", None),
+                "signal_events": dict(getattr(self, "_signal_event_counts", {})),
+                "local_candidate_count": getattr(
+                    self, "_camera_local_candidate_count", None
+                ),
+                "remote_candidate_count": getattr(
+                    self, "_camera_remote_candidate_count", None
+                ),
+                "pending_ha_candidates": len(
+                    getattr(self, "_pending_ha_candidates", [])
+                ),
+                "pending_camera_candidates": len(
+                    getattr(self, "_pending_camera_candidates", [])
+                ),
             }
         )
         context.update(extra)
@@ -611,6 +622,7 @@ class XSenseWebRTCSession:
                     await self._reader_task
             await self._cancel_task(getattr(self, "_peer_in_timeout_task", None))
             await self._cancel_task(getattr(self, "_play_timeout_task", None))
+            await self._cancel_task(getattr(self, "_first_frame_timeout_task", None))
             if self._camera_local_description_task:
                 self._camera_local_description_task.cancel()
                 with suppress(asyncio.CancelledError, Exception):
@@ -710,6 +722,9 @@ class XSenseWebRTCSession:
         play_task = getattr(self, "_play_timeout_task", None)
         if play_task:
             play_task.cancel()
+        first_frame_task = getattr(self, "_first_frame_timeout_task", None)
+        if first_frame_task:
+            first_frame_task.cancel()
 
     def _send_stop_live(self) -> None:
         """Send the APK stopLive data-channel command before closing."""
@@ -831,13 +846,19 @@ class XSenseWebRTCSession:
             or getattr(self._data_channel, "readyState", None) != "open"
         ):
             return
-        if self._camera_pc.connectionState != "connected":
-            return
         if not self._send_data_channel_json(
             make_start_live_data_channel_message(self._resolution)
         ):
             return
         self._start_live_sent = True
+        if not self._first_frame_received and not self._first_frame_timeout_task:
+            self._first_frame_timeout_task = asyncio.create_task(
+                self._fail_after_timeout(
+                    _FIRST_FRAME_TIMEOUT,
+                    "xsense_webrtc_first_frame_timeout",
+                    "Camera connected but did not send a video frame",
+                )
+            )
         LOGGER.debug(
             "X-Sense WebRTC sent startLive: %s",
             self._debug_context(size=_map_video_size(self._resolution)),
@@ -878,7 +899,7 @@ class XSenseWebRTCSession:
             session_id=self._session_id,
             resolution=self._resolution,
         )
-        await self._ws.send_str(make_signal_wire_payload("SDP_OFFER", offer_payload))
+        await self._ws.send_str(offer_payload)
         self._camera_offer_sent = True
         if self._camera_local_description_task:
             await self._camera_local_description_task
@@ -916,9 +937,7 @@ class XSenseWebRTCSession:
                 ConnectionError,
                 RuntimeError,
             ):
-                await self._ws.send_str(
-                    make_signal_wire_payload("ICE_CANDIDATE", candidate_payload)
-                )
+                await self._ws.send_str(candidate_payload)
                 continue
             LOGGER.debug(
                 "X-Sense WebRTC stopped sending ICE candidates because signal closed: %s",
@@ -951,7 +970,30 @@ class XSenseWebRTCSession:
             raise
         except Exception as err:  # noqa: BLE001 - signal server can close mid-session
             if not self._closed:
-                LOGGER.debug("X-Sense WebRTC signal reader stopped", exc_info=err)
+                LOGGER.debug(
+                    "X-Sense WebRTC signal reader stopped: %s",
+                    self._debug_context(
+                        error=type(err).__name__,
+                        message=str(err),
+                        signal_close_code=getattr(self._ws, "close_code", None),
+                    ),
+                    exc_info=err,
+                )
+        finally:
+            if (
+                not self._closed
+                and self._ws is not None
+                and getattr(self._ws, "closed", False)
+            ):
+                LOGGER.debug(
+                    "X-Sense WebRTC signal websocket closed: %s",
+                    self._debug_context(
+                        signal_close_code=getattr(self._ws, "close_code", None),
+                        signal_exception=repr(
+                            getattr(self._ws, "exception", lambda: None)()
+                        ),
+                    ),
+                )
 
     async def _handle_signal_event(self, event: str | None, payload: Any) -> None:
         if self._closed:
