@@ -203,6 +203,9 @@ a=rtcp-fb:101 nack
 a=fmtp:101 profile-level-id=42e01f
 a=rtpmap:102 rtx/90000
 a=fmtp:102 apt=101
+a=fingerprint:sha-256 AA:BB
+a=fingerprint:sha-384 CC:DD
+a=fingerprint:sha-512 EE:FF
 m=application 9 UDP/DTLS/SCTP webrtc-datachannel
 a=mid:2
 """
@@ -213,6 +216,8 @@ a=mid:2
     assert "VP8" not in apk_sdp
     assert "apt=97" not in apk_sdp
     assert "H264" in apk_sdp
+    assert "a=fingerprint:sha-384" not in apk_sdp
+    assert "a=fingerprint:sha-512" not in apk_sdp
     assert apk_sdp.endswith('\n')
 
 

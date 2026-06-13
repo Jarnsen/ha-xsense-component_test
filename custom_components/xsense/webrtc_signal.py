@@ -261,6 +261,7 @@ def _sdp_debug(sdp: str | None) -> dict[str, Any]:
         "media": media,
         "mids": mids,
         "video_codecs": _sdp_media_codecs(sdp, "video"),
+        "fingerprints": _sdp_fingerprints(sdp),
         "candidate_lines": sum(
             1 for line in sdp.splitlines() if line.startswith("a=candidate:")
         ),
@@ -281,6 +282,18 @@ def _sdp_media_codecs(sdp: str, media_kind: str) -> list[str]:
             if codec_name not in codecs:
                 codecs.append(codec_name)
     return codecs
+
+
+def _sdp_fingerprints(sdp: str) -> list[str]:
+    """Return compact DTLS fingerprint algorithms from SDP."""
+    algorithms: list[str] = []
+    for line in sdp.splitlines():
+        if not line.startswith("a=fingerprint:"):
+            continue
+        algorithm = line.removeprefix("a=fingerprint:").split(None, 1)[0].lower()
+        if algorithm not in algorithms:
+            algorithms.append(algorithm)
+    return algorithms
 
 
 def _candidate_debug_summary(candidates: list[dict[str, Any]]) -> dict[str, Any]:
@@ -1335,6 +1348,7 @@ def _sdp_without_local_candidates(sdp: str) -> str:
 def _apk_camera_offer_sdp(sdp: str) -> str:
     """Return the camera offer SDP with APK-compatible video codecs."""
     sdp = _sdp_without_local_candidates(sdp)
+    sdp = _apk_sdp_fingerprints(sdp)
     sections = _sdp_sections(sdp)
     updated_sections: list[list[str]] = []
     for section in sections:
@@ -1343,6 +1357,17 @@ def _apk_camera_offer_sdp(sdp: str) -> str:
         updated_sections.append(section)
     ending = '\r\n' if '\r\n' in sdp else '\n'
     return ending.join(line for section in updated_sections for line in section) + ending
+
+
+def _apk_sdp_fingerprints(sdp: str) -> str:
+    """Keep the APK-compatible sha-256 DTLS fingerprint in each SDP section."""
+    lines = []
+    for line in sdp.splitlines():
+        if line.startswith("a=fingerprint:") and not line.startswith("a=fingerprint:sha-256 "):
+            continue
+        lines.append(line)
+    ending = "\r\n" if "\r\n" in sdp else "\n"
+    return ending.join(lines) + (ending if sdp.endswith(("\r\n", "\n")) else "")
 
 
 def _sdp_sections(sdp: str) -> list[list[str]]:
