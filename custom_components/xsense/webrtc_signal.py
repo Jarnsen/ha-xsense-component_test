@@ -260,10 +260,27 @@ def _sdp_debug(sdp: str | None) -> dict[str, Any]:
         "sdp_len": len(sdp),
         "media": media,
         "mids": mids,
+        "video_codecs": _sdp_media_codecs(sdp, "video"),
         "candidate_lines": sum(
             1 for line in sdp.splitlines() if line.startswith("a=candidate:")
         ),
     }
+
+
+def _sdp_media_codecs(sdp: str, media_kind: str) -> list[str]:
+    """Return compact codec names for one SDP media section."""
+    codecs: list[str] = []
+    in_section = False
+    for line in sdp.splitlines():
+        if line.startswith("m="):
+            in_section = line.startswith(f"m={media_kind} ")
+            continue
+        if in_section and line.startswith("a=rtpmap:"):
+            _, codec = line.removeprefix("a=rtpmap:").split(None, 1)
+            codec_name = codec.split("/", 1)[0].upper()
+            if codec_name not in codecs:
+                codecs.append(codec_name)
+    return codecs
 
 
 def _candidate_debug_summary(candidates: list[dict[str, Any]]) -> dict[str, Any]:
@@ -955,9 +972,12 @@ class XSenseWebRTCSession:
         # peer setup, matching the SDK transceiver timing.
         self._camera_pc.addTransceiver("video", direction="recvonly")
         offer = await self._camera_pc.createOffer()
-        self._camera_offer_sdp = offer.sdp
+        camera_offer = RTCSessionDescription(
+            sdp=_apk_camera_offer_sdp(offer.sdp), type=offer.type
+        )
+        self._camera_offer_sdp = camera_offer.sdp
         self._camera_local_description_task = asyncio.create_task(
-            self._camera_pc.setLocalDescription(offer)
+            self._camera_pc.setLocalDescription(camera_offer)
         )
         await self._send_offer()
 
@@ -1310,6 +1330,71 @@ def _sdp_without_local_candidates(sdp: str) -> str:
     ]
     ending = "\r\n" if "\r\n" in sdp else "\n"
     return ending.join(lines) + (ending if sdp.endswith(("\r\n", "\n")) else "")
+
+
+def _apk_camera_offer_sdp(sdp: str) -> str:
+    """Return the camera offer SDP with APK-compatible video codecs."""
+    sdp = _sdp_without_local_candidates(sdp)
+    sections = _sdp_sections(sdp)
+    updated_sections: list[list[str]] = []
+    for section in sections:
+        if section and section[0].startswith("m=video "):
+            section = _prefer_h264_video_section(section)
+        updated_sections.append(section)
+    ending = '\r\n' if '\r\n' in sdp else '\n'
+    return ending.join(line for section in updated_sections for line in section) + ending
+
+
+def _sdp_sections(sdp: str) -> list[list[str]]:
+    session: list[str] = []
+    sections: list[list[str]] = []
+    current = session
+    for line in sdp.splitlines():
+        if line.startswith("m="):
+            current = [line]
+            sections.append(current)
+        else:
+            current.append(line)
+    return [session, *sections]
+
+
+def _prefer_h264_video_section(section: list[str]) -> list[str]:
+    payload_codecs: dict[str, str] = {}
+    rtx_apt: dict[str, str] = {}
+    for line in section:
+        if line.startswith("a=rtpmap:"):
+            payload, codec = line.removeprefix("a=rtpmap:").split(None, 1)
+            payload_codecs[payload] = codec.split("/", 1)[0].upper()
+        elif line.startswith("a=fmtp:"):
+            payload, params = line.removeprefix("a=fmtp:").split(None, 1)
+            if payload_codecs.get(payload) == "RTX":
+                for part in params.split(";"):
+                    key, _, value = part.strip().partition("=")
+                    if key == "apt" and value:
+                        rtx_apt[payload] = value
+    h264_payloads = [
+        payload for payload, codec in payload_codecs.items() if codec == "H264"
+    ]
+    keep = set(h264_payloads)
+    keep.update(payload for payload, apt in rtx_apt.items() if apt in keep)
+    if not keep:
+        return section
+    media = section[0].split()
+    media_payloads = [payload for payload in media[3:] if payload in keep]
+    rebuilt = [" ".join([*media[:3], *media_payloads])]
+    for line in section[1:]:
+        payload = _sdp_attribute_payload(line)
+        if payload is not None and payload not in keep:
+            continue
+        rebuilt.append(line)
+    return rebuilt
+
+
+def _sdp_attribute_payload(line: str) -> str | None:
+    for prefix in ("a=rtpmap:", "a=fmtp:", "a=rtcp-fb:"):
+        if line.startswith(prefix):
+            return line.removeprefix(prefix).split(None, 1)[0]
+    return None
 
 
 def _local_sdp_candidates(sdp: str) -> list[dict[str, Any]]:

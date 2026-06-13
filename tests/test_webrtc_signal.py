@@ -182,6 +182,40 @@ def test_webrtc_ice_candidate_payload_matches_apk():
     }
 
 
+def test_apk_camera_offer_sdp_prefers_h264_video_codecs():
+    sdp = """v=0
+m=audio 9 UDP/TLS/RTP/SAVPF 96
+a=mid:0
+a=rtpmap:96 opus/48000/2
+m=video 9 UDP/TLS/RTP/SAVPF 97 98 99 100 101 102
+a=mid:1
+a=rtpmap:97 VP8/90000
+a=rtcp-fb:97 nack
+a=rtpmap:98 rtx/90000
+a=fmtp:98 apt=97
+a=rtpmap:99 H264/90000
+a=rtcp-fb:99 nack
+a=fmtp:99 profile-level-id=42001f
+a=rtpmap:100 rtx/90000
+a=fmtp:100 apt=99
+a=rtpmap:101 H264/90000
+a=rtcp-fb:101 nack
+a=fmtp:101 profile-level-id=42e01f
+a=rtpmap:102 rtx/90000
+a=fmtp:102 apt=101
+m=application 9 UDP/DTLS/SCTP webrtc-datachannel
+a=mid:2
+"""
+
+    apk_sdp = webrtc_signal._apk_camera_offer_sdp(sdp)
+
+    assert "m=video 9 UDP/TLS/RTP/SAVPF 99 100 101 102" in apk_sdp
+    assert "VP8" not in apk_sdp
+    assert "apt=97" not in apk_sdp
+    assert "H264" in apk_sdp
+    assert apk_sdp.endswith('\n')
+
+
 def test_local_sdp_candidates_match_apk_loopback_filter():
     sdp = """v=0
 m=video 9 UDP/TLS/RTP/SAVPF 96
@@ -336,6 +370,7 @@ async def test_start_camera_peer_uses_apk_receive_media_offer_shape(monkeypatch)
         async def createOffer(self):
             class Offer:
                 sdp = "v=0\r\n"
+                type = "offer"
 
             return Offer()
 
@@ -1378,6 +1413,7 @@ async def test_offline_camera_waits_for_peer_in_before_offer_like_apk():
         async def createOffer(self):
             class Offer:
                 sdp = "v=0\r\n"
+                type = "offer"
 
             return Offer()
 
