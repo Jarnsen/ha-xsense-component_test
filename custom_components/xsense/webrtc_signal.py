@@ -247,6 +247,48 @@ def _payload_debug(payload: Any) -> str:
     return type(payload).__name__
 
 
+def _sdp_debug(sdp: str | None) -> dict[str, Any]:
+    """Return compact SDP shape details useful for camera debugging."""
+    if not isinstance(sdp, str):
+        return {"sdp_len": 0, "media": []}
+    media = [line[2:] for line in sdp.splitlines() if line.startswith("m=")]
+    mids = [
+        line.removeprefix("a=mid:")
+        for line in sdp.splitlines()
+        if line.startswith("a=mid:")
+    ]
+    return {
+        "sdp_len": len(sdp),
+        "media": media,
+        "mids": mids,
+        "candidate_lines": sum(
+            1 for line in sdp.splitlines() if line.startswith("a=candidate:")
+        ),
+    }
+
+
+def _candidate_debug_summary(candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    """Return compact ICE candidate shape details without logging raw IPs."""
+    protocols: Counter[str] = Counter()
+    candidate_types: Counter[str] = Counter()
+    mids: Counter[str] = Counter()
+    for candidate in candidates:
+        parts = str(candidate.get("candidate", "")).split()
+        if len(parts) >= 3:
+            protocols[parts[2].lower()] += 1
+        if "typ" in parts:
+            index = parts.index("typ")
+            if index + 1 < len(parts):
+                candidate_types[parts[index + 1]] += 1
+        mids[str(candidate.get("sdpMid"))] += 1
+    return {
+        "candidate_count": len(candidates),
+        "candidate_protocols": dict(protocols),
+        "candidate_types": dict(candidate_types),
+        "candidate_mids": dict(mids),
+    }
+
+
 def _peer_event_debug(payload: Any, serial_number: str) -> dict[str, Any]:
     match = _matching_peer_id(payload, serial_number)
     return {
@@ -933,7 +975,8 @@ class XSenseWebRTCSession:
             "X-Sense WebRTC sending SDP offer: %s",
             self._debug_context(
                 recipient=_short_id(self._recipient_client_id),
-                offer_sdp_len=len(self._camera_offer_sdp),
+                offer_sdp=_sdp_debug(self._camera_offer_sdp),
+                offer_resolution=bool(self._resolution),
             ),
         )
         offer_payload = make_sdp_offer_payload(
@@ -962,7 +1005,7 @@ class XSenseWebRTCSession:
         self._camera_local_candidate_count = len(candidates)
         LOGGER.debug(
             "X-Sense WebRTC sending local ICE candidates: %s",
-            self._debug_context(candidate_count=len(candidates)),
+            self._debug_context(**_candidate_debug_summary(candidates)),
         )
         for candidate in candidates:
             if self._closed or self._ws is None or getattr(self._ws, "closed", False):

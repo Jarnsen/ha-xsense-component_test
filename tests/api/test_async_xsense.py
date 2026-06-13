@@ -2205,8 +2205,9 @@ async def test_update_camera_data_creates_camera_from_addx_without_home_stub():
     [
         ({"liveResolution": "VIDEO_SIZE_1920x1080"}, "1920x1080"),
         ({"liveResolution": "HD"}, "1920x1080"),
-        ({"supportedRecordingResolutions": ["P1296", "P1080"]}, "auto"),
+        ({"supportedRecordingResolutions": ["P1296", "P1080"]}, "2304x1296"),
         ({"supportedRecordingResolutions": []}, "auto"),
+        ({"deviceSupportResolution": ["bad", "P720"]}, "1280x720"),
     ],
 )
 async def test_start_camera_live_uses_apk_live_resolution(camera_data, expected):

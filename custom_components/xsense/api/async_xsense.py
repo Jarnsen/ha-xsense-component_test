@@ -173,7 +173,22 @@ def _camera_webrtc_ticket_valid(ticket: dict) -> bool:
 
 def camera_live_resolution(camera: Entity) -> str:
     """Return the APK start-live resolution fallback for a camera."""
-    return _camera_resolution(camera.data.get("liveResolution")) or "auto"
+    saved_resolution = _camera_resolution(camera.data.get("liveResolution"))
+    if saved_resolution:
+        return saved_resolution
+
+    for key in ("supportedRecordingResolutions", "deviceSupportResolution"):
+        supported = camera.data.get(key)
+        if isinstance(supported, str):
+            supported = [supported]
+        if not isinstance(supported, (list, tuple)):
+            continue
+        for value in supported:
+            resolution = _camera_resolution(value)
+            if resolution:
+                return resolution
+
+    return "auto"
 
 
 class AsyncXSense(XSenseBase):

@@ -751,6 +751,18 @@ def test_camera_webrtc_resolution_uses_apk_normalization():
         _camera_live_resolution(SimpleNamespace(data={"liveResolution": "auto"}))
         == "auto"
     )
+    assert (
+        _camera_live_resolution(
+            SimpleNamespace(data={"supportedRecordingResolutions": ["P1296", "P1080"]})
+        )
+        == "2304x1296"
+    )
+    assert (
+        _camera_live_resolution(
+            SimpleNamespace(data={"deviceSupportResolution": ["bad", "P720"]})
+        )
+        == "1280x720"
+    )
     assert _camera_live_resolution(SimpleNamespace(data={})) == "auto"
 
 
