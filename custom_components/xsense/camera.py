@@ -156,24 +156,6 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             _camera_debug_context(entity, session_id),
         )
 
-        async def keep_alive() -> None:
-            await self.coordinator.xsense.keep_camera_live_alive(entity)
-
-        try:
-            await keep_alive()
-            LOGGER.debug(
-                "X-Sense camera initial WebRTC live keepalive sent: %s",
-                _camera_debug_context(entity, session_id, keepalive_seconds=30),
-            )
-        except Exception as err:  # noqa: BLE001 - APK keepalive is best-effort
-            LOGGER.debug(
-                "X-Sense camera initial WebRTC live keepalive failed: %s",
-                _camera_debug_context(
-                    entity, session_id, error=type(err).__name__
-                ),
-                exc_info=err,
-            )
-
         ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(entity)
         LOGGER.debug(
             "X-Sense camera WebRTC ticket response: %s",
@@ -234,7 +216,6 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             send_message=send_message,
             on_close=remove_session,
             camera_online=_camera_online(entity),
-            keep_alive=keep_alive,
         )
         LOGGER.debug(
             "X-Sense camera WebRTC bridge created: %s",

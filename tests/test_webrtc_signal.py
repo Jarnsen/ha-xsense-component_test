@@ -53,7 +53,6 @@ def test_ticket_connect_details_match_apk(monkeypatch):
     assert webrtc_signal._signal_heartbeat(signal_ticket) == 15.0
     assert webrtc_signal._signal_heartbeat(ticket(signalPingInterval=15000)) == 15.0
     assert webrtc_signal._signal_heartbeat(ticket(signalPingInterval=0)) == 30
-    assert webrtc_signal._CAMERA_KEEPALIVE_INTERVAL == 5
     assert signal_ticket.signal_connect_options() == {
         "url": (
             "wss://203.0.113.10:443/group/viewer/client123"
@@ -1215,33 +1214,6 @@ async def test_first_video_frame_cancels_play_timeout():
     await asyncio.sleep(0)
     assert session._play_timeout_task.cancelled()
     assert session._first_frame_timeout_task.cancelling()
-
-
-async def test_session_sends_apk_live_keepalive_until_close():
-    keepalive_calls = 0
-
-    async def keep_alive():
-        nonlocal keepalive_calls
-        keepalive_calls += 1
-
-    session = webrtc_signal.XSenseWebRTCSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0",
-        resolution="auto",
-        send_message=lambda message: None,
-        keep_alive=keep_alive,
-    )
-
-    session._closed = False
-    task = asyncio.create_task(session._keep_alive_loop())
-    await asyncio.sleep(0)
-    session._closed = True
-    task.cancel()
-    with suppress(asyncio.CancelledError):
-        await task
-
-    assert keepalive_calls == 1
 
 
 async def test_online_camera_waits_for_peer_in_before_offer_like_apk():

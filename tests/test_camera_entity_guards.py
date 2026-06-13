@@ -108,12 +108,12 @@ def test_read_only_camera_entities_require_camera_entity():
     assert binary_sensor.has_camera_data("needMotion")(camera)
 
 
-async def test_webrtc_offer_sends_initial_keepalive_before_ticket():
+async def test_webrtc_offer_uses_ticket_without_direct_stream_keepalive():
     calls = []
 
     class FakeXsense:
         async def keep_camera_live_alive(self, entity):
-            calls.append(("keepalive", entity.sn))
+            raise AssertionError("WebRTC path should not call direct-stream keepalive")
 
         async def get_camera_webrtc_ticket(self, entity):
             calls.append(("ticket", entity.sn))
@@ -129,7 +129,7 @@ async def test_webrtc_offer_sends_initial_keepalive_before_ticket():
         "v=0\r\n", "session-1", messages.append
     )
 
-    assert calls == [("keepalive", "SSC0A123"), ("ticket", "SSC0A123")]
+    assert calls == [("ticket", "SSC0A123")]
     assert messages[0].code == "xsense_webrtc_ticket_failed"
 
 
