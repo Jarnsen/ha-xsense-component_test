@@ -523,7 +523,7 @@ class XSenseWebRTCSession:
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._reader_task: asyncio.Task[None] | None = None
         self._ha_pc = RTCPeerConnection()
-        self._camera_pc = RTCPeerConnection(_camera_rtc_configuration(ticket))
+        self._camera_pc: RTCPeerConnection | None = None
         self._video = _ProxyTrack("video", self._mark_first_frame_received)
         self._audio = _ProxyTrack("audio")
         self._data_channel = None
@@ -591,7 +591,6 @@ class XSenseWebRTCSession:
         """Connect both WebRTC peers and start the X-Sense camera stream."""
         try:
             LOGGER.debug("X-Sense WebRTC session starting: %s", self._debug_context())
-            self._setup_camera_peer()
             self._ha_pc.addTrack(self._video)
             self._ha_pc.addTrack(self._audio)
             await self._ha_pc.setRemoteDescription(
@@ -695,7 +694,8 @@ class XSenseWebRTCSession:
                 self._video.stop()
             with suppress(Exception):
                 self._audio.stop()
-            await self._stop_peer_connection(self._camera_pc)
+            if self._camera_pc is not None:
+                await self._stop_peer_connection(self._camera_pc)
             await self._stop_peer_connection(self._ha_pc)
             self._pending_ha_candidates.clear()
             self._pending_camera_candidates.clear()
@@ -791,6 +791,11 @@ class XSenseWebRTCSession:
         self._send_data_channel_json(make_data_channel_command("stopLive"))
 
     def _setup_camera_peer(self) -> None:
+        if self._camera_pc is not None:
+            return
+        self._session_id = self._session_id or self._ticket.session_id
+        self._camera_pc = RTCPeerConnection(_camera_rtc_configuration(self._ticket))
+
         @self._camera_pc.on("track")
         def on_track(track):
             if track.kind == "video":
@@ -884,6 +889,8 @@ class XSenseWebRTCSession:
         """Respond to requestChangeTransceiverOffer like the Android app."""
         if self._closed or getattr(self._data_channel, "readyState", None) != "open":
             return
+        if self._camera_pc is None:
+            return
         offer = await self._camera_pc.createOffer()
         await self._camera_pc.setLocalDescription(offer)
         if self._send_data_channel_json(
@@ -940,6 +947,10 @@ class XSenseWebRTCSession:
 
     async def _start_camera_peer(self) -> None:
         LOGGER.debug("X-Sense WebRTC creating camera offer: %s", self._debug_context())
+        if self._camera_pc is None:
+            self._setup_camera_peer()
+        if self._camera_pc is None:
+            raise RuntimeError("Camera peer connection was not created")
         # APK createOffer asks to receive video; audio is already present from
         # peer setup, matching the SDK transceiver timing.
         self._camera_pc.addTransceiver("video", direction="recvonly")
@@ -1109,6 +1120,8 @@ class XSenseWebRTCSession:
                     "X-Sense WebRTC applying SDP answer: %s",
                     self._debug_context(answer_sdp=_sdp_debug(answer)),
                 )
+                if self._camera_pc is None:
+                    return
                 await self._camera_pc.setRemoteDescription(
                     RTCSessionDescription(sdp=answer, type="answer")
                 )
@@ -1126,7 +1139,7 @@ class XSenseWebRTCSession:
             candidate = _candidate_payload_to_aiortc(payload)
             if candidate:
                 self._camera_remote_candidate_count += 1
-                if self._camera_pc.remoteDescription is None:
+                if self._camera_pc is None or self._camera_pc.remoteDescription is None:
                     self._pending_camera_candidates.append(candidate)
                     LOGGER.debug(
                         "X-Sense WebRTC queued camera ICE candidate: %s",
@@ -1137,7 +1150,8 @@ class XSenseWebRTCSession:
                         ),
                     )
                 else:
-                    await self._camera_pc.addIceCandidate(candidate)
+                    if self._camera_pc is not None:
+                        await self._camera_pc.addIceCandidate(candidate)
                     LOGGER.debug(
                         "X-Sense WebRTC applied camera ICE candidate: %s",
                         self._debug_context(),
@@ -1180,6 +1194,8 @@ class XSenseWebRTCSession:
     async def _flush_pending_camera_candidates(self) -> None:
         """Apply queued camera ICE candidates after the APK-style SDP answer gate."""
         while self._pending_camera_candidates and not self._closed:
+            if self._camera_pc is None:
+                return
             await self._camera_pc.addIceCandidate(
                 self._pending_camera_candidates.pop(0)
             )
