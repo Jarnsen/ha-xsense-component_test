@@ -1135,7 +1135,7 @@ class XSenseWebRTCSession:
             if answer:
                 LOGGER.debug(
                     "X-Sense WebRTC applying SDP answer: %s",
-                    self._debug_context(),
+                    self._debug_context(answer_sdp=_sdp_debug(answer)),
                 )
                 await self._camera_pc.setRemoteDescription(
                     RTCSessionDescription(sdp=answer, type="answer")
