@@ -182,7 +182,7 @@ def test_webrtc_ice_candidate_payload_matches_apk():
     }
 
 
-def test_local_sdp_candidates_match_apk_loopback_and_tcp_filters():
+def test_local_sdp_candidates_match_apk_loopback_filter():
     sdp = """v=0
 m=video 9 UDP/TLS/RTP/SAVPF 96
 a=mid:0
@@ -200,6 +200,11 @@ a=candidate:4 1 udp 1 ::1 790 typ host
             "sdpMid": "0",
             "sdpMLineIndex": 0,
             "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+        },
+        {
+            "sdpMid": "0",
+            "sdpMLineIndex": 0,
+            "candidate": "candidate:5 1 tcp 1 192.0.2.1 457 typ host tcptype passive",
         },
         {
             "sdpMid": "1",

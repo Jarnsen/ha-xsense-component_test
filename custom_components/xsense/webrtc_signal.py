@@ -1324,9 +1324,6 @@ def _local_sdp_candidates(sdp: str) -> list[dict[str, Any]]:
 
 def _is_apk_supported_local_candidate(candidate: str) -> bool:
     """Return whether the APK would signal this local ICE candidate."""
-    parts = candidate.split()
-    if len(parts) >= 3 and parts[2].lower() == "tcp":
-        return False
     return "127.0.0.1" not in candidate and "::1" not in candidate
 
 
