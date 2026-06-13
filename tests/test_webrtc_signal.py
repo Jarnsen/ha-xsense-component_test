@@ -766,7 +766,7 @@ def test_camera_webrtc_resolution_uses_apk_normalization():
     assert _camera_live_resolution(SimpleNamespace(data={})) == "auto"
 
 
-def test_start_live_waits_for_data_channel_connected_like_apk(monkeypatch):
+def test_start_live_sends_when_data_channel_opens_like_apk(monkeypatch):
     monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
     monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
 
@@ -812,10 +812,8 @@ def test_start_live_waits_for_data_channel_connected_like_apk(monkeypatch):
     assert session._data_channel.messages == []
 
     session._data_channel.readyState = "open"
+    session._data_channel_connected = True
     session._send_start_live_if_ready()
-    assert session._data_channel.messages == []
-
-    session._handle_data_channel_message(json.dumps({"action": "dataChannelConnected"}))
 
     assert [json.loads(message) for message in session._data_channel.messages] == [
         {

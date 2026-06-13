@@ -831,6 +831,22 @@ class XSenseWebRTCSession:
         self._camera_pc.addTransceiver("audio", direction="recvonly")
         self._data_channel = self._camera_pc.createDataChannel(SIGNAL_DATA_CHANNEL)
 
+        @self._data_channel.on("open")
+        def on_open():
+            LOGGER.debug(
+                "X-Sense WebRTC data channel opened: %s",
+                self._debug_context(),
+            )
+            self._data_channel_connected = True
+            self._send_start_live_if_ready()
+
+        @self._data_channel.on("close")
+        def on_close():
+            LOGGER.debug(
+                "X-Sense WebRTC data channel closed: %s",
+                self._debug_context(),
+            )
+
         @self._data_channel.on("message")
         def on_message(message):
             self._handle_data_channel_message(message)
