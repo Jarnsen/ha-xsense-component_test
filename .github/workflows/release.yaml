@@ -28,7 +28,7 @@ jobs:
         run: |
           tag="${GITHUB_REF_NAME}"
           notes_file=".github/release-notes/${tag}.md"
-          title="Release ${tag}"
+          title="${tag}"
 
           release_args=(--verify-tag --title "$title")
           version="${tag#v}"
