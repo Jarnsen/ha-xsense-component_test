@@ -355,6 +355,23 @@ def test_camera_entity_webrtc_protocol_default_matches_apk():
     assert not camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "RTMP"}))
 
 
+def test_camera_live_resolution_defaults_to_apk_live_view_default():
+    from custom_components.xsense.api.async_xsense import camera_live_resolution
+
+    camera_entity = entity(
+        "SSC0A",
+        {
+            "supportedRecordingResolutions": ["1920x1080", "1280x720"],
+            "deviceSupportResolution": ["1920x1080"],
+        },
+    )
+
+    assert camera_live_resolution(camera_entity) == "1280x720"
+
+    camera_entity.data["liveResolution"] = "1920x1080"
+    assert camera_live_resolution(camera_entity) == "1920x1080"
+
+
 async def test_failed_webrtc_start_is_removed_from_active_sessions(monkeypatch):
     from custom_components.xsense import camera as camera_module
     from custom_components.xsense.camera import CAMERA_DESCRIPTION, XSenseCameraEntity

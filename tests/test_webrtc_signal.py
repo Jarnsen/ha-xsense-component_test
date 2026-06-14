@@ -805,7 +805,7 @@ def test_camera_webrtc_resolution_uses_apk_normalization():
         _camera_live_resolution(
             SimpleNamespace(data={"supportedRecordingResolutions": ["P1296", "P1080"]})
         )
-        == "2304x1296"
+        == "1280x720"
     )
     assert (
         _camera_live_resolution(
@@ -813,7 +813,7 @@ def test_camera_webrtc_resolution_uses_apk_normalization():
         )
         == "1280x720"
     )
-    assert _camera_live_resolution(SimpleNamespace(data={})) == "auto"
+    assert _camera_live_resolution(SimpleNamespace(data={})) == "1280x720"
 
 
 def test_start_live_sends_when_data_channel_opens_like_apk(monkeypatch):
