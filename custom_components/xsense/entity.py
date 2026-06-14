@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .api.entity import Entity
+from .api.entity_map import EntityType
 
 from homeassistant.const import ATTR_VIA_DEVICE
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -17,6 +18,18 @@ if TYPE_CHECKING:
 
 
 OFFLINE_STATES = {False, 0, "0", "false", "False", "offline", "Offline"}
+_APK_CAMERA_NON_OFFLINE_STATUSES = {11, 12}
+
+
+def _apk_entity_is_available(entity: Entity) -> bool:
+    """Return whether the APK treats this entity as not offline."""
+    if getattr(entity, "entity_type", None) == EntityType.CAMERA:
+        if (
+            entity.online is False
+            and entity.data.get("deviceStatus") in _APK_CAMERA_NON_OFFLINE_STATUSES
+        ):
+            return True
+    return entity.online is True
 
 
 class XSenseEntity(CoordinatorEntity):
@@ -74,11 +87,11 @@ class XSenseEntity(CoordinatorEntity):
             station = self.coordinator.data["stations"].get(self._station_id)
             return (
                 station is not None
-                and station.online is True
+                and _apk_entity_is_available(station)
                 and entity.online is not False
             )
 
-        return entity.online is True
+        return _apk_entity_is_available(entity)
 
     @property
     def available(self) -> bool:

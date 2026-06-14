@@ -62,11 +62,13 @@ SIGNAL_MODE = "vicoo"
 SIGNAL_VIEWER_TYPE = "a4x_sdk"
 SIGNAL_DATA_CHANNEL = "data-channel-of-"
 _SIGNAL_NAME = "test-123"
-_DEFAULT_RESOLUTION = "auto"
+_DEFAULT_RESOLUTION = "1280x720"
 _PEER_IN_TIMEOUT = 20
 _PLAY_TIMEOUT = 40
 _FIRST_FRAME_TIMEOUT = 10
 _DEFAULT_SIGNAL_HEARTBEAT = 30
+_SIGNAL_RECONNECT_DELAY = 3
+_SIGNAL_TERMINAL_CLOSE_CODES = {3002, 3004}
 
 
 @dataclass(slots=True)
@@ -155,35 +157,44 @@ class XSenseWebRTCTicket:
 
 
 class _ProxyTrack(MediaStreamTrack):
-    """Media track that forwards frames from the X-Sense camera peer."""
+    """Media track that forwards frames from the current X-Sense camera peer."""
 
     def __init__(self, kind: str, on_frame: Callable[[], None] | None = None) -> None:
         super().__init__()
         self.kind = kind
         self._on_frame = on_frame
-        self._source: asyncio.Future[MediaStreamTrack] = (
-            asyncio.get_running_loop().create_future()
-        )
+        self._source: MediaStreamTrack | None = None
+        self._source_ready = asyncio.Event()
 
     def set_source(self, track: MediaStreamTrack) -> None:
-        """Set the source track once the camera peer receives it."""
-        if not self._source.done():
-            self._source.set_result(track)
+        """Set or replace the source track from the active camera peer."""
+        self._source = track
+        self._source_ready.set()
 
     async def recv(self):
-        """Return the next frame from the camera peer."""
-        if self.readyState != "live":
-            raise MediaStreamError
-        source = await self._source
-        frame = await source.recv()
-        if self._on_frame:
-            self._on_frame()
-        return frame
+        """Return the next frame from the active camera peer."""
+        while self.readyState == "live":
+            await self._source_ready.wait()
+            source = self._source
+            if source is None:
+                self._source_ready.clear()
+                continue
+            try:
+                frame = await source.recv()
+            except MediaStreamError:
+                if self._source is source:
+                    self._source = None
+                    self._source_ready.clear()
+                continue
+            if self._on_frame:
+                self._on_frame()
+            return frame
+        raise MediaStreamError
 
     def stop(self) -> None:
         """Stop the proxy and wake any receiver waiting for the camera track."""
-        if not self._source.done():
-            self._source.set_exception(MediaStreamError())
+        self._source = None
+        self._source_ready.set()
         super().stop()
 
 
@@ -229,13 +240,11 @@ def _ticket_debug_context(ticket: XSenseWebRTCTicket) -> dict[str, Any]:
 
 
 def _signal_heartbeat(ticket: XSenseWebRTCTicket) -> float:
-    """Return the signal websocket heartbeat interval from the APK ticket."""
-    interval = ticket.signal_ping_interval
-    if not interval or interval <= 0:
-        return _DEFAULT_SIGNAL_HEARTBEAT
-    # Older and newer ticket responses have used seconds and milliseconds.
-    heartbeat = interval / 1000 if interval > 1000 else float(interval)
-    return max(1.0, heartbeat)
+    """Return the integration WebSocket heartbeat for the signal socket."""
+    # The APK stores signalPingInterval in the ticket, but the Java wrapper does
+    # not pass it into A4xSignal.init. Keep our client heartbeat stable instead
+    # of interpreting that ticket field as WebSocket ping timing.
+    return _DEFAULT_SIGNAL_HEARTBEAT
 
 
 def _payload_debug(payload: Any) -> str:
@@ -260,12 +269,33 @@ def _sdp_debug(sdp: str | None) -> dict[str, Any]:
         "sdp_len": len(sdp),
         "media": media,
         "mids": mids,
+        "directions": _sdp_media_directions(sdp),
         "video_codecs": _sdp_media_codecs(sdp, "video"),
         "fingerprints": _sdp_fingerprints(sdp),
         "candidate_lines": sum(
             1 for line in sdp.splitlines() if line.startswith("a=candidate:")
         ),
     }
+
+
+def _sdp_media_directions(sdp: str) -> dict[str, str]:
+    """Return media-section directions from SDP for compact debug logs."""
+    directions: dict[str, str] = {}
+    current_mid: str | None = None
+    current_media: str | None = None
+    for line in sdp.splitlines():
+        if line.startswith("m="):
+            current_media = line[2:].split(" ", 1)[0]
+            current_mid = current_media
+            directions[current_mid] = "unspecified"
+        elif line.startswith("a=mid:") and current_media is not None:
+            previous_mid = current_mid
+            current_mid = line.removeprefix("a=mid:")
+            directions[current_mid] = directions.pop(previous_mid, "unspecified")
+        elif line in {"a=sendrecv", "a=sendonly", "a=recvonly", "a=inactive"}:
+            if current_mid is not None:
+                directions[current_mid] = line.removeprefix("a=")
+    return directions
 
 
 def _sdp_media_codecs(sdp: str, media_kind: str) -> list[str]:
@@ -506,7 +536,10 @@ def parse_signal_message(raw: str | bytes) -> tuple[str | None, Any]:
             payload = data
     elif isinstance(payload, str) and event == "ICE_CANDIDATE":
         with suppress(Exception):
-            payload = json.loads(base64.b64decode(payload).decode())
+            payload = json.loads(payload)
+        if isinstance(payload, str):
+            with suppress(Exception):
+                payload = json.loads(base64.b64decode(payload).decode())
     if event in {"PEER_IN", "PEER_OUT"}:
         payload = _signal_peer_payload(payload)
     return event, payload
@@ -570,6 +603,9 @@ class XSenseWebRTCSession:
         session_id: str | None = None,
         on_close: Callable[[], None] | None = None,
         camera_online: bool = False,
+        refresh_ticket: Callable[
+            [], Coroutine[Any, Any, XSenseWebRTCTicket | None]
+        ] | None = None,
     ) -> None:
         self._session = session
         self._ticket = ticket
@@ -580,8 +616,11 @@ class XSenseWebRTCSession:
         self._session_id = session_id or ticket.session_id
         self._recipient_client_id = ticket.serial_number
         self._camera_online = camera_online
+        self._refresh_ticket = refresh_ticket
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._reader_task: asyncio.Task[None] | None = None
+        self._signal_reconnect_task: asyncio.Task[None] | None = None
+        self._peer_reconnect_task: asyncio.Task[None] | None = None
         self._ha_pc = RTCPeerConnection()
         self._camera_pc: RTCPeerConnection | None = None
         self._video = _ProxyTrack("video", self._mark_first_frame_received)
@@ -666,18 +705,7 @@ class XSenseWebRTCSession:
                 return False
 
             LOGGER.debug("X-Sense WebRTC HA answer ready: %s", self._debug_context())
-            connect_options = self._ticket.signal_connect_options()
-            connect_url = connect_options.pop("url", self._ticket.signal_url())
-            LOGGER.debug(
-                "X-Sense WebRTC signal connecting: %s",
-                self._debug_context(connect_host=_safe_host(connect_url)),
-            )
-            signal_heartbeat = _signal_heartbeat(self._ticket)
-            self._ws = await self._session.ws_connect(
-                connect_url, heartbeat=signal_heartbeat, **connect_options
-            )
-            LOGGER.debug("X-Sense WebRTC signal connected: %s", self._debug_context())
-            self._reader_task = asyncio.create_task(self._read_loop())
+            await self._connect_signal()
             self._play_timeout_task = asyncio.create_task(
                 self._fail_after_timeout(
                     _PLAY_TIMEOUT,
@@ -685,17 +713,20 @@ class XSenseWebRTCSession:
                     "Camera did not start the WebRTC stream",
                 )
             )
-            LOGGER.debug(
-                "X-Sense WebRTC waiting for PEER_IN: %s",
-                self._debug_context(),
-            )
-            self._peer_in_timeout_task = asyncio.create_task(
-                self._fail_after_timeout(
-                    _PEER_IN_TIMEOUT,
-                    "xsense_webrtc_peer_in_timeout",
-                    "Camera did not join the WebRTC session",
+            if self._camera_online:
+                LOGGER.debug(
+                    "X-Sense WebRTC camera already online, starting peer without PEER_IN: %s",
+                    self._debug_context(),
                 )
-            )
+                await self._start_camera_peer()
+            else:
+                LOGGER.debug(
+                    "X-Sense WebRTC waiting for PEER_IN: %s",
+                    self._debug_context(),
+                )
+                self._peer_in_timeout_task = asyncio.create_task(
+                    self._handle_peer_in_timeout()
+                )
             return True
         except Exception as err:  # noqa: BLE001 - surface cleanly to HA frontend
             LOGGER.debug(
@@ -737,6 +768,8 @@ class XSenseWebRTCSession:
                 with suppress(asyncio.CancelledError, Exception):
                     await self._reader_task
             await self._cancel_task(getattr(self, "_peer_in_timeout_task", None))
+            await self._cancel_task(getattr(self, "_signal_reconnect_task", None))
+            await self._cancel_task(getattr(self, "_peer_reconnect_task", None))
             await self._cancel_task(getattr(self, "_play_timeout_task", None))
             await self._cancel_task(getattr(self, "_first_frame_timeout_task", None))
             await self._cancel_task(getattr(self, "_keep_alive_task", None))
@@ -832,6 +865,172 @@ class XSenseWebRTCSession:
         self._send_ha_message(WebRTCError(code, message))
         await self.close()
 
+    async def _connect_signal(self) -> None:
+        """Open the X-Sense signal websocket using the current ticket."""
+        connect_options = self._ticket.signal_connect_options()
+        connect_url = connect_options.pop("url", self._ticket.signal_url())
+        LOGGER.debug(
+            "X-Sense WebRTC signal connecting: %s",
+            self._debug_context(connect_host=_safe_host(connect_url)),
+        )
+        signal_heartbeat = _signal_heartbeat(self._ticket)
+        self._ws = await self._session.ws_connect(
+            connect_url, heartbeat=signal_heartbeat, **connect_options
+        )
+        LOGGER.debug("X-Sense WebRTC signal connected: %s", self._debug_context())
+        self._reader_task = asyncio.create_task(self._read_loop())
+
+    async def _handle_peer_in_timeout(self) -> None:
+        """Refresh the WebRTC ticket after PEER_IN timeout like the APK."""
+        try:
+            await asyncio.sleep(_PEER_IN_TIMEOUT)
+        except asyncio.CancelledError:
+            raise
+        if self._closed:
+            return
+        LOGGER.debug(
+            "X-Sense WebRTC PEER_IN timeout, refreshing ticket: %s",
+            self._debug_context(timeout_s=_PEER_IN_TIMEOUT),
+        )
+        refresh_ticket = getattr(self, "_refresh_ticket", None)
+        if refresh_ticket is None:
+            LOGGER.debug(
+                "X-Sense WebRTC PEER_IN timeout has no ticket refresh callback: %s",
+                self._debug_context(),
+            )
+            return
+        try:
+            new_ticket = await refresh_ticket()
+        except Exception as err:  # noqa: BLE001 - ticket refresh failures are non-fatal here
+            LOGGER.debug(
+                "X-Sense WebRTC ticket refresh after PEER_IN timeout failed: %s",
+                self._debug_context(error=type(err).__name__, message=str(err)),
+            )
+            return
+        if new_ticket is None or not new_ticket.is_valid:
+            LOGGER.debug(
+                "X-Sense WebRTC ticket refresh after PEER_IN timeout returned no valid ticket: %s",
+                self._debug_context(),
+            )
+            return
+        old_signal_url = self._ticket.signal_url()
+        old_connect_options = self._ticket.signal_connect_options()
+        new_signal_url = new_ticket.signal_url()
+        new_connect_options = new_ticket.signal_connect_options()
+        self._ticket = new_ticket
+        if self._camera_offer_sdp is None:
+            self._session_id = new_ticket.session_id
+            self._recipient_client_id = new_ticket.serial_number
+        LOGGER.debug(
+            "X-Sense WebRTC refreshed ticket after PEER_IN timeout: %s",
+            self._debug_context(
+                signal_changed=(
+                    old_signal_url != new_signal_url
+                    or old_connect_options != new_connect_options
+                )
+            ),
+        )
+        if (
+            old_signal_url == new_signal_url
+            and old_connect_options == new_connect_options
+        ):
+            return
+        await self._reconnect_signal()
+
+    async def _reconnect_signal(self) -> None:
+        """Reconnect the signal websocket after the APK would reinit it."""
+        old_ws = self._ws
+        old_reader = self._reader_task
+        self._ws = None
+        self._reader_task = None
+        if old_reader and old_reader is not asyncio.current_task():
+            old_reader.cancel()
+            with suppress(asyncio.CancelledError, Exception):
+                await old_reader
+        if old_ws and not old_ws.closed:
+            with suppress(Exception):
+                await old_ws.close()
+        if not self._closed:
+            await self._connect_signal()
+
+    def _schedule_signal_reconnect(self, close_code: int | None) -> None:
+        """Schedule APK-style signal reinit after a non-terminal close."""
+        if self._closed or close_code in _SIGNAL_TERMINAL_CLOSE_CODES:
+            LOGGER.debug(
+                "X-Sense WebRTC signal reconnect skipped: %s",
+                self._debug_context(signal_close_code=close_code),
+            )
+            return
+        task = getattr(self, "_signal_reconnect_task", None)
+        if task and not task.done():
+            return
+        self._signal_reconnect_task = asyncio.create_task(
+            self._signal_reconnect_after_delay(close_code)
+        )
+
+    async def _signal_reconnect_after_delay(self, close_code: int | None) -> None:
+        """Reinitialize signal connection after the APK's delayed close handler."""
+        try:
+            await asyncio.sleep(_SIGNAL_RECONNECT_DELAY)
+        except asyncio.CancelledError:
+            raise
+        if self._closed:
+            return
+        LOGGER.debug(
+            "X-Sense WebRTC signal reconnecting after close: %s",
+            self._debug_context(
+                signal_close_code=close_code,
+                reconnect_delay_s=_SIGNAL_RECONNECT_DELAY,
+            ),
+        )
+        try:
+            await self._reconnect_signal()
+        except Exception as err:  # noqa: BLE001 - play timeout owns user-facing failure
+            LOGGER.debug(
+                "X-Sense WebRTC signal reconnect failed: %s",
+                self._debug_context(error=type(err).__name__, message=str(err)),
+                exc_info=err,
+            )
+
+    def _schedule_peer_reconnect(self, state: str) -> None:
+        """Schedule the APK live-view P2P reconnect path after peer failure."""
+        task = getattr(self, "_peer_reconnect_task", None)
+        if self._closed or (task and not task.done()):
+            return
+        self._peer_reconnect_task = asyncio.create_task(self._reconnect_camera_peer(state))
+
+    async def _reconnect_camera_peer(self, state: str) -> None:
+        """Recreate the camera peer and restart the APK live-view send path."""
+        LOGGER.debug(
+            "X-Sense WebRTC reconnecting camera peer after state change: %s",
+            self._debug_context(peer_state=state),
+        )
+        self._reset_camera_peer_state()
+        await self._start_camera_peer()
+        self._send_start_live_if_ready()
+
+    def _reset_camera_peer_state(self) -> None:
+        """Reset camera peer state before recreating it like the APK startInternal path."""
+        old_pc = self._camera_pc
+        self._camera_pc = None
+        self._data_channel = None
+        self._data_channel_connected = False
+        self._camera_offer_sent = False
+        self._camera_offer_sdp = None
+        self._sdp_answer_received = False
+        self._camera_local_description_task = None
+        self._pending_camera_candidates.clear()
+        self._camera_local_candidate_count = 0
+        self._camera_remote_candidate_count = 0
+        self._start_live_sent = False
+        self._first_frame_received = False
+        first_frame_task = getattr(self, "_first_frame_timeout_task", None)
+        if first_frame_task:
+            first_frame_task.cancel()
+            self._first_frame_timeout_task = None
+        if old_pc is not None:
+            self._create_task(old_pc.close())
+
     def _mark_first_frame_received(self) -> None:
         if self._first_frame_received:
             return
@@ -855,18 +1054,20 @@ class XSenseWebRTCSession:
             return
         self._session_id = self._session_id or self._ticket.session_id
         self._camera_pc = RTCPeerConnection(_camera_rtc_configuration(self._ticket))
+        camera_pc = self._camera_pc
 
-        @self._camera_pc.on("track")
+        @camera_pc.on("track")
         def on_track(track):
             if track.kind == "video":
                 self._video.set_source(track)
             elif track.kind == "audio":
                 self._audio.set_source(track)
 
-        # APK creates the audio transceiver during peer setup, before the
-        # data channel and before createOffer. Video is requested at offer time.
-        self._camera_pc.addTransceiver("audio", direction="recvonly")
-        self._data_channel = self._camera_pc.createDataChannel(SIGNAL_DATA_CHANNEL)
+        # APK creates the audio transceiver during peer setup using the
+        # WebRTC default direction, before the data channel and createOffer.
+        # Video is requested at offer time.
+        camera_pc.addTransceiver("audio")
+        self._data_channel = camera_pc.createDataChannel(SIGNAL_DATA_CHANNEL)
 
         @self._data_channel.on("open")
         def on_open():
@@ -874,8 +1075,6 @@ class XSenseWebRTCSession:
                 "X-Sense WebRTC data channel opened: %s",
                 self._debug_context(),
             )
-            self._data_channel_connected = True
-            self._send_start_live_if_ready()
 
         @self._data_channel.on("close")
         def on_close():
@@ -888,24 +1087,28 @@ class XSenseWebRTCSession:
         def on_message(message):
             self._handle_data_channel_message(message)
 
-        @self._camera_pc.on("connectionstatechange")
+        @camera_pc.on("connectionstatechange")
         def on_connectionstatechange():
-            state = self._camera_pc.connectionState
+            state = camera_pc.connectionState
+            if camera_pc is not self._camera_pc:
+                LOGGER.debug(
+                    "X-Sense WebRTC ignored stale camera peer state change: %s",
+                    self._debug_context(new_state=state),
+                )
+                return
             LOGGER.debug(
                 "X-Sense WebRTC camera peer state changed: %s",
                 self._debug_context(new_state=state),
             )
             if state == "connected":
-                self._send_start_live_if_ready()
                 return
-            if state in {"failed", "closed"} and not self._closed:
-                self._send_ha_message(
-                    WebRTCError(
-                        "xsense_webrtc_peer_failed",
-                        f"Camera peer connection {state}",
-                    )
+            if state == "failed" and not self._closed:
+                self._schedule_peer_reconnect(state)
+            elif state == "closed" and not self._closed:
+                LOGGER.debug(
+                    "X-Sense WebRTC camera peer closed before session close: %s",
+                    self._debug_context(),
                 )
-                self._create_task(self.close())
 
     def _handle_data_channel_message(self, message: str | bytes) -> None:
         """Handle camera data-channel messages in the APK callback shape."""
@@ -1135,15 +1338,17 @@ class XSenseWebRTCSession:
                 and self._ws is not None
                 and getattr(self._ws, "closed", False)
             ):
+                close_code = getattr(self._ws, "close_code", None)
                 LOGGER.debug(
                     "X-Sense WebRTC signal websocket closed: %s",
                     self._debug_context(
-                        signal_close_code=getattr(self._ws, "close_code", None),
+                        signal_close_code=close_code,
                         signal_exception=repr(
                             getattr(self._ws, "exception", lambda: None)()
                         ),
                     ),
                 )
+                self._schedule_signal_reconnect(close_code)
 
     async def _handle_signal_event(self, event: str | None, payload: Any) -> None:
         if self._closed:
@@ -1236,11 +1441,8 @@ class XSenseWebRTCSession:
                         **_peer_event_debug(payload, self._ticket.serial_number),
                     ),
                 )
-                self._send_ha_message(
-                    WebRTCError(
-                        "xsense_webrtc_peer_offline", "Camera peer went offline"
-                    )
-                )
+                # The APK marks the camera offline on PEER_OUT and lets the
+                # broader play/first-frame timeouts own user-facing failure.
             else:
                 LOGGER.debug(
                     "X-Sense WebRTC ignored foreign peer event: %s",
@@ -1377,80 +1579,11 @@ def _sdp_without_local_candidates(sdp: str) -> str:
 
 
 def _apk_camera_offer_sdp(sdp: str) -> str:
-    """Return the camera offer SDP with APK-compatible video codecs."""
-    sdp = _sdp_without_local_candidates(sdp)
-    sdp = _apk_sdp_fingerprints(sdp)
-    sections = _sdp_sections(sdp)
-    updated_sections: list[list[str]] = []
-    for section in sections:
-        if section and section[0].startswith("m=video "):
-            section = _prefer_h264_video_section(section)
-        updated_sections.append(section)
-    ending = '\r\n' if '\r\n' in sdp else '\n'
-    return ending.join(line for section in updated_sections for line in section) + ending
-
-
-def _apk_sdp_fingerprints(sdp: str) -> str:
-    """Keep the APK-compatible sha-256 DTLS fingerprint in each SDP section."""
-    lines = []
-    for line in sdp.splitlines():
-        if line.startswith("a=fingerprint:") and not line.startswith("a=fingerprint:sha-256 "):
-            continue
-        lines.append(line)
-    ending = "\r\n" if "\r\n" in sdp else "\n"
-    return ending.join(lines) + (ending if sdp.endswith(("\r\n", "\n")) else "")
-
-
-def _sdp_sections(sdp: str) -> list[list[str]]:
-    session: list[str] = []
-    sections: list[list[str]] = []
-    current = session
-    for line in sdp.splitlines():
-        if line.startswith("m="):
-            current = [line]
-            sections.append(current)
-        else:
-            current.append(line)
-    return [session, *sections]
-
-
-def _prefer_h264_video_section(section: list[str]) -> list[str]:
-    payload_codecs: dict[str, str] = {}
-    rtx_apt: dict[str, str] = {}
-    for line in section:
-        if line.startswith("a=rtpmap:"):
-            payload, codec = line.removeprefix("a=rtpmap:").split(None, 1)
-            payload_codecs[payload] = codec.split("/", 1)[0].upper()
-        elif line.startswith("a=fmtp:"):
-            payload, params = line.removeprefix("a=fmtp:").split(None, 1)
-            if payload_codecs.get(payload) == "RTX":
-                for part in params.split(";"):
-                    key, _, value = part.strip().partition("=")
-                    if key == "apt" and value:
-                        rtx_apt[payload] = value
-    h264_payloads = [
-        payload for payload, codec in payload_codecs.items() if codec == "H264"
-    ]
-    keep = set(h264_payloads)
-    keep.update(payload for payload, apt in rtx_apt.items() if apt in keep)
-    if not keep:
-        return section
-    media = section[0].split()
-    media_payloads = [payload for payload in media[3:] if payload in keep]
-    rebuilt = [" ".join([*media[:3], *media_payloads])]
-    for line in section[1:]:
-        payload = _sdp_attribute_payload(line)
-        if payload is not None and payload not in keep:
-            continue
-        rebuilt.append(line)
-    return rebuilt
-
-
-def _sdp_attribute_payload(line: str) -> str | None:
-    for prefix in ("a=rtpmap:", "a=fmtp:", "a=rtcp-fb:"):
-        if line.startswith(prefix):
-            return line.removeprefix(prefix).split(None, 1)[0]
-    return None
+    """Return the camera offer SDP in the APK createOffer callback shape."""
+    # The APK forwards SessionDescription.description from createOffer before
+    # trickled ICE candidates are appended. It does not rewrite codecs or DTLS
+    # fingerprints, so only strip local candidates gathered by aiortc.
+    return _sdp_without_local_candidates(sdp)
 
 
 def _local_sdp_candidates(sdp: str) -> list[dict[str, Any]]:
@@ -1481,7 +1614,13 @@ def _local_sdp_candidates(sdp: str) -> list[dict[str, Any]]:
 
 def _is_apk_supported_local_candidate(candidate: str) -> bool:
     """Return whether the APK would signal this local ICE candidate."""
-    return "127.0.0.1" not in candidate and "::1" not in candidate
+    parts = candidate.split()
+    protocol = parts[2].lower() if len(parts) > 2 else ""
+    return (
+        protocol != "tcp"
+        and "127.0.0.1" not in candidate
+        and "::1" not in candidate
+    )
 
 
 def _candidate_payload_to_aiortc(payload: Any) -> RTCIceCandidate | None:

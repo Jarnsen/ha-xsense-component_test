@@ -1,3 +1,4 @@
+from collections import Counter
 from contextlib import suppress
 import asyncio
 import aiohttp
@@ -50,8 +51,7 @@ def test_ticket_connect_details_match_apk(monkeypatch):
         "wss://signal.example:443/group/viewer/client123"
         "?traceId=trace&time=123456&sign=sig&name=test-123"
     )
-    assert webrtc_signal._signal_heartbeat(signal_ticket) == 15.0
-    assert webrtc_signal._signal_heartbeat(ticket(signalPingInterval=15000)) == 15.0
+    assert webrtc_signal._signal_heartbeat(signal_ticket) == 30
     assert webrtc_signal._signal_heartbeat(ticket(signalPingInterval=0)) == 30
     assert signal_ticket.signal_connect_options() == {
         "url": (
@@ -123,7 +123,7 @@ def test_webrtc_offer_candidate_and_start_live_payloads_match_apk(monkeypatch):
         "size": "1920x1080",
         "resolution": "2560x1440",
     }
-    assert make_start_live_data_channel_message("auto")["size"] == "1280x720"
+    assert make_start_live_data_channel_message("1280x720")["size"] == "1280x720"
     assert (
         webrtc_signal._camera_rtc_configuration(ticket()).bundlePolicy.value
         == "max-bundle"
@@ -156,6 +156,20 @@ def test_sdp_offer_payload_strips_local_candidates_like_apk_create_offer():
     assert decoded["sdp"].endswith("\r\n")
 
 
+
+
+def test_parse_signal_message_accepts_apk_raw_ice_candidate_json():
+    raw_candidate = {
+        "sdpMid": "0",
+        "sdpMLineIndex": 0,
+        "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+    }
+
+    assert webrtc_signal.parse_signal_message(
+        json.dumps({"messageType": "ICE_CANDIDATE", "messagePayload": json.dumps(raw_candidate)})
+    ) == ("ICE_CANDIDATE", raw_candidate)
+
+
 def test_webrtc_ice_candidate_payload_matches_apk():
     payload = json.loads(
         make_ice_candidate_payload(
@@ -182,7 +196,7 @@ def test_webrtc_ice_candidate_payload_matches_apk():
     }
 
 
-def test_apk_camera_offer_sdp_prefers_h264_video_codecs():
+def test_apk_camera_offer_sdp_preserves_create_offer_sdp_shape():
     sdp = """v=0
 m=audio 9 UDP/TLS/RTP/SAVPF 96
 a=mid:0
@@ -212,16 +226,18 @@ a=mid:2
 
     apk_sdp = webrtc_signal._apk_camera_offer_sdp(sdp)
 
-    assert "m=video 9 UDP/TLS/RTP/SAVPF 99 100 101 102" in apk_sdp
-    assert "VP8" not in apk_sdp
-    assert "apt=97" not in apk_sdp
+    assert apk_sdp == sdp
+    assert "m=video 9 UDP/TLS/RTP/SAVPF 97 98 99 100 101 102" in apk_sdp
+    assert "VP8" in apk_sdp
+    assert "apt=97" in apk_sdp
     assert "H264" in apk_sdp
-    assert "a=fingerprint:sha-384" not in apk_sdp
-    assert "a=fingerprint:sha-512" not in apk_sdp
+    assert "a=fingerprint:sha-256" in apk_sdp
+    assert "a=fingerprint:sha-384" in apk_sdp
+    assert "a=fingerprint:sha-512" in apk_sdp
     assert apk_sdp.endswith('\n')
 
 
-def test_local_sdp_candidates_match_apk_loopback_filter():
+def test_local_sdp_candidates_match_apk_tcp_and_loopback_filter():
     sdp = """v=0
 m=video 9 UDP/TLS/RTP/SAVPF 96
 a=mid:0
@@ -239,11 +255,6 @@ a=candidate:4 1 udp 1 ::1 790 typ host
             "sdpMid": "0",
             "sdpMLineIndex": 0,
             "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
-        },
-        {
-            "sdpMid": "0",
-            "sdpMLineIndex": 0,
-            "candidate": "candidate:5 1 tcp 1 192.0.2.1 457 typ host tcptype passive",
         },
         {
             "sdpMid": "1",
@@ -465,6 +476,79 @@ async def test_proxy_track_stop_wakes_pending_receiver():
     with suppress(webrtc_signal.MediaStreamError):
         await receive_task
     assert receive_task.done()
+
+
+async def test_proxy_track_can_replace_camera_source_after_reconnect():
+    class FakeSource:
+        def __init__(self, frame):
+            self.frame = frame
+
+        async def recv(self):
+            return self.frame
+
+    track = webrtc_signal._ProxyTrack("video")
+
+    track.set_source(FakeSource("first"))
+    assert await track.recv() == "first"
+
+    track.set_source(FakeSource("second"))
+    assert await track.recv() == "second"
+
+    track.stop()
+
+
+def test_camera_peer_failed_schedules_apk_reconnect_without_ha_error(monkeypatch):
+    callbacks = {}
+
+    class FakePeer:
+        connectionState = "new"
+
+        def on(self, event):
+            def decorator(callback):
+                callbacks[event] = callback
+                return callback
+
+            return decorator
+
+        def addTransceiver(self, *args, **kwargs):
+            pass
+
+        def createDataChannel(self, _label):
+            return FakeDataChannel()
+
+    class FakeDataChannel:
+        readyState = "connecting"
+
+        def on(self, event):
+            def decorator(callback):
+                callbacks[f"data_{event}"] = callback
+                return callback
+
+            return decorator
+
+    scheduled = []
+    sent_messages = []
+
+    fake_peer = FakePeer()
+    monkeypatch.setattr(webrtc_signal, "RTCPeerConnection", lambda _config: fake_peer)
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._camera_pc = None
+    session._ticket = ticket()
+    session._session_id = None
+    session._closed = False
+    session._video = object()
+    session._audio = object()
+    session._debug_context = lambda **kwargs: kwargs
+    session._schedule_peer_reconnect = lambda state: scheduled.append(state)
+    session._send_ha_message = lambda message: sent_messages.append(message) or True
+
+    session._setup_camera_peer()
+    fake_peer.connectionState = "failed"
+    callbacks["connectionstatechange"]()
+
+    assert scheduled == ["failed"]
+    assert sent_messages == []
 
 
 def test_send_ha_message_ignores_closed_browser_socket():
@@ -782,6 +866,23 @@ def test_dns_preload_covers_mdns_nsec_records(monkeypatch):
     assert (1440, 41) in calls
 
 
+def test_sdp_debug_includes_media_directions():
+    sdp = (
+        "v=0\r\n"
+        "m=audio 9 UDP/TLS/RTP/SAVPF 111\r\n"
+        "a=mid:0\r\n"
+        "a=sendrecv\r\n"
+        "m=video 9 UDP/TLS/RTP/SAVPF 102\r\n"
+        "a=mid:1\r\n"
+        "a=recvonly\r\n"
+    )
+
+    assert webrtc_signal._sdp_debug(sdp)["directions"] == {
+        "0": "sendrecv",
+        "1": "recvonly",
+    }
+
+
 def test_camera_webrtc_resolution_uses_apk_normalization():
     from types import SimpleNamespace
 
@@ -805,18 +906,35 @@ def test_camera_webrtc_resolution_uses_apk_normalization():
         _camera_live_resolution(
             SimpleNamespace(data={"supportedRecordingResolutions": ["P1296", "P1080"]})
         )
-        == "1280x720"
+        == "2304x1296"
+    )
+    assert (
+        _camera_live_resolution(
+            SimpleNamespace(
+                data={
+                    "liveResolution": "auto",
+                    "supportedRecordingResolutions": ["P1296", "P1080"],
+                }
+            )
+        )
+        == "2304x1296"
     )
     assert (
         _camera_live_resolution(
             SimpleNamespace(data={"deviceSupportResolution": ["bad", "P720"]})
+        )
+        == "bad"
+    )
+    assert (
+        _camera_live_resolution(
+            SimpleNamespace(data={"supportedRecordingResolutions": ["P1296"]})
         )
         == "1280x720"
     )
     assert _camera_live_resolution(SimpleNamespace(data={})) == "1280x720"
 
 
-def test_start_live_sends_when_data_channel_opens_like_apk(monkeypatch):
+def test_start_live_waits_for_camera_data_channel_connected_like_apk(monkeypatch):
     monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
     monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
 
@@ -1245,6 +1363,109 @@ async def test_webrtc_timeout_reports_error_and_closes_session():
     assert closed == [True]
 
 
+def test_signal_close_schedules_apk_style_reconnect():
+    scheduled = []
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._signal_reconnect_task = None
+
+    def create_task(coro):
+        scheduled.append(coro)
+        return SimpleTask()
+
+    class SimpleTask:
+        def done(self):
+            return False
+
+    session._signal_reconnect_after_delay = lambda close_code: f"reconnect-{close_code}"
+    original_create_task = webrtc_signal.asyncio.create_task
+    webrtc_signal.asyncio.create_task = create_task
+    try:
+        session._schedule_signal_reconnect(1000)
+        session._schedule_signal_reconnect(1001)
+    finally:
+        webrtc_signal.asyncio.create_task = original_create_task
+
+    assert scheduled == ["reconnect-1000"]
+
+
+def test_signal_close_skips_apk_terminal_close_codes():
+    scheduled = []
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._signal_reconnect_task = None
+
+    def create_task(coro):
+        scheduled.append(coro)
+        return object()
+
+    session._signal_reconnect_after_delay = lambda close_code: f"reconnect-{close_code}"
+    original_create_task = webrtc_signal.asyncio.create_task
+    webrtc_signal.asyncio.create_task = create_task
+    try:
+        session._schedule_signal_reconnect(3002)
+        session._schedule_signal_reconnect(3004)
+    finally:
+        webrtc_signal.asyncio.create_task = original_create_task
+
+    assert scheduled == []
+
+
+async def test_peer_in_timeout_refreshes_ticket_without_terminal_error(monkeypatch):
+    messages = []
+    refreshed = []
+    reconnected = []
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._send_message = messages.append
+    session._ticket = ticket()
+    session._session_id = "Android-client123-100000"
+    session._recipient_client_id = "SSC0A123"
+    session._camera_offer_sdp = None
+    session._camera_pc = None
+    session._ha_pc = None
+    session._data_channel = None
+    session._camera_online = False
+    session._camera_peer_ready = False
+    session._camera_offer_sent = False
+    session._sdp_answer_received = False
+    session._first_frame_received = False
+    session._start_live_sent = False
+    session._last_signal_event = None
+    session._signal_event_counts = Counter()
+    session._camera_local_candidate_count = 0
+    session._camera_remote_candidate_count = 0
+    session._pending_ha_candidates = []
+    session._pending_camera_candidates = []
+
+    async def immediate_sleep(_delay):
+        return None
+
+    async def refresh_ticket():
+        refreshed.append(True)
+        return ticket(id="client456")
+
+    async def reconnect_signal():
+        reconnected.append(True)
+
+    async def close():
+        raise AssertionError("PEER_IN timeout should not close the session")
+
+    session._reconnect_signal = reconnect_signal
+    monkeypatch.setattr(webrtc_signal.asyncio, "sleep", immediate_sleep)
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 101)
+    session._refresh_ticket = refresh_ticket
+    session.close = close
+
+    await session._handle_peer_in_timeout()
+
+    assert refreshed == [True]
+    assert messages == []
+    assert session._ticket.client_id == "client456"
+    assert session._session_id == "Android-client456-101000"
+    assert reconnected == [True]
+
+
 async def test_first_video_frame_cancels_play_timeout():
     import asyncio
 
@@ -1267,7 +1488,7 @@ async def test_first_video_frame_cancels_play_timeout():
     assert session._first_frame_timeout_task.cancelling()
 
 
-async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
+async def test_online_camera_starts_peer_without_peer_in_like_apk():
     class FakeWs:
         closed = False
 
@@ -1393,16 +1614,11 @@ async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
         webrtc_signal.asyncio.create_task = original_create_task
 
     assert aio_session.ws.messages == []
-    assert aio_session.connect_kwargs["heartbeat"] == 15.0
-    assert started == []
-    assert session._peer_in_timeout_task is tasks[-1]
-    assert len(tasks) == 3
-    assert sent_messages[0].answer == "v=0\r\n"
-
-    await session._handle_signal_event("PEER_IN", "SSC0A123")
-
+    assert aio_session.connect_kwargs["heartbeat"] == 30
     assert started == [True]
-    assert session._peer_in_timeout_task.cancelled is True
+    assert session._peer_in_timeout_task is None
+    assert len(tasks) == 2
+    assert sent_messages[0].answer == "v=0\r\n"
 
 
 async def test_offline_camera_waits_for_peer_in_before_offer_like_apk():

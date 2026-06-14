@@ -2205,9 +2205,19 @@ async def test_update_camera_data_creates_camera_from_addx_without_home_stub():
     [
         ({"liveResolution": "VIDEO_SIZE_1920x1080"}, "1920x1080"),
         ({"liveResolution": "HD"}, "1920x1080"),
+        ({"liveResolution": "auto"}, "auto"),
         ({"supportedRecordingResolutions": ["P1296", "P1080"]}, "2304x1296"),
-        ({"supportedRecordingResolutions": []}, "auto"),
-        ({"deviceSupportResolution": ["bad", "P720"]}, "1280x720"),
+        (
+            {
+                "liveResolution": "auto",
+                "supportedRecordingResolutions": ["P1296", "P1080"],
+            },
+            "2304x1296",
+        ),
+        ({"supportedRecordingResolutions": []}, "1280x720"),
+        ({"supportedRecordingResolutions": ["P1296"]}, "1280x720"),
+        ({"deviceSupportResolution": ["bad", "P720"]}, "bad"),
+        ({"liveResolution": "UNKNOWN_RESOLUTION"}, "UNKNOWN_RESOLUTION"),
     ],
 )
 async def test_start_camera_live_uses_apk_live_resolution(camera_data, expected):
@@ -2366,13 +2376,18 @@ async def test_get_camera_webrtc_ticket_fetches_on_demand_and_reuses_cache():
 
     first = await client.get_camera_webrtc_ticket(camera)
     second = await client.get_camera_webrtc_ticket(camera)
+    refreshed = await client.get_camera_webrtc_ticket(camera, force_refresh=True)
 
-    assert first == second
+    assert first == second == refreshed
     assert calls == [
         (
             "/device/getWebrtcTicket",
             {"serialNumber": "cam-sn", "verifyDormancyStatus": True},
-        )
+        ),
+        (
+            "/device/getWebrtcTicket",
+            {"serialNumber": "cam-sn", "verifyDormancyStatus": True},
+        ),
     ]
 
 

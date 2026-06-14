@@ -108,6 +108,28 @@ def test_read_only_camera_entities_require_camera_entity():
     assert binary_sensor.has_camera_data("needMotion")(camera)
 
 
+def test_camera_availability_follows_apk_non_offline_statuses():
+    from custom_components.xsense.api.entity_map import EntityType
+    from custom_components.xsense.entity import _apk_entity_is_available
+
+    camera = SimpleNamespace(
+        entity_type=EntityType.CAMERA,
+        online=False,
+        data={"deviceStatus": 11},
+    )
+
+    assert _apk_entity_is_available(camera)
+
+    camera.data["deviceStatus"] = 12
+    assert _apk_entity_is_available(camera)
+
+    camera.data["deviceStatus"] = 0
+    assert not _apk_entity_is_available(camera)
+
+    camera.online = True
+    assert _apk_entity_is_available(camera)
+
+
 async def test_webrtc_offer_uses_ticket_without_direct_stream_keepalive():
     calls = []
 
@@ -366,7 +388,7 @@ def test_camera_live_resolution_defaults_to_apk_live_view_default():
         },
     )
 
-    assert camera_live_resolution(camera_entity) == "1280x720"
+    assert camera_live_resolution(camera_entity) == "1920x1080"
 
     camera_entity.data["liveResolution"] = "1920x1080"
     assert camera_live_resolution(camera_entity) == "1920x1080"

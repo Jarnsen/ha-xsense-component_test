@@ -158,7 +158,9 @@ def _camera_resolution(value) -> str | None:
     normalized = resolution.replace("×", "x")
     if normalized in _CAMERA_VIDEO_RESOLUTIONS:
         return normalized
-    return _CAMERA_RESOLUTION_ALIASES.get(normalized.upper())
+    if alias := _CAMERA_RESOLUTION_ALIASES.get(normalized.upper()):
+        return alias
+    return normalized
 
 
 def _camera_webrtc_ticket_valid(ticket: dict) -> bool:
@@ -171,11 +173,37 @@ def _camera_webrtc_ticket_valid(ticket: dict) -> bool:
         return False
 
 
+def _camera_supported_resolutions(camera: Entity) -> list[str]:
+    """Return APK-supported camera live resolutions in device order."""
+    supported = (
+        camera.data.get("supportedRecordingResolutions")
+        or camera.data.get("deviceSupportResolution")
+        or []
+    )
+    if isinstance(supported, str):
+        supported = [supported]
+    elif not isinstance(supported, (list, tuple)):
+        return []
+    if len(supported) < 2:
+        return []
+    resolutions: list[str] = []
+    for value in supported:
+        resolution = _camera_resolution(value)
+        if resolution and resolution not in resolutions:
+            resolutions.append(resolution)
+    return resolutions
+
+
 def camera_live_resolution(camera: Entity) -> str:
     """Return the APK start-live resolution for a camera live-view session."""
+    supported_resolutions = _camera_supported_resolutions(camera)
     saved_resolution = _camera_resolution(camera.data.get("liveResolution"))
-    if saved_resolution:
+    if saved_resolution and (
+        not supported_resolutions or saved_resolution in supported_resolutions
+    ):
         return saved_resolution
+    if supported_resolutions:
+        return supported_resolutions[0]
 
     return "1280x720"
 
@@ -678,10 +706,16 @@ class AsyncXSense(XSenseBase):
         )
         camera.set_data({"cooldownEnabled": user_enable, "cooldownValue": value})
 
-    async def get_camera_webrtc_ticket(self, camera: Entity) -> dict | None:
+    async def get_camera_webrtc_ticket(
+        self, camera: Entity, *, force_refresh: bool = False
+    ) -> dict | None:
         """Return an APK WebRTC ticket, reusing it until it is near expiry."""
         cached = camera.data.get("cameraWebrtcTicket")
-        if isinstance(cached, dict) and _camera_webrtc_ticket_valid(cached):
+        if (
+            not force_refresh
+            and isinstance(cached, dict)
+            and _camera_webrtc_ticket_valid(cached)
+        ):
             return cached
 
         data = await self.addx_call(

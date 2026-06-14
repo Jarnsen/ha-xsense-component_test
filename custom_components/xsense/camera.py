@@ -177,6 +177,18 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             import_module, __package__ + ".webrtc_signal"
         )
 
+        async def refresh_ticket():
+            refreshed = await self.coordinator.xsense.get_camera_webrtc_ticket(
+                entity, force_refresh=True
+            )
+            if not isinstance(refreshed, dict):
+                return None
+            LOGGER.debug(
+                "X-Sense camera WebRTC refreshed ticket response: %s",
+                _ticket_data_debug_context(refreshed),
+            )
+            return webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, refreshed)
+
         try:
             ticket = webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, ticket_data)
         except (KeyError, TypeError, ValueError) as err:
@@ -216,6 +228,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             send_message=send_message,
             on_close=remove_session,
             camera_online=_camera_online(entity),
+            refresh_ticket=refresh_ticket,
         )
         LOGGER.debug(
             "X-Sense camera WebRTC bridge created: %s",
@@ -310,7 +323,9 @@ def _camera_debug_context(entity, session_id, **extra):
         "model": entity.data.get("cameraModel") or entity.data.get("modelNo"),
         "protocol": entity.data.get("streamProtocol"),
         "online": getattr(entity, "online", None),
-        "data_online": entity.data.get("online"),
+        "device_status": entity.data.get("deviceStatus"),
+        "awake": entity.data.get("awake"),
+        "support_webrtc": entity.data.get("supportWebrtc"),
         "resolution": _camera_live_resolution(entity),
     }
     context.update(extra)
@@ -327,4 +342,6 @@ def _ticket_data_debug_context(ticket_data):
         "has_signal_ip": bool(ticket_data.get("signalServerIpAddress")),
         "ice_servers": len(ticket_data.get("iceServer") or []),
         "has_expiration": ticket_data.get("expirationTime") not in (None, ""),
+        "ticket_id": _short_id(ticket_data.get("id")),
+        "real_camera": _short_id(ticket_data.get("realCxSerialNumber")),
     }
