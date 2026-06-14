@@ -156,7 +156,9 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             _camera_debug_context(entity, session_id),
         )
 
-        ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(entity)
+        ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(
+            entity, force_refresh=True
+        )
         LOGGER.debug(
             "X-Sense camera WebRTC ticket response: %s",
             _ticket_data_debug_context(ticket_data),

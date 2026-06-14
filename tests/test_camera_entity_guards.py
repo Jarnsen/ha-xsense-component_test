@@ -137,8 +137,8 @@ async def test_webrtc_offer_uses_ticket_without_direct_stream_keepalive():
         async def keep_camera_live_alive(self, entity):
             raise AssertionError("WebRTC path should not call direct-stream keepalive")
 
-        async def get_camera_webrtc_ticket(self, entity):
-            calls.append(("ticket", entity.sn))
+        async def get_camera_webrtc_ticket(self, entity, *, force_refresh=False):
+            calls.append(("ticket", entity.sn, force_refresh))
             return None
 
     entity = SimpleNamespace(sn="SSC0A123", online=True, data={})
@@ -151,7 +151,7 @@ async def test_webrtc_offer_uses_ticket_without_direct_stream_keepalive():
         "v=0\r\n", "session-1", messages.append
     )
 
-    assert calls == [("ticket", "SSC0A123")]
+    assert calls == [("ticket", "SSC0A123", True)]
     assert messages[0].code == "xsense_webrtc_ticket_failed"
 
 
@@ -404,7 +404,7 @@ async def test_failed_webrtc_start_is_removed_from_active_sessions(monkeypatch):
     camera_entity.name = "Camera"
     camera_entity.online = True
 
-    async def get_camera_webrtc_ticket(entity):
+    async def get_camera_webrtc_ticket(entity, *, force_refresh=False):
         return {"signalServer": "signal"}
 
     class Coordinator:

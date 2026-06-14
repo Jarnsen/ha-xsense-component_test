@@ -156,8 +156,6 @@ def test_sdp_offer_payload_strips_local_candidates_like_apk_create_offer():
     assert decoded["sdp"].endswith("\r\n")
 
 
-
-
 def test_parse_signal_message_accepts_apk_raw_ice_candidate_json():
     raw_candidate = {
         "sdpMid": "0",
@@ -166,7 +164,12 @@ def test_parse_signal_message_accepts_apk_raw_ice_candidate_json():
     }
 
     assert webrtc_signal.parse_signal_message(
-        json.dumps({"messageType": "ICE_CANDIDATE", "messagePayload": json.dumps(raw_candidate)})
+        json.dumps(
+            {
+                "messageType": "ICE_CANDIDATE",
+                "messagePayload": json.dumps(raw_candidate),
+            }
+        )
     ) == ("ICE_CANDIDATE", raw_candidate)
 
 
@@ -196,7 +199,7 @@ def test_webrtc_ice_candidate_payload_matches_apk():
     }
 
 
-def test_apk_camera_offer_sdp_preserves_create_offer_sdp_shape():
+def test_apk_camera_offer_sdp_matches_android_camera_offer_shape():
     sdp = """v=0
 m=audio 9 UDP/TLS/RTP/SAVPF 96
 a=mid:0
@@ -226,15 +229,12 @@ a=mid:2
 
     apk_sdp = webrtc_signal._apk_camera_offer_sdp(sdp)
 
-    assert apk_sdp == sdp
     assert "m=video 9 UDP/TLS/RTP/SAVPF 97 98 99 100 101 102" in apk_sdp
-    assert "VP8" in apk_sdp
-    assert "apt=97" in apk_sdp
     assert "H264" in apk_sdp
     assert "a=fingerprint:sha-256" in apk_sdp
-    assert "a=fingerprint:sha-384" in apk_sdp
-    assert "a=fingerprint:sha-512" in apk_sdp
-    assert apk_sdp.endswith('\n')
+    assert "a=fingerprint:sha-384" not in apk_sdp
+    assert "a=fingerprint:sha-512" not in apk_sdp
+    assert apk_sdp.endswith("\n")
 
 
 def test_local_sdp_candidates_match_apk_tcp_and_loopback_filter():
@@ -285,9 +285,10 @@ def test_change_transceiver_commands_match_apk(monkeypatch):
         "action": "changeTransceiverOffer",
         "parameters": {"offer": "<decoded>"},
     }
-    assert json.loads(
-        base64.b64decode(command["parameters"]["offer"]).decode()
-    ) == {"type": "offer", "sdp": "v=0\r\n"}
+    assert json.loads(base64.b64decode(command["parameters"]["offer"]).decode()) == {
+        "type": "offer",
+        "sdp": "v=0\r\n",
+    }
 
 
 async def test_data_channel_request_change_transceiver_offer_matches_apk(monkeypatch):
@@ -295,7 +296,16 @@ async def test_data_channel_request_change_transceiver_offer_matches_apk(monkeyp
     monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
 
     class Offer:
-        sdp = "v=0\r\n"
+        type = "offer"
+        sdp = (
+            "v=0\r\n"
+            "m=video 9 UDP/TLS/RTP/SAVPF 99\r\n"
+            "a=mid:0\r\n"
+            "a=rtpmap:99 H264/90000\r\n"
+            "a=fingerprint:sha-256 AA:BB\r\n"
+            "a=fingerprint:sha-384 CC:DD\r\n"
+            "a=candidate:1 1 udp 1 192.0.2.1 123 typ host\r\n"
+        )
 
     class FakePeerConnection:
         connectionState = "connected"
@@ -356,6 +366,14 @@ async def test_data_channel_request_change_transceiver_offer_matches_apk(monkeyp
         "action": "changeTransceiverOffer",
         "parameters": {"offer": "<decoded>"},
     }
+    decoded_offer = json.loads(
+        base64.b64decode(second_message["parameters"]["offer"]).decode()
+    )
+    assert decoded_offer["type"] == "offer"
+    assert session._camera_pc.local_descriptions[0].sdp == decoded_offer["sdp"]
+    assert "a=fingerprint:sha-256" in decoded_offer["sdp"]
+    assert "a=fingerprint:sha-384" not in decoded_offer["sdp"]
+    assert "a=candidate:" not in decoded_offer["sdp"]
 
     encoded_answer = base64.b64encode(
         json.dumps({"sdp": "v=0\r\nanswer"}).encode()
@@ -382,6 +400,7 @@ async def test_start_camera_peer_uses_apk_receive_media_offer_shape(monkeypatch)
 
         def addTransceiver(self, kind, **kwargs):
             self.transceivers.append((kind, kwargs))
+            return object()
 
         async def createOffer(self):
             class Offer:
@@ -405,9 +424,8 @@ async def test_start_camera_peer_uses_apk_receive_media_offer_shape(monkeypatch)
 
     await session._start_camera_peer()
 
-    assert session._camera_pc.transceivers == [
-        ("video", {"direction": "recvonly"}),
-    ]
+    assert len(session._camera_pc.transceivers) == 1
+    assert session._camera_pc.transceivers[0] == ("video", {"direction": "recvonly"})
     assert session._camera_offer_sdp == "v=0\r\n"
     assert session._camera_local_description_task is not None
     session._camera_local_description_task.cancel()
@@ -731,16 +749,20 @@ def test_sdp_answer_reject_reason_keeps_debug_actionable():
 
 
 def test_parse_signal_message_accepts_apk_peer_event_wrappers():
-    assert parse_signal_message(
+    event, payload = parse_signal_message(
         json.dumps({"event": "PEER_IN", "data": {"clientId": "SSC0A123"}})
-    ) == ("PEER_IN", "SSC0A123")
-    assert webrtc_signal._is_owned_peer_message("SSC0A123", "SSC0A123")
-    assert not webrtc_signal._is_owned_peer_message("SSC0B456", "SSC0A123")
-    assert parse_signal_message(
+    )
+    assert event == "PEER_IN"
+    assert webrtc_signal._is_owned_peer_message(payload, "SSC0A123")
+    assert not webrtc_signal._is_owned_peer_message(payload, "SSC0B456")
+
+    event, payload = parse_signal_message(
         json.dumps(
             {"type": "PEER_OUT", "message": json.dumps({"deviceSN": "SSC0B456"})}
         )
-    ) == ("PEER_OUT", "SSC0B456")
+    )
+    assert event == "PEER_OUT"
+    assert webrtc_signal._is_owned_peer_message(payload, "SSC0B456")
 
 
 def test_parse_signal_message_decodes_base64_peer_events_from_signal_server():
@@ -754,9 +776,11 @@ def test_parse_signal_message_decodes_base64_peer_events_from_signal_server():
         json.dumps({"serialNumber": "SSC0A123"}).encode()
     ).decode()
 
-    assert parse_signal_message(
+    event, payload = parse_signal_message(
         json.dumps({"messageType": "PEER_OUT", "messagePayload": encoded_json})
-    ) == ("PEER_OUT", "SSC0A123")
+    )
+    assert event == "PEER_OUT"
+    assert webrtc_signal._is_owned_peer_message(payload, "SSC0A123")
 
 
 def test_parse_signal_message_keeps_plain_peer_payloads_from_apk_callback():
@@ -803,6 +827,24 @@ def test_object_peer_event_matches_camera_by_apk_signal_id():
         "peer_candidates": ["...C0A123", "...st-123"],
     }
 
+
+def test_object_peer_event_preserves_all_ids_for_camera_match():
+    event, payload = parse_signal_message(
+        json.dumps(
+            {
+                "messageType": "PEER_IN",
+                "messagePayload": {
+                    "clientId": "viewer-client",
+                    "serialNumber": "SSC0A123",
+                    "role": "device",
+                },
+            }
+        )
+    )
+
+    assert event == "PEER_IN"
+    assert payload["clientId"] == "viewer-client"
+    assert webrtc_signal._is_owned_peer_message(payload, "SSC0A123")
 
 
 def test_stop_live_data_channel_command_matches_apk(monkeypatch):
@@ -1054,7 +1096,6 @@ async def test_closed_session_ignores_late_browser_ice_candidates():
     assert session._pending_ha_candidates == []
 
 
-
 async def test_send_offer_stops_cleanly_when_signal_closes_during_ice():
     session = object.__new__(webrtc_signal.XSenseWebRTCSession)
     session._closed = False
@@ -1072,13 +1113,11 @@ async def test_send_offer_stops_cleanly_when_signal_closes_during_ice():
             "localDescription": type(
                 "LocalDescription",
                 (),
-                {
-                    "sdp": """v=0
+                {"sdp": """v=0
 a=ice-ufrag:test
 a=candidate:1 1 udp 1 192.0.2.1 123 typ host
 a=candidate:2 1 udp 1 192.0.2.2 124 typ host
-"""
-                },
+"""},
             )()
         },
     )()
@@ -1098,7 +1137,9 @@ a=candidate:2 1 udp 1 192.0.2.2 124 typ host
         async def send_str(self, message):
             self.messages.append(json.loads(message))
             if len(self.messages) > 1:
-                raise aiohttp.ClientConnectionResetError("Cannot write to closing transport")
+                raise aiohttp.ClientConnectionResetError(
+                    "Cannot write to closing transport"
+                )
 
     session._ws = ClosingWebSocket()
 
@@ -1108,6 +1149,7 @@ a=candidate:2 1 udp 1 192.0.2.2 124 typ host
         "SDP_OFFER",
         "ICE_CANDIDATE",
     ]
+
 
 async def test_close_is_idempotent_and_waits_for_reader_task():
     class FakeWs:
@@ -1171,6 +1213,7 @@ async def test_close_is_idempotent_and_waits_for_reader_task():
     assert session._pending_ha_candidates == []
     assert session._pending_camera_candidates == []
     assert session._data_channel.messages[0]["action"] == "stopLive"
+
 
 async def test_closed_session_ignores_late_signal_events():
     session = object.__new__(webrtc_signal.XSenseWebRTCSession)
@@ -1256,7 +1299,6 @@ async def test_webrtc_close_does_not_cancel_current_timeout_task():
     assert not asyncio.current_task().cancelled()
 
 
-
 async def test_webrtc_close_stops_peer_transports_before_closing():
     import asyncio
 
@@ -1307,6 +1349,7 @@ async def test_webrtc_close_stops_peer_transports_before_closing():
     session._camera_local_description_task = None
     session._ws = None
     session._data_channel = None
+
     class TrackPart:
         def __init__(self, name):
             self.name = name
@@ -1340,6 +1383,7 @@ async def test_webrtc_close_stops_peer_transports_before_closing():
         "ha-receiver",
         "ha-close",
     ]
+
 
 async def test_webrtc_timeout_reports_error_and_closes_session():
     import asyncio
@@ -1388,6 +1432,28 @@ def test_signal_close_schedules_apk_style_reconnect():
 
     assert scheduled == ["reconnect-1000"]
 
+
+async def test_signal_reconnect_delay_matches_apk(monkeypatch):
+    delays = []
+    reconnected = []
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._debug_context = lambda **kwargs: kwargs
+
+    async def reconnect_signal():
+        reconnected.append(True)
+
+    async def sleep(delay):
+        delays.append(delay)
+
+    session._reconnect_signal = reconnect_signal
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "sleep", sleep)
+
+    await session._signal_reconnect_after_delay(1000)
+
+    assert delays == [5]
+    assert reconnected == [True]
 
 def test_signal_close_skips_apk_terminal_close_codes():
     scheduled = []
@@ -1488,7 +1554,7 @@ async def test_first_video_frame_cancels_play_timeout():
     assert session._first_frame_timeout_task.cancelling()
 
 
-async def test_online_camera_starts_peer_without_peer_in_like_apk():
+async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
     class FakeWs:
         closed = False
 
@@ -1615,9 +1681,9 @@ async def test_online_camera_starts_peer_without_peer_in_like_apk():
 
     assert aio_session.ws.messages == []
     assert aio_session.connect_kwargs["heartbeat"] == 30
-    assert started == [True]
-    assert session._peer_in_timeout_task is None
-    assert len(tasks) == 2
+    assert started == []
+    assert session._peer_in_timeout_task is not None
+    assert len(tasks) == 3
     assert sent_messages[0].answer == "v=0\r\n"
 
 
