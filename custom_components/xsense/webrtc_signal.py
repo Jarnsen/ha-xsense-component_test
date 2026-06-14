@@ -322,6 +322,7 @@ def _peer_event_debug(payload: Any, serial_number: str) -> dict[str, Any]:
     match = _matching_peer_id(payload, serial_number)
     return {
         "payload": _payload_debug(payload),
+        "payload_fields": _debug_payload_fields(payload),
         "payload_matches_camera": match is not None,
         "camera": _short_id(serial_number),
         "peer": _short_id(match),
@@ -330,6 +331,35 @@ def _peer_event_debug(payload: Any, serial_number: str) -> dict[str, Any]:
         ],
     }
 
+
+def _debug_payload_fields(payload: Any) -> dict[str, str | None]:
+    """Return compact non-secret peer payload fields for signal debugging."""
+    if not isinstance(payload, dict):
+        return {}
+    return {
+        key: _short_id(payload.get(key))
+        for key in ("group", "role", "id", "name", "clientId", "serialNumber")
+        if payload.get(key) not in (None, "")
+    }
+
+
+def _signal_envelope_debug(payload: str) -> dict[str, Any]:
+    """Return compact non-secret signal envelope details."""
+    with suppress(Exception):
+        data = json.loads(payload)
+        if isinstance(data, dict):
+            return {
+                "keys": sorted(data.keys()),
+                "message_type": data.get("messageType"),
+                "sender": _short_id(data.get("senderClientId")),
+                "recipient": _short_id(data.get("recipientClientId")),
+                "session": _short_id(data.get("sessionId")),
+                "mode": data.get("mode"),
+                "viewer_type": data.get("viewerType"),
+                "has_resolution": "resolution" in data,
+                "payload_len": len(str(data.get("messagePayload", ""))),
+            }
+    return {"raw_len": len(payload)}
 
 def _answer_reject_reason(payload: Any, ticket: XSenseWebRTCTicket) -> str:
     if not isinstance(payload, dict):
@@ -1003,20 +1033,21 @@ class XSenseWebRTCSession:
             or self._camera_offer_sent
         ):
             return
-        LOGGER.debug(
-            "X-Sense WebRTC sending SDP offer: %s",
-            self._debug_context(
-                recipient=_short_id(self._recipient_client_id),
-                offer_sdp=_sdp_debug(self._camera_offer_sdp),
-                offer_resolution=bool(self._resolution),
-            ),
-        )
         offer_payload = make_sdp_offer_payload(
             offer_sdp=self._camera_offer_sdp,
             ticket=self._ticket,
             recipient_client_id=self._recipient_client_id,
             session_id=self._session_id,
             resolution=self._resolution,
+        )
+        LOGGER.debug(
+            "X-Sense WebRTC sending SDP offer: %s",
+            self._debug_context(
+                recipient=_short_id(self._recipient_client_id),
+                offer_sdp=_sdp_debug(self._camera_offer_sdp),
+                offer_envelope=_signal_envelope_debug(offer_payload),
+                offer_resolution=bool(self._resolution),
+            ),
         )
         await self._ws.send_str(offer_payload)
         self._camera_offer_sent = True

@@ -707,6 +707,12 @@ def test_object_peer_event_matches_camera_by_apk_signal_id():
     assert not webrtc_signal._is_owned_peer_message(payload, "SSC0B456")
     assert webrtc_signal._peer_event_debug(payload, "SSC0A123") == {
         "payload": "dict_keys=['group', 'id', 'name', 'role']",
+        "payload_fields": {
+            "group": "...-group",
+            "id": "...C0A123",
+            "name": "...st-123",
+            "role": "device",
+        },
         "payload_matches_camera": True,
         "camera": "...C0A123",
         "peer": "...C0A123",
