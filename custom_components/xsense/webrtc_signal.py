@@ -656,8 +656,15 @@ class XSenseWebRTCSession:
                 "resolution": getattr(self, "_resolution", None),
                 "camera_online": getattr(self, "_camera_online", None),
                 "camera_pc": getattr(camera_pc, "connectionState", None),
+                "camera_ice": getattr(camera_pc, "iceConnectionState", None),
+                "camera_gathering": getattr(camera_pc, "iceGatheringState", None),
+                "camera_signaling": getattr(camera_pc, "signalingState", None),
                 "ha_pc": getattr(ha_pc, "connectionState", None),
+                "ha_ice": getattr(ha_pc, "iceConnectionState", None),
+                "ha_gathering": getattr(ha_pc, "iceGatheringState", None),
+                "ha_signaling": getattr(ha_pc, "signalingState", None),
                 "data_channel": getattr(data_channel, "readyState", None),
+                "data_channel_buffered": getattr(data_channel, "bufferedAmount", None),
                 "camera_peer_ready": getattr(self, "_camera_peer_ready", None),
                 "offer_sent": getattr(self, "_camera_offer_sent", None),
                 "sdp_answer_received": getattr(self, "_sdp_answer_received", None),
@@ -1078,9 +1085,58 @@ class XSenseWebRTCSession:
                 self._debug_context(),
             )
 
+        @self._data_channel.on("bufferedamountlow")
+        def on_buffered_amount_low():
+            LOGGER.debug(
+                "X-Sense WebRTC data channel buffered amount low: %s",
+                self._debug_context(),
+            )
+
         @self._data_channel.on("message")
         def on_message(message):
             self._handle_data_channel_message(message)
+
+        @camera_pc.on("iceconnectionstatechange")
+        def on_iceconnectionstatechange():
+            state = camera_pc.iceConnectionState
+            if camera_pc is not self._camera_pc:
+                LOGGER.debug(
+                    "X-Sense WebRTC ignored stale camera ICE state change: %s",
+                    self._debug_context(new_ice_state=state),
+                )
+                return
+            LOGGER.debug(
+                "X-Sense WebRTC camera ICE state changed: %s",
+                self._debug_context(new_ice_state=state),
+            )
+
+        @camera_pc.on("icegatheringstatechange")
+        def on_icegatheringstatechange():
+            state = camera_pc.iceGatheringState
+            if camera_pc is not self._camera_pc:
+                LOGGER.debug(
+                    "X-Sense WebRTC ignored stale camera ICE gathering state: %s",
+                    self._debug_context(new_gathering_state=state),
+                )
+                return
+            LOGGER.debug(
+                "X-Sense WebRTC camera ICE gathering state changed: %s",
+                self._debug_context(new_gathering_state=state),
+            )
+
+        @camera_pc.on("signalingstatechange")
+        def on_signalingstatechange():
+            state = camera_pc.signalingState
+            if camera_pc is not self._camera_pc:
+                LOGGER.debug(
+                    "X-Sense WebRTC ignored stale camera signaling state: %s",
+                    self._debug_context(new_signaling_state=state),
+                )
+                return
+            LOGGER.debug(
+                "X-Sense WebRTC camera signaling state changed: %s",
+                self._debug_context(new_signaling_state=state),
+            )
 
         @camera_pc.on("connectionstatechange")
         def on_connectionstatechange():
