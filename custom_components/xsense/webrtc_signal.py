@@ -67,7 +67,7 @@ _PEER_IN_TIMEOUT = 20
 _PLAY_TIMEOUT = 40
 _FIRST_FRAME_TIMEOUT = 10
 _DEFAULT_SIGNAL_HEARTBEAT = 30
-_SIGNAL_RECONNECT_DELAY = 3
+_SIGNAL_RECONNECT_DELAY = 5
 _SIGNAL_TERMINAL_CLOSE_CODES = {3002, 3004}
 
 
@@ -391,6 +391,7 @@ def _signal_envelope_debug(payload: str) -> dict[str, Any]:
             }
     return {"raw_len": len(payload)}
 
+
 def _answer_reject_reason(payload: Any, ticket: XSenseWebRTCTicket) -> str:
     if not isinstance(payload, dict):
         return "payload_not_dict"
@@ -555,11 +556,6 @@ def _signal_payload(data: dict[str, Any]) -> Any:
 def _signal_peer_payload(payload: Any) -> Any:
     if isinstance(payload, str):
         payload = _decode_signal_peer_payload(payload)
-    if isinstance(payload, dict):
-        for key in ("clientId", "serialNumber", "deviceSn", "deviceSN", "sn"):
-            value = payload.get(key)
-            if value:
-                return str(value)
     return payload
 
 
@@ -603,9 +599,9 @@ class XSenseWebRTCSession:
         session_id: str | None = None,
         on_close: Callable[[], None] | None = None,
         camera_online: bool = False,
-        refresh_ticket: Callable[
-            [], Coroutine[Any, Any, XSenseWebRTCTicket | None]
-        ] | None = None,
+        refresh_ticket: (
+            Callable[[], Coroutine[Any, Any, XSenseWebRTCTicket | None]] | None
+        ) = None,
     ) -> None:
         self._session = session
         self._ticket = ticket
@@ -713,20 +709,13 @@ class XSenseWebRTCSession:
                     "Camera did not start the WebRTC stream",
                 )
             )
-            if self._camera_online:
-                LOGGER.debug(
-                    "X-Sense WebRTC camera already online, starting peer without PEER_IN: %s",
-                    self._debug_context(),
-                )
-                await self._start_camera_peer()
-            else:
-                LOGGER.debug(
-                    "X-Sense WebRTC waiting for PEER_IN: %s",
-                    self._debug_context(),
-                )
-                self._peer_in_timeout_task = asyncio.create_task(
-                    self._handle_peer_in_timeout()
-                )
+            LOGGER.debug(
+                "X-Sense WebRTC waiting for PEER_IN before camera offer: %s",
+                self._debug_context(),
+            )
+            self._peer_in_timeout_task = asyncio.create_task(
+                self._handle_peer_in_timeout()
+            )
             return True
         except Exception as err:  # noqa: BLE001 - surface cleanly to HA frontend
             LOGGER.debug(
@@ -753,7 +742,9 @@ class XSenseWebRTCSession:
             )
             return
         await self._ha_pc.addIceCandidate(parsed)
-        LOGGER.debug("X-Sense WebRTC applied HA ICE candidate: %s", self._debug_context())
+        LOGGER.debug(
+            "X-Sense WebRTC applied HA ICE candidate: %s", self._debug_context()
+        )
 
     async def close(self) -> None:
         """Close the X-Sense signaling and WebRTC sessions."""
@@ -901,7 +892,9 @@ class XSenseWebRTCSession:
             return
         try:
             new_ticket = await refresh_ticket()
-        except Exception as err:  # noqa: BLE001 - ticket refresh failures are non-fatal here
+        except (
+            Exception
+        ) as err:  # noqa: BLE001 - ticket refresh failures are non-fatal here
             LOGGER.debug(
                 "X-Sense WebRTC ticket refresh after PEER_IN timeout failed: %s",
                 self._debug_context(error=type(err).__name__, message=str(err)),
@@ -997,7 +990,9 @@ class XSenseWebRTCSession:
         task = getattr(self, "_peer_reconnect_task", None)
         if self._closed or (task and not task.done()):
             return
-        self._peer_reconnect_task = asyncio.create_task(self._reconnect_camera_peer(state))
+        self._peer_reconnect_task = asyncio.create_task(
+            self._reconnect_camera_peer(state)
+        )
 
     async def _reconnect_camera_peer(self, state: str) -> None:
         """Recreate the camera peer and restart the APK live-view send path."""
@@ -1155,13 +1150,20 @@ class XSenseWebRTCSession:
         if self._camera_pc is None:
             return
         offer = await self._camera_pc.createOffer()
-        await self._camera_pc.setLocalDescription(offer)
-        if self._send_data_channel_json(
-            make_change_transceiver_offer_command(offer.sdp)
-        ):
+        camera_offer = RTCSessionDescription(
+            sdp=_apk_camera_offer_sdp(offer.sdp), type=offer.type
+        )
+        local_description_task = asyncio.create_task(
+            self._camera_pc.setLocalDescription(camera_offer)
+        )
+        sent = self._send_data_channel_json(
+            make_change_transceiver_offer_command(camera_offer.sdp)
+        )
+        await local_description_task
+        if sent:
             LOGGER.debug(
                 "X-Sense WebRTC sent changeTransceiverOffer: %s",
-                self._debug_context(offer_sdp_len=len(offer.sdp)),
+                self._debug_context(offer_sdp=_sdp_debug(camera_offer.sdp)),
             )
 
     async def _apply_change_transceiver_answer(self, payload: dict[str, Any]) -> None:
@@ -1435,9 +1437,7 @@ class XSenseWebRTCSession:
                         local_candidate_count=self._camera_local_candidate_count,
                         remote_candidate_count=self._camera_remote_candidate_count,
                         pending_ha_candidates=len(self._pending_ha_candidates),
-                        pending_camera_candidates=len(
-                            self._pending_camera_candidates
-                        ),
+                        pending_camera_candidates=len(self._pending_camera_candidates),
                         **_peer_event_debug(payload, self._ticket.serial_number),
                     ),
                 )
@@ -1580,10 +1580,24 @@ def _sdp_without_local_candidates(sdp: str) -> str:
 
 def _apk_camera_offer_sdp(sdp: str) -> str:
     """Return the camera offer SDP in the APK createOffer callback shape."""
-    # The APK forwards SessionDescription.description from createOffer before
-    # trickled ICE candidates are appended. It does not rewrite codecs or DTLS
-    # fingerprints, so only strip local candidates gathered by aiortc.
-    return _sdp_without_local_candidates(sdp)
+    # The APK forwards SessionDescription.description from native Android
+    # WebRTC before trickled ICE candidates are appended. aiortc exposes a
+    # browser-style SDP with multiple DTLS fingerprint algorithms; Android's
+    # WebRTC camera path uses the sha-256 fingerprint line, so keep that wire
+    # shape for the camera-facing offer.
+    return _sdp_with_sha256_fingerprints(_sdp_without_local_candidates(sdp))
+
+
+def _sdp_with_sha256_fingerprints(sdp: str) -> str:
+    """Keep the DTLS fingerprint algorithm Android WebRTC offers to cameras."""
+    lines = [
+        line
+        for line in sdp.splitlines()
+        if not line.startswith("a=fingerprint:")
+        or line.startswith("a=fingerprint:sha-256 ")
+    ]
+    ending = "\r\n" if "\r\n" in sdp else "\n"
+    return ending.join(lines) + (ending if sdp.endswith(("\r\n", "\n")) else "")
 
 
 def _local_sdp_candidates(sdp: str) -> list[dict[str, Any]]:
@@ -1616,11 +1630,7 @@ def _is_apk_supported_local_candidate(candidate: str) -> bool:
     """Return whether the APK would signal this local ICE candidate."""
     parts = candidate.split()
     protocol = parts[2].lower() if len(parts) > 2 else ""
-    return (
-        protocol != "tcp"
-        and "127.0.0.1" not in candidate
-        and "::1" not in candidate
-    )
+    return protocol != "tcp" and "127.0.0.1" not in candidate and "::1" not in candidate
 
 
 def _candidate_payload_to_aiortc(payload: Any) -> RTCIceCandidate | None:
