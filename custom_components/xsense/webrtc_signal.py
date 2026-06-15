@@ -66,9 +66,18 @@ _DEFAULT_RESOLUTION = "1280x720"
 _PEER_IN_TIMEOUT = 20
 _PLAY_TIMEOUT = 40
 _FIRST_FRAME_TIMEOUT = 10
+_FIRST_FRAME_PLI_INTERVAL = 1
 _DEFAULT_SIGNAL_HEARTBEAT = 30
 _SIGNAL_RECONNECT_DELAY = 5
 _SIGNAL_TERMINAL_CLOSE_CODES = {3002, 3004}
+_DATA_CHANNEL_SAFE_VALUE_KEYS = {
+    "returnValue",
+    "videoCodec",
+    "codec",
+    "resolution",
+    "size",
+    "streamType",
+}
 
 
 @dataclass(slots=True)
@@ -267,11 +276,13 @@ def _data_channel_debug(payload: dict[str, Any]) -> dict[str, Any]:
     data = payload.get("data")
     if isinstance(data, dict):
         details["data_keys"] = sorted(data.keys())
+        details.update(_safe_nested_debug_values("data", data))
     elif isinstance(data, str) and data:
         with suppress(Exception):
             parsed = json.loads(data)
             if isinstance(parsed, dict):
                 details["data_keys"] = sorted(parsed.keys())
+                details.update(_safe_nested_debug_values("data", parsed))
             else:
                 details["data_type"] = type(parsed).__name__
         if "data_keys" not in details and "data_type" not in details:
@@ -279,7 +290,17 @@ def _data_channel_debug(payload: dict[str, Any]) -> dict[str, Any]:
     parameters = payload.get("parameters")
     if isinstance(parameters, dict):
         details["parameter_keys"] = sorted(parameters.keys())
+        details.update(_safe_nested_debug_values("parameter", parameters))
     return details
+
+
+def _safe_nested_debug_values(prefix: str, values: dict[str, Any]) -> dict[str, Any]:
+    """Return safe scalar values from nested camera debug payloads."""
+    return {
+        f"{prefix}_{key}": values[key]
+        for key in _DATA_CHANNEL_SAFE_VALUE_KEYS
+        if key in values and isinstance(values[key], str | int | float | bool)
+    }
 
 
 def _sdp_debug(sdp: str | None) -> dict[str, Any]:
@@ -298,6 +319,7 @@ def _sdp_debug(sdp: str | None) -> dict[str, Any]:
         "mids": mids,
         "directions": _sdp_media_directions(sdp),
         "video_codecs": _sdp_media_codecs(sdp, "video"),
+        "video_payloads": _sdp_media_payloads(sdp, "video"),
         "fingerprints": _sdp_fingerprints(sdp),
         "candidate_lines": sum(
             1 for line in sdp.splitlines() if line.startswith("a=candidate:")
@@ -339,6 +361,62 @@ def _sdp_media_codecs(sdp: str, media_kind: str) -> list[str]:
             if codec_name not in codecs:
                 codecs.append(codec_name)
     return codecs
+
+
+def _sdp_media_payloads(sdp: str, media_kind: str) -> list[dict[str, str]]:
+    """Return compact RTP payload details for one SDP media section."""
+    payloads: dict[str, dict[str, str]] = {}
+    in_section = False
+    for line in sdp.splitlines():
+        if line.startswith("m="):
+            in_section = line.startswith(f"m={media_kind} ")
+            continue
+        if not in_section:
+            continue
+        if line.startswith("a=rtpmap:"):
+            payload, codec = line.removeprefix("a=rtpmap:").split(None, 1)
+            payloads.setdefault(payload, {"payload": payload})["codec"] = codec.split(
+                "/", 1
+            )[0].upper()
+        elif line.startswith("a=fmtp:"):
+            payload, fmtp = line.removeprefix("a=fmtp:").split(None, 1)
+            compact_fmtp = []
+            for item in fmtp.split(";"):
+                key_value = item.strip()
+                if key_value.startswith(
+                    ("profile-level-id=", "packetization-mode=", "apt=")
+                ):
+                    compact_fmtp.append(key_value)
+            if compact_fmtp:
+                payloads.setdefault(payload, {"payload": payload})["fmtp"] = ";".join(
+                    compact_fmtp
+                )
+    return list(payloads.values())
+
+
+def _receiver_media_ssrcs(receiver: Any) -> list[int]:
+    """Return primary media SSRCs aiortc has seen for a receiver."""
+    remote_streams = getattr(receiver, "_RTCRtpReceiver__remote_streams", None)
+    active_ssrcs = getattr(receiver, "_RTCRtpReceiver__active_ssrc", None)
+    rtx_ssrcs = getattr(receiver, "_RTCRtpReceiver__rtx_ssrc", None)
+    rtx_to_media: dict[int, int] = {}
+    if isinstance(rtx_ssrcs, dict):
+        for rtx_ssrc, media_ssrc in rtx_ssrcs.items():
+            with suppress(TypeError, ValueError):
+                rtx_to_media[int(rtx_ssrc)] = int(media_ssrc)
+    for value in (remote_streams, active_ssrcs):
+        ssrcs: set[int] = set()
+        if not isinstance(value, dict):
+            continue
+        for ssrc in value:
+            with suppress(TypeError, ValueError):
+                media_ssrc = int(ssrc)
+                if media_ssrc in rtx_to_media:
+                    media_ssrc = rtx_to_media[media_ssrc]
+                ssrcs.add(media_ssrc)
+        if ssrcs:
+            return sorted(ssrcs)
+    return []
 
 
 def _sdp_fingerprints(sdp: str) -> list[str]:
@@ -432,7 +510,7 @@ def _answer_reject_reason(payload: Any, ticket: XSenseWebRTCTicket) -> str:
     if not isinstance(encoded, str):
         return "missing_message_payload"
     with suppress(Exception):
-        decoded = json.loads(base64.b64decode(encoded).decode())
+        decoded = json.loads(_base64_decode_required_text(encoded))
         if isinstance(decoded.get("sdp"), str):
             return "accepted"
     return "invalid_sdp_payload"
@@ -567,7 +645,7 @@ def parse_signal_message(raw: str | bytes) -> tuple[str | None, Any]:
             payload = json.loads(payload)
         if isinstance(payload, str):
             with suppress(Exception):
-                payload = json.loads(base64.b64decode(payload).decode())
+                payload = json.loads(_base64_decode_required_text(payload))
     if event in {"PEER_IN", "PEER_OUT"}:
         payload = _signal_peer_payload(payload)
     return event, payload
@@ -604,9 +682,15 @@ def _looks_like_encoded_peer_payload(value: str) -> bool:
     return any(char in value for char in "=+/") or value.startswith("eyJ")
 
 
+def _base64_decode_required_text(value: str) -> str:
+    """Decode APK no-wrap base64 text, accepting stripped padding."""
+    missing_padding = (-len(value)) % 4
+    return base64.b64decode(value + ("=" * missing_padding), validate=True).decode()
+
+
 def _base64_decode_text(value: str) -> str | None:
     with suppress(Exception):
-        decoded = base64.b64decode(value, validate=True).decode()
+        decoded = _base64_decode_required_text(value)
         if decoded:
             return decoded
     return None
@@ -664,6 +748,7 @@ class XSenseWebRTCSession:
         self._peer_in_timeout_task: asyncio.Task[None] | None = None
         self._play_timeout_task: asyncio.Task[None] | None = None
         self._first_frame_timeout_task: asyncio.Task[None] | None = None
+        self._first_frame_pli_task: asyncio.Task[None] | None = None
         self._keep_alive_task: asyncio.Task[None] | None = None
         self._start_live_sent = False
         self._first_frame_received = False
@@ -789,6 +874,7 @@ class XSenseWebRTCSession:
             await self._cancel_task(getattr(self, "_peer_reconnect_task", None))
             await self._cancel_task(getattr(self, "_play_timeout_task", None))
             await self._cancel_task(getattr(self, "_first_frame_timeout_task", None))
+            await self._cancel_task(getattr(self, "_first_frame_pli_task", None))
             await self._cancel_task(getattr(self, "_keep_alive_task", None))
             if self._camera_local_description_task:
                 self._camera_local_description_task.cancel()
@@ -875,12 +961,47 @@ class XSenseWebRTCSession:
             raise
         if self._closed:
             return
+        extra: dict[str, Any] = {"code": code, "timeout_s": delay}
+        if code == "xsense_webrtc_first_frame_timeout":
+            extra.update(await self._camera_receiver_stats_debug())
         LOGGER.debug(
             "X-Sense WebRTC timeout: %s",
-            self._debug_context(code=code, timeout_s=delay),
+            self._debug_context(**extra),
         )
         self._send_ha_message(WebRTCError(code, message))
         await self.close()
+
+    async def _camera_receiver_stats_debug(self) -> dict[str, Any]:
+        camera_pc = self._camera_pc
+        if camera_pc is None:
+            return {}
+        summaries: list[dict[str, Any]] = []
+        for receiver in list(getattr(camera_pc, "getReceivers", lambda: [])()):
+            track = getattr(receiver, "track", None)
+            if getattr(track, "kind", None) != "video":
+                continue
+            summary: dict[str, Any] = {"ssrcs": _receiver_media_ssrcs(receiver)}
+            get_stats = getattr(receiver, "getStats", None)
+            if callable(get_stats):
+                with suppress(Exception):
+                    stats = await get_stats()
+                    inbound = [
+                        report
+                        for report in stats.values()
+                        if getattr(report, "type", None) == "inbound-rtp"
+                    ]
+                    if inbound:
+                        report = inbound[0]
+                        summary.update(
+                            {
+                                "packetsReceived": getattr(report, "packetsReceived", None),
+                                "bytesReceived": getattr(report, "bytesReceived", None),
+                                "packetsLost": getattr(report, "packetsLost", None),
+                                "jitter": getattr(report, "jitter", None),
+                            }
+                        )
+            summaries.append({k: v for k, v in summary.items() if v is not None})
+        return {"video_receiver_stats": summaries} if summaries else {}
 
     async def _connect_signal(self) -> None:
         """Open the X-Sense signal websocket using the current ticket."""
@@ -1054,8 +1175,73 @@ class XSenseWebRTCSession:
         if first_frame_task:
             first_frame_task.cancel()
             self._first_frame_timeout_task = None
+        self._cancel_first_frame_keyframe_requests()
         if old_pc is not None:
             self._create_task(old_pc.close())
+
+    def _start_first_frame_keyframe_requests(self) -> None:
+        """Request a video keyframe while waiting for the APK first frame path."""
+        if self._closed or self._first_frame_received:
+            return
+        task = getattr(self, "_first_frame_pli_task", None)
+        if task and not task.done():
+            return
+        self._first_frame_pli_task = asyncio.create_task(
+            self._request_first_frame_keyframes()
+        )
+
+    async def _request_first_frame_keyframes(self) -> None:
+        """Ask the camera for a decodable first frame until one arrives."""
+        try:
+            while not self._closed and not self._first_frame_received:
+                sent = await self._send_camera_picture_loss_indication()
+                if sent:
+                    LOGGER.debug(
+                        "X-Sense WebRTC requested camera keyframe: %s",
+                        self._debug_context(pli_count=sent),
+                    )
+                else:
+                    LOGGER.debug(
+                        "X-Sense WebRTC waiting for camera video SSRC before keyframe request: %s",
+                        self._debug_context(),
+                    )
+                await asyncio.sleep(_FIRST_FRAME_PLI_INTERVAL)
+        except asyncio.CancelledError:
+            raise
+        finally:
+            if getattr(self, "_first_frame_pli_task", None) is asyncio.current_task():
+                self._first_frame_pli_task = None
+
+    async def _send_camera_picture_loss_indication(self) -> int:
+        """Send RTCP PLI for camera video receivers that have active SSRCs."""
+        camera_pc = self._camera_pc
+        if camera_pc is None:
+            return 0
+        sent = 0
+        for receiver in list(getattr(camera_pc, "getReceivers", lambda: [])()):
+            track = getattr(receiver, "track", None)
+            if getattr(track, "kind", None) != "video":
+                continue
+            send_pli = getattr(receiver, "_send_rtcp_pli", None)
+            if not callable(send_pli):
+                continue
+            for ssrc in _receiver_media_ssrcs(receiver):
+                try:
+                    await send_pli(ssrc)
+                except Exception as err:  # noqa: BLE001 - debug only, keep trying others
+                    LOGGER.debug(
+                        "X-Sense WebRTC camera keyframe request failed: %s",
+                        self._debug_context(error=type(err).__name__, message=str(err)),
+                    )
+                    continue
+                sent += 1
+        return sent
+
+    def _cancel_first_frame_keyframe_requests(self) -> None:
+        task = getattr(self, "_first_frame_pli_task", None)
+        if task:
+            task.cancel()
+            self._first_frame_pli_task = None
 
     def _cancel_play_timeout(self) -> None:
         play_task = getattr(self, "_play_timeout_task", None)
@@ -1102,6 +1288,7 @@ class XSenseWebRTCSession:
         if first_frame_task:
             first_frame_task.cancel()
             self._first_frame_timeout_task = None
+        self._cancel_first_frame_keyframe_requests()
 
     def _send_stop_live(self) -> None:
         """Send the APK stopLive data-channel command before closing."""
@@ -1299,11 +1486,16 @@ class XSenseWebRTCSession:
         )
 
     def _send_start_live_if_ready(self) -> None:
-        """Send startLive when the APK would: after the data channel opens."""
-        if (
-            self._start_live_sent
-            or getattr(self._data_channel, "readyState", None) != "open"
-        ):
+        """Send startLive when the APK would: after dataChannelConnected."""
+        if self._start_live_sent:
+            return
+        if getattr(self._data_channel, "readyState", None) != "open":
+            return
+        if not self._data_channel_connected:
+            LOGGER.debug(
+                "X-Sense WebRTC waiting for dataChannelConnected before startLive: %s",
+                self._debug_context(),
+            )
             return
         if not self._send_data_channel_json(
             make_start_live_data_channel_message(self._resolution)
@@ -1318,6 +1510,7 @@ class XSenseWebRTCSession:
                     "Camera connected but did not send a video frame",
                 )
             )
+        self._start_first_frame_keyframe_requests()
         LOGGER.debug(
             "X-Sense WebRTC sent startLive: %s",
             self._debug_context(size=_map_video_size(self._resolution)),
@@ -1610,7 +1803,7 @@ def _answer_sdp(payload: Any) -> str | None:
     if not isinstance(encoded, str):
         return None
     with suppress(Exception):
-        decoded = json.loads(base64.b64decode(encoded).decode())
+        decoded = json.loads(_base64_decode_required_text(encoded))
         sdp = decoded.get("sdp")
         if isinstance(sdp, str):
             return sdp
@@ -1641,7 +1834,7 @@ def _data_channel_answer_sdp(payload: Any) -> str | None:
     if not isinstance(encoded, str):
         return None
     with suppress(Exception):
-        decoded = json.loads(base64.b64decode(encoded).decode())
+        decoded = json.loads(_base64_decode_required_text(encoded))
         sdp = decoded.get("sdp")
         if isinstance(sdp, str):
             return sdp
