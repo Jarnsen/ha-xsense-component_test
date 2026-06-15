@@ -108,6 +108,40 @@ def test_read_only_camera_entities_require_camera_entity():
     assert binary_sensor.has_camera_data("needMotion")(camera)
 
 
+def test_ai_detection_binary_sensors_require_camera_entity():
+    non_camera = entity(
+        "XS01-WX", {"personDetected": True, "packagePickUpDetected": True}
+    )
+    camera = entity("SSC0A", {"personDetected": True, "packagePickUpDetected": True})
+
+    for key in ("person_detected", "package_pick_up_detected"):
+        description = next(item for item in binary_sensor.SENSORS if item.key == key)
+        assert not description.exists_fn(non_camera)
+        assert description.exists_fn(camera)
+
+
+def test_ai_detection_sensors_require_camera_entity():
+    non_camera = entity(
+        "XS01-WX",
+        {
+            "lastAiDetection": "person",
+            "lastPackagePickUpDetectionTime": "20260614231812",
+        },
+    )
+    camera = entity(
+        "SSC0A",
+        {
+            "lastAiDetection": "person",
+            "lastPackagePickUpDetectionTime": "20260614231812",
+        },
+    )
+
+    for key in ("last_ai_detection", "last_package_pick_up_detection_time"):
+        description = next(item for item in sensor.SENSORS if item.key == key)
+        assert not description.exists_fn(non_camera)
+        assert description.exists_fn(camera)
+
+
 def test_camera_availability_follows_apk_non_offline_statuses():
     from custom_components.xsense.api.entity_map import EntityType
     from custom_components.xsense.entity import _apk_entity_is_available

@@ -1037,26 +1037,49 @@ async def test_get_state_raises_for_malformed_non_404_response():
 
 
 class FakeXSenseStation:
-    def __init__(self, station_type: str = "SBS50") -> None:
+    def __init__(self, station_type: str, sn: str = "station-sn") -> None:
         self.type = station_type
-        self.sn = "station-sn"
-        self.shadow_name = (
-            "SBS50station-sn" if station_type == "SBS50" else "station-sn"
-        )
+        self.sn = sn
+        self.shadow_name = _expected_station_shadow_name(station_type, sn)
         self.data = {}
+
+
+def _expected_station_shadow_name(station_type: str, sn: str) -> str:
+    if station_type == "SBS10":
+        return sn
+    if station_type == "SBS50":
+        return f"SBS50{sn}"
+    if station_type == "XS01-WX":
+        separator = "-" if "EN" in sn.upper() or "UL" in sn.upper() else ""
+        return f"XS01-WX{separator}{sn}"
+    if station_type in {"XS0E-iR", "XS03-WX"}:
+        return f"{station_type}{sn}"
+    return f"{station_type}-{sn}"
 
 
 class FakeXSenseDevice:
     def __init__(
         self,
-        device_type: str = "XS0B-MR",
-        entity_type=entity_map.EntityType.SMOKE,
+        device_type: str,
+        entity_type,
+        station: FakeXSenseStation,
     ) -> None:
         self.type = device_type
         self.sn = "device-sn"
-        self.station = FakeXSenseStation()
+        self.station = station
         self.data = {}
         self.entity_type = entity_type
+
+
+def fake_child_device(
+    device_type: str,
+    *,
+    station: FakeXSenseStation,
+    entity_type=None,
+) -> FakeXSenseDevice:
+    return FakeXSenseDevice(
+        device_type, entity_type or entity_map.entities[device_type]["type"], station
+    )
 
 
 async def _capture_action(client, target, action):
@@ -1091,45 +1114,45 @@ async def _capture_action(client, target, action):
             "XS0B-MR",
             entity_map.EntityType.SMOKE,
             {},
-            None,
+            "SBS50",
             "2nd_selftest_device-sn",
             "app2ndSelfTest",
             "source=1",
             13,
-            None,
+            "SBS50station-sn",
         ),
         (
             "XS01-WX",
             entity_map.EntityType.SMOKE,
             {},
-            "XS01-WX",
-            "appselftest_device-sn",
-            "appSelfTest",
-            None,
-            None,
-            None,
-        ),
-        (
-            "XS01-WX",
-            entity_map.EntityType.SMOKE,
-            {},
-            None,
+            "SBS50",
             "2nd_selftest_device-sn",
             "appSelfTest",
             None,
             13,
-            None,
+            "SBS50station-sn",
+        ),
+        (
+            "XS01-WX",
+            entity_map.EntityType.SMOKE,
+            {"smokeEdition": "9"},
+            "SBS50",
+            "2nd_selftest_device-sn",
+            "app2ndSelfTest",
+            "source=1",
+            13,
+            "SBS50station-sn",
         ),
         (
             "XS01-M",
             entity_map.EntityType.SMOKE,
             {"smokeEdition": "9"},
-            None,
+            "SBS50",
             "2nd_selftest_device-sn",
             "app2ndSelfTest",
             "source=1",
             13,
-            None,
+            "SBS50station-sn",
         ),
         (
             "XS01-M",
@@ -1154,59 +1177,48 @@ async def _capture_action(client, target, action):
             "XS03-iWXstation-sn",
         ),
         (
-            "XP0J-iA",
-            entity_map.EntityType.COMBI,
-            {},
-            None,
-            "2nd_selftest_device-sn",
-            "appSelfTest",
-            "source=1",
-            13,
-            "XP0J-iA-station-sn",
-        ),
-        (
             "SD11-MR",
             entity_map.EntityType.SMOKE,
             {},
-            None,
+            "SBS50",
             "2nd_selftest_device-sn",
             "app2ndSelfTest",
             "source=1",
             13,
-            None,
+            "SBS50station-sn",
         ),
         (
             "SWS0A",
             entity_map.EntityType.WATER,
             {},
-            None,
+            "SBS50",
             "2nd_selftest_device-sn",
             "waterSelfTest",
             "source=1",
             13,
-            None,
+            "SBS50station-sn",
         ),
         (
             "SDS0A",
             entity_map.EntityType.DOOR,
             {},
-            None,
+            "SBS50",
             "2nd_selftest_device-sn",
             "app2ndSelfTest",
             "source=1",
             13,
-            None,
+            "SBS50station-sn",
         ),
         (
             "SAL51",
             entity_map.EntityType.LISTENER,
             {},
-            None,
+            "SBS50",
             "2nd_selftest_device-sn",
             "listenerSelfTest",
             None,
             13,
-            None,
+            "SBS50station-sn",
         ),
     ],
 )
@@ -1223,22 +1235,24 @@ async def test_self_test_uses_apk_payload_shape(
 ):
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
-    device = FakeXSenseDevice(device_type, entity_type)
+    device = fake_child_device(
+        device_type, station=FakeXSenseStation(station_type), entity_type=entity_type
+    )
     device.data = device_data
-    if station_type:
-        device.station = FakeXSenseStation(station_type)
 
     station_arg, page, desired = await _capture_action(client, device, "test")
 
-    if expected_station_shadow is None:
+    if station_type == "SBS10":
+        assert station_arg is not device.station
+        assert station_arg.shadow_name == expected_station_shadow
+    else:
         assert station_arg is device.station
+        assert device.station.shadow_name == expected_station_shadow
     assert page == expected_page
     assert desired["shadow"] == expected_shadow
     assert desired["stationSN"] == "station-sn"
     assert desired["deviceSN"] == "device-sn"
     assert desired["userId"] == "user-id"
-    if expected_station_shadow is not None:
-        assert station_arg.shadow_name == expected_station_shadow
     if expected_user_param is None:
         assert "userParam" not in desired
     else:
@@ -1248,6 +1262,35 @@ async def test_self_test_uses_apk_payload_shape(
     else:
         assert desired["time"].isdigit()
         assert len(desired["time"]) == expected_time_len
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("station_sn", "expected_thing"),
+    [
+        ("ABC123", "XS01-WXABC123"),
+        ("ABCEN123", "XS01-WX-ABCEN123"),
+    ],
+)
+async def test_xs01_wx_standalone_self_test_uses_own_station_entity_path(
+    station_sn, expected_thing
+):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    station = FakeXSenseStation("XS01-WX", station_sn)
+    station.entity_type = entity_map.EntityType.SMOKE
+
+    station_arg, page, desired = await _capture_action(client, station, "test")
+
+    assert station_arg is station
+    assert station_arg.shadow_name == expected_thing
+    assert page == f"appselftest_{station_sn}"
+    assert desired == {
+        "deviceSN": station_sn,
+        "shadow": "appSelfTest",
+        "stationSN": station_sn,
+        "userId": "user-id",
+    }
 
 
 @pytest.mark.asyncio
@@ -1263,8 +1306,7 @@ async def test_xs01_wx_mute_targets_apk_thing_name(
 ):
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
-    device = FakeXSenseDevice("XS01-WX")
-    device.station.sn = station_sn
+    device = fake_child_device("XS01-WX", station=FakeXSenseStation("SBS50", station_sn))
     device.data = {"smokeEdition": smoke_edition}
 
     station_arg, page, desired = await _capture_action(client, device, "mute")
@@ -1274,6 +1316,32 @@ async def test_xs01_wx_mute_targets_apk_thing_name(
     assert desired["shadow"] == "appMute"
     assert desired["stationSN"] == station_sn
     assert desired["deviceSN"] == "device-sn"
+    assert desired["muteType"] == "0"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("station_sn", "expected_thing"),
+    [
+        ("ABC123", "XS01-WXABC123"),
+        ("ABCEN123", "XS01-WX-ABCEN123"),
+    ],
+)
+async def test_xs01_wx_standalone_mute_uses_own_station_entity_path(
+    station_sn, expected_thing
+):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    station = FakeXSenseStation("XS01-WX", station_sn)
+    station.entity_type = entity_map.EntityType.SMOKE
+
+    station_arg, page, desired = await _capture_action(client, station, "mute")
+
+    assert station_arg.shadow_name == expected_thing
+    assert page == "appmute"
+    assert desired["shadow"] == "appMute"
+    assert desired["stationSN"] == station_sn
+    assert desired["deviceSN"] == station_sn
     assert desired["muteType"] == "0"
 
 
@@ -1320,10 +1388,39 @@ async def test_wifi_device_mute_uses_apk_factory_payload_shape(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("device_type", "entity_type", "expected_thing"),
+    [
+        ("XP0J-iA", entity_map.EntityType.COMBI, "XP0J-iA-station-sn"),
+        ("XS0R-iA", entity_map.EntityType.SMOKE, "XS0R-iA-station-sn"),
+    ],
+)
+async def test_standalone_wifi_self_test_uses_own_station_entity_path(
+    device_type, entity_type, expected_thing
+):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    station = FakeXSenseStation(device_type)
+    station.entity_type = entity_type
+
+    station_arg, page, desired = await _capture_action(client, station, "test")
+
+    assert station_arg.shadow_name == expected_thing
+    assert page == "2nd_selftest_station-sn"
+    assert desired["shadow"] == "appSelfTest"
+    assert desired["stationSN"] == "station-sn"
+    assert desired["deviceSN"] == "station-sn"
+    assert desired["userId"] == "user-id"
+    assert desired["userParam"] == "source=1"
+    assert desired["time"].isdigit()
+    assert len(desired["time"]) == 13
+
+
+@pytest.mark.asyncio
 async def test_mailbox_mute_uses_apk_payload_shape():
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
-    device = FakeXSenseDevice("SMA51", entity_map.EntityType.MAILBOX)
+    device = fake_child_device("SMA51", station=FakeXSenseStation("SBS50"))
 
     station_arg, page, desired = await _capture_action(client, device, "mute")
 
@@ -1359,7 +1456,7 @@ async def test_mailbox_mute_uses_apk_payload_shape():
 async def test_sbs50_child_mute_uses_apk_payload_shape(device_type, expected_shadow):
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
-    device = FakeXSenseDevice(device_type)
+    device = fake_child_device(device_type, station=FakeXSenseStation("SBS50"))
 
     station_arg, page, desired = await _capture_action(client, device, "mute")
 
@@ -1378,7 +1475,7 @@ async def test_sbs50_child_mute_uses_apk_payload_shape(device_type, expected_sha
 async def test_xs03_iwx_mute_uses_apk_station_serial_thing_name():
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
-    device = FakeXSenseDevice("XS03-iWX")
+    device = fake_child_device("XS03-iWX", station=FakeXSenseStation("SBS10"))
 
     station_arg, page, desired = await _capture_action(client, device, "mute")
 
@@ -1394,35 +1491,72 @@ async def test_xs03_iwx_mute_uses_apk_station_serial_thing_name():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("device_type", ["XP0J-iA", "XS0R-iA"])
-async def test_wifi_fire_drill_targets_apk_wifi_thing_name(device_type):
+@pytest.mark.parametrize(
+    ("device_type", "entity_type", "expected_thing"),
+    [
+        ("XP0J-iA", entity_map.EntityType.COMBI, "XP0J-iA-station-sn"),
+        ("XS0R-iA", entity_map.EntityType.SMOKE, "XS0R-iA-station-sn"),
+    ],
+)
+async def test_standalone_wifi_fire_drill_uses_own_station_entity_path(
+    device_type, entity_type, expected_thing
+):
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
-    device = FakeXSenseDevice(device_type, entity_map.EntityType.COMBI)
-    calls = []
+    station = FakeXSenseStation(device_type)
+    station.entity_type = entity_type
 
-    async def do_thing(station, page, data):
-        calls.append((station, page, data))
-        return {"ok": True}
+    station_arg, page, desired = await _capture_action(client, station, "firedrill")
 
-    client.do_thing = do_thing
-
-    await client.action(device, "firedrill")
-
-    assert len(calls) == 1
-    station, page, data = calls[0]
-    desired = data["state"]["desired"]
-    assert station.shadow_name == f"{device_type}-station-sn"
+    assert station_arg.shadow_name == expected_thing
     assert page == "2nd_firedrill"
     assert desired["stationSN"] == "station-sn"
     assert desired["deviceSN"] == "station-sn"
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("device_type", "expected_shadow", "expected_topic", "expected_thing"),
+    [
+        ("SC06-WX", "appMute", "2nd_appmute", "SC06-WX-station-sn"),
+        ("SC07-WX", "appMute", "2nd_appmute", "SC07-WX-station-sn"),
+        ("XC04-WX", "appMute", "2nd_appmute", "XC04-WX-station-sn"),
+        ("XC0C-iA", "appMute", "2nd_appmute", "XC0C-iA-station-sn"),
+        ("XC0C-iR", "appMute", "2nd_appmute", "XC0C-iR-station-sn"),
+        ("XC0M-iR", "appMute", "2nd_appmute", "XC0M-iR-station-sn"),
+        ("XP0A-iR", "appMute", "2nd_appmute", "XP0A-iR-station-sn"),
+        ("XP0H-iR", "appMute", "2nd_appmute", "XP0H-iR-station-sn"),
+        ("XP0J-iA", "appMute", "2nd_appmute", "XP0J-iA-station-sn"),
+        ("XR0A-iR", "extendMute", "2nd_appmute", "XR0A-iR-station-sn"),
+        ("XS03-WX", "appMute", "2nd_appmute", "XS03-WXstation-sn"),
+        ("XS0B-iR", "appMute", "2nd_appmute", "XS0B-iR-station-sn"),
+        ("XS0E-iR", "appMute", "2nd_appmute", "XS0E-iRstation-sn"),
+        ("XS0R-iA", "appMute", "2nd_appmute", "XS0R-iA-station-sn"),
+        ("STH0C", "extendMute", "2nd_appmute", "STH0C-station-sn"),
+        ("SWS0B", "appWater", "2nd_appwater", "SWS0B-station-sn"),
+    ],
+)
+async def test_standalone_wifi_mute_uses_own_station_entity_path_for_every_model(
+    device_type, expected_shadow, expected_topic, expected_thing
+):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    station = FakeXSenseStation(device_type)
+
+    station_arg, page, desired = await _capture_action(client, station, "mute")
+
+    assert station_arg.shadow_name == expected_thing
+    assert page == expected_topic
+    assert desired["shadow"] == expected_shadow
+    assert desired["stationSN"] == station.sn
+    assert desired["deviceSN"] == station.sn
+
+
+@pytest.mark.asyncio
 async def test_fire_drill_keeps_datetime_payload_shape():
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
-    device = FakeXSenseDevice("XS0B-MR")
+    device = fake_child_device("XS0B-MR", station=FakeXSenseStation("SBS50"))
     calls = []
 
     async def do_thing(station, page, data):
@@ -1496,7 +1630,7 @@ async def test_do_thing_signs_and_sends_same_serialized_body():
 
     payload = {"state": {"desired": {"b": 2, "a": 1, "label": "中文"}}}
     result = await client.do_thing(
-        FakeXSenseStation(), "2nd_selftest_device-sn", payload
+        FakeXSenseStation("SBS50"), "2nd_selftest_device-sn", payload
     )
 
     assert result == {"ok": True}
@@ -1528,7 +1662,7 @@ async def test_do_thing_raises_on_shadow_update_failure():
 
     with pytest.raises(exceptions.APIFailure, match="403/shadow error"):
         await client.do_thing(
-            FakeXSenseStation(),
+            FakeXSenseStation("SBS50"),
             "2nd_selftest_device-sn",
             {"state": {"desired": {"a": 1}}},
         )
@@ -1695,7 +1829,9 @@ async def test_device_volume_uses_apk_device_payload_shape(
     device_type, entity_type, device_data, volume_key, volume, expected_desired
 ):
     client = async_xsense.AsyncXSense()
-    device = FakeXSenseDevice(device_type, entity_type)
+    device = fake_child_device(
+        device_type, station=FakeXSenseStation("SBS50"), entity_type=entity_type
+    )
     device.data = device_data
 
     station_arg, page, desired = await _capture_volume_update(
@@ -1711,7 +1847,7 @@ async def test_device_volume_uses_apk_device_payload_shape(
 async def test_light_power_uses_lamp_power_payload_shape():
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
-    device = FakeXSenseDevice("SSL51", entity_map.EntityType.LIGHT)
+    device = fake_child_device("SSL51", station=FakeXSenseStation("SBS50"))
     calls = []
 
     async def do_thing(station_arg, page, data):
@@ -2109,7 +2245,7 @@ async def test_update_camera_data_updates_known_camera_from_addx_device_list():
 
 
 @pytest.mark.asyncio
-async def test_update_camera_data_keeps_existing_camera_stations_not_in_addx_list():
+async def test_update_camera_data_keeps_existing_home_camera_entries_not_in_addx_list():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
     test_house.set_stations(
@@ -2118,9 +2254,9 @@ async def test_update_camera_data_keeps_existing_camera_stations_not_in_addx_lis
             "stations": [],
             "cameras": [
                 {
-                    "ipcId": "stub-id",
-                    "ipcSn": "stub-sn",
-                    "ipcName": "Stub Camera",
+                    "ipcId": "home-camera-id",
+                    "ipcSn": "home-camera-sn",
+                    "ipcName": "Home Camera",
                     "category": "SSC0A",
                 }
             ],
@@ -2150,7 +2286,7 @@ async def test_update_camera_data_keeps_existing_camera_stations_not_in_addx_lis
 
     await client.update_camera_data()
 
-    assert test_house.get_station_by_sn("stub-sn") is not None
+    assert test_house.get_station_by_sn("home-camera-sn") is not None
     camera = test_house.get_station_by_sn("real-sn")
     assert camera is not None
     assert camera.entity_id == "real-sn"
@@ -2162,7 +2298,7 @@ async def test_update_camera_data_keeps_existing_camera_stations_not_in_addx_lis
 
 
 @pytest.mark.asyncio
-async def test_update_camera_data_creates_camera_from_addx_without_home_stub():
+async def test_update_camera_data_creates_camera_from_addx_without_home_camera_entry():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "1234", "Home", "US", "us-east-1", "mqtt")
     test_house.set_stations({"stationSort": [], "stations": [], "cameras": []})
@@ -2214,8 +2350,8 @@ async def test_update_camera_data_creates_camera_from_addx_without_home_stub():
             },
             "2304x1296",
         ),
-        ({"supportedRecordingResolutions": []}, "1280x720"),
-        ({"supportedRecordingResolutions": ["P1296"]}, "1280x720"),
+        ({"supportedRecordingResolutions": []}, "auto"),
+        ({"supportedRecordingResolutions": ["P1296"]}, "auto"),
         ({"deviceSupportResolution": ["bad", "P720"]}, "bad"),
         ({"liveResolution": "UNKNOWN_RESOLUTION"}, "UNKNOWN_RESOLUTION"),
     ],

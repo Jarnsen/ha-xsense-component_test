@@ -30,6 +30,40 @@ from .mqtt import DEFAULT_ENCODING, DEFAULT_SUBSCRIBE_QOS, XSenseMQTT
 
 _IGNORED_TOPIC_SUFFIXES = ("/update/accepted", "/update/documents", "/update/rejected")
 
+_APK_AI_DETECTION_OBJECTS = {
+    "person",
+    "pet",
+    "vehicle",
+    "vehicle_enter",
+    "vehicle_out",
+    "vehicle_held_up",
+    "package",
+    "package_drop_off",
+    "package_pick_up",
+    "package_exist",
+    "other",
+}
+
+_APK_AI_DETECTION_GROUPS = {
+    "person": {"person"},
+    "pet": {"pet"},
+    "vehicle": {"vehicle", "vehicle_enter", "vehicle_out", "vehicle_held_up"},
+    "package": {"package", "package_drop_off", "package_pick_up", "package_exist"},
+    "other": {"other"},
+}
+
+_APK_AI_DETECTION_DATA_KEYS = {
+    "person": "person",
+    "pet": "pet",
+    "vehicle_enter": "vehicleEnter",
+    "vehicle_out": "vehicleOut",
+    "vehicle_held_up": "vehicleHeldUp",
+    "package_drop_off": "packageDropOff",
+    "package_pick_up": "packagePickUp",
+    "package_exist": "packageExist",
+    "other": "other",
+}
+
 
 async def _async_init_and_login(xsense: AsyncXSense, email: str, password: str) -> None:
     """Initialize the X-Sense client and log in."""
@@ -345,8 +379,16 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         station_sn = None
         device_sn = None
         if isinstance(station_data, dict):
-            station_sn = station_data.get("stationSN") or station_data.get("_stationSN")
-            device_sn = station_data.get("deviceSN") or station_data.get("_deviceSN")
+            station_sn = (
+                station_data.get("stationSN")
+                or station_data.get("_stationSN")
+                or station_data.get("serialNumber")
+            )
+            device_sn = (
+                station_data.get("deviceSN")
+                or station_data.get("_deviceSN")
+                or station_data.get("serialNumber")
+            )
 
         station = self._get_station_by_id(station_sn)
         if station is None:
@@ -392,8 +434,10 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 station_data["lastSelfTestTime"] = test_time
 
         children = station_data.pop("devs", {}) or {}
-        target_device_sn = station_data.get("deviceSN") or station_data.get(
-            "_deviceSN"
+        target_device_sn = (
+            station_data.get("deviceSN")
+            or station_data.get("_deviceSN")
+            or station_data.get("serialNumber")
         )
         if (
             target_device_sn
@@ -502,16 +546,208 @@ def _mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any] | list[Any]:
         return list(reported)
 
     event_data = data.get("eventData")
+    if isinstance(event_data, str):
+        try:
+            event_data = json.loads(event_data)
+        except json.JSONDecodeError:
+            event_data = None
     if isinstance(event_data, dict):
         result = event_data.copy()
         if event_time := data.get("eventTime"):
             result.setdefault("time", event_time)
-        if event_type := data.get("eventType"):
+        if event_type := data.get("eventType") or result.get("eventType"):
             result.setdefault("eventType", event_type)
+        _apply_apk_event_aliases(result)
         return result
 
     return {}
 
+
+def _apply_apk_event_aliases(data: dict[str, Any]) -> None:
+    """Apply APK event aliases that are not reported as shadow keys."""
+    _apply_apk_ai_detection_aliases(data)
+
+    event_type = data.get("eventType")
+    try:
+        event_type = int(event_type)
+    except (TypeError, ValueError):
+        return
+
+    # APK history event 92 is Motion Detected. The device UI uses isMoved for
+    # the live motion state, so expose the event through that same key.
+    if event_type == 92:
+        data.setdefault("isMoved", "1")
+        if time_value := data.get("time") or data.get("eventTime"):
+            data.setdefault("lastMotionTime", time_value)
+
+
+def _apply_apk_ai_detection_aliases(data: dict[str, Any]) -> None:
+    """Apply APK AI detection object names from camera event payloads."""
+    fallback_time = data.get("time") or data.get("eventTime")
+    object_times = _apk_ai_detection_object_times(data, fallback_time)
+    objects = set(object_times)
+    if not objects:
+        return
+
+    data["lastAiDetection"] = ",".join(sorted(objects))
+    for group, object_names in _APK_AI_DETECTION_GROUPS.items():
+        detected_objects = objects & object_names
+        detected = bool(detected_objects)
+        data[f"{group}Detected"] = detected
+        if detected:
+            time_value = _latest_apk_detection_time(
+                object_times.get(name) for name in detected_objects
+            )
+            if time_value:
+                data[f"last{group.title()}DetectionTime"] = time_value
+    for object_name, data_key in _APK_AI_DETECTION_DATA_KEYS.items():
+        detected = object_name in objects
+        data[f"{data_key}Detected"] = detected
+        if detected and object_times.get(object_name):
+            data[f"last{data_key[0].upper()}{data_key[1:]}DetectionTime"] = object_times[
+                object_name
+            ]
+
+
+def _apk_ai_detection_object_times(
+    data: dict[str, Any], fallback_time: Any = None
+) -> dict[str, Any]:
+    """Return APK AI detection object names and their best event timestamp."""
+    raw_values: list[Any] = [
+        data.get("eventObjectType"),
+        data.get("eventItems"),
+        data.get("lastType"),
+    ]
+    objects: dict[str, Any] = {}
+    for raw_value in raw_values:
+        for name, time_value in _apk_ai_detection_name_times(
+            raw_value, fallback_time
+        ).items():
+            objects[name] = _latest_apk_detection_time((objects.get(name), time_value))
+    return objects
+
+
+def _apk_ai_detection_name_times(value: Any, fallback_time: Any = None) -> dict[str, Any]:
+    """Return APK AI detection object names with timestamps from nested payloads."""
+    if value is None:
+        return {}
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith(("{", "[")):
+            with suppress(json.JSONDecodeError):
+                return _apk_ai_detection_name_times(json.loads(text), fallback_time)
+        return {name: fallback_time for name in _apk_ai_detection_names(text)}
+    if isinstance(value, dict):
+        item_time = value.get("eventTime") or value.get("time") or fallback_time
+        objects: dict[str, Any] = {}
+        for key in (
+            "eventType",
+            "eventObjectType",
+            "eventItems",
+            "lastType",
+        ):
+            for name, time_value in _apk_ai_detection_name_times(
+                value.get(key), item_time
+            ).items():
+                objects[name] = _latest_apk_detection_time(
+                    (objects.get(name), time_value)
+                )
+        for key, nested_value in value.items():
+            key_name = str(key).strip().lower()
+            if key_name in _APK_AI_DETECTION_GROUPS:
+                nested = _apk_ai_detection_name_times(nested_value, item_time)
+                if nested:
+                    for name, time_value in nested.items():
+                        objects[name] = _latest_apk_detection_time(
+                            (objects.get(name), time_value)
+                        )
+                elif nested_value not in (None, False):
+                    for name in _APK_AI_DETECTION_GROUPS[key_name]:
+                        objects[name] = _latest_apk_detection_time(
+                            (objects.get(name), item_time)
+                        )
+                continue
+            if key_name in _APK_AI_DETECTION_OBJECTS and nested_value not in (
+                None,
+                False,
+            ):
+                objects[key_name] = _latest_apk_detection_time(
+                    (objects.get(key_name), item_time)
+                )
+                continue
+            if key in {
+                "eventType",
+                "eventObjectType",
+                "eventItems",
+                "lastType",
+            }:
+                continue
+            for name, time_value in _apk_ai_detection_name_times(
+                nested_value, item_time
+            ).items():
+                objects[name] = _latest_apk_detection_time(
+                    (objects.get(name), time_value)
+                )
+        return objects
+    if isinstance(value, (list, tuple, set)):
+        objects: dict[str, Any] = {}
+        for item in value:
+            for name, time_value in _apk_ai_detection_name_times(
+                item, fallback_time
+            ).items():
+                objects[name] = _latest_apk_detection_time(
+                    (objects.get(name), time_value)
+                )
+        return objects
+    return {}
+
+
+def _latest_apk_detection_time(values) -> Any:
+    """Return the newest compact X-Sense time value from an iterable."""
+    candidates = [value for value in values if value not in (None, "")]
+    if not candidates:
+        return None
+    return max(candidates, key=str)
+
+
+def _apk_ai_detection_names(value: Any) -> set[str]:
+    """Return APK AI detection object names from a scalar/list/dict value."""
+    if value is None:
+        return set()
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith(("{", "[")):
+            with suppress(json.JSONDecodeError):
+                return _apk_ai_detection_names(json.loads(text))
+        candidates = [
+            part.strip().lower()
+            for part in text.replace(";", ",").replace("|", ",").split(",")
+        ]
+        return {name for name in candidates if name in _APK_AI_DETECTION_OBJECTS}
+    if isinstance(value, dict):
+        names: set[str] = set()
+        for key, nested_value in value.items():
+            key_name = str(key).strip().lower()
+            if key_name in _APK_AI_DETECTION_GROUPS:
+                nested_names = _apk_ai_detection_names(nested_value)
+                if nested_names:
+                    names.update(nested_names)
+                elif nested_value not in (None, False):
+                    names.update(_APK_AI_DETECTION_GROUPS[key_name])
+                continue
+            if key_name in _APK_AI_DETECTION_OBJECTS and nested_value not in (
+                None,
+                False,
+            ):
+                names.add(key_name)
+            names.update(_apk_ai_detection_names(nested_value))
+        return names
+    if isinstance(value, (list, tuple, set)):
+        names: set[str] = set()
+        for item in value:
+            names.update(_apk_ai_detection_names(item))
+        return names
+    return set()
 
 def _is_self_test_topic(topic: str) -> bool:
     """Return if an MQTT update is an X-Sense self-test report topic."""

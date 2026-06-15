@@ -971,12 +971,12 @@ def test_camera_webrtc_resolution_uses_apk_normalization():
         _camera_live_resolution(
             SimpleNamespace(data={"supportedRecordingResolutions": ["P1296"]})
         )
-        == "1280x720"
+        == "auto"
     )
-    assert _camera_live_resolution(SimpleNamespace(data={})) == "1280x720"
+    assert _camera_live_resolution(SimpleNamespace(data={})) == "auto"
 
 
-def test_start_live_waits_for_camera_data_channel_connected_like_apk(monkeypatch):
+def test_start_live_sends_when_camera_data_channel_opens_like_apk(monkeypatch):
     monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
     monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
 
@@ -1022,7 +1022,6 @@ def test_start_live_waits_for_camera_data_channel_connected_like_apk(monkeypatch
     assert session._data_channel.messages == []
 
     session._data_channel.readyState = "open"
-    session._data_channel_connected = True
     session._send_start_live_if_ready()
 
     assert [json.loads(message) for message in session._data_channel.messages] == [
@@ -1733,3 +1732,44 @@ async def test_offline_camera_waits_for_peer_in_before_offer_like_apk():
 
     assert [message["messageType"] for message in session._ws.messages] == ["SDP_OFFER"]
     assert session._camera_offer_sent is True
+
+
+async def test_peer_out_before_first_frame_resets_offer_for_next_peer_in_like_apk():
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._ticket = ticket()
+    session._recipient_client_id = "SSC0A123"
+    session._camera_peer_ready = True
+    session._first_frame_received = False
+    session._camera_offer_sent = True
+    session._camera_offer_sdp = "stale-offer"
+    session._signal_event_counts = {}
+    session._camera_local_candidate_count = 3
+    session._camera_remote_candidate_count = 0
+    session._pending_ha_candidates = []
+    session._pending_camera_candidates = []
+    session._reset_called = False
+    started = []
+
+    def reset_camera_peer_state():
+        session._reset_called = True
+        session._camera_offer_sent = False
+        session._camera_offer_sdp = None
+
+    async def start_camera_peer():
+        started.append(True)
+
+    session._reset_camera_peer_state = reset_camera_peer_state
+    session._start_camera_peer = start_camera_peer
+
+    await session._handle_signal_event("PEER_OUT", "SSC0A123")
+
+    assert session._reset_called is True
+    assert session._camera_peer_ready is False
+    assert session._camera_offer_sent is False
+    assert session._camera_offer_sdp is None
+
+    await session._handle_signal_event("PEER_IN", "SSC0A123")
+
+    assert session._camera_peer_ready is True
+    assert started == [True]

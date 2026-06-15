@@ -255,6 +255,33 @@ def _payload_debug(payload: Any) -> str:
     return type(payload).__name__
 
 
+def _data_channel_debug(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return compact non-secret data-channel message details."""
+    details: dict[str, Any] = {"action": payload.get("action")}
+    for key in ("requestID", "connectionID"):
+        if payload.get(key) not in (None, ""):
+            details[key] = _short_id(payload.get(key))
+    for key in ("returnValue", "size", "resolution"):
+        if payload.get(key) not in (None, ""):
+            details[key] = payload.get(key)
+    data = payload.get("data")
+    if isinstance(data, dict):
+        details["data_keys"] = sorted(data.keys())
+    elif isinstance(data, str) and data:
+        with suppress(Exception):
+            parsed = json.loads(data)
+            if isinstance(parsed, dict):
+                details["data_keys"] = sorted(parsed.keys())
+            else:
+                details["data_type"] = type(parsed).__name__
+        if "data_keys" not in details and "data_type" not in details:
+            details["data_type"] = "str"
+    parameters = payload.get("parameters")
+    if isinstance(parameters, dict):
+        details["parameter_keys"] = sorted(parameters.keys())
+    return details
+
+
 def _sdp_debug(sdp: str | None) -> dict[str, Any]:
     """Return compact SDP shape details useful for camera debugging."""
     if not isinstance(sdp, str):
@@ -1077,6 +1104,7 @@ class XSenseWebRTCSession:
                 "X-Sense WebRTC data channel opened: %s",
                 self._debug_context(),
             )
+            self._send_start_live_if_ready()
 
         @self._data_channel.on("close")
         def on_close():
@@ -1169,7 +1197,7 @@ class XSenseWebRTCSession:
             payload = json.loads(message)
             LOGGER.debug(
                 "X-Sense WebRTC data-channel message: %s",
-                self._debug_context(action=payload.get("action")),
+                self._debug_context(**_data_channel_debug(payload)),
             )
         except (TypeError, json.JSONDecodeError):
             return
@@ -1240,9 +1268,7 @@ class XSenseWebRTCSession:
         )
 
     def _send_start_live_if_ready(self) -> None:
-        """Send startLive when the APK would: after dataChannelConnected."""
-        if not self._data_channel_connected:
-            return
+        """Send startLive when the APK would: after the data channel opens."""
         if (
             self._start_live_sent
             or getattr(self._data_channel, "readyState", None) != "open"
@@ -1497,8 +1523,13 @@ class XSenseWebRTCSession:
                         **_peer_event_debug(payload, self._ticket.serial_number),
                     ),
                 )
-                # The APK marks the camera offline on PEER_OUT and lets the
-                # broader play/first-frame timeouts own user-facing failure.
+                if not self._first_frame_received:
+                    LOGGER.debug(
+                        "X-Sense WebRTC resetting camera peer after PEER_OUT before stream: %s",
+                        self._debug_context(),
+                    )
+                    self._camera_peer_ready = False
+                    self._reset_camera_peer_state()
             else:
                 LOGGER.debug(
                     "X-Sense WebRTC ignored foreign peer event: %s",
