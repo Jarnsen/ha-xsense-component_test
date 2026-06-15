@@ -156,6 +156,8 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             _camera_debug_context(entity, session_id),
         )
 
+        await self._close_existing_webrtc_sessions()
+
         ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(
             entity, force_refresh=True
         )
@@ -245,6 +247,22 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         """Forward a Home Assistant WebRTC candidate to X-Sense."""
         if session := self._webrtc_sessions.get(session_id):
             await session.add_candidate(candidate)
+
+    async def _close_existing_webrtc_sessions(self) -> None:
+        """Close previous ADDX camera WebRTC sessions before a new live view."""
+        active_sessions = getattr(self, "_webrtc_sessions", None)
+        if active_sessions is None:
+            return
+        sessions = list(active_sessions.values())
+        if not sessions:
+            return
+        LOGGER.debug(
+            "X-Sense camera closing previous WebRTC sessions before new offer: %s",
+            {"count": len(sessions)},
+        )
+        active_sessions.clear()
+        for session in sessions:
+            await session.close()
 
     @callback
     def close_webrtc_session(self, session_id: str) -> None:

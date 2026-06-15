@@ -160,7 +160,7 @@ def _camera_resolution(value) -> str | None:
         return normalized
     if alias := _CAMERA_RESOLUTION_ALIASES.get(normalized.upper()):
         return alias
-    return normalized
+    return None
 
 
 def _camera_webrtc_ticket_valid(ticket: dict) -> bool:
