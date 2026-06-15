@@ -736,20 +736,12 @@ class XSenseWebRTCSession:
 
             LOGGER.debug("X-Sense WebRTC HA answer ready: %s", self._debug_context())
             await self._connect_signal()
-            self._play_timeout_task = asyncio.create_task(
-                self._fail_after_timeout(
-                    _PLAY_TIMEOUT,
-                    "xsense_webrtc_play_timeout",
-                    "Camera did not start the WebRTC stream",
-                )
-            )
+            self._restart_play_timeout()
             LOGGER.debug(
                 "X-Sense WebRTC waiting for PEER_IN before camera offer: %s",
                 self._debug_context(),
             )
-            self._peer_in_timeout_task = asyncio.create_task(
-                self._handle_peer_in_timeout()
-            )
+            self._restart_peer_in_timeout()
             return True
         except Exception as err:  # noqa: BLE001 - surface cleanly to HA frontend
             LOGGER.debug(
@@ -1044,21 +1036,58 @@ class XSenseWebRTCSession:
         self._camera_pc = None
         self._data_channel = None
         self._data_channel_connected = False
+        self._session_id = self._ticket.session_id
         self._camera_offer_sent = False
         self._camera_offer_sdp = None
         self._sdp_answer_received = False
+        local_description_task = self._camera_local_description_task
+        if local_description_task:
+            local_description_task.cancel()
         self._camera_local_description_task = None
         self._pending_camera_candidates.clear()
         self._camera_local_candidate_count = 0
         self._camera_remote_candidate_count = 0
         self._start_live_sent = False
         self._first_frame_received = False
+        self._cancel_play_timeout()
         first_frame_task = getattr(self, "_first_frame_timeout_task", None)
         if first_frame_task:
             first_frame_task.cancel()
             self._first_frame_timeout_task = None
         if old_pc is not None:
             self._create_task(old_pc.close())
+
+    def _cancel_play_timeout(self) -> None:
+        play_task = getattr(self, "_play_timeout_task", None)
+        if play_task:
+            play_task.cancel()
+            self._play_timeout_task = None
+
+    def _restart_play_timeout(self) -> None:
+        """Give the current WebRTC camera start attempt its own bounded window."""
+        if self._closed:
+            return
+        self._cancel_play_timeout()
+        self._play_timeout_task = asyncio.create_task(
+            self._fail_after_timeout(
+                _PLAY_TIMEOUT,
+                "xsense_webrtc_play_timeout",
+                "Camera did not start the WebRTC stream",
+            )
+        )
+
+    def _cancel_peer_in_timeout(self) -> None:
+        task = getattr(self, "_peer_in_timeout_task", None)
+        if task:
+            task.cancel()
+            self._peer_in_timeout_task = None
+
+    def _restart_peer_in_timeout(self) -> None:
+        """Bound the APK-style wait for the camera PEER_IN signal."""
+        if self._closed:
+            return
+        self._cancel_peer_in_timeout()
+        self._peer_in_timeout_task = asyncio.create_task(self._handle_peer_in_timeout())
 
     def _mark_first_frame_received(self) -> None:
         if self._first_frame_received:
@@ -1068,9 +1097,11 @@ class XSenseWebRTCSession:
         play_task = getattr(self, "_play_timeout_task", None)
         if play_task:
             play_task.cancel()
+            self._play_timeout_task = None
         first_frame_task = getattr(self, "_first_frame_timeout_task", None)
         if first_frame_task:
             first_frame_task.cancel()
+            self._first_frame_timeout_task = None
 
     def _send_stop_live(self) -> None:
         """Send the APK stopLive data-channel command before closing."""
@@ -1338,6 +1369,7 @@ class XSenseWebRTCSession:
         )
         await self._ws.send_str(offer_payload)
         self._camera_offer_sent = True
+        self._restart_play_timeout()
         if self._camera_local_description_task:
             await self._camera_local_description_task
         await self._send_local_ice_candidates()
@@ -1451,9 +1483,7 @@ class XSenseWebRTCSession:
                     or self._ticket.serial_number
                 )
                 self._camera_peer_ready = True
-                task = getattr(self, "_peer_in_timeout_task", None)
-                if task:
-                    task.cancel()
+                self._cancel_peer_in_timeout()
                 if self._camera_offer_sdp is None:
                     await self._start_camera_peer()
                 else:
@@ -1530,6 +1560,7 @@ class XSenseWebRTCSession:
                     )
                     self._camera_peer_ready = False
                     self._reset_camera_peer_state()
+                    self._restart_peer_in_timeout()
             else:
                 LOGGER.debug(
                     "X-Sense WebRTC ignored foreign peer event: %s",

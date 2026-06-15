@@ -1540,8 +1540,10 @@ async def test_first_video_frame_cancels_play_timeout():
 
     session = object.__new__(webrtc_signal.XSenseWebRTCSession)
     session._first_frame_received = False
-    session._play_timeout_task = asyncio.create_task(asyncio.sleep(60))
-    session._first_frame_timeout_task = asyncio.create_task(asyncio.sleep(60))
+    play_timeout_task = asyncio.create_task(asyncio.sleep(60))
+    first_frame_timeout_task = asyncio.create_task(asyncio.sleep(60))
+    session._play_timeout_task = play_timeout_task
+    session._first_frame_timeout_task = first_frame_timeout_task
     track = webrtc_signal._ProxyTrack("video", session._mark_first_frame_received)
     track.set_source(FakeSource())
 
@@ -1549,8 +1551,106 @@ async def test_first_video_frame_cancels_play_timeout():
 
     assert session._first_frame_received is True
     await asyncio.sleep(0)
-    assert session._play_timeout_task.cancelled()
-    assert session._first_frame_timeout_task.cancelling()
+    assert play_timeout_task.cancelled()
+    assert first_frame_timeout_task.cancelling()
+    assert session._play_timeout_task is None
+    assert session._first_frame_timeout_task is None
+
+
+async def test_camera_offer_restarts_play_timeout_for_retry(monkeypatch):
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+    class FakePeer:
+        localDescription = None
+
+    class FakeTask:
+        def __init__(self, coro=None):
+            self.cancelled = False
+            if coro is not None:
+                coro.close()
+
+        def cancel(self):
+            self.cancelled = True
+
+    created_tasks = []
+
+    def create_task(coro):
+        task = FakeTask(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "create_task", create_task)
+
+    old_task = FakeTask()
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._ws = FakeWs()
+    session._camera_offer_sdp = "v=0\r\n"
+    session._camera_offer_sent = False
+    session._camera_local_description_task = None
+    session._camera_pc = FakePeer()
+    session._ticket = ticket()
+    session._recipient_client_id = "SSC0A123"
+    session._session_id = "Android-client123-100000"
+    session._resolution = "1920x1080"
+    session._play_timeout_task = old_task
+
+    await session._send_offer()
+
+    assert old_task.cancelled is True
+    assert session._play_timeout_task is created_tasks[-1]
+    assert session._camera_offer_sent is True
+    assert [message["messageType"] for message in session._ws.messages] == [
+        "SDP_OFFER"
+    ]
+
+
+def test_reset_camera_peer_state_cancels_stale_attempt_state(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+
+    class FakeTask:
+        def __init__(self):
+            self.cancelled = False
+
+        def cancel(self):
+            self.cancelled = True
+
+    play_task = FakeTask()
+    first_frame_task = FakeTask()
+    local_description_task = FakeTask()
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._ticket = ticket()
+    session._session_id = "Android-client123-old"
+    session._camera_pc = None
+    session._data_channel = object()
+    session._camera_offer_sent = True
+    session._camera_offer_sdp = "stale-offer"
+    session._sdp_answer_received = True
+    session._camera_local_description_task = local_description_task
+    session._pending_camera_candidates = [object()]
+    session._camera_local_candidate_count = 3
+    session._camera_remote_candidate_count = 2
+    session._start_live_sent = True
+    session._first_frame_received = False
+    session._play_timeout_task = play_task
+    session._first_frame_timeout_task = first_frame_task
+
+    session._reset_camera_peer_state()
+
+    assert session._session_id == "Android-client123-100000"
+    assert play_task.cancelled is True
+    assert first_frame_task.cancelled is True
+    assert local_description_task.cancelled is True
+    assert session._play_timeout_task is None
+    assert session._first_frame_timeout_task is None
+    assert session._camera_local_description_task is None
 
 
 async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
@@ -1725,6 +1825,7 @@ async def test_offline_camera_waits_for_peer_in_before_offer_like_apk():
     session._session_id = "Android-client123-100000"
     session._resolution = "1280x720"
     session._peer_in_timeout_task = None
+    session._restart_play_timeout = lambda: None
 
     assert session._ws.messages == []
 
@@ -1748,6 +1849,7 @@ async def test_peer_out_before_first_frame_resets_offer_for_next_peer_in_like_ap
     session._camera_remote_candidate_count = 0
     session._pending_ha_candidates = []
     session._pending_camera_candidates = []
+    restarted_peer_in_timeout = []
     session._reset_called = False
     started = []
 
@@ -1760,6 +1862,7 @@ async def test_peer_out_before_first_frame_resets_offer_for_next_peer_in_like_ap
         started.append(True)
 
     session._reset_camera_peer_state = reset_camera_peer_state
+    session._restart_peer_in_timeout = lambda: restarted_peer_in_timeout.append(True)
     session._start_camera_peer = start_camera_peer
 
     await session._handle_signal_event("PEER_OUT", "SSC0A123")
@@ -1768,6 +1871,7 @@ async def test_peer_out_before_first_frame_resets_offer_for_next_peer_in_like_ap
     assert session._camera_peer_ready is False
     assert session._camera_offer_sent is False
     assert session._camera_offer_sdp is None
+    assert restarted_peer_in_timeout == [True]
 
     await session._handle_signal_event("PEER_IN", "SSC0A123")
 
