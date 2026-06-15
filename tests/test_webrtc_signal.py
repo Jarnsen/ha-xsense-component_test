@@ -245,8 +245,11 @@ a=mid:2
     assert "m=video 9 UDP/TLS/RTP/SAVPF 97 98 99 100 101 102" in apk_sdp
     assert "H264" in apk_sdp
     assert "a=rtcp-fb:99 nack pli" in apk_sdp
+    assert "a=rtcp-fb:99 ccm fir" in apk_sdp
     assert "a=rtcp-fb:101 nack pli" in apk_sdp
+    assert "a=rtcp-fb:101 ccm fir" in apk_sdp
     assert "a=rtcp-fb:100 nack pli" not in apk_sdp
+    assert "a=rtcp-fb:100 ccm fir" not in apk_sdp
     assert (
         "a=fmtp:99 level-asymmetry-allowed=1;profile-level-id=42001f;"
         "packetization-mode=1"
@@ -295,6 +298,26 @@ def test_data_channel_answer_accepts_apk_base64_without_padding():
         webrtc_signal._data_channel_answer_sdp({"data": {"answer": encoded}})
         == "answer"
     )
+
+
+def test_data_channel_answer_accepts_android_wrapped_base64():
+    encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode()
+    wrapped = encoded[:8] + "\n" + encoded[8:]
+
+    assert (
+        webrtc_signal._data_channel_answer_sdp({"data": {"answer": wrapped}})
+        == "answer"
+    )
+
+
+def test_data_channel_timestamp_uses_apk_seconds(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100.123)
+    monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
+
+    command = make_start_live_data_channel_message("1280x720")
+
+    assert command["requestID"] == "100123-321"
+    assert command["timeStamp"] == 100
 
 
 def test_change_transceiver_commands_match_apk(monkeypatch):
@@ -716,7 +739,7 @@ def test_parse_signal_message_preserves_answer_envelope_for_apk_validation():
     assert webrtc_signal._owned_answer_sdp(payload, ticket()) == "answer"
 
 
-def test_apk_sdp_answer_validation_allows_missing_optional_ids():
+def test_apk_sdp_answer_validation_requires_sender_and_recipient_ids():
     encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode()
 
     assert (
@@ -724,14 +747,36 @@ def test_apk_sdp_answer_validation_allows_missing_optional_ids():
             {"messagePayload": encoded, "senderClientId": "SSC0A123"},
             ticket(),
         )
-        == "answer"
+        is None
     )
     assert (
         webrtc_signal._owned_answer_sdp(
             {"messagePayload": encoded, "recipientClientId": "client123"},
             ticket(),
         )
-        == "answer"
+        is None
+    )
+    assert (
+        webrtc_signal._owned_answer_sdp(
+            {
+                "messagePayload": encoded,
+                "senderClientId": "",
+                "recipientClientId": "client123",
+            },
+            ticket(),
+        )
+        is None
+    )
+    assert (
+        webrtc_signal._owned_answer_sdp(
+            {
+                "messagePayload": encoded,
+                "senderClientId": "SSC0A123",
+                "recipientClientId": "",
+            },
+            ticket(),
+        )
+        is None
     )
 
 
@@ -799,6 +844,23 @@ def test_sdp_answer_reject_reason_keeps_debug_actionable():
                 "messagePayload": encoded,
                 "senderClientId": "SSC0A123",
                 "recipientClientId": "other-client",
+            },
+            signal_ticket,
+        )
+        == "recipient_mismatch"
+    )
+    assert (
+        webrtc_signal._answer_reject_reason(
+            {"messagePayload": encoded, "recipientClientId": "client123"},
+            signal_ticket,
+        )
+        == "sender_mismatch"
+    )
+    assert (
+        webrtc_signal._answer_reject_reason(
+            {
+                "messagePayload": encoded,
+                "senderClientId": "SSC0A123",
             },
             signal_ticket,
         )
@@ -1059,6 +1121,38 @@ def test_data_channel_debug_includes_safe_nested_codec_values():
     assert "parameter_token" not in debug
 
 
+def test_start_live_response_is_kept_in_debug_context():
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._last_start_live_response = None
+
+    session._handle_data_channel_message(
+        json.dumps(
+            {
+                "action": "startLive",
+                "returnValue": 17,
+                "data": json.dumps(
+                    {
+                        "videoCodec": "H264",
+                        "resolution": "1920x1080",
+                        "url": "rtsp://example.invalid/secret",
+                    }
+                ),
+                "parameters": {"size": "1920x1080", "token": "secret"},
+            }
+        )
+    )
+
+    assert session._last_start_live_response == {
+        "action": "startLive",
+        "returnValue": 17,
+        "data_keys": ["resolution", "url", "videoCodec"],
+        "data_videoCodec": "H264",
+        "data_resolution": "1920x1080",
+        "parameter_keys": ["size", "token"],
+        "parameter_size": "1920x1080",
+    }
+
+
 def test_camera_webrtc_resolution_uses_apk_normalization():
     from types import SimpleNamespace
 
@@ -1099,7 +1193,7 @@ def test_camera_webrtc_resolution_uses_apk_normalization():
         _camera_live_resolution(
             SimpleNamespace(data={"deviceSupportResolution": ["bad", "P720"]})
         )
-        == "bad"
+        == "1280x720"
     )
     assert (
         _camera_live_resolution(
@@ -1180,6 +1274,63 @@ def test_start_live_waits_for_camera_data_channel_connected_like_apk(monkeypatch
     assert len(created_tasks) == 2
     assert session._first_frame_timeout_task is created_tasks[0]
     assert session._first_frame_pli_task is created_tasks[1]
+
+
+def test_auto_resolution_start_live_skips_first_frame_timeout_like_apk(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+    monkeypatch.setattr(webrtc_signal.random, "randint", lambda start, end: 321)
+
+    class FakeDataChannel:
+        readyState = "open"
+
+        def __init__(self):
+            self.messages = []
+
+        def send(self, message):
+            self.messages.append(json.loads(message))
+
+    class FakeTask:
+        def __init__(self, coro):
+            self.coro = coro
+            coro.close()
+
+        def done(self):
+            return False
+
+    created_tasks = []
+
+    def create_task(coro):
+        task = FakeTask(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "create_task", create_task)
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._resolution = "auto"
+    session._data_channel = FakeDataChannel()
+    session._data_channel_connected = True
+    session._start_live_sent = False
+    session._first_frame_received = False
+    session._first_frame_timeout_task = None
+    session._first_frame_pli_task = None
+    session._closed = False
+    session._debug_context = lambda **kwargs: kwargs
+
+    session._send_start_live_if_ready()
+
+    assert session._data_channel.messages == [
+        {
+            "requestID": "100000-321",
+            "connectionID": "7893feb",
+            "timeStamp": 100,
+            "action": "startLive",
+            "size": "1280x720",
+            "resolution": "auto",
+        }
+    ]
+    assert session._first_frame_timeout_task is None
+    assert session._first_frame_pli_task is created_tasks[0]
 
 
 def test_data_channel_connected_message_sends_start_live_like_apk(monkeypatch):
@@ -1917,7 +2068,7 @@ def test_reset_camera_peer_state_cancels_stale_attempt_state(monkeypatch):
     assert session._camera_local_description_task is None
 
 
-async def test_camera_keyframe_request_sends_pli_for_video_ssrcs():
+async def test_camera_keyframe_request_sends_pli_and_fir_for_video_ssrcs():
     class FakeTrack:
         kind = "video"
 
@@ -1927,10 +2078,15 @@ async def test_camera_keyframe_request_sends_pli_for_video_ssrcs():
         def __init__(self):
             self._RTCRtpReceiver__active_ssrc = {1234: object()}
             self._RTCRtpReceiver__remote_streams = {5678: object()}
-            self.sent = []
+            self._RTCRtpReceiver__rtcp_ssrc = 9999
+            self.pli_sent = []
+            self.rtcp_sent = []
 
         async def _send_rtcp_pli(self, ssrc):
-            self.sent.append(ssrc)
+            self.pli_sent.append(ssrc)
+
+        async def _send_rtcp(self, packet):
+            self.rtcp_sent.append(packet)
 
     class FakeAudioReceiver:
         class Track:
@@ -1953,8 +2109,15 @@ async def test_camera_keyframe_request_sends_pli_for_video_ssrcs():
     session._camera_pc = FakePeer([receiver, FakeAudioReceiver()])
     session._debug_context = lambda **extra: extra
 
-    assert await session._send_camera_picture_loss_indication() == [5678]
-    assert receiver.sent == [5678]
+    assert await session._send_camera_keyframe_request() == [
+        {"ssrc": 5678, "pli": True, "fir": True}
+    ]
+    assert receiver.pli_sent == [5678]
+    fir = receiver.rtcp_sent[0]
+    assert fir.fmt == webrtc_signal.RTCP_PSFB_FIR
+    assert fir.ssrc == 9999
+    assert fir.media_ssrc == 0
+    assert fir.fci == b"\x00\x00\x16.\x00\x00\x00\x00"
 
 
 def test_receiver_media_ssrcs_prefers_remote_streams_over_active_ssrcs():
@@ -1982,7 +2145,7 @@ def test_receiver_media_ssrcs_maps_rtx_to_primary_media_ssrcs():
     assert webrtc_signal._receiver_media_ssrcs(FakeReceiver()) == [4321]
 
 
-async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
+async def test_online_camera_starts_offer_without_peer_in_like_apk():
     class FakeWs:
         closed = False
 
@@ -2109,9 +2272,9 @@ async def test_online_camera_waits_for_peer_in_before_offer_like_apk():
 
     assert aio_session.ws.messages == []
     assert aio_session.connect_kwargs["heartbeat"] == 30
-    assert started == []
-    assert session._peer_in_timeout_task is not None
-    assert len(tasks) == 3
+    assert started == [True]
+    assert session._peer_in_timeout_task is None
+    assert len(tasks) == 2
     assert sent_messages[0].answer == "v=0\r\n"
 
 

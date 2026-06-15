@@ -490,6 +490,90 @@ async def test_failed_webrtc_start_is_removed_from_active_sessions(monkeypatch):
     assert not camera.is_streaming
 
 
+async def test_new_webrtc_offer_closes_previous_camera_session(monkeypatch):
+    from custom_components.xsense import camera as camera_module
+    from custom_components.xsense.camera import CAMERA_DESCRIPTION, XSenseCameraEntity
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    async def get_camera_webrtc_ticket(entity, *, force_refresh=False):
+        return {
+            "signalServer": "https://signal.example",
+            "groupId": "group",
+            "role": "viewer",
+            "id": "client123",
+            "traceId": "trace",
+            "sign": "sig",
+            "time": 123456,
+            "expirationTime": 9999999999999,
+            "iceServer": [],
+        }
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+            self.xsense = SimpleNamespace(
+                get_camera_webrtc_ticket=get_camera_webrtc_ticket
+            )
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    class ExistingSession:
+        def __init__(self):
+            self.closed = False
+
+        async def close(self):
+            self.closed = True
+
+    created_sessions = []
+
+    class NewSession:
+        def __init__(self, **kwargs):
+            created_sessions.append(kwargs)
+
+        async def start(self):
+            return True
+
+        async def close(self):
+            pass
+
+    fake_module = SimpleNamespace(
+        XSenseWebRTCTicket=SimpleNamespace(
+            from_api=lambda serial_number, data: SimpleNamespace(is_valid=True)
+        ),
+        XSenseWebRTCSession=NewSession,
+    )
+
+    class FakeHass:
+        async def async_add_import_executor_job(self, func, module):
+            return fake_module
+
+    monkeypatch.setattr(
+        camera_module, "async_get_clientsession", lambda hass: SimpleNamespace()
+    )
+
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.hass = FakeHass()
+    old_session = ExistingSession()
+    camera._webrtc_sessions["old-session"] = old_session
+
+    await camera.async_handle_async_webrtc_offer(
+        "v=0\r\n", "new-session", lambda message: None
+    )
+
+    assert old_session.closed is True
+    assert list(camera._webrtc_sessions) == ["new-session"]
+    assert len(created_sessions) == 1
+
+
 async def test_webrtc_camera_stream_source_does_not_start_native_live_url():
     from custom_components.xsense.camera import CAMERA_DESCRIPTION, XSenseCameraEntity
 
