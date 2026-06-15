@@ -346,6 +346,8 @@ def _camera_debug_context(entity, session_id, **extra):
         "device_status": entity.data.get("deviceStatus"),
         "awake": entity.data.get("awake"),
         "support_webrtc": entity.data.get("supportWebrtc"),
+        "codec": entity.data.get("codec"),
+        "default_codec": entity.data.get("defaultCodec"),
         "resolution": _camera_live_resolution(entity),
     }
     context.update(extra)

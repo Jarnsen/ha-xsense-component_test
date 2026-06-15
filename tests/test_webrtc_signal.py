@@ -488,13 +488,21 @@ async def test_change_transceiver_answer_ignores_nonzero_return_value_like_apk(m
 
 
 async def test_start_camera_peer_uses_apk_receive_media_offer_shape(monkeypatch):
+    class FakeTransceiver:
+        def __init__(self):
+            self.codec_preferences = None
+
+        def setCodecPreferences(self, codecs):
+            self.codec_preferences = codecs
+
     class FakePeer:
         def __init__(self):
             self.transceivers = []
 
         def addTransceiver(self, kind, **kwargs):
-            self.transceivers.append((kind, kwargs))
-            return object()
+            transceiver = FakeTransceiver()
+            self.transceivers.append((kind, kwargs, transceiver))
+            return transceiver
 
         async def createOffer(self):
             class Offer:
@@ -519,13 +527,72 @@ async def test_start_camera_peer_uses_apk_receive_media_offer_shape(monkeypatch)
     await session._start_camera_peer()
 
     assert len(session._camera_pc.transceivers) == 1
-    assert session._camera_pc.transceivers[0] == ("video", {"direction": "recvonly"})
+    kind, kwargs, transceiver = session._camera_pc.transceivers[0]
+    assert (kind, kwargs) == ("video", {"direction": "recvonly"})
+    assert [
+        codec.parameters.get("profile-level-id")
+        for codec in transceiver.codec_preferences
+    ] == ["42001f"]
     assert session._camera_offer_sdp == "v=0\r\n"
     assert session._camera_local_description_task is not None
     session._camera_local_description_task.cancel()
     with suppress(asyncio.CancelledError):
         await session._camera_local_description_task
 
+
+def test_existing_camera_video_transceiver_prefers_decoder_safe_h264_profile():
+    class FakeTrack:
+        kind = "video"
+
+    class FakeReceiver:
+        track = FakeTrack()
+
+    class FakeTransceiver:
+        receiver = FakeReceiver()
+
+        def __init__(self):
+            self.codec_preferences = None
+
+        def setCodecPreferences(self, codecs):
+            self.codec_preferences = codecs
+
+    class FakePeerConnection:
+        def __init__(self):
+            self.video = FakeTransceiver()
+
+        def getTransceivers(self):
+            return [self.video]
+
+    peer = FakePeerConnection()
+
+    webrtc_signal._prefer_existing_camera_video_codecs(peer)
+
+    assert [
+        codec.parameters.get("profile-level-id")
+        for codec in peer.video.codec_preferences
+    ] == ["42001f"]
+
+
+async def test_camera_offer_prefers_decoder_safe_h264_profile():
+    pc = webrtc_signal.RTCPeerConnection()
+    try:
+        pc.addTransceiver("audio")
+        video_transceiver = pc.addTransceiver("video", direction="recvonly")
+        webrtc_signal._prefer_camera_video_codecs(video_transceiver)
+        offer = await pc.createOffer()
+        camera_sdp = webrtc_signal._apk_camera_offer_sdp(offer.sdp)
+    finally:
+        await pc.close()
+
+    payloads = webrtc_signal._sdp_media_payloads(camera_sdp, "video")
+    assert payloads == [
+        {
+            "payload": "99",
+            "codec": "H264",
+            "fmtp": "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f",
+        }
+    ]
+    assert "profile-level-id=42e01f" not in camera_sdp
 
 async def test_send_offer_sends_apk_offer_then_local_ice_candidates():
     class FakeWs:
@@ -1096,6 +1163,12 @@ def test_sdp_debug_includes_video_payload_fmtp_and_feedback():
         },
         {"payload": "102", "codec": "RTX", "fmtp": "apt=101"},
     ]
+    assert debug["video_primary_payload"] == {
+        "payload": "101",
+        "codec": "H264",
+        "fmtp": "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+    }
+    assert debug["video_has_decoder_safe_h264"] is False
     assert debug["video_feedback"] == {"101": ["nack", "nack pli"]}
 
 

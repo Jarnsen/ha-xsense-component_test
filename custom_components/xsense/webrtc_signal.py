@@ -32,6 +32,7 @@ with warnings.catch_warnings():
         RTCIceCandidate,
         RTCIceServer as AiortcRTCIceServer,
         RTCPeerConnection,
+        RTCRtpReceiver,
         RTCSessionDescription,
     )
     from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
@@ -322,6 +323,8 @@ def _sdp_debug(sdp: str | None) -> dict[str, Any]:
         "directions": _sdp_media_directions(sdp),
         "video_codecs": _sdp_media_codecs(sdp, "video"),
         "video_payloads": _sdp_media_payloads(sdp, "video"),
+        "video_primary_payload": _sdp_primary_media_payload(sdp, "video"),
+        "video_has_decoder_safe_h264": _sdp_has_h264_profile(sdp, "42001f"),
         "video_feedback": _sdp_media_feedback(sdp, "video"),
         "fingerprints": _sdp_fingerprints(sdp),
         "candidate_lines": sum(
@@ -400,6 +403,37 @@ def _sdp_media_payloads(sdp: str, media_kind: str) -> list[dict[str, str]]:
                     compact_fmtp
                 )
     return list(payloads.values())
+
+
+def _sdp_primary_media_payload(sdp: str, media_kind: str) -> dict[str, str] | None:
+    """Return the first non-RTX payload from one SDP media section."""
+    for payload in _sdp_media_payloads(sdp, media_kind):
+        if payload.get("codec") != "RTX":
+            return payload
+    return None
+
+
+def _sdp_has_h264_profile(sdp: str, profile_level_id: str) -> bool:
+    """Return whether the video SDP advertises one H264 profile-level-id."""
+    expected = f"profile-level-id={profile_level_id}"
+    return any(
+        payload.get("codec") == "H264" and expected in payload.get("fmtp", "")
+        for payload in _sdp_media_payloads(sdp, "video")
+    )
+
+
+def _sdp_codec_preference_debug(sdp: str | None) -> list[str]:
+    """Return compact H264 profile preferences visible in a camera offer."""
+    if not isinstance(sdp, str):
+        return []
+    profiles: list[str] = []
+    for payload in _sdp_media_payloads(sdp, "video"):
+        if payload.get("codec") != "H264":
+            continue
+        for item in payload.get("fmtp", "").split(";"):
+            if item.startswith("profile-level-id="):
+                profiles.append(item.removeprefix("profile-level-id="))
+    return profiles
 
 
 def _sdp_media_feedback(sdp: str, media_kind: str) -> dict[str, list[str]]:
@@ -1522,6 +1556,7 @@ class XSenseWebRTCSession:
             return
         if self._camera_pc is None:
             return
+        codec_preferences = _prefer_existing_camera_video_codecs(self._camera_pc)
         offer = await self._camera_pc.createOffer()
         camera_offer = RTCSessionDescription(
             sdp=_apk_camera_offer_sdp(offer.sdp), type=offer.type
@@ -1537,7 +1572,10 @@ class XSenseWebRTCSession:
         if sent:
             LOGGER.debug(
                 "X-Sense WebRTC sent changeTransceiverOffer: %s",
-                self._debug_context(offer_sdp=_sdp_debug(camera_offer.sdp)),
+                self._debug_context(
+                    offer_sdp=_sdp_debug(camera_offer.sdp),
+                    codec_preferences=codec_preferences,
+                ),
             )
 
     async def _apply_change_transceiver_answer(self, payload: dict[str, Any]) -> None:
@@ -1601,7 +1639,10 @@ class XSenseWebRTCSession:
             raise RuntimeError("Camera peer connection was not created")
         # APK createOffer asks to receive video; audio is already present from
         # peer setup, matching the SDK transceiver timing.
-        self._camera_pc.addTransceiver("video", direction="recvonly")
+        video_transceiver = self._camera_pc.addTransceiver(
+            "video", direction="recvonly"
+        )
+        _prefer_camera_video_codecs(video_transceiver)
         offer = await self._camera_pc.createOffer()
         camera_offer = RTCSessionDescription(
             sdp=_apk_camera_offer_sdp(offer.sdp), type=offer.type
@@ -1633,6 +1674,7 @@ class XSenseWebRTCSession:
             self._debug_context(
                 recipient=_short_id(self._recipient_client_id),
                 offer_sdp=_sdp_debug(self._camera_offer_sdp),
+                codec_preferences=_sdp_codec_preference_debug(self._camera_offer_sdp),
                 offer_envelope=_signal_envelope_debug(offer_payload),
                 offer_resolution=bool(self._resolution),
             ),
@@ -1856,6 +1898,37 @@ class XSenseWebRTCSession:
             )
 
 
+def _prefer_camera_video_codecs(transceiver: Any) -> list[str]:
+    """Constrain aiortc to the H264 profile that the Python decoder can handle."""
+    set_preferences = getattr(transceiver, "setCodecPreferences", None)
+    if not callable(set_preferences):
+        return []
+    codecs = []
+    for codec in RTCRtpReceiver.getCapabilities("video").codecs:
+        if codec.mimeType.lower() != "video/h264":
+            continue
+        if codec.parameters.get("profile-level-id") == "42001f":
+            codecs.append(codec)
+    if not codecs:
+        return []
+    set_preferences(codecs)
+    return [codec.parameters.get("profile-level-id") for codec in codecs]
+
+
+def _prefer_existing_camera_video_codecs(peer_connection: Any) -> list[str]:
+    """Keep renegotiated camera offers on the same decoder-safe H264 profile."""
+    get_transceivers = getattr(peer_connection, "getTransceivers", None)
+    if not callable(get_transceivers):
+        return []
+    preferences: list[str] = []
+    for transceiver in get_transceivers():
+        receiver = getattr(transceiver, "receiver", None)
+        track = getattr(receiver, "track", None)
+        if getattr(track, "kind", None) == "video":
+            preferences.extend(_prefer_camera_video_codecs(transceiver))
+    return preferences
+
+
 def _camera_rtc_configuration(ticket: XSenseWebRTCTicket) -> AiortcRTCConfiguration:
     servers = []
     for server in ticket.ice_servers or []:
@@ -1990,34 +2063,23 @@ def _sdp_with_android_video_feedback(sdp: str) -> str:
     lines = sdp.splitlines()
     output: list[str] = []
     in_video = False
-    video_payloads: set[str] = set()
-    video_feedback: set[tuple[str, str]] = set()
-
-    def flush_video_feedback() -> None:
-        for payload in sorted(video_payloads, key=int):
-            for value in feedback_values:
-                if (payload, value) not in video_feedback:
-                    output.append(f"a=rtcp-fb:{payload} {value}")
 
     for line in lines:
         if line.startswith("m="):
-            if in_video:
-                flush_video_feedback()
             in_video = line.startswith("m=video ")
-            video_payloads = set()
-            video_feedback = set()
             output.append(line)
             continue
+        if in_video and line.startswith("a=rtcp-fb:"):
+            continue
         if in_video and line.startswith("a=rtpmap:"):
+            output.append(line)
             payload, codec = line.removeprefix("a=rtpmap:").split(None, 1)
             if codec.split("/", 1)[0].upper() != "RTX":
-                video_payloads.add(payload)
-        elif in_video and line.startswith("a=rtcp-fb:"):
-            payload, value = line.removeprefix("a=rtcp-fb:").split(None, 1)
-            video_feedback.add((payload, value))
+                output.extend(
+                    f"a=rtcp-fb:{payload} {value}" for value in feedback_values
+                )
+            continue
         output.append(_sdp_with_android_h264_fmtp(line) if in_video else line)
-    if in_video:
-        flush_video_feedback()
     ending = "\r\n" if "\r\n" in sdp else "\n"
     return ending.join(output) + (ending if sdp.endswith(("\r\n", "\n")) else "")
 
