@@ -205,7 +205,7 @@ def camera_live_resolution(camera: Entity) -> str:
     if supported_resolutions:
         return supported_resolutions[0]
 
-    return "1280x720"
+    return "auto"
 
 
 class AsyncXSense(XSenseBase):
@@ -1120,6 +1120,7 @@ def _camera_data(data: Dict) -> Dict:
             else data.get("isAdmin")
         ),
         "isCharging": data.get("isCharging"),
+        "isMoved": data.get("isMoved"),
         "liveAudioToggleOn": data.get("liveAudioToggleOn"),
         "modelNo": data.get("modelNo"),
         "networkName": data.get("networkName"),
@@ -1186,7 +1187,6 @@ _CAMERA_USER_CONFIG_KEYS = (
     "cryDetectLevel",
     "deviceCallToggleOn",
     "deviceLanguage",
-    "devicePersonDetect",
     "mechanicalDingDongDuration",
     "mechanicalDingDongSwitch",
     "mirrorFlip",

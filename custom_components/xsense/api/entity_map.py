@@ -163,20 +163,40 @@ def SATestAction(shadow="appSelfTest"):
     }
 
 
+def _xs01_wx_is_sbs50_linked(entity) -> bool:
+    return getattr(getattr(entity, "station", None), "type", None) == "SBS50"
+
+
+def _xs01_wx_test_shadow(entity) -> str:
+    if _xs01_wx_is_sbs50_linked(entity) and _is_smoke_v9(entity):
+        return "app2ndSelfTest"
+    return "appSelfTest"
+
+
+def _xs01_wx_test_extra(entity) -> Dict:
+    if _xs01_wx_is_sbs50_linked(entity) and _is_smoke_v9(entity):
+        return {"userParam": "source=1"}
+    return {}
+
+
+def _xs01_wx_test_target(entity):
+    return getattr(entity, "station", entity)
+
+
 def XS01WXTestAction():
-    """XS01-WX self test for standalone and SBS50-linked Wi-Fi smoke devices."""
+    """XS01-WX self test using the APK standalone and SBS50-linked paths."""
     return {
         "action": "test",
         "topic": lambda entity: (
             f"2nd_selftest_{entity.sn}"
-            if getattr(getattr(entity, "station", None), "type", None) == "SBS50"
+            if _xs01_wx_is_sbs50_linked(entity)
             else f"appselftest_{entity.sn}"
         ),
-        "shadow": "appSelfTest",
+        "shadow": _xs01_wx_test_shadow,
+        "extra": _xs01_wx_test_extra,
+        "target": _xs01_wx_test_target,
         "time_format": lambda entity: (
-            "epoch_ms"
-            if getattr(getattr(entity, "station", None), "type", None) == "SBS50"
-            else None
+            "epoch_ms" if _xs01_wx_is_sbs50_linked(entity) else None
         ),
     }
 

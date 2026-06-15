@@ -227,3 +227,202 @@ async def test_cached_addx_cameras_remain_in_coordinator_data_when_camera_refres
     coordinator._merge_cached_camera_stations(stations)
 
     assert stations == {"camera-id": camera}
+
+
+def test_mqtt_camera_motion_event_maps_to_apk_is_moved_state():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventType": 92,
+            "eventTime": "20260614221512",
+            "eventData": {
+                "serialNumber": "camera-sn",
+                "deviceName": "Altanka",
+            },
+        }
+    )
+
+    assert data["serialNumber"] == "camera-sn"
+    assert data["eventType"] == 92
+    assert data["time"] == "20260614221512"
+    assert data["isMoved"] == "1"
+    assert data["lastMotionTime"] == "20260614221512"
+
+
+def test_mqtt_camera_motion_event_preserves_reported_is_moved_state():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventType": 92,
+            "eventData": {
+                "serialNumber": "camera-sn",
+                "isMoved": "0",
+            },
+        }
+    )
+
+    assert data["isMoved"] == "0"
+
+
+def test_mqtt_camera_motion_event_accepts_json_string_event_data():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventType": "92",
+            "eventData": '{"serialNumber":"camera-sn"}',
+        }
+    )
+
+    assert data["serialNumber"] == "camera-sn"
+    assert data["eventType"] == "92"
+    assert data["isMoved"] == "1"
+
+
+def test_mqtt_camera_ai_event_maps_apk_detection_objects():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventTime": "20260614231512",
+            "eventData": {
+                "serialNumber": "camera-sn",
+                "eventItems": [{"eventType": "person", "eventTime": "20260612120000"}],
+            },
+        }
+    )
+
+    assert data["lastAiDetection"] == "person"
+    assert data["personDetected"] is True
+    assert data["petDetected"] is False
+    assert data["vehicleDetected"] is False
+    assert data["packageDetected"] is False
+    assert data["otherDetected"] is False
+    assert data["lastPersonDetectionTime"] == "20260612120000"
+    assert data["vehicleEnterDetected"] is False
+    assert data["packagePickUpDetected"] is False
+
+
+def test_mqtt_camera_ai_event_groups_vehicle_and_package_objects():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventTime": "20260614231612",
+            "eventData": {
+                "serialNumber": "camera-sn",
+                "eventItems": [
+                    {"eventType": "vehicle_held_up", "eventTime": "20260612120000"},
+                    {"eventType": "package_pick_up", "eventTime": "20260612120001"},
+                ],
+            },
+        }
+    )
+
+    assert data["lastAiDetection"] == "package_pick_up,vehicle_held_up"
+    assert data["vehicleDetected"] is True
+    assert data["packageDetected"] is True
+    assert data["personDetected"] is False
+    assert data["vehicleHeldUpDetected"] is True
+    assert data["vehicleEnterDetected"] is False
+    assert data["packagePickUpDetected"] is True
+    assert data["packageDropOffDetected"] is False
+    assert data["lastVehicleDetectionTime"] == "20260612120000"
+    assert data["lastVehicleHeldUpDetectionTime"] == "20260612120000"
+    assert data["lastPackageDetectionTime"] == "20260612120001"
+    assert data["lastPackagePickUpDetectionTime"] == "20260612120001"
+
+
+def test_mqtt_camera_ai_event_accepts_apk_event_object_type_payload():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventTime": "20260614231712",
+            "eventData": {
+                "serialNumber": "camera-sn",
+                "eventObjectType": {
+                    "person": [],
+                    "pet": [],
+                    "vehicle": ["vehicle_enter"],
+                    "package": ["package_exist"],
+                },
+            },
+        }
+    )
+
+    assert data["personDetected"] is True
+    assert data["petDetected"] is True
+    assert data["vehicleDetected"] is True
+    assert data["packageDetected"] is True
+    assert data["otherDetected"] is False
+    assert data["lastAiDetection"] == "package_exist,person,pet,vehicle_enter"
+    assert data["vehicleEnterDetected"] is True
+    assert data["packageExistDetected"] is True
+    assert data["vehicleOutDetected"] is False
+    assert data["packageDropOffDetected"] is False
+
+
+def test_mqtt_camera_ai_event_accepts_json_encoded_object_values():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventTime": "20260614231812",
+            "eventData": {
+                "serialNumber": "camera-sn",
+                "eventObjectType": '{"vehicle":["vehicle_out"],"package":["package_drop_off"]}',
+            },
+        }
+    )
+
+    assert data["lastAiDetection"] == "package_drop_off,vehicle_out"
+    assert data["vehicleDetected"] is True
+    assert data["packageDetected"] is True
+    assert data["personDetected"] is False
+    assert data["petDetected"] is False
+    assert data["otherDetected"] is False
+    assert data["vehicleOutDetected"] is True
+    assert data["packageDropOffDetected"] is True
+    assert data["vehicleEnterDetected"] is False
+    assert data["packagePickUpDetected"] is False
+    assert data["lastVehicleDetectionTime"] == "20260614231812"
+    assert data["lastVehicleOutDetectionTime"] == "20260614231812"
+    assert data["lastPackageDetectionTime"] == "20260614231812"
+    assert data["lastPackageDropOffDetectionTime"] == "20260614231812"
+
+
+def test_mqtt_camera_ai_event_accepts_apk_nested_event_items():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventType": "ai_event",
+            "eventTime": "20260614230000",
+            "eventData": {
+                "serialNumber": "camera-sn",
+                "eventItems": [
+                    {
+                        "eventType": "person",
+                        "eventTime": "20260614230100",
+                        "evtParams": {"deviceName": "Front"},
+                    },
+                    {
+                        "eventType": "package_pick_up",
+                        "eventTime": "20260614230200",
+                    },
+                ],
+            },
+        }
+    )
+
+    assert data["lastAiDetection"] == "package_pick_up,person"
+    assert data["personDetected"] is True
+    assert data["packageDetected"] is True
+    assert data["packagePickUpDetected"] is True
+    assert data["vehicleDetected"] is False
+    assert data["lastPersonDetectionTime"] == "20260614230100"
+    assert data["lastPackageDetectionTime"] == "20260614230200"
+    assert data["lastPackagePickUpDetectionTime"] == "20260614230200"
