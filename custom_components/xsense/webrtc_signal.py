@@ -320,6 +320,7 @@ def _sdp_debug(sdp: str | None) -> dict[str, Any]:
         "directions": _sdp_media_directions(sdp),
         "video_codecs": _sdp_media_codecs(sdp, "video"),
         "video_payloads": _sdp_media_payloads(sdp, "video"),
+        "video_feedback": _sdp_media_feedback(sdp, "video"),
         "fingerprints": _sdp_fingerprints(sdp),
         "candidate_lines": sum(
             1 for line in sdp.splitlines() if line.startswith("a=candidate:")
@@ -384,7 +385,12 @@ def _sdp_media_payloads(sdp: str, media_kind: str) -> list[dict[str, str]]:
             for item in fmtp.split(";"):
                 key_value = item.strip()
                 if key_value.startswith(
-                    ("profile-level-id=", "packetization-mode=", "apt=")
+                    (
+                        "level-asymmetry-allowed=",
+                        "profile-level-id=",
+                        "packetization-mode=",
+                        "apt=",
+                    )
                 ):
                     compact_fmtp.append(key_value)
             if compact_fmtp:
@@ -392,6 +398,20 @@ def _sdp_media_payloads(sdp: str, media_kind: str) -> list[dict[str, str]]:
                     compact_fmtp
                 )
     return list(payloads.values())
+
+
+def _sdp_media_feedback(sdp: str, media_kind: str) -> dict[str, list[str]]:
+    """Return compact RTP feedback lines for one SDP media section."""
+    feedback: dict[str, list[str]] = {}
+    in_section = False
+    for line in sdp.splitlines():
+        if line.startswith("m="):
+            in_section = line.startswith(f"m={media_kind} ")
+            continue
+        if in_section and line.startswith("a=rtcp-fb:"):
+            payload, value = line.removeprefix("a=rtcp-fb:").split(None, 1)
+            feedback.setdefault(payload, []).append(value)
+    return feedback
 
 
 def _receiver_media_ssrcs(receiver: Any) -> list[int]:
@@ -739,6 +759,7 @@ class XSenseWebRTCSession:
         self._data_channel_connected = False
         self._camera_offer_sent = False
         self._camera_offer_sdp: str | None = None
+        self._camera_answer_sdp: str | None = None
         self._sdp_answer_received = False
         self._camera_local_candidate_count = 0
         self._camera_remote_candidate_count = 0
@@ -964,6 +985,8 @@ class XSenseWebRTCSession:
         extra: dict[str, Any] = {"code": code, "timeout_s": delay}
         if code == "xsense_webrtc_first_frame_timeout":
             extra.update(await self._camera_receiver_stats_debug())
+            extra["camera_offer_sdp"] = _sdp_debug(self._camera_offer_sdp)
+            extra["camera_answer_sdp"] = _sdp_debug(self._camera_answer_sdp)
         LOGGER.debug(
             "X-Sense WebRTC timeout: %s",
             self._debug_context(**extra),
@@ -1160,6 +1183,7 @@ class XSenseWebRTCSession:
         self._session_id = self._ticket.session_id
         self._camera_offer_sent = False
         self._camera_offer_sdp = None
+        self._camera_answer_sdp = None
         self._sdp_answer_received = False
         local_description_task = self._camera_local_description_task
         if local_description_task:
@@ -1194,11 +1218,13 @@ class XSenseWebRTCSession:
         """Ask the camera for a decodable first frame until one arrives."""
         try:
             while not self._closed and not self._first_frame_received:
-                sent = await self._send_camera_picture_loss_indication()
-                if sent:
+                pli_ssrcs = await self._send_camera_picture_loss_indication()
+                if pli_ssrcs:
                     LOGGER.debug(
                         "X-Sense WebRTC requested camera keyframe: %s",
-                        self._debug_context(pli_count=sent),
+                        self._debug_context(
+                            pli_count=len(pli_ssrcs), pli_ssrcs=pli_ssrcs
+                        ),
                     )
                 else:
                     LOGGER.debug(
@@ -1212,12 +1238,12 @@ class XSenseWebRTCSession:
             if getattr(self, "_first_frame_pli_task", None) is asyncio.current_task():
                 self._first_frame_pli_task = None
 
-    async def _send_camera_picture_loss_indication(self) -> int:
+    async def _send_camera_picture_loss_indication(self) -> list[int]:
         """Send RTCP PLI for camera video receivers that have active SSRCs."""
         camera_pc = self._camera_pc
         if camera_pc is None:
-            return 0
-        sent = 0
+            return []
+        sent: list[int] = []
         for receiver in list(getattr(camera_pc, "getReceivers", lambda: [])()):
             track = getattr(receiver, "track", None)
             if getattr(track, "kind", None) != "video":
@@ -1234,7 +1260,7 @@ class XSenseWebRTCSession:
                         self._debug_context(error=type(err).__name__, message=str(err)),
                     )
                     continue
-                sent += 1
+                sent.append(ssrc)
         return sent
 
     def _cancel_first_frame_keyframe_requests(self) -> None:
@@ -1455,6 +1481,7 @@ class XSenseWebRTCSession:
         camera_offer = RTCSessionDescription(
             sdp=_apk_camera_offer_sdp(offer.sdp), type=offer.type
         )
+        self._camera_offer_sdp = camera_offer.sdp
         local_description_task = asyncio.create_task(
             self._camera_pc.setLocalDescription(camera_offer)
         )
@@ -1477,12 +1504,13 @@ class XSenseWebRTCSession:
                 self._debug_context(payload=_payload_debug(payload)),
             )
             return
+        self._camera_answer_sdp = answer
         await self._camera_pc.setRemoteDescription(
             RTCSessionDescription(sdp=answer, type="answer")
         )
         LOGGER.debug(
             "X-Sense WebRTC applied changeTransceiverOffer answer: %s",
-            self._debug_context(),
+            self._debug_context(answer_sdp=_sdp_debug(answer)),
         )
 
     def _send_start_live_if_ready(self) -> None:
@@ -1698,6 +1726,7 @@ class XSenseWebRTCSession:
                 )
                 if self._camera_pc is None:
                     return
+                self._camera_answer_sdp = answer
                 await self._camera_pc.setRemoteDescription(
                     RTCSessionDescription(sdp=answer, type="answer")
                 )
@@ -1827,6 +1856,11 @@ def _data_channel_answer_sdp(payload: Any) -> str | None:
     """Return the APK changeTransceiverOffer answer SDP from data-channel JSON."""
     if not isinstance(payload, dict):
         return None
+    return_value = payload.get("returnValue", 0)
+    with suppress(TypeError, ValueError):
+        return_value = int(return_value)
+    if return_value != 0:
+        return None
     data = payload.get("data")
     if not isinstance(data, dict):
         return None
@@ -1896,7 +1930,72 @@ def _apk_camera_offer_sdp(sdp: str) -> str:
     # browser-style SDP with multiple DTLS fingerprint algorithms; Android's
     # WebRTC camera path uses the sha-256 fingerprint line, so keep that wire
     # shape for the camera-facing offer.
-    return _sdp_with_sha256_fingerprints(_sdp_without_local_candidates(sdp))
+    return _sdp_with_android_video_feedback(
+        _sdp_with_sha256_fingerprints(_sdp_without_local_candidates(sdp))
+    )
+
+
+def _sdp_with_android_video_feedback(sdp: str) -> str:
+    """Advertise Android WebRTC-style video feedback to X-Sense cameras."""
+    feedback_values = ("goog-remb", "nack", "nack pli")
+    lines = sdp.splitlines()
+    output: list[str] = []
+    in_video = False
+    video_payloads: set[str] = set()
+    video_feedback: set[tuple[str, str]] = set()
+
+    def flush_video_feedback() -> None:
+        for payload in sorted(video_payloads, key=int):
+            for value in feedback_values:
+                if (payload, value) not in video_feedback:
+                    output.append(f"a=rtcp-fb:{payload} {value}")
+
+    for line in lines:
+        if line.startswith("m="):
+            if in_video:
+                flush_video_feedback()
+            in_video = line.startswith("m=video ")
+            video_payloads = set()
+            video_feedback = set()
+            output.append(line)
+            continue
+        if in_video and line.startswith("a=rtpmap:"):
+            payload, codec = line.removeprefix("a=rtpmap:").split(None, 1)
+            if codec.split("/", 1)[0].upper() != "RTX":
+                video_payloads.add(payload)
+        elif in_video and line.startswith("a=rtcp-fb:"):
+            payload, value = line.removeprefix("a=rtcp-fb:").split(None, 1)
+            video_feedback.add((payload, value))
+        output.append(_sdp_with_android_h264_fmtp(line) if in_video else line)
+    if in_video:
+        flush_video_feedback()
+    ending = "\r\n" if "\r\n" in sdp else "\n"
+    return ending.join(output) + (ending if sdp.endswith(("\r\n", "\n")) else "")
+
+
+def _sdp_with_android_h264_fmtp(line: str) -> str:
+    """Keep H264 fmtp compatible with Android WebRTC offers."""
+    if not line.startswith("a=fmtp:") or "profile-level-id=" not in line:
+        return line
+    prefix, fmtp = line.split(None, 1)
+    values: dict[str, str] = {}
+    order: list[str] = []
+    for item in fmtp.split(";"):
+        item = item.strip()
+        if not item or "=" not in item:
+            continue
+        key, value = item.split("=", 1)
+        if key not in values:
+            order.append(key)
+        values[key] = value
+    for key, value in (
+        ("level-asymmetry-allowed", "1"),
+        ("packetization-mode", "1"),
+    ):
+        if key not in values:
+            order.insert(0 if key == "level-asymmetry-allowed" else len(order), key)
+        values[key] = value
+    return prefix + " " + ";".join(f"{key}={values[key]}" for key in order)
 
 
 def _sdp_with_sha256_fingerprints(sdp: str) -> str:

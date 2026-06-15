@@ -244,6 +244,17 @@ a=mid:2
 
     assert "m=video 9 UDP/TLS/RTP/SAVPF 97 98 99 100 101 102" in apk_sdp
     assert "H264" in apk_sdp
+    assert "a=rtcp-fb:99 nack pli" in apk_sdp
+    assert "a=rtcp-fb:101 nack pli" in apk_sdp
+    assert "a=rtcp-fb:100 nack pli" not in apk_sdp
+    assert (
+        "a=fmtp:99 level-asymmetry-allowed=1;profile-level-id=42001f;"
+        "packetization-mode=1"
+    ) in apk_sdp
+    assert (
+        "a=fmtp:101 level-asymmetry-allowed=1;profile-level-id=42e01f;"
+        "packetization-mode=1"
+    ) in apk_sdp
     assert "a=fingerprint:sha-256" in apk_sdp
     assert "a=fingerprint:sha-384" not in apk_sdp
     assert "a=fingerprint:sha-512" not in apk_sdp
@@ -413,6 +424,44 @@ async def test_data_channel_request_change_transceiver_offer_matches_apk(monkeyp
 
     assert session._camera_pc.remote_descriptions[0].type == "answer"
     assert session._camera_pc.remote_descriptions[0].sdp == "v=0\r\nanswer"
+
+
+async def test_change_transceiver_answer_ignores_nonzero_return_value_like_apk(monkeypatch):
+    created_tasks = []
+
+    def create_task(coro):
+        task = asyncio.create_task(coro)
+        created_tasks.append(task)
+        return task
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "create_task", create_task)
+
+    class FakePeer:
+        def __init__(self):
+            self.remote_descriptions = []
+
+        async def setRemoteDescription(self, description):
+            self.remote_descriptions.append(description)
+
+    encoded_answer = base64.b64encode(
+        json.dumps({"sdp": "v=0\r\nanswer"}).encode()
+    ).decode()
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._camera_pc = FakePeer()
+    session._debug_context = lambda **kwargs: kwargs
+
+    session._handle_data_channel_message(
+        json.dumps(
+            {
+                "action": "changeTransceiverOffer",
+                "returnValue": 17,
+                "data": {"answer": encoded_answer},
+            }
+        )
+    )
+    await asyncio.gather(*created_tasks)
+
+    assert session._camera_pc.remote_descriptions == []
 
 
 async def test_start_camera_peer_uses_apk_receive_media_offer_shape(monkeypatch):
@@ -963,24 +1012,29 @@ def test_sdp_debug_includes_media_directions():
     }
 
 
-def test_sdp_debug_includes_video_payload_fmtp():
+def test_sdp_debug_includes_video_payload_fmtp_and_feedback():
     sdp = (
         "v=0\r\n"
         "m=video 9 UDP/TLS/RTP/SAVPF 101 102\r\n"
         "a=rtpmap:101 H264/90000\r\n"
+        "a=rtcp-fb:101 nack\r\n"
+        "a=rtcp-fb:101 nack pli\r\n"
         "a=fmtp:101 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\n"
         "a=rtpmap:102 rtx/90000\r\n"
         "a=fmtp:102 apt=101\r\n"
     )
 
-    assert webrtc_signal._sdp_debug(sdp)["video_payloads"] == [
+    debug = webrtc_signal._sdp_debug(sdp)
+
+    assert debug["video_payloads"] == [
         {
             "payload": "101",
             "codec": "H264",
-            "fmtp": "packetization-mode=1;profile-level-id=42e01f",
+            "fmtp": "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
         },
         {"payload": "102", "codec": "RTX", "fmtp": "apt=101"},
     ]
+    assert debug["video_feedback"] == {"101": ["nack", "nack pli"]}
 
 
 def test_data_channel_debug_includes_safe_nested_codec_values():
@@ -1555,6 +1609,59 @@ async def test_webrtc_timeout_reports_error_and_closes_session():
     assert closed == [True]
 
 
+async def test_first_frame_timeout_debug_includes_camera_sdp_and_receiver_stats():
+    messages = []
+    closed = []
+    debug_contexts = []
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._send_message = messages.append
+    session._camera_offer_sdp = (
+        "v=0\r\n"
+        "m=video 9 UDP/TLS/RTP/SAVPF 101\r\n"
+        "a=rtpmap:101 H264/90000\r\n"
+        "a=rtcp-fb:101 nack pli\r\n"
+        "a=fmtp:101 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f\r\n"
+    )
+    session._camera_answer_sdp = (
+        "v=0\r\n"
+        "m=video 9 UDP/TLS/RTP/SAVPF 101\r\n"
+        "a=rtpmap:101 H264/90000\r\n"
+        "a=sendonly\r\n"
+    )
+
+    async def stats():
+        return {"video_receiver_stats": [{"ssrcs": [1234], "packetsReceived": 10}]}
+
+    async def close():
+        closed.append(True)
+        session._closed = True
+
+    def debug_context(**extra):
+        debug_contexts.append(extra)
+        return extra
+
+    session._camera_receiver_stats_debug = stats
+    session._debug_context = debug_context
+    session.close = close
+
+    await session._fail_after_timeout(
+        0, "xsense_webrtc_first_frame_timeout", "Timed out"
+    )
+
+    assert messages[0].code == "xsense_webrtc_first_frame_timeout"
+    assert debug_contexts[0]["video_receiver_stats"] == [
+        {"ssrcs": [1234], "packetsReceived": 10}
+    ]
+    assert debug_contexts[0]["camera_offer_sdp"]["video_feedback"] == {
+        "101": ["nack pli"]
+    }
+    assert debug_contexts[0]["camera_answer_sdp"]["directions"] == {
+        "video": "sendonly"
+    }
+    assert closed == [True]
+
+
 def test_signal_close_schedules_apk_style_reconnect():
     scheduled = []
     session = object.__new__(webrtc_signal.XSenseWebRTCSession)
@@ -1846,7 +1953,7 @@ async def test_camera_keyframe_request_sends_pli_for_video_ssrcs():
     session._camera_pc = FakePeer([receiver, FakeAudioReceiver()])
     session._debug_context = lambda **extra: extra
 
-    assert await session._send_camera_picture_loss_indication() == 1
+    assert await session._send_camera_picture_loss_indication() == [5678]
     assert receiver.sent == [5678]
 
 
