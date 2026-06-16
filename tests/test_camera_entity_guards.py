@@ -172,31 +172,6 @@ def test_camera_availability_follows_apk_non_offline_statuses():
     assert _apk_entity_is_available(camera)
 
 
-async def test_webrtc_offer_uses_ticket_without_direct_stream_keepalive():
-    calls = []
-
-    class FakeXsense:
-        async def keep_camera_live_alive(self, entity):
-            raise AssertionError("WebRTC path should not call direct-stream keepalive")
-
-        async def get_camera_webrtc_ticket(self, entity, *, force_refresh=False):
-            calls.append(("ticket", entity.sn, force_refresh))
-            return None
-
-    entity = SimpleNamespace(sn="SSC0A123", online=True, data={})
-    camera_entity = object.__new__(camera.XSenseCameraEntity)
-    camera_entity.coordinator = SimpleNamespace(xsense=FakeXsense())
-    camera_entity._current_entity = lambda: entity
-    messages = []
-
-    await camera_entity.async_handle_async_webrtc_offer(
-        "v=0\r\n", "session-1", messages.append
-    )
-
-    assert calls == [("ticket", "SSC0A123", True)]
-    assert messages[0].code == "xsense_webrtc_ticket_failed"
-
-
 def test_camera_audio_controls_follow_apk_missing_or_enabled_support_rule():
     live_audio = next(
         description
@@ -407,7 +382,18 @@ def test_camera_update_invalidates_capability_cache():
     camera._invalidate_camera_capabilities_cache()
 
     assert camera.camera_capabilities is not initial_capabilities
-    assert camera.camera_capabilities.frontend_stream_types == {StreamType.WEB_RTC}
+    assert camera.camera_capabilities.frontend_stream_types == {StreamType.HLS}
+
+
+def test_webrtc_camera_does_not_expose_native_ha_webrtc_handler():
+    from homeassistant.components.camera import Camera
+
+    from custom_components.xsense.camera import XSenseCameraEntity
+
+    assert (
+        XSenseCameraEntity.async_handle_async_webrtc_offer
+        is Camera.async_handle_async_webrtc_offer
+    )
 
 
 def test_camera_entity_webrtc_protocol_default_matches_apk():
@@ -434,152 +420,6 @@ def test_camera_live_resolution_defaults_to_apk_live_view_default():
 
     camera_entity.data["liveResolution"] = "1920x1080"
     assert camera_live_resolution(camera_entity) == "1920x1080"
-
-
-async def test_failed_webrtc_start_is_removed_from_active_sessions(monkeypatch):
-    from custom_components.xsense import camera as camera_module
-    from custom_components.xsense.camera import CAMERA_DESCRIPTION, XSenseCameraEntity
-
-    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
-    camera_entity.entity_id = "camera-test"
-    camera_entity.sn = "SSC0ATEST"
-    camera_entity.name = "Camera"
-    camera_entity.online = True
-
-    async def get_camera_webrtc_ticket(entity, *, force_refresh=False):
-        return {"signalServer": "signal"}
-
-    class Coordinator:
-        def __init__(self):
-            self.data = {
-                "stations": {camera_entity.entity_id: camera_entity},
-                "devices": {},
-            }
-            self.xsense = SimpleNamespace(
-                get_camera_webrtc_ticket=get_camera_webrtc_ticket
-            )
-
-        def async_add_listener(self, *args, **kwargs):
-            return lambda: None
-
-    class FakeSession:
-        def __init__(self, **kwargs):
-            self.closed = False
-
-        async def start(self):
-            return False
-
-        async def close(self):
-            self.closed = True
-
-    fake_module = SimpleNamespace(
-        XSenseWebRTCTicket=SimpleNamespace(
-            from_api=lambda serial_number, data: SimpleNamespace(is_valid=True)
-        ),
-        XSenseWebRTCSession=FakeSession,
-    )
-
-    class FakeHass:
-        async def async_add_import_executor_job(self, func, module):
-            return fake_module
-
-    monkeypatch.setattr(
-        camera_module, "async_get_clientsession", lambda hass: SimpleNamespace()
-    )
-
-    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
-    camera.hass = FakeHass()
-
-    await camera.async_handle_async_webrtc_offer(
-        "v=0\r\n", "session-1", lambda message: None
-    )
-
-    assert camera._webrtc_sessions == {}
-    assert not camera.is_streaming
-
-
-async def test_new_webrtc_offer_closes_previous_camera_session(monkeypatch):
-    from custom_components.xsense import camera as camera_module
-    from custom_components.xsense.camera import CAMERA_DESCRIPTION, XSenseCameraEntity
-
-    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
-    camera_entity.entity_id = "camera-test"
-    camera_entity.sn = "SSC0ATEST"
-    camera_entity.name = "Camera"
-    camera_entity.online = True
-
-    async def get_camera_webrtc_ticket(entity, *, force_refresh=False):
-        return {
-            "signalServer": "https://signal.example",
-            "groupId": "group",
-            "role": "viewer",
-            "id": "client123",
-            "traceId": "trace",
-            "sign": "sig",
-            "time": 123456,
-            "expirationTime": 9999999999999,
-            "iceServer": [],
-        }
-
-    class Coordinator:
-        def __init__(self):
-            self.data = {
-                "stations": {camera_entity.entity_id: camera_entity},
-                "devices": {},
-            }
-            self.xsense = SimpleNamespace(
-                get_camera_webrtc_ticket=get_camera_webrtc_ticket
-            )
-
-        def async_add_listener(self, *args, **kwargs):
-            return lambda: None
-
-    class ExistingSession:
-        def __init__(self):
-            self.closed = False
-
-        async def close(self):
-            self.closed = True
-
-    created_sessions = []
-
-    class NewSession:
-        def __init__(self, **kwargs):
-            created_sessions.append(kwargs)
-
-        async def start(self):
-            return True
-
-        async def close(self):
-            pass
-
-    fake_module = SimpleNamespace(
-        XSenseWebRTCTicket=SimpleNamespace(
-            from_api=lambda serial_number, data: SimpleNamespace(is_valid=True)
-        ),
-        XSenseWebRTCSession=NewSession,
-    )
-
-    class FakeHass:
-        async def async_add_import_executor_job(self, func, module):
-            return fake_module
-
-    monkeypatch.setattr(
-        camera_module, "async_get_clientsession", lambda hass: SimpleNamespace()
-    )
-
-    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
-    camera.hass = FakeHass()
-    old_session = ExistingSession()
-    camera._webrtc_sessions["old-session"] = old_session
-
-    await camera.async_handle_async_webrtc_offer(
-        "v=0\r\n", "new-session", lambda message: None
-    )
-
-    assert old_session.closed is True
-    assert list(camera._webrtc_sessions) == ["new-session"]
-    assert len(created_sessions) == 1
 
 
 async def test_webrtc_camera_stream_source_returns_go2rtc_h264_endpoint(monkeypatch):
