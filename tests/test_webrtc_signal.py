@@ -1194,6 +1194,46 @@ async def test_h264_transport_tap_skips_aiortc_video_handler():
     assert original_packets == []
 
 
+def test_h264_stream_session_queues_frames_without_duplicate_debug_keys(monkeypatch):
+    from types import SimpleNamespace
+
+    debug_calls = []
+    session = object.__new__(webrtc_signal.XSenseH264StreamSession)
+    session._closed = False
+    session._frame_queue = asyncio.Queue(maxsize=1)
+    session._queued_frames = 0
+    session._dropped_queue_frames = 0
+    session._first_h264_frame_logged = False
+    session._first_frame_received = False
+    session._h264_packet_stream = SimpleNamespace(
+        debug_summary=lambda: {
+            "h264_packets": 2,
+            "h264_frames": 2,
+            "h264_bytes": 11,
+        }
+    )
+    session._debug_context = lambda **extra: extra
+    session._mark_first_frame_received = lambda: setattr(
+        session, "_first_frame_received", True
+    )
+
+    monkeypatch.setattr(
+        webrtc_signal.LOGGER,
+        "debug",
+        lambda message, context=None, **kwargs: debug_calls.append((message, context)),
+    )
+
+    session._queue_h264_frame(b"first")
+    session._queue_h264_frame(b"second")
+
+    assert session._first_frame_received is True
+    assert session._queued_frames == 2
+    assert session._dropped_queue_frames == 1
+    assert session._frame_queue.get_nowait() == b"second"
+    assert debug_calls[0][1]["queue_size"] == 0
+    assert debug_calls[1][1]["queue_size"] == 1
+
+
 def test_h264_stream_session_uses_compact_debug_context():
     from types import SimpleNamespace
 
@@ -2097,6 +2137,56 @@ def test_signal_close_schedules_apk_style_reconnect():
         webrtc_signal.asyncio.create_task = original_create_task
 
     assert scheduled == ["reconnect-1000"]
+
+
+def test_signal_close_skips_expired_ticket_and_closed_camera_peer():
+    scheduled = []
+    debug_contexts = []
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._signal_reconnect_task = None
+    session._ticket = ticket(expirationTime=99_000)
+    session._camera_pc = None
+    session._debug_context = lambda **kwargs: debug_contexts.append(kwargs) or kwargs
+    session._signal_reconnect_after_delay = lambda close_code: f"reconnect-{close_code}"
+
+    original_create_task = webrtc_signal.asyncio.create_task
+    webrtc_signal.asyncio.create_task = lambda coro: scheduled.append(coro) or object()
+    try:
+        session._schedule_signal_reconnect(1006)
+        session._ticket = ticket()
+        session._camera_pc = type("ClosedPeer", (), {"connectionState": "closed"})()
+        session._schedule_signal_reconnect(1006)
+    finally:
+        webrtc_signal.asyncio.create_task = original_create_task
+
+    assert scheduled == []
+    assert [context["reconnect_blocked"] for context in debug_contexts] == [
+        "ticket_expired",
+        "camera_peer_closed",
+    ]
+
+
+async def test_delayed_signal_reconnect_rechecks_expired_ticket(monkeypatch):
+    debug_contexts = []
+    reconnected = []
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._ticket = ticket(expirationTime=99_000)
+    session._camera_pc = None
+    session._debug_context = lambda **kwargs: debug_contexts.append(kwargs) or kwargs
+    session._reconnect_signal = lambda: reconnected.append(True)
+
+    async def sleep(delay):
+        return None
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "sleep", sleep)
+
+    await session._signal_reconnect_after_delay(1006)
+
+    assert reconnected == []
+    assert debug_contexts[-1]["reconnect_blocked"] == "ticket_expired"
+
 
 
 async def test_signal_reconnect_delay_matches_apk(monkeypatch):

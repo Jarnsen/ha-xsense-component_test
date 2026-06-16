@@ -1270,12 +1270,29 @@ class XSenseWebRTCSession:
         if not self._closed:
             await self._connect_signal()
 
+    def _signal_reconnect_block_reason(self, close_code: int | None) -> str | None:
+        """Return why signal reconnect should stop for this session, if any."""
+        if self._closed:
+            return "session_closed"
+        if close_code in _SIGNAL_TERMINAL_CLOSE_CODES:
+            return "terminal_close_code"
+        ticket = getattr(self, "_ticket", None)
+        if ticket is not None and not ticket.is_valid:
+            return "ticket_expired"
+        camera_pc = getattr(self, "_camera_pc", None)
+        if getattr(camera_pc, "connectionState", None) == "closed":
+            return "camera_peer_closed"
+        return None
+
     def _schedule_signal_reconnect(self, close_code: int | None) -> None:
         """Schedule APK-style signal reinit after a non-terminal close."""
-        if self._closed or close_code in _SIGNAL_TERMINAL_CLOSE_CODES:
+        block_reason = self._signal_reconnect_block_reason(close_code)
+        if block_reason is not None:
             LOGGER.debug(
                 "X-Sense WebRTC signal reconnect skipped: %s",
-                self._debug_context(signal_close_code=close_code),
+                self._debug_context(
+                    signal_close_code=close_code, reconnect_blocked=block_reason
+                ),
             )
             return
         task = getattr(self, "_signal_reconnect_task", None)
@@ -1291,7 +1308,14 @@ class XSenseWebRTCSession:
             await asyncio.sleep(_SIGNAL_RECONNECT_DELAY)
         except asyncio.CancelledError:
             raise
-        if self._closed:
+        block_reason = self._signal_reconnect_block_reason(close_code)
+        if block_reason is not None:
+            LOGGER.debug(
+                "X-Sense WebRTC delayed signal reconnect skipped: %s",
+                self._debug_context(
+                    signal_close_code=close_code, reconnect_blocked=block_reason
+                ),
+            )
             return
         LOGGER.debug(
             "X-Sense WebRTC signal reconnecting after close: %s",
@@ -2214,7 +2238,6 @@ class XSenseH264StreamSession(XSenseWebRTCSession):
                 "X-Sense WebRTC H264 first frame queued: %s",
                 self._debug_context(
                     frame_bytes=len(frame),
-                    queue_size=self._frame_queue.qsize(),
                     **self._h264_debug_context(),
                 ),
             )
@@ -2230,7 +2253,6 @@ class XSenseH264StreamSession(XSenseWebRTCSession):
                 "X-Sense WebRTC H264 frame queue full, dropped oldest frame: %s",
                 self._debug_context(
                     frame_bytes=len(frame),
-                    queue_size=self._frame_queue.qsize(),
                     **self._h264_debug_context(),
                 ),
             )
