@@ -9,7 +9,15 @@ for module_name in list(sys.modules):
 if not hasattr(sys.modules.get("custom_components"), "__path__"):
     sys.modules.pop("custom_components", None)
 
-from custom_components.xsense import binary_sensor, button, camera, number, select, sensor, switch
+from custom_components.xsense import (
+    binary_sensor,
+    button,
+    camera,
+    number,
+    select,
+    sensor,
+    switch,
+)
 from custom_components.xsense.api import mapping
 
 
@@ -574,7 +582,10 @@ async def test_new_webrtc_offer_closes_previous_camera_session(monkeypatch):
     assert len(created_sessions) == 1
 
 
-async def test_webrtc_camera_stream_source_does_not_start_native_live_url():
+async def test_webrtc_camera_stream_source_returns_go2rtc_h264_endpoint(monkeypatch):
+    from types import SimpleNamespace
+
+    from custom_components.xsense import camera as camera_module
     from custom_components.xsense.camera import CAMERA_DESCRIPTION, XSenseCameraEntity
 
     camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
@@ -589,6 +600,7 @@ async def test_webrtc_camera_stream_source_does_not_start_native_live_url():
 
     class Coordinator:
         def __init__(self):
+            self.entry = SimpleNamespace(entry_id="entry-1")
             self.data = {
                 "stations": {camera_entity.entity_id: camera_entity},
                 "devices": {},
@@ -598,9 +610,28 @@ async def test_webrtc_camera_stream_source_does_not_start_native_live_url():
         def async_add_listener(self, *args, **kwargs):
             return lambda: None
 
-    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    class FakeHass:
+        def __init__(self):
+            self.data = {}
 
-    assert await camera.stream_source() is None
+    monkeypatch.setattr(
+        camera_module,
+        "_camera_stream_source_url",
+        lambda hass, entry_id, dev_id, token: f"h264://{entry_id}/{dev_id}/{token}",
+    )
+
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.hass = FakeHass()
+
+    source = await camera.stream_source()
+
+    assert source.startswith("h264://entry-1/camera-test/")
+    assert (
+        camera.hass.data[camera_module._CAMERA_STREAM_TOKENS][
+            ("entry-1", "camera-test")
+        ]
+        in source
+    )
 
 
 def test_camera_online_uses_parsed_entity_online_state_like_apk():

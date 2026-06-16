@@ -35,6 +35,7 @@ with warnings.catch_warnings():
         RTCRtpReceiver,
         RTCSessionDescription,
     )
+    from aiortc.codecs.h264 import h264_depayload
     from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
     from aiortc.rtp import RTCP_PSFB_FIR, RtcpPsfbPacket
     from aiortc.sdp import candidate_from_sdp
@@ -477,9 +478,7 @@ def _receiver_media_ssrcs(receiver: Any) -> list[int]:
 def _fir_packet(receiver: Any, media_ssrc: int) -> RtcpPsfbPacket:
     """Return an RTCP Full Intra Request for a camera media SSRC."""
     sender_ssrc = int(getattr(receiver, "_RTCRtpReceiver__rtcp_ssrc", 0) or 0)
-    sequence_number = int(
-        getattr(receiver, "_xsense_fir_sequence_number", 0) % 256
-    )
+    sequence_number = int(getattr(receiver, "_xsense_fir_sequence_number", 0) % 256)
     setattr(receiver, "_xsense_fir_sequence_number", (sequence_number + 1) % 256)
     return RtcpPsfbPacket(
         fmt=RTCP_PSFB_FIR,
@@ -826,6 +825,7 @@ class XSenseWebRTCSession:
         self._start_live_sent = False
         self._last_start_live_response: dict[str, Any] | None = None
         self._first_frame_received = False
+        self._h264_packet_stream: _H264AnnexBPacketStream | None = None
         self._closed = False
         self._close_lock = asyncio.Lock()
 
@@ -1081,7 +1081,9 @@ class XSenseWebRTCSession:
                         report = inbound[0]
                         summary.update(
                             {
-                                "packetsReceived": getattr(report, "packetsReceived", None),
+                                "packetsReceived": getattr(
+                                    report, "packetsReceived", None
+                                ),
                                 "bytesReceived": getattr(report, "bytesReceived", None),
                                 "packetsLost": getattr(report, "packetsLost", None),
                                 "jitter": getattr(report, "jitter", None),
@@ -1330,7 +1332,9 @@ class XSenseWebRTCSession:
             for ssrc in _receiver_media_ssrcs(receiver):
                 try:
                     await send_pli(ssrc)
-                except Exception as err:  # noqa: BLE001 - debug only, keep trying others
+                except (
+                    Exception
+                ) as err:  # noqa: BLE001 - debug only, keep trying others
                     LOGGER.debug(
                         "X-Sense WebRTC camera keyframe request failed: %s",
                         self._debug_context(error=type(err).__name__, message=str(err)),
@@ -1418,6 +1422,7 @@ class XSenseWebRTCSession:
         @camera_pc.on("track")
         def on_track(track):
             if track.kind == "video":
+                self._install_h264_packet_tap(track)
                 self._video.set_source(track)
             elif track.kind == "audio":
                 self._audio.set_source(track)
@@ -1911,6 +1916,275 @@ class XSenseWebRTCSession:
             await self._camera_pc.addIceCandidate(
                 self._pending_camera_candidates.pop(0)
             )
+
+    def _install_h264_packet_tap(self, track: Any) -> None:
+        """Tap camera RTP packets before aiortc attempts to decode video frames."""
+        packet_stream = getattr(self, "_h264_packet_stream", None)
+        camera_pc = getattr(self, "_camera_pc", None)
+        if packet_stream is None or camera_pc is None:
+            return
+        for receiver in list(getattr(camera_pc, "getReceivers", lambda: [])()):
+            if getattr(receiver, "track", None) is not track:
+                continue
+            if getattr(receiver, "_xsense_h264_tap_installed", False):
+                return
+            handle_rtp_packet = getattr(receiver, "_handle_rtp_packet", None)
+            if not callable(handle_rtp_packet):
+                return
+
+            async def tapped_handle_rtp_packet(packet, arrival_time_ms):
+                packet_stream.add(packet)
+                if not getattr(packet_stream, "transport_only", False):
+                    await handle_rtp_packet(packet, arrival_time_ms)
+
+            receiver._handle_rtp_packet = tapped_handle_rtp_packet
+            receiver._xsense_h264_tap_installed = True
+            LOGGER.debug(
+                "X-Sense WebRTC H264 RTP tap installed: %s",
+                self._debug_context(),
+            )
+            return
+
+
+class _H264AnnexBPacketStream:
+    """Reassemble H264 RTP payloads into Annex-B access units for go2rtc."""
+
+    def __init__(self, on_frame: Callable[[bytes], None]) -> None:
+        self._on_frame = on_frame
+        self._timestamp: int | None = None
+        self._sequence: int | None = None
+        self._parts: list[bytes] = []
+        self._drop_timestamp: int | None = None
+        self.transport_only = False
+        self.ssrcs: set[int] = set()
+        self.packets = 0
+        self.frames = 0
+        self.bytes = 0
+        self.sequence_gaps = 0
+        self.parse_errors = 0
+        self.dropped_frames = 0
+
+    def add(self, packet: Any) -> None:
+        payload = getattr(packet, "payload", b"")
+        if not payload:
+            return
+        self.packets += 1
+        timestamp = getattr(packet, "timestamp", None)
+        sequence = getattr(packet, "sequence_number", None)
+        ssrc = getattr(packet, "ssrc", None)
+        marker = bool(getattr(packet, "marker", False))
+        if timestamp is None or sequence is None:
+            return
+        if isinstance(ssrc, int):
+            self.ssrcs.add(ssrc)
+        if self._timestamp != timestamp:
+            self._reset(timestamp, sequence)
+        elif (
+            self._sequence is not None
+            and _next_rtp_sequence(self._sequence) != sequence
+        ):
+            self.sequence_gaps += 1
+            self._drop_timestamp = timestamp
+        self._sequence = sequence
+        if self._drop_timestamp == timestamp:
+            if marker:
+                self.dropped_frames += 1
+                self._reset(None, None)
+            return
+        try:
+            annexb = h264_depayload(payload)
+        except ValueError:
+            self.parse_errors += 1
+            self._drop_timestamp = timestamp
+            return
+        if annexb:
+            self._parts.append(annexb)
+        if marker and self._parts:
+            frame = b"".join(self._parts)
+            self.frames += 1
+            self.bytes += len(frame)
+            self._reset(None, None)
+            self._on_frame(frame)
+
+    def debug_summary(self) -> dict[str, Any]:
+        return {
+            "h264_packets": self.packets,
+            "h264_frames": self.frames,
+            "h264_bytes": self.bytes,
+            "h264_ssrcs": sorted(self.ssrcs),
+            "h264_sequence_gaps": self.sequence_gaps,
+            "h264_parse_errors": self.parse_errors,
+            "h264_dropped_frames": self.dropped_frames,
+            "transport_only": self.transport_only,
+        }
+
+    def _reset(self, timestamp: int | None, sequence: int | None) -> None:
+        self._timestamp = timestamp
+        self._sequence = sequence
+        self._parts = []
+        self._drop_timestamp = None
+
+
+def _next_rtp_sequence(sequence: int) -> int:
+    return (sequence + 1) & 0xFFFF
+
+
+class XSenseH264StreamSession(XSenseWebRTCSession):
+    """One X-Sense camera session exposed as raw H264 for go2rtc."""
+
+    def __init__(
+        self,
+        *,
+        session: aiohttp.ClientSession,
+        ticket: XSenseWebRTCTicket,
+        resolution: str | None,
+        frame_queue: asyncio.Queue[bytes | None],
+        session_id: str | None = None,
+        on_close: Callable[[], None] | None = None,
+        camera_online: bool = False,
+        refresh_ticket: (
+            Callable[[], Coroutine[Any, Any, XSenseWebRTCTicket | None]] | None
+        ) = None,
+    ) -> None:
+        super().__init__(
+            session=session,
+            ticket=ticket,
+            offer_sdp="",
+            resolution=resolution,
+            send_message=lambda message: None,
+            session_id=session_id,
+            on_close=on_close,
+            camera_online=camera_online,
+            refresh_ticket=refresh_ticket,
+        )
+        self._frame_queue = frame_queue
+        self._h264_packet_stream = _H264AnnexBPacketStream(self._queue_h264_frame)
+        self._h264_packet_stream.transport_only = True
+        self._queued_frames = 0
+        self._dropped_queue_frames = 0
+        self._first_h264_frame_logged = False
+
+    async def start(self) -> bool:
+        """Connect the camera peer and start writing H264 frames to the queue."""
+        try:
+            LOGGER.debug(
+                "X-Sense WebRTC H264 stream starting: %s", self._debug_context()
+            )
+            await self._connect_signal()
+            self._restart_play_timeout()
+            if self._camera_online:
+                self._camera_peer_ready = True
+                await self._start_camera_peer()
+            else:
+                self._restart_peer_in_timeout()
+            return True
+        except Exception as err:  # noqa: BLE001 - report through stream close
+            LOGGER.debug(
+                "X-Sense WebRTC H264 stream start failed: %s",
+                self._debug_context(error=type(err).__name__, message=str(err)),
+                exc_info=err,
+            )
+            await self.close()
+            return False
+
+    async def close(self) -> None:
+        await super().close()
+        LOGGER.debug(
+            "X-Sense WebRTC H264 stream closing summary: %s",
+            self._debug_context(**self._h264_debug_context()),
+        )
+        self._queue_stream_end()
+
+    def _send_ha_message(self, message: WebRTCAnswer | WebRTCError) -> bool:
+        if isinstance(message, WebRTCError):
+            LOGGER.debug(
+                "X-Sense WebRTC H264 stream error: %s",
+                self._debug_context(code=message.code, message=message.message),
+            )
+        return not self._closed
+
+    def _queue_h264_frame(self, frame: bytes) -> None:
+        if not frame or self._closed:
+            return
+        self._mark_first_frame_received()
+        self._queued_frames += 1
+        if not self._first_h264_frame_logged:
+            self._first_h264_frame_logged = True
+            LOGGER.debug(
+                "X-Sense WebRTC H264 first frame queued: %s",
+                self._debug_context(
+                    frame_bytes=len(frame),
+                    queue_size=self._frame_queue.qsize(),
+                    **self._h264_debug_context(),
+                ),
+            )
+        try:
+            self._frame_queue.put_nowait(frame)
+        except asyncio.QueueFull:
+            self._dropped_queue_frames += 1
+            with suppress(asyncio.QueueEmpty):
+                self._frame_queue.get_nowait()
+            with suppress(asyncio.QueueFull):
+                self._frame_queue.put_nowait(frame)
+            LOGGER.debug(
+                "X-Sense WebRTC H264 frame queue full, dropped oldest frame: %s",
+                self._debug_context(
+                    frame_bytes=len(frame),
+                    queue_size=self._frame_queue.qsize(),
+                    **self._h264_debug_context(),
+                ),
+            )
+
+    def _queue_stream_end(self) -> None:
+        with suppress(asyncio.QueueFull):
+            self._frame_queue.put_nowait(None)
+
+    def _h264_debug_context(self) -> dict[str, Any]:
+        summary = self._h264_packet_stream.debug_summary()
+        summary.update(
+            {
+                "queued_frames": self._queued_frames,
+                "queue_size": self._frame_queue.qsize(),
+                "queue_maxsize": self._frame_queue.maxsize,
+                "queue_dropped_frames": self._dropped_queue_frames,
+            }
+        )
+        return summary
+
+    async def _send_camera_keyframe_request(self) -> list[dict[str, Any]]:
+        """Send RTCP keyframe feedback without routing video through the decoder."""
+        camera_pc = self._camera_pc
+        packet_stream = self._h264_packet_stream
+        if camera_pc is None or packet_stream is None:
+            return []
+        sent: list[dict[str, Any]] = []
+        ssrcs = list(packet_stream.ssrcs)
+        for receiver in list(getattr(camera_pc, "getReceivers", lambda: [])()):
+            track = getattr(receiver, "track", None)
+            if getattr(track, "kind", None) != "video":
+                continue
+            send_pli = getattr(receiver, "_send_rtcp_pli", None)
+            send_rtcp = getattr(receiver, "_send_rtcp", None)
+            if not callable(send_pli):
+                continue
+            for ssrc in ssrcs:
+                try:
+                    await send_pli(ssrc)
+                except (
+                    Exception
+                ) as err:  # noqa: BLE001 - debug only, keep trying others
+                    LOGGER.debug(
+                        "X-Sense WebRTC H264 keyframe request failed: %s",
+                        self._debug_context(error=type(err).__name__, message=str(err)),
+                    )
+                    continue
+                feedback = {"ssrc": ssrc, "pli": True, "fir": False}
+                if callable(send_rtcp):
+                    with suppress(Exception):
+                        await send_rtcp(_fir_packet(receiver, ssrc))
+                        feedback["fir"] = True
+                sent.append(feedback)
+        return sent
 
 
 def _prefer_camera_video_codecs(transceiver: Any) -> list[str]:

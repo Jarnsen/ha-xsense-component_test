@@ -292,7 +292,9 @@ a=candidate:4 1 udp 1 ::1 790 typ host
 
 
 def test_data_channel_answer_accepts_apk_base64_without_padding():
-    encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode().rstrip("=")
+    encoded = (
+        base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode().rstrip("=")
+    )
 
     assert (
         webrtc_signal._data_channel_answer_sdp({"data": {"answer": encoded}})
@@ -449,7 +451,9 @@ async def test_data_channel_request_change_transceiver_offer_matches_apk(monkeyp
     assert session._camera_pc.remote_descriptions[0].sdp == "v=0\r\nanswer"
 
 
-async def test_change_transceiver_answer_ignores_nonzero_return_value_like_apk(monkeypatch):
+async def test_change_transceiver_answer_ignores_nonzero_return_value_like_apk(
+    monkeypatch,
+):
     created_tasks = []
 
     def create_task(coro):
@@ -487,7 +491,9 @@ async def test_change_transceiver_answer_ignores_nonzero_return_value_like_apk(m
     assert session._camera_pc.remote_descriptions == []
 
 
-async def test_start_camera_peer_uses_apk_offer_shape_with_bridge_codec_constraint(monkeypatch):
+async def test_start_camera_peer_uses_apk_offer_shape_with_bridge_codec_constraint(
+    monkeypatch,
+):
     class FakeTransceiver:
         def __init__(self):
             self.codec_preferences = None
@@ -849,7 +855,9 @@ def test_apk_sdp_answer_validation_requires_sender_and_recipient_ids():
 
 
 def test_sdp_answer_validation_accepts_apk_base64_without_padding():
-    encoded = base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode().rstrip("=")
+    encoded = (
+        base64.b64encode(json.dumps({"sdp": "answer"}).encode()).decode().rstrip("=")
+    )
 
     assert (
         webrtc_signal._owned_answer_sdp(
@@ -1090,6 +1098,100 @@ def test_stop_live_data_channel_command_matches_apk(monkeypatch):
             "action": "stopLive",
         }
     ]
+
+
+def test_h264_packet_stream_reassembles_single_nal_without_decoding():
+    from types import SimpleNamespace
+
+    frames = []
+    stream = webrtc_signal._H264AnnexBPacketStream(frames.append)
+
+    stream.add(
+        SimpleNamespace(
+            payload=b"\x65frame", timestamp=1, sequence_number=10, marker=True, ssrc=123
+        )
+    )
+
+    assert frames == [b"\x00\x00\x00\x01\x65frame"]
+    assert stream.ssrcs == {123}
+
+
+def test_h264_packet_stream_reassembles_fu_a_without_decoding():
+    from types import SimpleNamespace
+
+    frames = []
+    stream = webrtc_signal._H264AnnexBPacketStream(frames.append)
+
+    stream.add(
+        SimpleNamespace(
+            payload=b"\x7c\x85fra", timestamp=1, sequence_number=10, marker=False
+        )
+    )
+    stream.add(
+        SimpleNamespace(
+            payload=b"\x7c\x05me", timestamp=1, sequence_number=11, marker=False
+        )
+    )
+    stream.add(
+        SimpleNamespace(
+            payload=b"\x7c\x45!", timestamp=1, sequence_number=12, marker=True
+        )
+    )
+
+    assert frames == [b"\x00\x00\x00\x01\x65frame!"]
+
+
+def test_h264_packet_stream_drops_incomplete_frame_on_sequence_gap():
+    from types import SimpleNamespace
+
+    frames = []
+    stream = webrtc_signal._H264AnnexBPacketStream(frames.append)
+
+    stream.add(
+        SimpleNamespace(
+            payload=b"\x7c\x85fra", timestamp=1, sequence_number=10, marker=False
+        )
+    )
+    stream.add(
+        SimpleNamespace(
+            payload=b"\x7c\x45!", timestamp=1, sequence_number=12, marker=True
+        )
+    )
+
+    assert frames == []
+
+
+async def test_h264_transport_tap_skips_aiortc_video_handler():
+    from types import SimpleNamespace
+
+    track = object()
+    tapped_packets = []
+    original_packets = []
+
+    class FakePacketStream:
+        transport_only = True
+
+        def add(self, packet):
+            tapped_packets.append(packet)
+
+    class FakeReceiver:
+        def __init__(self):
+            self.track = track
+
+        async def _handle_rtp_packet(self, packet, arrival_time_ms):
+            original_packets.append((packet, arrival_time_ms))
+
+    receiver = FakeReceiver()
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._h264_packet_stream = FakePacketStream()
+    session._camera_pc = SimpleNamespace(getReceivers=lambda: [receiver])
+    session._debug_context = lambda **extra: extra
+
+    session._install_h264_packet_tap(track)
+    await receiver._handle_rtp_packet("packet", 123)
+
+    assert tapped_packets == ["packet"]
+    assert original_packets == []
 
 
 def test_stop_live_is_not_sent_when_data_channel_is_not_open():
@@ -1463,7 +1565,6 @@ def test_data_channel_connected_message_sends_start_live_like_apk(monkeypatch):
         "resolution": "1920x1080",
     }
     assert len(created_tasks) == 2
-
 
 
 async def test_browser_ice_candidates_wait_for_ha_remote_description():
@@ -1881,9 +1982,7 @@ async def test_first_frame_timeout_debug_includes_camera_sdp_and_receiver_stats(
     assert debug_contexts[0]["camera_offer_sdp"]["video_feedback"] == {
         "101": ["nack pli"]
     }
-    assert debug_contexts[0]["camera_answer_sdp"]["directions"] == {
-        "video": "sendonly"
-    }
+    assert debug_contexts[0]["camera_answer_sdp"]["directions"] == {"video": "sendonly"}
     assert closed == [True]
 
 
@@ -1934,6 +2033,7 @@ async def test_signal_reconnect_delay_matches_apk(monkeypatch):
 
     assert delays == [5]
     assert reconnected == [True]
+
 
 def test_signal_close_skips_apk_terminal_close_codes():
     scheduled = []
@@ -2092,9 +2192,7 @@ async def test_camera_offer_restarts_play_timeout_for_retry(monkeypatch):
     assert old_task.cancelled is True
     assert session._play_timeout_task is created_tasks[-1]
     assert session._camera_offer_sent is True
-    assert [message["messageType"] for message in session._ws.messages] == [
-        "SDP_OFFER"
-    ]
+    assert [message["messageType"] for message in session._ws.messages] == ["SDP_OFFER"]
 
 
 def test_reset_camera_peer_state_cancels_stale_attempt_state(monkeypatch):
