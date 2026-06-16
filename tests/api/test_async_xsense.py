@@ -2351,7 +2351,7 @@ async def test_update_camera_data_creates_camera_from_addx_without_home_camera_e
             "2304x1296",
         ),
         ({"supportedRecordingResolutions": []}, "auto"),
-        ({"supportedRecordingResolutions": ["P1296"]}, "auto"),
+        ({"supportedRecordingResolutions": ["P1296"]}, "2304x1296"),
         ({"deviceSupportResolution": ["bad", "P720"]}, "1280x720"),
         ({"liveResolution": "UNKNOWN_RESOLUTION"}, "auto"),
     ],

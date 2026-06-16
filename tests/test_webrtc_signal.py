@@ -51,8 +51,8 @@ def test_ticket_connect_details_match_apk(monkeypatch):
         "wss://signal.example:443/group/viewer/client123"
         "?traceId=trace&time=123456&sign=sig&name=test-123"
     )
-    assert webrtc_signal._signal_heartbeat(signal_ticket) == 30
-    assert webrtc_signal._signal_heartbeat(ticket(signalPingInterval=0)) == 30
+    assert webrtc_signal._signal_heartbeat(signal_ticket) is None
+    assert webrtc_signal._signal_heartbeat(ticket(signalPingInterval=0)) is None
     assert signal_ticket.signal_connect_options() == {
         "url": (
             "wss://203.0.113.10:443/group/viewer/client123"
@@ -529,10 +529,7 @@ async def test_start_camera_peer_uses_apk_receive_media_offer_shape(monkeypatch)
     assert len(session._camera_pc.transceivers) == 1
     kind, kwargs, transceiver = session._camera_pc.transceivers[0]
     assert (kind, kwargs) == ("video", {"direction": "recvonly"})
-    assert [
-        codec.parameters.get("profile-level-id")
-        for codec in transceiver.codec_preferences
-    ] == ["42001f"]
+    assert transceiver.codec_preferences is None
     assert session._camera_offer_sdp == "v=0\r\n"
     assert session._camera_local_description_task is not None
     session._camera_local_description_task.cancel()
@@ -540,59 +537,22 @@ async def test_start_camera_peer_uses_apk_receive_media_offer_shape(monkeypatch)
         await session._camera_local_description_task
 
 
-def test_existing_camera_video_transceiver_prefers_decoder_safe_h264_profile():
-    class FakeTrack:
-        kind = "video"
-
-    class FakeReceiver:
-        track = FakeTrack()
-
-    class FakeTransceiver:
-        receiver = FakeReceiver()
-
-        def __init__(self):
-            self.codec_preferences = None
-
-        def setCodecPreferences(self, codecs):
-            self.codec_preferences = codecs
-
-    class FakePeerConnection:
-        def __init__(self):
-            self.video = FakeTransceiver()
-
-        def getTransceivers(self):
-            return [self.video]
-
-    peer = FakePeerConnection()
-
-    webrtc_signal._prefer_existing_camera_video_codecs(peer)
-
-    assert [
-        codec.parameters.get("profile-level-id")
-        for codec in peer.video.codec_preferences
-    ] == ["42001f"]
-
-
-async def test_camera_offer_prefers_decoder_safe_h264_profile():
+async def test_camera_offer_keeps_native_webrtc_codec_choices_like_apk():
     pc = webrtc_signal.RTCPeerConnection()
     try:
         pc.addTransceiver("audio")
-        video_transceiver = pc.addTransceiver("video", direction="recvonly")
-        webrtc_signal._prefer_camera_video_codecs(video_transceiver)
+        pc.addTransceiver("video", direction="recvonly")
         offer = await pc.createOffer()
         camera_sdp = webrtc_signal._apk_camera_offer_sdp(offer.sdp)
     finally:
         await pc.close()
 
     payloads = webrtc_signal._sdp_media_payloads(camera_sdp, "video")
-    assert payloads == [
-        {
-            "payload": "99",
-            "codec": "H264",
-            "fmtp": "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42001f",
-        }
-    ]
-    assert "profile-level-id=42e01f" not in camera_sdp
+    codecs = {payload.get("codec") for payload in payloads}
+    assert "H264" in codecs
+    assert len(payloads) > 1
+    assert "profile-level-id=42001f" in camera_sdp
+
 
 async def test_send_offer_sends_apk_offer_then_local_ice_candidates():
     class FakeWs:
@@ -1272,7 +1232,7 @@ def test_camera_webrtc_resolution_uses_apk_normalization():
         _camera_live_resolution(
             SimpleNamespace(data={"supportedRecordingResolutions": ["P1296"]})
         )
-        == "auto"
+        == "2304x1296"
     )
     assert _camera_live_resolution(SimpleNamespace(data={})) == "auto"
 
@@ -2344,11 +2304,55 @@ async def test_online_camera_starts_offer_without_peer_in_like_apk():
         webrtc_signal.asyncio.create_task = original_create_task
 
     assert aio_session.ws.messages == []
-    assert aio_session.connect_kwargs["heartbeat"] == 30
+    assert "heartbeat" not in aio_session.connect_kwargs
     assert started == [True]
     assert session._peer_in_timeout_task is None
     assert len(tasks) == 2
     assert sent_messages[0].answer == "v=0\r\n"
+
+
+async def test_signal_reconnect_resends_unanswered_offer_after_peer_in_like_apk():
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._camera_offer_sent = True
+    session._sdp_answer_received = False
+    session._camera_local_candidate_count = 33
+    session._camera_offer_sdp = "v=0\r\n"
+    session._camera_peer_ready = True
+    session._ticket = ticket()
+    session._recipient_client_id = "SSC0A123"
+    session._peer_in_timeout_task = None
+    session._debug_context = lambda **kwargs: kwargs
+    reconnected = []
+    sent_offers = []
+
+    async def reconnect_signal():
+        reconnected.append(True)
+
+    async def send_offer():
+        sent_offers.append(True)
+
+    async def no_sleep(_delay):
+        return None
+
+    session._reconnect_signal = reconnect_signal
+    session._send_offer = send_offer
+
+    original_sleep = webrtc_signal.asyncio.sleep
+    webrtc_signal.asyncio.sleep = no_sleep
+    try:
+        await session._signal_reconnect_after_delay(1006)
+    finally:
+        webrtc_signal.asyncio.sleep = original_sleep
+
+    assert reconnected == [True]
+    assert session._camera_offer_sent is False
+    assert session._camera_local_candidate_count == 0
+
+    await session._handle_signal_event("PEER_IN", "SSC0A123")
+
+    assert session._camera_peer_ready is True
+    assert sent_offers == [True]
 
 
 async def test_offline_camera_waits_for_peer_in_before_offer_like_apk():
