@@ -297,6 +297,52 @@ def _data_channel_debug(payload: dict[str, Any]) -> dict[str, Any]:
     return details
 
 
+def _start_live_return_value(payload: dict[str, Any] | None) -> Any:
+    if not isinstance(payload, dict):
+        return None
+    return payload.get("returnValue")
+
+
+def _compact_debug_extra(extra: dict[str, Any]) -> dict[str, Any]:
+    """Return token-safe, short debug extras for the go2rtc H264 path."""
+    compact: dict[str, Any] = {}
+    for key, value in extra.items():
+        if key in {"offer_sdp", "answer_sdp", "camera_offer_sdp", "camera_answer_sdp"}:
+            compact[key] = _compact_sdp_debug(value)
+        elif key == "offer_envelope" and isinstance(value, dict):
+            compact[key] = {
+                item: value.get(item)
+                for item in ("message_type", "payload_len", "has_resolution")
+                if value.get(item) is not None
+            }
+        elif key == "payload":
+            compact[key] = value if isinstance(value, str) else _payload_debug(value)
+        elif key == "keyframe_requests" and isinstance(value, list):
+            compact["keyframe_request_ssrcs"] = [
+                request.get("ssrc")
+                for request in value
+                if isinstance(request, dict) and request.get("ssrc") is not None
+            ]
+        elif key in {"signal_exception", "message"} and isinstance(value, str):
+            compact[key] = _short_id(value)
+        else:
+            compact[key] = value
+    return compact
+
+
+def _compact_sdp_debug(value: Any) -> Any:
+    if not isinstance(value, dict):
+        return value
+    primary = value.get("video_primary_payload")
+    return {
+        "sdp_len": value.get("sdp_len"),
+        "directions": value.get("directions"),
+        "video_codecs": value.get("video_codecs"),
+        "video_primary_payload": primary,
+        "candidate_lines": value.get("candidate_lines"),
+    }
+
+
 def _safe_nested_debug_values(prefix: str, values: dict[str, Any]) -> dict[str, Any]:
     """Return safe scalar values from nested camera debug payloads."""
     return {
@@ -826,10 +872,13 @@ class XSenseWebRTCSession:
         self._last_start_live_response: dict[str, Any] | None = None
         self._first_frame_received = False
         self._h264_packet_stream: _H264AnnexBPacketStream | None = None
+        self._keyframe_request_log_count = 0
         self._closed = False
         self._close_lock = asyncio.Lock()
 
     def _debug_context(self, **extra: Any) -> dict[str, Any]:
+        if getattr(self, "_compact_debug", False):
+            return self._compact_debug_context(**extra)
         ticket = getattr(self, "_ticket", None)
         context = _ticket_debug_context(ticket) if ticket is not None else {}
         camera_pc = getattr(self, "_camera_pc", None)
@@ -877,6 +926,45 @@ class XSenseWebRTCSession:
         )
         context.update(extra)
         return context
+
+    def _compact_debug_context(self, **extra: Any) -> dict[str, Any]:
+        ticket = getattr(self, "_ticket", None)
+        camera_pc = getattr(self, "_camera_pc", None)
+        data_channel = getattr(self, "_data_channel", None)
+        context = {
+            "camera": _short_id(getattr(ticket, "serial_number", None)),
+            "client": _short_id(getattr(ticket, "client_id", None)),
+            "signal_host": (
+                _safe_host(ticket.signal_url()) if ticket is not None else None
+            ),
+            "ticket_expires_in_s": ticket.expires_in if ticket is not None else None,
+            "session": _short_id(getattr(self, "_session_id", None)),
+            "resolution": getattr(self, "_resolution", None),
+            "camera_pc": getattr(camera_pc, "connectionState", None),
+            "camera_ice": getattr(camera_pc, "iceConnectionState", None),
+            "camera_signaling": getattr(camera_pc, "signalingState", None),
+            "data_channel": getattr(data_channel, "readyState", None),
+            "offer_sent": getattr(self, "_camera_offer_sent", None),
+            "sdp_answer_received": getattr(self, "_sdp_answer_received", None),
+            "first_frame_received": getattr(self, "_first_frame_received", None),
+            "start_live_sent": getattr(self, "_start_live_sent", None),
+            "start_live_return": _start_live_return_value(
+                getattr(self, "_last_start_live_response", None)
+            ),
+            "last_signal_event": getattr(self, "_last_signal_event", None),
+            "signal_events": dict(getattr(self, "_signal_event_counts", {})),
+            "local_candidate_count": getattr(
+                self, "_camera_local_candidate_count", None
+            ),
+            "remote_candidate_count": getattr(
+                self, "_camera_remote_candidate_count", None
+            ),
+            "pending_camera_candidates": len(
+                getattr(self, "_pending_camera_candidates", [])
+            ),
+        }
+        context.update(_compact_debug_extra(extra))
+        return {key: value for key, value in context.items() if value is not None}
 
     async def start(self) -> bool:
         """Connect both WebRTC peers and start the X-Sense camera stream."""
@@ -1295,18 +1383,29 @@ class XSenseWebRTCSession:
         try:
             while not self._closed and not self._first_frame_received:
                 keyframe_requests = await self._send_camera_keyframe_request()
+                self._keyframe_request_log_count += 1
+                should_log = (
+                    self._keyframe_request_log_count == 1
+                    or self._keyframe_request_log_count % 5 == 0
+                )
                 if keyframe_requests:
-                    LOGGER.debug(
-                        "X-Sense WebRTC requested camera keyframe: %s",
-                        self._debug_context(
-                            keyframe_request_count=len(keyframe_requests),
-                            keyframe_requests=keyframe_requests,
-                        ),
-                    )
-                else:
+                    if should_log:
+                        LOGGER.debug(
+                            "X-Sense WebRTC requested camera keyframe: %s",
+                            self._debug_context(
+                                keyframe_request_count=len(keyframe_requests),
+                                keyframe_request_attempts=(
+                                    self._keyframe_request_log_count
+                                ),
+                                keyframe_requests=keyframe_requests,
+                            ),
+                        )
+                elif should_log:
                     LOGGER.debug(
                         "X-Sense WebRTC waiting for camera video SSRC before keyframe request: %s",
-                        self._debug_context(),
+                        self._debug_context(
+                            keyframe_request_attempts=self._keyframe_request_log_count
+                        ),
                     )
                 await asyncio.sleep(_FIRST_FRAME_PLI_INTERVAL)
         except asyncio.CancelledError:
@@ -2060,6 +2159,7 @@ class XSenseH264StreamSession(XSenseWebRTCSession):
         self._frame_queue = frame_queue
         self._h264_packet_stream = _H264AnnexBPacketStream(self._queue_h264_frame)
         self._h264_packet_stream.transport_only = True
+        self._compact_debug = True
         self._queued_frames = 0
         self._dropped_queue_frames = 0
         self._first_h264_frame_logged = False

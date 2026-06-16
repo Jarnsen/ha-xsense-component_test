@@ -1194,6 +1194,93 @@ async def test_h264_transport_tap_skips_aiortc_video_handler():
     assert original_packets == []
 
 
+def test_h264_stream_session_uses_compact_debug_context():
+    from types import SimpleNamespace
+
+    session = object.__new__(webrtc_signal.XSenseH264StreamSession)
+    session._compact_debug = True
+    session._ticket = SimpleNamespace(
+        serial_number="SSC0ATEST",
+        client_id="client123",
+        signal_url=lambda: "https://signal.example/ws",
+        expires_in=300,
+    )
+    session._camera_pc = SimpleNamespace(
+        connectionState="connected",
+        iceConnectionState="completed",
+        signalingState="stable",
+    )
+    session._data_channel = SimpleNamespace(readyState="open")
+    session._session_id = "session123"
+    session._resolution = "1920x1080"
+    session._camera_offer_sent = True
+    session._sdp_answer_received = True
+    session._first_frame_received = False
+    session._start_live_sent = True
+    session._last_start_live_response = {"returnValue": 17}
+    session._last_signal_event = "SDP_ANSWER"
+    session._signal_event_counts = {"PEER_IN": 1, "SDP_ANSWER": 1}
+    session._camera_local_candidate_count = 3
+    session._camera_remote_candidate_count = 0
+    session._pending_camera_candidates = []
+
+    debug = session._debug_context(
+        offer_sdp={
+            "sdp_len": 2000,
+            "media": ["large"],
+            "directions": {"1": "recvonly"},
+            "video_codecs": ["H264"],
+            "video_primary_payload": {"payload": "99", "codec": "H264"},
+            "candidate_lines": 9,
+        },
+        keyframe_requests=[{"ssrc": 123, "pli": True, "fir": True}],
+    )
+
+    assert debug["signal_host"] == "signal.example"
+    assert debug["start_live_return"] == 17
+    assert debug["offer_sdp"] == {
+        "sdp_len": 2000,
+        "directions": {"1": "recvonly"},
+        "video_codecs": ["H264"],
+        "video_primary_payload": {"payload": "99", "codec": "H264"},
+        "candidate_lines": 9,
+    }
+    assert debug["keyframe_request_ssrcs"] == [123]
+    assert "media" not in debug["offer_sdp"]
+
+
+async def test_first_frame_keyframe_debug_is_throttled(monkeypatch):
+    debug_calls = []
+    attempts = 0
+
+    async def send_keyframe_request():
+        return [{"ssrc": 123, "pli": True, "fir": True}]
+
+    async def sleep(_delay):
+        nonlocal attempts
+        attempts += 1
+        if attempts >= 6:
+            session._first_frame_received = True
+
+    session = object.__new__(webrtc_signal.XSenseWebRTCSession)
+    session._closed = False
+    session._first_frame_received = False
+    session._keyframe_request_log_count = 0
+    session._send_camera_keyframe_request = send_keyframe_request
+    session._debug_context = lambda **extra: extra
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "sleep", sleep)
+    monkeypatch.setattr(
+        webrtc_signal.LOGGER,
+        "debug",
+        lambda message, context=None, **kwargs: debug_calls.append((message, context)),
+    )
+
+    await session._request_first_frame_keyframes()
+
+    assert [call[1]["keyframe_request_attempts"] for call in debug_calls] == [1, 5]
+
+
 def test_stop_live_is_not_sent_when_data_channel_is_not_open():
     class FakeDataChannel:
         readyState = "connecting"
