@@ -32,6 +32,7 @@ with warnings.catch_warnings():
         RTCIceCandidate,
         RTCIceServer as AiortcRTCIceServer,
         RTCPeerConnection,
+        RTCRtpReceiver,
         RTCSessionDescription,
     )
     from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
@@ -1256,6 +1257,7 @@ class XSenseWebRTCSession:
         self._camera_offer_sent = False
         self._camera_offer_sdp = None
         self._camera_answer_sdp = None
+        self._camera_bridge_codec_preferences = None
         self._sdp_answer_received = False
         local_description_task = self._camera_local_description_task
         if local_description_task:
@@ -1563,6 +1565,7 @@ class XSenseWebRTCSession:
             return
         if self._camera_pc is None:
             return
+        codec_preferences = _prefer_existing_camera_video_codecs(self._camera_pc)
         offer = await self._camera_pc.createOffer()
         camera_offer = RTCSessionDescription(
             sdp=_apk_camera_offer_sdp(offer.sdp), type=offer.type
@@ -1578,7 +1581,10 @@ class XSenseWebRTCSession:
         if sent:
             LOGGER.debug(
                 "X-Sense WebRTC sent changeTransceiverOffer: %s",
-                self._debug_context(offer_sdp=_sdp_debug(camera_offer.sdp)),
+                self._debug_context(
+                    offer_sdp=_sdp_debug(camera_offer.sdp),
+                    bridge_codec_preferences=codec_preferences,
+                ),
             )
 
     async def _apply_change_transceiver_answer(self, payload: dict[str, Any]) -> None:
@@ -1641,13 +1647,19 @@ class XSenseWebRTCSession:
         if self._camera_pc is None:
             raise RuntimeError("Camera peer connection was not created")
         # APK createOffer asks to receive video; audio is already present from
-        # peer setup, matching the SDK transceiver timing.
-        self._camera_pc.addTransceiver("video", direction="recvonly")
+        # peer setup, matching the SDK transceiver timing. Android then uses
+        # platform decoder capabilities; this bridge constrains the camera leg
+        # to the H264 profile the Python WebRTC decoder can pass through.
+        video_transceiver = self._camera_pc.addTransceiver(
+            "video", direction="recvonly"
+        )
+        codec_preferences = _prefer_camera_video_codecs(video_transceiver)
         offer = await self._camera_pc.createOffer()
         camera_offer = RTCSessionDescription(
             sdp=_apk_camera_offer_sdp(offer.sdp), type=offer.type
         )
         self._camera_offer_sdp = camera_offer.sdp
+        self._camera_bridge_codec_preferences = codec_preferences
         self._camera_local_description_task = asyncio.create_task(
             self._camera_pc.setLocalDescription(camera_offer)
         )
@@ -1675,6 +1687,9 @@ class XSenseWebRTCSession:
                 recipient=_short_id(self._recipient_client_id),
                 offer_sdp=_sdp_debug(self._camera_offer_sdp),
                 offer_h264_profiles=_sdp_codec_preference_debug(self._camera_offer_sdp),
+                bridge_codec_preferences=getattr(
+                    self, "_camera_bridge_codec_preferences", None
+                ),
                 offer_envelope=_signal_envelope_debug(offer_payload),
                 offer_resolution=bool(self._resolution),
             ),
@@ -1896,6 +1911,37 @@ class XSenseWebRTCSession:
             await self._camera_pc.addIceCandidate(
                 self._pending_camera_candidates.pop(0)
             )
+
+
+def _prefer_camera_video_codecs(transceiver: Any) -> list[str]:
+    """Constrain the APK-shaped offer to the H264 profile HA can bridge."""
+    set_preferences = getattr(transceiver, "setCodecPreferences", None)
+    if not callable(set_preferences):
+        return []
+    codecs = []
+    for codec in RTCRtpReceiver.getCapabilities("video").codecs:
+        if codec.mimeType.lower() != "video/h264":
+            continue
+        if codec.parameters.get("profile-level-id") == "42001f":
+            codecs.append(codec)
+    if not codecs:
+        return []
+    set_preferences(codecs)
+    return [codec.parameters.get("profile-level-id") for codec in codecs]
+
+
+def _prefer_existing_camera_video_codecs(peer_connection: Any) -> list[str]:
+    """Keep camera-requested renegotiation on the bridge-decodable profile."""
+    get_transceivers = getattr(peer_connection, "getTransceivers", None)
+    if not callable(get_transceivers):
+        return []
+    preferences: list[str] = []
+    for transceiver in get_transceivers():
+        receiver = getattr(transceiver, "receiver", None)
+        track = getattr(receiver, "track", None)
+        if getattr(track, "kind", None) == "video":
+            preferences.extend(_prefer_camera_video_codecs(transceiver))
+    return preferences
 
 
 def _camera_rtc_configuration(ticket: XSenseWebRTCTicket) -> AiortcRTCConfiguration:
