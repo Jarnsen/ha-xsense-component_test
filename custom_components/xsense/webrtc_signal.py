@@ -32,7 +32,6 @@ with warnings.catch_warnings():
         RTCIceCandidate,
         RTCIceServer as AiortcRTCIceServer,
         RTCPeerConnection,
-        RTCRtpReceiver,
         RTCSessionDescription,
     )
     from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
@@ -70,7 +69,6 @@ _PEER_IN_TIMEOUT = 20
 _PLAY_TIMEOUT = 40
 _FIRST_FRAME_TIMEOUT = 10
 _FIRST_FRAME_PLI_INTERVAL = 1
-_DEFAULT_SIGNAL_HEARTBEAT = 30
 _SIGNAL_RECONNECT_DELAY = 5
 _SIGNAL_TERMINAL_CLOSE_CODES = {3002, 3004}
 _DATA_CHANNEL_SAFE_VALUE_KEYS = {
@@ -251,12 +249,12 @@ def _ticket_debug_context(ticket: XSenseWebRTCTicket) -> dict[str, Any]:
     }
 
 
-def _signal_heartbeat(ticket: XSenseWebRTCTicket) -> float:
-    """Return the integration WebSocket heartbeat for the signal socket."""
-    # The APK stores signalPingInterval in the ticket, but the Java wrapper does
-    # not pass it into A4xSignal.init. Keep our client heartbeat stable instead
-    # of interpreting that ticket field as WebSocket ping timing.
-    return _DEFAULT_SIGNAL_HEARTBEAT
+def _signal_heartbeat(ticket: XSenseWebRTCTicket) -> None:
+    """Return the APK-aligned WebSocket heartbeat for the signal socket."""
+    # The APK Java wrapper does not pass a heartbeat interval into A4xSignal.init.
+    # Do not add aiohttp's client-side ping loop here; it can close the signal
+    # socket before the camera sends SDP_ANSWER.
+    return None
 
 
 def _payload_debug(payload: Any) -> str:
@@ -1100,9 +1098,9 @@ class XSenseWebRTCSession:
             self._debug_context(connect_host=_safe_host(connect_url)),
         )
         signal_heartbeat = _signal_heartbeat(self._ticket)
-        self._ws = await self._session.ws_connect(
-            connect_url, heartbeat=signal_heartbeat, **connect_options
-        )
+        if signal_heartbeat is not None:
+            connect_options["heartbeat"] = signal_heartbeat
+        self._ws = await self._session.ws_connect(connect_url, **connect_options)
         LOGGER.debug("X-Sense WebRTC signal connected: %s", self._debug_context())
         self._reader_task = asyncio.create_task(self._read_loop())
 
@@ -1211,6 +1209,15 @@ class XSenseWebRTCSession:
                 reconnect_delay_s=_SIGNAL_RECONNECT_DELAY,
             ),
         )
+        if getattr(self, "_camera_offer_sent", False) and not getattr(
+            self, "_sdp_answer_received", False
+        ):
+            self._camera_offer_sent = False
+            self._camera_local_candidate_count = 0
+            LOGGER.debug(
+                "X-Sense WebRTC will resend unanswered camera offer after signal reconnect: %s",
+                self._debug_context(signal_close_code=close_code),
+            )
         try:
             await self._reconnect_signal()
         except Exception as err:  # noqa: BLE001 - play timeout owns user-facing failure
@@ -1556,7 +1563,6 @@ class XSenseWebRTCSession:
             return
         if self._camera_pc is None:
             return
-        codec_preferences = _prefer_existing_camera_video_codecs(self._camera_pc)
         offer = await self._camera_pc.createOffer()
         camera_offer = RTCSessionDescription(
             sdp=_apk_camera_offer_sdp(offer.sdp), type=offer.type
@@ -1572,10 +1578,7 @@ class XSenseWebRTCSession:
         if sent:
             LOGGER.debug(
                 "X-Sense WebRTC sent changeTransceiverOffer: %s",
-                self._debug_context(
-                    offer_sdp=_sdp_debug(camera_offer.sdp),
-                    codec_preferences=codec_preferences,
-                ),
+                self._debug_context(offer_sdp=_sdp_debug(camera_offer.sdp)),
             )
 
     async def _apply_change_transceiver_answer(self, payload: dict[str, Any]) -> None:
@@ -1639,10 +1642,7 @@ class XSenseWebRTCSession:
             raise RuntimeError("Camera peer connection was not created")
         # APK createOffer asks to receive video; audio is already present from
         # peer setup, matching the SDK transceiver timing.
-        video_transceiver = self._camera_pc.addTransceiver(
-            "video", direction="recvonly"
-        )
-        _prefer_camera_video_codecs(video_transceiver)
+        self._camera_pc.addTransceiver("video", direction="recvonly")
         offer = await self._camera_pc.createOffer()
         camera_offer = RTCSessionDescription(
             sdp=_apk_camera_offer_sdp(offer.sdp), type=offer.type
@@ -1674,7 +1674,7 @@ class XSenseWebRTCSession:
             self._debug_context(
                 recipient=_short_id(self._recipient_client_id),
                 offer_sdp=_sdp_debug(self._camera_offer_sdp),
-                codec_preferences=_sdp_codec_preference_debug(self._camera_offer_sdp),
+                offer_h264_profiles=_sdp_codec_preference_debug(self._camera_offer_sdp),
                 offer_envelope=_signal_envelope_debug(offer_payload),
                 offer_resolution=bool(self._resolution),
             ),
@@ -1896,37 +1896,6 @@ class XSenseWebRTCSession:
             await self._camera_pc.addIceCandidate(
                 self._pending_camera_candidates.pop(0)
             )
-
-
-def _prefer_camera_video_codecs(transceiver: Any) -> list[str]:
-    """Constrain aiortc to the H264 profile that the Python decoder can handle."""
-    set_preferences = getattr(transceiver, "setCodecPreferences", None)
-    if not callable(set_preferences):
-        return []
-    codecs = []
-    for codec in RTCRtpReceiver.getCapabilities("video").codecs:
-        if codec.mimeType.lower() != "video/h264":
-            continue
-        if codec.parameters.get("profile-level-id") == "42001f":
-            codecs.append(codec)
-    if not codecs:
-        return []
-    set_preferences(codecs)
-    return [codec.parameters.get("profile-level-id") for codec in codecs]
-
-
-def _prefer_existing_camera_video_codecs(peer_connection: Any) -> list[str]:
-    """Keep renegotiated camera offers on the same decoder-safe H264 profile."""
-    get_transceivers = getattr(peer_connection, "getTransceivers", None)
-    if not callable(get_transceivers):
-        return []
-    preferences: list[str] = []
-    for transceiver in get_transceivers():
-        receiver = getattr(transceiver, "receiver", None)
-        track = getattr(receiver, "track", None)
-        if getattr(track, "kind", None) == "video":
-            preferences.extend(_prefer_camera_video_codecs(transceiver))
-    return preferences
 
 
 def _camera_rtc_configuration(ticket: XSenseWebRTCTicket) -> AiortcRTCConfiguration:

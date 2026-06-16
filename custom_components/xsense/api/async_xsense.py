@@ -184,8 +184,6 @@ def _camera_supported_resolutions(camera: Entity) -> list[str]:
         supported = [supported]
     elif not isinstance(supported, (list, tuple)):
         return []
-    if len(supported) < 2:
-        return []
     resolutions: list[str] = []
     for value in supported:
         resolution = _camera_resolution(value)
