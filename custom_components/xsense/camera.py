@@ -151,6 +151,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         """Set up the WebRTC camera entity."""
         super().__init__(coordinator, entity, entity_description)
         self._webrtc_sessions: dict[str, object] = {}
+        self._pending_webrtc_candidates: dict[str, list[object]] = {}
 
     @property
     def supported_features(self) -> CameraEntityFeature:
@@ -201,7 +202,10 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
                 entity, session_id, offer_sdp=_sdp_debug_context(offer_sdp)
             ),
         )
-        await self._close_existing_webrtc_sessions()
+        self._pending_webrtc_candidates[session_id] = []
+        await self._close_existing_webrtc_sessions(
+            preserve_pending_session_id=session_id
+        )
 
         ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(
             entity, force_refresh=True
@@ -217,6 +221,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
                     "Unable to get X-Sense WebRTC ticket",
                 )
             )
+            self._pending_webrtc_candidates.pop(session_id, None)
             return
 
         webrtc_signal = await self.hass.async_add_import_executor_job(
@@ -235,6 +240,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
                     "Unable to parse X-Sense WebRTC ticket",
                 )
             )
+            self._pending_webrtc_candidates.pop(session_id, None)
             return
         if not ticket.is_valid:
             LOGGER.debug(
@@ -247,6 +253,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
                     "X-Sense WebRTC ticket expired",
                 )
             )
+            self._pending_webrtc_candidates.pop(session_id, None)
             return
 
         session = webrtc_signal.XSenseWebRTCSignalSession(
@@ -260,10 +267,12 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             ),
         )
         self._webrtc_sessions[session_id] = session
+        await self._flush_pending_webrtc_candidates(entity, session_id, session)
         try:
             answer = await session.start()
         except Exception as err:  # noqa: BLE001 - HA frontend needs a clean error
             self._webrtc_sessions.pop(session_id, None)
+            self._pending_webrtc_candidates.pop(session_id, None)
             await session.close()
             LOGGER.debug(
                 "X-Sense camera WebRTC signal relay failed: %s",
@@ -283,9 +292,21 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         send_message(WebRTCAnswer(answer))
         session.start_forwarding_remote_candidates()
 
-    async def _close_existing_webrtc_sessions(self) -> None:
+    async def _close_existing_webrtc_sessions(
+        self, preserve_pending_session_id: str | None = None
+    ) -> None:
         """Close previous X-Sense signaling sessions before a new live view."""
         sessions = list(self._webrtc_sessions.values())
+        preserved_pending = (
+            self._pending_webrtc_candidates.get(preserve_pending_session_id)
+            if preserve_pending_session_id is not None
+            else None
+        )
+        self._pending_webrtc_candidates.clear()
+        if preserve_pending_session_id is not None and preserved_pending is not None:
+            self._pending_webrtc_candidates[preserve_pending_session_id] = (
+                preserved_pending
+            )
         if not sessions:
             return
         LOGGER.debug(
@@ -295,6 +316,24 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         self._webrtc_sessions.clear()
         for session in sessions:
             await session.close()
+
+    async def _flush_pending_webrtc_candidates(
+        self, entity, session_id: str, session
+    ) -> None:
+        """Forward HA candidates that arrived before the signal session existed."""
+        candidates = self._pending_webrtc_candidates.pop(session_id, [])
+        if not candidates:
+            return
+        LOGGER.debug(
+            "X-Sense camera WebRTC forwarding queued HA ICE candidates: %s",
+            _camera_debug_context(
+                entity,
+                session_id,
+                queued_candidate_count=len(candidates),
+            ),
+        )
+        for candidate in candidates:
+            await session.add_candidate(candidate)
 
     async def async_on_webrtc_candidate(self, session_id, candidate) -> None:
         """Forward a Home Assistant WebRTC candidate to X-Sense signaling."""
@@ -309,6 +348,28 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             )
             await session.add_candidate(candidate)
             return
+        if session_id in self._pending_webrtc_candidates:
+            self._pending_webrtc_candidates[session_id].append(candidate)
+            LOGGER.debug(
+                "X-Sense camera WebRTC HA ICE candidate queued before signal session: %s",
+                _camera_debug_context(
+                    entity,
+                    session_id,
+                    queued_candidate_count=len(
+                        self._pending_webrtc_candidates[session_id]
+                    ),
+                    **candidate_context,
+                )
+                if entity is not None
+                else {
+                    "session": _short_id(session_id),
+                    "queued_candidate_count": len(
+                        self._pending_webrtc_candidates[session_id]
+                    ),
+                    **candidate_context,
+                },
+            )
+            return
         LOGGER.debug(
             "X-Sense camera WebRTC HA ICE candidate ignored for missing session: %s",
             _camera_debug_context(entity, session_id, **candidate_context)
@@ -321,6 +382,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         """Close an X-Sense WebRTC signaling session."""
         entity = self._current_entity()
         session = self._webrtc_sessions.pop(session_id, None)
+        self._pending_webrtc_candidates.pop(session_id, None)
         LOGGER.debug(
             "X-Sense camera WebRTC session close requested: %s",
             _camera_debug_context(
@@ -344,6 +406,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         """Stop any WebRTC live view session when Home Assistant removes the entity."""
         sessions = list(self._webrtc_sessions.values())
         self._webrtc_sessions.clear()
+        self._pending_webrtc_candidates.clear()
         for session in sessions:
             await session.close()
         await super().async_will_remove_from_hass()
