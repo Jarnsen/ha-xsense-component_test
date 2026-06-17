@@ -55,6 +55,7 @@ actions:
 ```
 
 Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
+
 ### Available Languages / Verfügbare Sprachen:
 
 | | | |
