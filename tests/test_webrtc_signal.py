@@ -134,6 +134,119 @@ async def test_trickled_candidate_is_queued_until_offer_is_sent():
     assert session._sent_candidate_count == 1
 
 
+async def test_online_camera_waits_for_peer_in_before_sending_offer():
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    session._ws = FakeWs()
+
+    assert session._ws.messages == []
+
+    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
+
+    assert [message["messageType"] for message in session._ws.messages] == [
+        "SDP_OFFER"
+    ]
+    assert session._offer_sent is True
+    assert session._debug_context()["offer_attempt_count"] == 1
+
+
+async def test_peer_out_before_answer_resets_offer_for_next_peer_in():
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    session._ws = FakeWs()
+    peer_payload = {"id": "SSC0ATEST", "name": "SSC0ATEST", "role": "master"}
+
+    await session._handle_signal_event("PEER_IN", peer_payload)
+    await session._handle_signal_event("PEER_OUT", peer_payload)
+    await session._handle_signal_event("PEER_IN", peer_payload)
+
+    assert [message["messageType"] for message in session._ws.messages] == [
+        "SDP_OFFER",
+        "SDP_OFFER",
+    ]
+    assert session._offer_sent is True
+    assert session._camera_peer_ready is True
+    assert session._debug_context()["offer_attempt_count"] == 2
+
+
+async def test_signal_close_schedules_reconnect_before_answer(monkeypatch):
+    scheduled = []
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+
+    class FakeTask:
+        def done(self):
+            return False
+
+    def create_task(coro):
+        scheduled.append(coro)
+        coro.close()
+        return FakeTask()
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "create_task", create_task)
+
+    session._schedule_signal_reconnect(1006)
+
+    assert len(scheduled) == 1
+    assert session._debug_context()["signal_reconnect_count"] == 0
+
+
+async def test_signal_close_skips_terminal_reconnect_codes(monkeypatch):
+    scheduled = []
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+
+    def create_task(coro):
+        scheduled.append(coro)
+        coro.close()
+        return object()
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "create_task", create_task)
+
+    session._schedule_signal_reconnect(3002)
+    session._schedule_signal_reconnect(3004)
+
+    assert scheduled == []
+
+
 async def test_debug_context_handles_cancelled_answer_future():
     session = webrtc_signal.XSenseWebRTCSignalSession(
         session=object(),

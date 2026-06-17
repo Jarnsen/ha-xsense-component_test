@@ -22,6 +22,8 @@ SIGNAL_VIEWER_TYPE = "a4x_sdk"
 _SIGNAL_NAME = "test-123"
 _DEFAULT_RESOLUTION = "1280x720"
 _ANSWER_TIMEOUT = 40
+_SIGNAL_RECONNECT_DELAY = 5
+_SIGNAL_TERMINAL_CLOSE_CODES = {3002, 3004}
 
 
 @dataclass(slots=True)
@@ -137,11 +139,15 @@ class XSenseWebRTCSignalSession:
         self._signal_event_counts: Counter[str] = Counter()
         self._local_candidate_count = 0
         self._sent_candidate_count = 0
+        self._offer_attempt_count = 0
+        self._signal_reconnect_count = 0
         self._pending_remote_candidates: list[Any] = []
         self._pending_client_candidates: list[dict[str, Any]] = []
         self._remote_candidate_callback = remote_candidate_callback
         self._forward_client_candidates = False
         self._last_signal_event: str | None = None
+        self._read_task: asyncio.Task | None = None
+        self._reconnect_task: asyncio.Task | None = None
 
     def _debug_context(self, **extra: Any) -> dict[str, Any]:
         context = _ticket_debug_context(self._ticket)
@@ -156,6 +162,8 @@ class XSenseWebRTCSignalSession:
                 "sdp_answer_received": _future_has_result(self._answer),
                 "last_signal_event": self._last_signal_event,
                 "signal_events": dict(self._signal_event_counts),
+                "offer_attempt_count": self._offer_attempt_count,
+                "signal_reconnect_count": self._signal_reconnect_count,
                 "local_candidate_count": self._local_candidate_count,
                 "sent_candidate_count": self._sent_candidate_count,
                 "pending_remote_candidates": len(self._pending_remote_candidates),
@@ -169,14 +177,10 @@ class XSenseWebRTCSignalSession:
         """Return the X-Sense SDP answer for a Home Assistant WebRTC offer."""
         LOGGER.debug("X-Sense WebRTC signal relay starting: %s", self._debug_context())
         await self._connect_signal()
-        if self._camera_online:
-            self._camera_peer_ready = True
-            await self._send_offer()
-        else:
-            LOGGER.debug(
-                "X-Sense WebRTC waiting for PEER_IN before relay offer: %s",
-                self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),
-            )
+        LOGGER.debug(
+            "X-Sense WebRTC waiting for PEER_IN before relay offer: %s",
+            self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),
+        )
         try:
             return await asyncio.wait_for(self._answer, timeout=_ANSWER_TIMEOUT)
         except Exception as err:
@@ -194,10 +198,22 @@ class XSenseWebRTCSignalSession:
         if ws is not None and not ws.closed:
             with suppress(Exception):
                 await ws.close()
+        if self._read_task is not None:
+            self._read_task.cancel()
+            self._read_task = None
+        if self._reconnect_task is not None:
+            self._reconnect_task.cancel()
+            self._reconnect_task = None
 
     def start_forwarding_remote_candidates(self) -> None:
         """Forward queued X-Sense ICE candidates to Home Assistant."""
         self._forward_client_candidates = True
+        LOGGER.debug(
+            "X-Sense WebRTC signal relay forwarding queued remote candidates to HA: %s",
+            self._debug_context(
+                queued_remote_candidate_count=len(self._pending_client_candidates)
+            ),
+        )
         while self._pending_client_candidates:
             self._forward_remote_candidate(self._pending_client_candidates.pop(0))
 
@@ -216,9 +232,16 @@ class XSenseWebRTCSignalSession:
             self._pending_remote_candidates.append(payload)
             LOGGER.debug(
                 "X-Sense WebRTC signal relay queued HA ICE candidate: %s",
-                self._debug_context(),
+                self._debug_context(
+                    queue_reason=_candidate_queue_reason(self),
+                    **_single_candidate_debug(payload),
+                ),
             )
             return
+        LOGGER.debug(
+            "X-Sense WebRTC signal relay sending HA ICE candidate immediately: %s",
+            self._debug_context(**_single_candidate_debug(payload)),
+        )
         await self._send_candidate(payload)
 
     async def _connect_signal(self) -> None:
@@ -229,7 +252,7 @@ class XSenseWebRTCSignalSession:
             "X-Sense WebRTC signal relay connected: %s",
             self._debug_context(connect_host=_safe_host(url)),
         )
-        asyncio.create_task(self._read_loop())
+        self._read_task = asyncio.create_task(self._read_loop())
 
     async def _read_loop(self) -> None:
         close_code: int | None = None
@@ -267,6 +290,53 @@ class XSenseWebRTCSignalSession:
                 "X-Sense WebRTC signal relay websocket closed: %s",
                 self._debug_context(signal_close_code=close_code),
             )
+            self._schedule_signal_reconnect(close_code)
+
+    def _schedule_signal_reconnect(self, close_code: int | None) -> None:
+        if self._closed or self._answer.done():
+            return
+        if close_code in _SIGNAL_TERMINAL_CLOSE_CODES:
+            return
+        if self._reconnect_task is not None and not self._reconnect_task.done():
+            return
+        LOGGER.debug(
+            "X-Sense WebRTC signal relay scheduling reconnect: %s",
+            self._debug_context(
+                signal_close_code=close_code,
+                reconnect_delay_s=_SIGNAL_RECONNECT_DELAY,
+            ),
+        )
+        self._reconnect_task = asyncio.create_task(self._reconnect_signal())
+
+    async def _reconnect_signal(self) -> None:
+        await asyncio.sleep(_SIGNAL_RECONNECT_DELAY)
+        if self._closed or self._answer.done():
+            return
+        self._reset_offer_attempt("signal_reconnect")
+        self._camera_peer_ready = False
+        with suppress(Exception):
+            await self.close_signal_only()
+        self._signal_reconnect_count += 1
+        LOGGER.debug(
+            "X-Sense WebRTC signal relay reconnecting signal socket: %s",
+            self._debug_context(reconnect_reason="signal_closed_before_answer"),
+        )
+        try:
+            await self._connect_signal()
+        except Exception as err:
+            LOGGER.debug(
+                "X-Sense WebRTC signal relay reconnect failed: %s",
+                self._debug_context(error=_exception_debug(err)),
+            )
+            if not self._answer.done():
+                self._answer.set_exception(err)
+
+    async def close_signal_only(self) -> None:
+        """Close only the current signal websocket before reconnecting."""
+        ws = self._ws
+        self._ws = None
+        if ws is not None and not ws.closed:
+            await ws.close()
 
     async def _handle_signal_event(self, event: str | None, payload: Any) -> None:
         if self._closed:
@@ -292,6 +362,35 @@ class XSenseWebRTCSignalSession:
                         ),
                     )
                 await self._send_offer()
+            else:
+                LOGGER.debug(
+                    "X-Sense WebRTC signal relay ignored peer in for other client: %s",
+                    self._debug_context(
+                        event=event,
+                        **_peer_event_debug(payload, self._ticket.serial_number),
+                    ),
+                )
+            return
+        if event == "PEER_OUT":
+            if _is_owned_peer_message(payload, self._ticket.serial_number):
+                self._camera_peer_ready = False
+                if not _future_has_result(self._answer):
+                    self._reset_offer_attempt("peer_out_before_answer")
+                    LOGGER.debug(
+                        "X-Sense WebRTC signal relay reset offer after peer out before answer: %s",
+                        self._debug_context(
+                            event=event,
+                            **_peer_event_debug(payload, self._ticket.serial_number),
+                        ),
+                    )
+            else:
+                LOGGER.debug(
+                    "X-Sense WebRTC signal relay ignored peer out for other client: %s",
+                    self._debug_context(
+                        event=event,
+                        **_peer_event_debug(payload, self._ticket.serial_number),
+                    ),
+                )
             return
         if event == "SDP_ANSWER":
             answer = _owned_answer_sdp(payload, self._ticket)
@@ -343,7 +442,12 @@ class XSenseWebRTCSignalSession:
 
     async def _send_offer(self) -> None:
         if self._closed or self._offer_sent or self._ws is None or self._ws.closed:
+            LOGGER.debug(
+                "X-Sense WebRTC signal relay skipped SDP offer send: %s",
+                self._debug_context(skip_reason=_offer_skip_reason(self)),
+            )
             return
+        self._offer_attempt_count += 1
         offer = make_sdp_offer_payload(
             offer_sdp=self._offer_sdp,
             ticket=self._ticket,
@@ -390,6 +494,19 @@ class XSenseWebRTCSignalSession:
             )
         )
         self._sent_candidate_count += 1
+        LOGGER.debug(
+            "X-Sense WebRTC signal relay sent HA ICE candidate to X-Sense: %s",
+            self._debug_context(**_single_candidate_debug(candidate)),
+        )
+
+    def _reset_offer_attempt(self, reason: str) -> None:
+        self._offer_sent = False
+        self._local_candidate_count = 0
+        self._sent_candidate_count = 0
+        LOGGER.debug(
+            "X-Sense WebRTC signal relay offer attempt reset: %s",
+            self._debug_context(reset_reason=reason),
+        )
 
     def _should_log_signal_event(self, event: str | None) -> bool:
         """Return whether this signal event should emit a debug line."""
@@ -713,6 +830,28 @@ def _candidate_debug_summary(candidates: list[dict[str, Any]]) -> dict[str, Any]
 
 def _single_candidate_debug(candidate: dict[str, Any]) -> dict[str, Any]:
     return _candidate_debug_summary([candidate])
+
+
+def _candidate_queue_reason(session: XSenseWebRTCSignalSession) -> str:
+    if session._ws is None:
+        return "signal_not_connected"
+    if session._ws.closed:
+        return "signal_closed"
+    if not session._offer_sent:
+        return "waiting_for_peer_offer"
+    return "unknown"
+
+
+def _offer_skip_reason(session: XSenseWebRTCSignalSession) -> str:
+    if session._closed:
+        return "session_closed"
+    if session._offer_sent:
+        return "offer_already_sent"
+    if session._ws is None:
+        return "signal_not_connected"
+    if session._ws.closed:
+        return "signal_closed"
+    return "unknown"
 
 
 def _peer_event_debug(payload: Any, serial_number: str) -> dict[str, Any]:
