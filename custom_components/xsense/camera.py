@@ -298,13 +298,45 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
 
     async def async_on_webrtc_candidate(self, session_id, candidate) -> None:
         """Forward a Home Assistant WebRTC candidate to X-Sense signaling."""
+        entity = self._current_entity()
+        candidate_context = _webrtc_candidate_debug_context(candidate)
         if session := self._webrtc_sessions.get(session_id):
+            LOGGER.debug(
+                "X-Sense camera WebRTC HA ICE candidate received: %s",
+                _camera_debug_context(entity, session_id, **candidate_context)
+                if entity is not None
+                else {"session": _short_id(session_id), **candidate_context},
+            )
             await session.add_candidate(candidate)
+            return
+        LOGGER.debug(
+            "X-Sense camera WebRTC HA ICE candidate ignored for missing session: %s",
+            _camera_debug_context(entity, session_id, **candidate_context)
+            if entity is not None
+            else {"session": _short_id(session_id), **candidate_context},
+        )
 
     @callback
     def close_webrtc_session(self, session_id: str) -> None:
         """Close an X-Sense WebRTC signaling session."""
-        if session := self._webrtc_sessions.pop(session_id, None):
+        entity = self._current_entity()
+        session = self._webrtc_sessions.pop(session_id, None)
+        LOGGER.debug(
+            "X-Sense camera WebRTC session close requested: %s",
+            _camera_debug_context(
+                entity,
+                session_id,
+                had_session=session is not None,
+                remaining_sessions=len(self._webrtc_sessions),
+            )
+            if entity is not None
+            else {
+                "session": _short_id(session_id),
+                "had_session": session is not None,
+                "remaining_sessions": len(self._webrtc_sessions),
+            },
+        )
+        if session is not None:
             self.hass.async_create_task(session.close())
         super().close_webrtc_session(session_id)
 
@@ -433,6 +465,25 @@ def _sdp_debug_context(sdp: str | None) -> dict:
         "candidate_lines": sum(
             1 for line in sdp.splitlines() if line.startswith("a=candidate:")
         ),
+    }
+
+
+def _webrtc_candidate_debug_context(candidate) -> dict:
+    """Return safe ICE candidate details without logging IPs or candidate strings."""
+    value = getattr(candidate, "candidate", None)
+    parts = value.split() if isinstance(value, str) else []
+    candidate_type = None
+    if "typ" in parts:
+        index = parts.index("typ")
+        if index + 1 < len(parts):
+            candidate_type = parts[index + 1]
+    return {
+        "candidate_object": type(candidate).__name__,
+        "candidate_present": bool(value),
+        "candidate_protocol": parts[2].lower() if len(parts) > 2 else None,
+        "candidate_type": candidate_type,
+        "sdp_mid": getattr(candidate, "sdp_mid", None),
+        "sdp_m_line_index": getattr(candidate, "sdp_m_line_index", None),
     }
 
 

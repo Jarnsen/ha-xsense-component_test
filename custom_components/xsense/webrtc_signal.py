@@ -257,8 +257,9 @@ class XSenseWebRTCSignalSession:
     async def _read_loop(self) -> None:
         close_code: int | None = None
         try:
-            assert self._ws is not None
-            async for message in self._ws:
+            ws = self._ws
+            assert ws is not None
+            async for message in ws:
                 if message.type not in (
                     aiohttp.WSMsgType.TEXT,
                     aiohttp.WSMsgType.BINARY,
@@ -277,7 +278,7 @@ class XSenseWebRTCSignalSession:
                         ),
                     )
                 await self._handle_signal_event(event, payload)
-            close_code = self._ws.close_code
+            close_code = ws.close_code
         except Exception as err:
             if not self._answer.done():
                 self._answer.set_exception(err)

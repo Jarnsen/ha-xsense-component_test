@@ -447,6 +447,28 @@ def test_camera_entity_webrtc_protocol_default_matches_apk():
     assert not camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "RTMP"}))
 
 
+def test_webrtc_candidate_debug_context_hides_raw_candidate():
+    from custom_components.xsense import camera
+
+    candidate = SimpleNamespace(
+        candidate="candidate:1 1 UDP 2122260223 192.0.2.1 54321 typ host",
+        sdp_mid="0",
+        sdp_m_line_index=0,
+    )
+
+    context = camera._webrtc_candidate_debug_context(candidate)
+
+    assert context == {
+        "candidate_object": "SimpleNamespace",
+        "candidate_present": True,
+        "candidate_protocol": "udp",
+        "candidate_type": "host",
+        "sdp_mid": "0",
+        "sdp_m_line_index": 0,
+    }
+    assert "192.0.2.1" not in str(context)
+
+
 def test_camera_live_resolution_defaults_to_apk_live_view_default():
     from custom_components.xsense.api.async_xsense import camera_live_resolution
 
@@ -566,6 +588,41 @@ async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkey
     assert camera._webrtc_sessions == {}
     assert not camera.is_streaming
     assert messages[0].code == "xsense_webrtc_start_failed"
+
+
+async def test_webrtc_candidate_is_forwarded_to_matching_signal_session():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseWebRTCCameraEntity,
+    )
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class Coordinator:
+        data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    class FakeSession:
+        def __init__(self):
+            self.candidates = []
+
+        async def add_candidate(self, candidate):
+            self.candidates.append(candidate)
+
+    session = FakeSession()
+    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera._webrtc_sessions["session-1"] = session
+    candidate = SimpleNamespace(candidate="candidate:1 1 udp 1 192.0.2.1 1 typ host")
+
+    await camera.async_on_webrtc_candidate("session-1", candidate)
+
+    assert session.candidates == [candidate]
 
 
 async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):

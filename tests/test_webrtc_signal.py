@@ -247,6 +247,34 @@ async def test_signal_close_skips_terminal_reconnect_codes(monkeypatch):
     assert scheduled == []
 
 
+async def test_read_loop_uses_local_websocket_when_session_ws_is_cleared():
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+
+    class FakeWs:
+        close_code = 1000
+        closed = False
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            session._ws = None
+            raise StopAsyncIteration
+
+    session._ws = FakeWs()
+    session._answer.set_result("v=0\r\nanswer")
+
+    await session._read_loop()
+
+    assert session._answer.result() == "v=0\r\nanswer"
+
+
 async def test_debug_context_handles_cancelled_answer_future():
     session = webrtc_signal.XSenseWebRTCSignalSession(
         session=object(),
