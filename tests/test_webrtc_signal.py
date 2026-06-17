@@ -1234,16 +1234,16 @@ def test_h264_stream_session_queues_frames_without_duplicate_debug_keys(monkeypa
     assert debug_calls[1][1]["queue_size"] == 1
 
 
-def test_h264_stream_session_uses_compact_debug_context():
+def test_h264_stream_session_uses_compact_debug_context(monkeypatch):
     from types import SimpleNamespace
+
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
 
     session = object.__new__(webrtc_signal.XSenseH264StreamSession)
     session._compact_debug = True
-    session._ticket = SimpleNamespace(
-        serial_number="SSC0ATEST",
-        client_id="client123",
-        signal_url=lambda: "https://signal.example/ws",
-        expires_in=300,
+    session._ticket = ticket(
+        signalServer="https://signal.example/ws",
+        expirationTime=400_000,
     )
     session._camera_pc = SimpleNamespace(
         connectionState="connected",
@@ -1277,6 +1277,7 @@ def test_h264_stream_session_uses_compact_debug_context():
     )
 
     assert debug["signal_host"] == "signal.example"
+    assert debug["ticket_expires_in_s"] == 300
     assert debug["start_live_return"] == 17
     assert debug["offer_sdp"] == {
         "sdp_len": 2000,
@@ -1287,6 +1288,16 @@ def test_h264_stream_session_uses_compact_debug_context():
     }
     assert debug["keyframe_request_ssrcs"] == [123]
     assert "media" not in debug["offer_sdp"]
+
+
+def test_ticket_debug_context_uses_real_ticket_expiry(monkeypatch):
+    monkeypatch.setattr(webrtc_signal.time, "time", lambda: 100)
+
+    debug = webrtc_signal._ticket_debug_context(
+        ticket(signalServer="https://signal.example/ws", expirationTime=400_000)
+    )
+
+    assert debug["ticket_expires_in_s"] == 300
 
 
 async def test_first_frame_keyframe_debug_is_throttled(monkeypatch):
@@ -1402,6 +1413,32 @@ def test_sdp_debug_includes_video_payload_fmtp_and_feedback():
     assert debug["video_feedback"] == {"101": ["nack", "nack pli"]}
 
 
+def test_sdp_debug_ignores_malformed_debug_lines():
+    sdp = (
+        "v=0\r\n"
+        "m=video 9 UDP/TLS/RTP/SAVPF 101 102\r\n"
+        "a=rtpmap:101\r\n"
+        "a=rtcp-fb:101\r\n"
+        "a=fmtp:101\r\n"
+        "a=fingerprint:\r\n"
+        "a=rtpmap:102 H264/90000\r\n"
+        "a=rtcp-fb:102 nack pli\r\n"
+        "a=fmtp:102 packetization-mode=1;profile-level-id=42001f\r\n"
+        "a=fingerprint:sha-256 AA:BB\r\n"
+    )
+
+    debug = webrtc_signal._sdp_debug(sdp)
+
+    assert debug["video_codecs"] == ["H264"]
+    assert debug["video_primary_payload"] == {
+        "payload": "102",
+        "codec": "H264",
+        "fmtp": "packetization-mode=1;profile-level-id=42001f",
+    }
+    assert debug["video_feedback"] == {"102": ["nack pli"]}
+    assert debug["fingerprints"] == ["sha-256"]
+
+
 def test_data_channel_debug_includes_safe_nested_codec_values():
     debug = webrtc_signal._data_channel_debug(
         {
@@ -1422,6 +1459,16 @@ def test_data_channel_debug_includes_safe_nested_codec_values():
     assert debug["parameter_size"] == "1920x1080"
     assert "data_url" not in debug
     assert "parameter_token" not in debug
+
+
+def test_debug_helpers_handle_non_string_dict_keys():
+    payload = {1: "one", "two": 2}
+
+    assert webrtc_signal._payload_debug(payload) == "dict_keys=['1', 'two']"
+    assert webrtc_signal._data_channel_debug({"data": payload})["data_keys"] == [
+        "1",
+        "two",
+    ]
 
 
 def test_start_live_response_is_kept_in_debug_context():

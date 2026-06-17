@@ -128,6 +128,13 @@ class XSenseWebRTCTicket:
         return self.expiration_time > int(time.time() * 1000)
 
     @property
+    def expires_in(self) -> int | None:
+        """Return the remaining ticket lifetime in seconds."""
+        if self.expiration_time is None:
+            return None
+        return round((self.expiration_time - int(time.time() * 1000)) / 1000)
+
+    @property
     def session_id(self) -> str:
         """Return the SDK-style peer connection session id."""
         return f"Android-{self.client_id}-{int(time.time() * 1000)}"
@@ -243,11 +250,7 @@ def _ticket_debug_context(ticket: XSenseWebRTCTicket) -> dict[str, Any]:
         "ice_servers": len(ticket.ice_servers or []),
         "signal_ping_interval": ticket.signal_ping_interval,
         "signal_heartbeat_s": _signal_heartbeat(ticket),
-        "ticket_expires_in_s": (
-            round((ticket.expiration_time - int(time.time() * 1000)) / 1000)
-            if ticket.expiration_time is not None
-            else None
-        ),
+        "ticket_expires_in_s": ticket.expires_in,
     }
 
 
@@ -261,7 +264,7 @@ def _signal_heartbeat(ticket: XSenseWebRTCTicket) -> None:
 
 def _payload_debug(payload: Any) -> str:
     if isinstance(payload, dict):
-        return f"dict_keys={sorted(payload.keys())}"
+        return f"dict_keys={_debug_keys(payload)}"
     if isinstance(payload, str):
         return f"str:{_short_id(payload)}"
     return type(payload).__name__
@@ -278,13 +281,13 @@ def _data_channel_debug(payload: dict[str, Any]) -> dict[str, Any]:
             details[key] = payload.get(key)
     data = payload.get("data")
     if isinstance(data, dict):
-        details["data_keys"] = sorted(data.keys())
+        details["data_keys"] = _debug_keys(data)
         details.update(_safe_nested_debug_values("data", data))
     elif isinstance(data, str) and data:
         with suppress(Exception):
             parsed = json.loads(data)
             if isinstance(parsed, dict):
-                details["data_keys"] = sorted(parsed.keys())
+                details["data_keys"] = _debug_keys(parsed)
                 details.update(_safe_nested_debug_values("data", parsed))
             else:
                 details["data_type"] = type(parsed).__name__
@@ -292,7 +295,7 @@ def _data_channel_debug(payload: dict[str, Any]) -> dict[str, Any]:
             details["data_type"] = "str"
     parameters = payload.get("parameters")
     if isinstance(parameters, dict):
-        details["parameter_keys"] = sorted(parameters.keys())
+        details["parameter_keys"] = _debug_keys(parameters)
         details.update(_safe_nested_debug_values("parameter", parameters))
     return details
 
@@ -352,6 +355,11 @@ def _safe_nested_debug_values(prefix: str, values: dict[str, Any]) -> dict[str, 
     }
 
 
+def _debug_keys(values: dict[Any, Any]) -> list[str]:
+    """Return stable debug key names without assuming JSON-style string keys."""
+    return sorted(str(key) for key in values)
+
+
 def _sdp_debug(sdp: str | None) -> dict[str, Any]:
     """Return compact SDP shape details useful for camera debugging."""
     if not isinstance(sdp, str):
@@ -408,7 +416,10 @@ def _sdp_media_codecs(sdp: str, media_kind: str) -> list[str]:
             in_section = line.startswith(f"m={media_kind} ")
             continue
         if in_section and line.startswith("a=rtpmap:"):
-            _, codec = line.removeprefix("a=rtpmap:").split(None, 1)
+            parts = line.removeprefix("a=rtpmap:").split(None, 1)
+            if len(parts) < 2:
+                continue
+            _, codec = parts
             codec_name = codec.split("/", 1)[0].upper()
             if codec_name not in codecs:
                 codecs.append(codec_name)
@@ -426,12 +437,18 @@ def _sdp_media_payloads(sdp: str, media_kind: str) -> list[dict[str, str]]:
         if not in_section:
             continue
         if line.startswith("a=rtpmap:"):
-            payload, codec = line.removeprefix("a=rtpmap:").split(None, 1)
+            parts = line.removeprefix("a=rtpmap:").split(None, 1)
+            if len(parts) < 2:
+                continue
+            payload, codec = parts
             payloads.setdefault(payload, {"payload": payload})["codec"] = codec.split(
                 "/", 1
             )[0].upper()
         elif line.startswith("a=fmtp:"):
-            payload, fmtp = line.removeprefix("a=fmtp:").split(None, 1)
+            parts = line.removeprefix("a=fmtp:").split(None, 1)
+            if len(parts) < 2:
+                continue
+            payload, fmtp = parts
             compact_fmtp = []
             for item in fmtp.split(";"):
                 key_value = item.strip()
@@ -491,7 +508,10 @@ def _sdp_media_feedback(sdp: str, media_kind: str) -> dict[str, list[str]]:
             in_section = line.startswith(f"m={media_kind} ")
             continue
         if in_section and line.startswith("a=rtcp-fb:"):
-            payload, value = line.removeprefix("a=rtcp-fb:").split(None, 1)
+            parts = line.removeprefix("a=rtcp-fb:").split(None, 1)
+            if len(parts) < 2:
+                continue
+            payload, value = parts
             feedback.setdefault(payload, []).append(value)
     return feedback
 
@@ -540,7 +560,10 @@ def _sdp_fingerprints(sdp: str) -> list[str]:
     for line in sdp.splitlines():
         if not line.startswith("a=fingerprint:"):
             continue
-        algorithm = line.removeprefix("a=fingerprint:").split(None, 1)[0].lower()
+        parts = line.removeprefix("a=fingerprint:").split(None, 1)
+        if not parts:
+            continue
+        algorithm = parts[0].lower()
         if algorithm not in algorithms:
             algorithms.append(algorithm)
     return algorithms
@@ -599,7 +622,7 @@ def _signal_envelope_debug(payload: str) -> dict[str, Any]:
         data = json.loads(payload)
         if isinstance(data, dict):
             return {
-                "keys": sorted(data.keys()),
+                "keys": _debug_keys(data),
                 "message_type": data.get("messageType"),
                 "sender": _short_id(data.get("senderClientId")),
                 "recipient": _short_id(data.get("recipientClientId")),
