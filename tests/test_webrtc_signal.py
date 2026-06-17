@@ -58,6 +58,71 @@ def test_sdp_offer_payload_strips_candidates_and_keeps_resolution():
     assert "a=end-of-candidates" not in offer["sdp"]
 
 
+def test_relay_offer_sdp_prunes_to_pcmu_audio_and_h264_video():
+    sdp = (
+        "v=0\r\n"
+        "a=group:BUNDLE 0 1 2\r\n"
+        "m=audio 9 UDP/TLS/RTP/SAVPF 111 0 8\r\n"
+        "a=mid:0\r\n"
+        "a=rtpmap:111 opus/48000/2\r\n"
+        "a=rtpmap:0 PCMU/8000\r\n"
+        "a=rtpmap:8 PCMA/8000\r\n"
+        "a=fmtp:111 minptime=10;useinbandfec=1\r\n"
+        "a=candidate:1 1 udp 1 192.0.2.1 123 typ host\r\n"
+        "m=video 9 UDP/TLS/RTP/SAVPF 96 97 103 104 45\r\n"
+        "a=mid:1\r\n"
+        "a=rtpmap:96 VP8/90000\r\n"
+        "a=rtpmap:97 rtx/90000\r\n"
+        "a=fmtp:97 apt=96\r\n"
+        "a=rtpmap:103 H264/90000\r\n"
+        "a=rtcp-fb:103 nack pli\r\n"
+        "a=rtpmap:104 H264/90000\r\n"
+        "a=rtpmap:45 AV1/90000\r\n"
+        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
+        "a=mid:2\r\n"
+    )
+
+    relay_sdp, context = webrtc_signal._relay_offer_sdp(sdp)
+
+    assert "m=audio 9 UDP/TLS/RTP/SAVPF 0" in relay_sdp
+    assert "m=video 9 UDP/TLS/RTP/SAVPF 103 104" in relay_sdp
+    assert "m=application 9 UDP/DTLS/SCTP webrtc-datachannel" in relay_sdp
+    assert "opus/48000" not in relay_sdp
+    assert "VP8/90000" not in relay_sdp
+    assert "AV1/90000" not in relay_sdp
+    assert "a=candidate:" not in relay_sdp
+    assert context == {
+        "sections": 4,
+        "audio_removed_payloads": 2,
+        "video_removed_payloads": 3,
+        "audio_kept_payloads": 1,
+        "video_kept_payloads": 2,
+    }
+
+
+def test_sdp_offer_payload_uses_camera_friendly_relay_offer():
+    sdp = (
+        "v=0\r\n"
+        "m=video 9 UDP/TLS/RTP/SAVPF 96 103\r\n"
+        "a=rtpmap:96 VP8/90000\r\n"
+        "a=rtpmap:103 H264/90000\r\n"
+    )
+
+    payload = json.loads(
+        webrtc_signal.make_sdp_offer_payload(
+            offer_sdp=sdp,
+            ticket=ticket(),
+            recipient_client_id="SSC0ATEST",
+            session_id="session123",
+            resolution="1920x1080",
+        )
+    )
+    offer = json.loads(base64.b64decode(payload["messagePayload"]).decode())
+
+    assert "m=video 9 UDP/TLS/RTP/SAVPF 103" in offer["sdp"]
+    assert "VP8/90000" not in offer["sdp"]
+
+
 def test_local_sdp_candidates_keep_ha_complete_offer_candidates():
     sdp = (
         "v=0\r\n"

@@ -460,10 +460,13 @@ class XSenseWebRTCSignalSession:
             session_id=self._session_id,
             resolution=self._resolution,
         )
+        relay_offer_sdp, relay_offer_context = _relay_offer_sdp(self._offer_sdp)
         LOGGER.debug(
             "X-Sense WebRTC signal relay sending SDP offer: %s",
             self._debug_context(
                 offer_sdp=_sdp_debug(self._offer_sdp),
+                relay_offer_sdp=_sdp_debug(relay_offer_sdp),
+                relay_offer_normalization=relay_offer_context,
                 offer_envelope=_signal_envelope_debug(offer),
             ),
         )
@@ -532,9 +535,8 @@ def make_sdp_offer_payload(
     resolution: str | None,
 ) -> str:
     """Return the APK-compatible SDP offer envelope."""
-    payload = _b64_json(
-        {"type": "offer", "sdp": _sdp_without_local_candidates(offer_sdp)}
-    )
+    relay_sdp = _relay_offer_sdp(offer_sdp)[0]
+    payload = _b64_json({"type": "offer", "sdp": relay_sdp})
     envelope: dict[str, Any] = {
         "messageType": "SDP_OFFER",
         "messagePayload": payload,
@@ -789,6 +791,129 @@ def _sdp_without_local_candidates(sdp: str) -> str:
     ]
     ending = "\r\n" if "\r\n" in sdp else "\n"
     return ending.join(lines) + (ending if sdp.endswith(("\r\n", "\n")) else "")
+
+
+def _relay_offer_sdp(sdp: str) -> tuple[str, dict[str, Any]]:
+    """Return an X-Sense camera friendly SDP offer without changing media transport."""
+    sdp = _sdp_without_local_candidates(sdp)
+    sections = _sdp_sections(sdp)
+    if not sections:
+        return sdp, {"sections": 0}
+
+    normalized_sections: list[list[str]] = [sections[0]]
+    context: dict[str, Any] = {
+        "sections": len(sections),
+        "audio_removed_payloads": 0,
+        "video_removed_payloads": 0,
+        "audio_kept_payloads": 0,
+        "video_kept_payloads": 0,
+    }
+    for section in sections[1:]:
+        normalized, section_context = _normalize_offer_media_section(section)
+        normalized_sections.append(normalized)
+        kind = section_context.get("kind")
+        if kind in {"audio", "video"}:
+            context[f"{kind}_removed_payloads"] += section_context[
+                "removed_payloads"
+            ]
+            context[f"{kind}_kept_payloads"] += section_context["kept_payloads"]
+    return "".join(line for section in normalized_sections for line in section), context
+
+
+def _sdp_sections(sdp: str) -> list[list[str]]:
+    sections: list[list[str]] = [[]]
+    for line in sdp.splitlines(keepends=True):
+        if line.startswith("m="):
+            sections.append([line])
+        else:
+            sections[-1].append(line)
+    return [section for section in sections if section]
+
+
+def _normalize_offer_media_section(
+    section: list[str],
+) -> tuple[list[str], dict[str, Any]]:
+    if not section or not section[0].startswith("m="):
+        return section, {"kind": None, "removed_payloads": 0, "kept_payloads": 0}
+    media_line = section[0].rstrip("\r\n")
+    parts = media_line.split()
+    if len(parts) < 4:
+        return section, {"kind": None, "removed_payloads": 0, "kept_payloads": 0}
+    kind = parts[0].removeprefix("m=")
+    payloads = parts[3:]
+    if kind == "application":
+        return section, {"kind": kind, "removed_payloads": 0, "kept_payloads": 0}
+    if kind not in {"audio", "video"}:
+        return section, {
+            "kind": kind,
+            "removed_payloads": 0,
+            "kept_payloads": len(payloads),
+        }
+
+    codec_by_payload = _payload_codecs(section)
+    allowed_payloads = [
+        payload
+        for payload in payloads
+        if _offer_payload_allowed(kind, payload, codec_by_payload)
+    ]
+    if not allowed_payloads:
+        return section, {
+            "kind": kind,
+            "removed_payloads": 0,
+            "kept_payloads": len(payloads),
+        }
+
+    allowed = set(allowed_payloads)
+    normalized = [_replace_media_payloads(section[0], allowed_payloads)]
+    for line in section[1:]:
+        attribute_payload = _offer_attribute_payload(line)
+        if attribute_payload in (None, "*") or attribute_payload in allowed:
+            normalized.append(line)
+    return normalized, {
+        "kind": kind,
+        "removed_payloads": len(payloads) - len(allowed_payloads),
+        "kept_payloads": len(allowed_payloads),
+    }
+
+
+def _payload_codecs(section: list[str]) -> dict[str, str]:
+    codecs: dict[str, str] = {}
+    for line in section:
+        if not line.startswith("a=rtpmap:"):
+            continue
+        value = line.removeprefix("a=rtpmap:").strip()
+        payload, _, codec = value.partition(" ")
+        codec_name = codec.split("/", 1)[0].upper()
+        if payload and codec_name:
+            codecs[payload] = codec_name
+    return codecs
+
+
+def _offer_payload_allowed(
+    kind: str, payload: str, codec_by_payload: dict[str, str]
+) -> bool:
+    codec = codec_by_payload.get(payload)
+    if kind == "audio":
+        return payload == "0" or codec == "PCMU"
+    if kind == "video":
+        return codec == "H264"
+    return True
+
+
+def _replace_media_payloads(line: str, payloads: list[str]) -> str:
+    ending = "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
+    parts = line.rstrip("\r\n").split()
+    return " ".join([*parts[:3], *payloads]) + ending
+
+
+def _offer_attribute_payload(line: str) -> str | None:
+    for prefix in ("a=rtpmap:", "a=fmtp:", "a=rtcp-fb:"):
+        if not line.startswith(prefix):
+            continue
+        value = line.removeprefix(prefix).strip()
+        payload = value.split(maxsplit=1)[0]
+        return payload.split(":", 1)[0]
+    return None
 
 
 def _sdp_debug(sdp: str | None) -> dict[str, Any]:
