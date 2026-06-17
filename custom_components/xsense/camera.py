@@ -2,24 +2,27 @@
 
 from __future__ import annotations
 
-import asyncio
 from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
-from urllib.parse import quote
 
-from aiohttp import web
 from homeassistant import config_entries
 from homeassistant.components.camera import (
     Camera,
     CameraEntityDescription,
     CameraEntityFeature,
 )
+from homeassistant.components.camera.webrtc import (
+    WebRTCAnswer,
+    WebRTCCandidate,
+    WebRTCClientConfiguration,
+    WebRTCError,
+    WebRTCSendMessage,
+)
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.components.http import HomeAssistantView
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.network import get_url
+from webrtc_models import RTCIceCandidateInit
 
 from .api.async_xsense import camera_live_resolution, is_camera_entity
 from .const import DOMAIN, LOGGER
@@ -37,9 +40,6 @@ CAMERA_DESCRIPTION = XSenseCameraEntityDescription(
     name=None,
 )
 
-_CAMERA_STREAM_VIEW_REGISTERED = f"{DOMAIN}_camera_stream_view_registered"
-_CAMERA_STREAM_TOKENS = f"{DOMAIN}_camera_stream_tokens"
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -49,13 +49,12 @@ async def async_setup_entry(
     """Set up X-Sense camera entities."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    if not hass.data.get(_CAMERA_STREAM_VIEW_REGISTERED):
-        hass.http.register_view(XSenseCameraStreamView)
-        hass.data[_CAMERA_STREAM_VIEW_REGISTERED] = True
-    hass.data.setdefault(_CAMERA_STREAM_TOKENS, {})
-
     async_add_entities(
-        XSenseCameraEntity(coordinator, station, CAMERA_DESCRIPTION)
+        (
+            XSenseWebRTCCameraEntity(coordinator, station, CAMERA_DESCRIPTION)
+            if _is_webrtc_camera(station)
+            else XSenseCameraEntity(coordinator, station, CAMERA_DESCRIPTION)
+        )
         for station in coordinator.data["stations"].values()
         if is_camera_entity(station)
     )
@@ -93,11 +92,9 @@ class XSenseCameraEntity(XSenseEntity, Camera):
 
     @property
     def supported_features(self) -> CameraEntityFeature:
-        """Return native stream support for ffmpeg-compatible camera URLs."""
+        """Return native stream support for direct camera streams."""
         entity = self._current_entity()
-        if entity is not None and (
-            _is_native_stream_camera(entity) or _is_webrtc_camera(entity)
-        ):
+        if entity is not None and _is_native_stream_camera(entity):
             return CameraEntityFeature.STREAM
         return CameraEntityFeature(0)
 
@@ -128,26 +125,8 @@ class XSenseCameraEntity(XSenseEntity, Camera):
     async def stream_source(self) -> str | None:
         """Return a live stream URL when the X-Sense camera service provides one."""
         entity = self._current_entity()
-        if entity is None:
+        if entity is None or not _is_native_stream_camera(entity):
             return None
-        if _is_webrtc_camera(entity):
-            token = self.access_tokens[-1]
-            self.hass.data.setdefault(_CAMERA_STREAM_TOKENS, {})[
-                (self.coordinator.entry.entry_id, self._dev_id)
-            ] = token
-            source = _camera_stream_source_url(
-                self.hass, self.coordinator.entry.entry_id, self._dev_id, token
-            )
-            LOGGER.debug(
-                "X-Sense camera WebRTC go2rtc stream source prepared: %s",
-                _camera_debug_context(
-                    entity,
-                    self.coordinator.entry.entry_id,
-                    stream_host=_safe_url_host(source),
-                    stream_path="/api/xsense/camera_stream",
-                ),
-            )
-            return source
         source = await self.coordinator.xsense.start_camera_live(entity)
         return source
 
@@ -160,138 +139,182 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         await super().async_will_remove_from_hass()
 
 
-class XSenseCameraStreamView(HomeAssistantView):
-    """Serve an X-Sense WebRTC camera as raw H264 for go2rtc."""
+class XSenseWebRTCCameraEntity(XSenseCameraEntity):
+    """X-Sense camera entity that supports native Home Assistant WebRTC."""
 
-    url = "/api/xsense/camera_stream/{entry_id}/{dev_id}"
-    name = "api:xsense:camera_stream"
-    requires_auth = False
+    def __init__(
+        self,
+        coordinator: XSenseDataUpdateCoordinator,
+        entity,
+        entity_description: XSenseCameraEntityDescription,
+    ) -> None:
+        """Set up the WebRTC camera entity."""
+        super().__init__(coordinator, entity, entity_description)
+        self._webrtc_sessions: dict[str, object] = {}
 
-    async def get(
-        self, request: web.Request, entry_id: str, dev_id: str
-    ) -> web.StreamResponse:
-        """Return a raw H264 stream for the requested X-Sense camera."""
-        hass: HomeAssistant = request.app["hass"]
-        token = request.query.get("token")
-        tokens = hass.data.get(_CAMERA_STREAM_TOKENS, {})
-        if not token or tokens.get((entry_id, dev_id)) != token:
+    @property
+    def supported_features(self) -> CameraEntityFeature:
+        """Return native WebRTC stream support."""
+        entity = self._current_entity()
+        if entity is not None and _is_webrtc_camera(entity):
+            return CameraEntityFeature.STREAM
+        return CameraEntityFeature(0)
+
+    @property
+    def is_streaming(self) -> bool:
+        """Return whether the camera has an active WebRTC live stream."""
+        entity = self._current_entity()
+        return entity is not None and bool(self._webrtc_sessions)
+
+    async def stream_source(self) -> str | None:
+        """Return no ffmpeg stream source for native WebRTC cameras."""
+        entity = self._current_entity()
+        if entity is not None:
             LOGGER.debug(
-                "X-Sense H264 stream rejected invalid token: %s",
-                {"entry": _short_id(entry_id), "device": _short_id(dev_id)},
+                "X-Sense camera WebRTC uses native Home Assistant signaling: %s",
+                _camera_debug_context(entity, None),
             )
-            raise web.HTTPForbidden()
+        return None
 
-        coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
-        if coordinator is None:
-            LOGGER.debug(
-                "X-Sense H264 stream rejected unknown entry: %s",
-                {"entry": _short_id(entry_id), "device": _short_id(dev_id)},
-            )
-            raise web.HTTPNotFound()
-        entity = coordinator.data.get("stations", {}).get(dev_id)
+    @callback
+    def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
+        """Return the Home Assistant browser WebRTC client configuration."""
+        return WebRTCClientConfiguration(data_channel="data-channel-of-")
+
+    async def async_handle_async_webrtc_offer(
+        self, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage
+    ) -> None:
+        """Handle a Home Assistant WebRTC offer with X-Sense signaling."""
+        entity = self._current_entity()
         if entity is None or not _is_webrtc_camera(entity):
-            LOGGER.debug(
-                "X-Sense H264 stream rejected unknown camera: %s",
-                {"entry": _short_id(entry_id), "device": _short_id(dev_id)},
+            send_message(
+                WebRTCError(
+                    "xsense_webrtc_unsupported",
+                    "Camera does not support X-Sense WebRTC",
+                )
             )
-            raise web.HTTPNotFound()
+            return
 
         LOGGER.debug(
-            "X-Sense H264 stream request accepted: %s",
+            "X-Sense camera WebRTC offer received for signal relay: %s",
             _camera_debug_context(
-                entity, entry_id, user_agent=request.headers.get("User-Agent")
+                entity, session_id, offer_sdp=_sdp_debug_context(offer_sdp)
             ),
         )
+        await self._close_existing_webrtc_sessions()
 
-        frame_queue: asyncio.Queue[bytes | None] = asyncio.Queue(maxsize=64)
-        webrtc_signal = await hass.async_add_import_executor_job(
-            import_module, __package__ + ".webrtc_signal"
-        )
-
-        ticket_data = await coordinator.xsense.get_camera_webrtc_ticket(
+        ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(
             entity, force_refresh=True
         )
         LOGGER.debug(
-            "X-Sense H264 stream ticket response: %s",
+            "X-Sense camera WebRTC ticket response: %s",
             _ticket_data_debug_context(ticket_data),
         )
         if not isinstance(ticket_data, dict):
-            raise web.HTTPServiceUnavailable(
-                reason="Unable to get X-Sense WebRTC ticket"
+            send_message(
+                WebRTCError(
+                    "xsense_webrtc_ticket_failed",
+                    "Unable to get X-Sense WebRTC ticket",
+                )
             )
+            return
+
+        webrtc_signal = await self.hass.async_add_import_executor_job(
+            import_module, __package__ + ".webrtc_signal"
+        )
         try:
             ticket = webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, ticket_data)
         except (KeyError, TypeError, ValueError) as err:
-            raise web.HTTPServiceUnavailable(
-                reason="Unable to parse X-Sense WebRTC ticket"
-            ) from err
-        if not ticket.is_valid:
-            raise web.HTTPServiceUnavailable(reason="X-Sense WebRTC ticket expired")
-
-        async def refresh_ticket():
-            refreshed = await coordinator.xsense.get_camera_webrtc_ticket(
-                entity, force_refresh=True
-            )
-            if not isinstance(refreshed, dict):
-                return None
-            with suppress(KeyError, TypeError, ValueError):
-                return webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, refreshed)
-            return None
-
-        session = webrtc_signal.XSenseH264StreamSession(
-            session=async_get_clientsession(hass),
-            ticket=ticket,
-            resolution=_camera_live_resolution(entity),
-            frame_queue=frame_queue,
-            camera_online=_camera_online(entity),
-            refresh_ticket=refresh_ticket,
-        )
-        if not await session.start():
-            raise web.HTTPServiceUnavailable(
-                reason="Unable to start X-Sense WebRTC stream"
-            )
-        LOGGER.debug(
-            "X-Sense H264 stream session started: %s",
-            _camera_debug_context(entity, entry_id),
-        )
-
-        response = web.StreamResponse(
-            status=200,
-            headers={
-                "Content-Type": "video/h264",
-                "Cache-Control": "no-store",
-                "X-Content-Type-Options": "nosniff",
-            },
-        )
-        await response.prepare(request)
-        LOGGER.debug(
-            "X-Sense H264 stream response prepared: %s",
-            _camera_debug_context(entity, entry_id, content_type="video/h264"),
-        )
-
-        try:
-            while True:
-                frame = await frame_queue.get()
-                if frame is None:
-                    LOGGER.debug(
-                        "X-Sense H264 stream frame queue ended: %s",
-                        _camera_debug_context(entity, entry_id),
-                    )
-                    break
-                await response.write(frame)
-        except (asyncio.CancelledError, ConnectionError):
-            raise
-        except Exception as err:  # noqa: BLE001 - go2rtc may close the source socket
-            LOGGER.debug("X-Sense H264 stream response stopped", exc_info=err)
-        finally:
-            await session.close()
-            with suppress(Exception):
-                await response.write_eof()
             LOGGER.debug(
-                "X-Sense H264 stream response closed: %s",
-                _camera_debug_context(entity, entry_id),
+                "X-Sense camera WebRTC ticket parse failed: %s",
+                _camera_debug_context(entity, session_id, error=type(err).__name__),
             )
-        return response
+            send_message(
+                WebRTCError(
+                    "xsense_webrtc_ticket_failed",
+                    "Unable to parse X-Sense WebRTC ticket",
+                )
+            )
+            return
+        if not ticket.is_valid:
+            LOGGER.debug(
+                "X-Sense camera WebRTC ticket expired or incomplete: %s",
+                _camera_debug_context(entity, session_id),
+            )
+            send_message(
+                WebRTCError(
+                    "xsense_webrtc_ticket_expired",
+                    "X-Sense WebRTC ticket expired",
+                )
+            )
+            return
+
+        session = webrtc_signal.XSenseWebRTCSignalSession(
+            session=async_get_clientsession(self.hass),
+            ticket=ticket,
+            offer_sdp=offer_sdp,
+            resolution=_camera_live_resolution(entity),
+            camera_online=_camera_online(entity),
+            remote_candidate_callback=lambda candidate: _send_remote_candidate(
+                send_message, entity, session_id, candidate
+            ),
+        )
+        self._webrtc_sessions[session_id] = session
+        try:
+            answer = await session.start()
+        except Exception as err:  # noqa: BLE001 - HA frontend needs a clean error
+            self._webrtc_sessions.pop(session_id, None)
+            await session.close()
+            LOGGER.debug(
+                "X-Sense camera WebRTC signal relay failed: %s",
+                _camera_debug_context(
+                    entity, session_id, error=_error_debug_context(err)
+                ),
+            )
+            send_message(WebRTCError("xsense_webrtc_start_failed", str(err)))
+            return
+
+        LOGGER.debug(
+            "X-Sense camera WebRTC answer ready for Home Assistant: %s",
+            _camera_debug_context(
+                entity, session_id, answer_sdp=_sdp_debug_context(answer)
+            ),
+        )
+        send_message(WebRTCAnswer(answer))
+        session.start_forwarding_remote_candidates()
+
+    async def _close_existing_webrtc_sessions(self) -> None:
+        """Close previous X-Sense signaling sessions before a new live view."""
+        sessions = list(self._webrtc_sessions.values())
+        if not sessions:
+            return
+        LOGGER.debug(
+            "X-Sense camera closing previous WebRTC signal sessions before new offer: %s",
+            {"count": len(sessions)},
+        )
+        self._webrtc_sessions.clear()
+        for session in sessions:
+            await session.close()
+
+    async def async_on_webrtc_candidate(self, session_id, candidate) -> None:
+        """Forward a Home Assistant WebRTC candidate to X-Sense signaling."""
+        if session := self._webrtc_sessions.get(session_id):
+            await session.add_candidate(candidate)
+
+    @callback
+    def close_webrtc_session(self, session_id: str) -> None:
+        """Close an X-Sense WebRTC signaling session."""
+        if session := self._webrtc_sessions.pop(session_id, None):
+            self.hass.async_create_task(session.close())
+        super().close_webrtc_session(session_id)
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Stop any WebRTC live view session when Home Assistant removes the entity."""
+        sessions = list(self._webrtc_sessions.values())
+        self._webrtc_sessions.clear()
+        for session in sessions:
+            await session.close()
+        await super().async_will_remove_from_hass()
 
 
 def _camera_online(entity) -> bool:
@@ -328,28 +351,6 @@ def _is_webrtc_camera(entity) -> bool:
 def _camera_live_resolution(entity) -> str:
     """Return the live resolution string used by the ADDX player."""
     return camera_live_resolution(entity)
-
-
-def _camera_stream_source_url(
-    hass: HomeAssistant, entry_id: str, dev_id: str, token: str
-) -> str:
-    """Return the raw H264 URL consumed by AlexxIT/WebRTC go2rtc."""
-    base_url = get_url(hass, allow_internal=True).rstrip("/")
-    safe_entry_id = quote(entry_id, safe="")
-    safe_dev_id = quote(dev_id, safe="")
-    safe_token = quote(token, safe="")
-    return (
-        f"{base_url}/api/xsense/camera_stream/"
-        f"{safe_entry_id}/{safe_dev_id}?token={safe_token}"
-    )
-
-
-def _safe_url_host(value: str) -> str | None:
-    with suppress(Exception):
-        from urllib.parse import urlparse
-
-        return urlparse(value).netloc or None
-    return None
 
 
 def _short_id(value):
@@ -391,4 +392,55 @@ def _ticket_data_debug_context(ticket_data):
         "has_expiration": ticket_data.get("expirationTime") not in (None, ""),
         "ticket_id": _short_id(ticket_data.get("id")),
         "real_camera": _short_id(ticket_data.get("realCxSerialNumber")),
+    }
+
+
+def _send_remote_candidate(send_message, entity, session_id, candidate) -> None:
+    """Forward an X-Sense ICE candidate to the Home Assistant WebRTC client."""
+    try:
+        send_message(
+            WebRTCCandidate(
+                RTCIceCandidateInit(
+                    candidate["candidate"],
+                    sdp_mid=candidate.get("sdpMid"),
+                    sdp_m_line_index=candidate.get("sdpMLineIndex"),
+                )
+            )
+        )
+    except (KeyError, TypeError, ValueError) as err:
+        LOGGER.debug(
+            "X-Sense camera WebRTC remote ICE candidate forward failed: %s",
+            _camera_debug_context(entity, session_id, error=type(err).__name__),
+        )
+
+
+def _sdp_debug_context(sdp: str | None) -> dict:
+    """Return safe SDP shape details without logging full SDP or IPs."""
+    if not isinstance(sdp, str):
+        return {"type": type(sdp).__name__}
+    return {
+        "sdp_len": len(sdp),
+        "media": [
+            line.removeprefix("m=")
+            for line in sdp.splitlines()
+            if line.startswith("m=")
+        ],
+        "mids": [
+            line.removeprefix("a=mid:")
+            for line in sdp.splitlines()
+            if line.startswith("a=mid:")
+        ],
+        "candidate_lines": sum(
+            1 for line in sdp.splitlines() if line.startswith("a=candidate:")
+        ),
+    }
+
+
+def _error_debug_context(err: BaseException) -> dict:
+    """Return safe exception details for debug logs."""
+    text = str(err)
+    return {
+        "type": type(err).__name__,
+        "message_len": len(text),
+        "has_message": bool(text),
     }
