@@ -98,6 +98,48 @@ def test_candidate_init_payload_matches_home_assistant_model_shape():
     }
 
 
+def test_answer_sdp_normalization_replaces_invalid_actpass_answer_setup():
+    sdp = (
+        "v=0\r\n"
+        "m=audio 9 UDP/TLS/RTP/SAVPF 0\r\n"
+        "a=setup:actpass\r\n"
+        "m=video 9 UDP/TLS/RTP/SAVPF 103\r\n"
+        "a=setup:passive\r\n"
+    )
+
+    normalized, context = webrtc_signal._normalize_answer_sdp(sdp)
+
+    assert "a=setup:actpass" not in normalized
+    assert normalized.count("a=setup:passive") == 2
+    assert context == {"setup_actpass_replaced": 1}
+
+
+def test_sdp_debug_includes_browser_rejection_shape_without_raw_values():
+    sdp = (
+        "v=0\r\n"
+        "a=group:BUNDLE 0 1\r\n"
+        "a=fingerprint:sha-256 AA:BB:CC\r\n"
+        "m=audio 9 UDP/TLS/RTP/SAVPF 0\r\n"
+        "a=mid:0\r\n"
+        "a=setup:passive\r\n"
+        "a=sendonly\r\n"
+        "a=ice-ufrag:test\r\n"
+        "a=ice-pwd:secret\r\n"
+        "a=rtcp-mux\r\n"
+    )
+
+    context = webrtc_signal._sdp_debug(sdp)
+
+    assert context["groups"] == ["BUNDLE 0 1"]
+    assert context["setup"] == ["passive"]
+    assert context["directions"] == ["sendonly"]
+    assert context["ice_ufrag_count"] == 1
+    assert context["ice_pwd_count"] == 1
+    assert context["fingerprint_count"] == 1
+    assert context["rtcp_mux_count"] == 1
+    assert "secret" not in str(context)
+
+
 async def test_trickled_candidate_is_queued_until_offer_is_sent():
     class FakeWs:
         closed = False

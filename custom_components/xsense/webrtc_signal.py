@@ -396,9 +396,13 @@ class XSenseWebRTCSignalSession:
         if event == "SDP_ANSWER":
             answer = _owned_answer_sdp(payload, self._ticket)
             if answer:
+                answer, normalize_context = _normalize_answer_sdp(answer)
                 LOGGER.debug(
                     "X-Sense WebRTC signal relay received SDP answer: %s",
-                    self._debug_context(answer_sdp=_sdp_debug(answer)),
+                    self._debug_context(
+                        answer_sdp=_sdp_debug(answer),
+                        answer_normalization=normalize_context,
+                    ),
                 )
                 if not self._answer.done():
                     self._answer.set_result(answer)
@@ -790,21 +794,66 @@ def _sdp_without_local_candidates(sdp: str) -> str:
 def _sdp_debug(sdp: str | None) -> dict[str, Any]:
     if not isinstance(sdp, str):
         return {"type": type(sdp).__name__}
+    lines = sdp.splitlines()
     return {
         "sdp_len": len(sdp),
         "media": [
             line.removeprefix("m=")
-            for line in sdp.splitlines()
+            for line in lines
             if line.startswith("m=")
         ],
         "mids": [
             line.removeprefix("a=mid:")
-            for line in sdp.splitlines()
+            for line in lines
             if line.startswith("a=mid:")
         ],
-        "candidate_lines": sum(
-            1 for line in sdp.splitlines() if line.startswith("a=candidate:")
+        "groups": [
+            line.removeprefix("a=group:")
+            for line in lines
+            if line.startswith("a=group:")
+        ],
+        "setup": [
+            line.removeprefix("a=setup:")
+            for line in lines
+            if line.startswith("a=setup:")
+        ],
+        "directions": [
+            line.removeprefix("a=")
+            for line in lines
+            if line in {"a=sendrecv", "a=sendonly", "a=recvonly", "a=inactive"}
+        ],
+        "ice_ufrag_count": sum(1 for line in lines if line.startswith("a=ice-ufrag:")),
+        "ice_pwd_count": sum(1 for line in lines if line.startswith("a=ice-pwd:")),
+        "fingerprint_count": sum(
+            1 for line in lines if line.startswith("a=fingerprint:")
         ),
+        "rtcp_mux_count": sum(1 for line in lines if line == "a=rtcp-mux"),
+        "candidate_lines": sum(
+            1 for line in lines if line.startswith("a=candidate:")
+        ),
+    }
+
+
+def _normalize_answer_sdp(sdp: str) -> tuple[str, dict[str, Any]]:
+    """Normalize browser-rejected SDP answer attributes without changing media."""
+    lines = sdp.splitlines(keepends=True)
+    normalized: list[str] = []
+    setup_actpass_replaced = 0
+    for line in lines:
+        if line.rstrip("\r\n") == "a=setup:actpass":
+            ending = (
+                "\r\n"
+                if line.endswith("\r\n")
+                else "\n"
+                if line.endswith("\n")
+                else ""
+            )
+            normalized.append(f"a=setup:passive{ending}")
+            setup_actpass_replaced += 1
+        else:
+            normalized.append(line)
+    return "".join(normalized), {
+        "setup_actpass_replaced": setup_actpass_replaced,
     }
 
 
