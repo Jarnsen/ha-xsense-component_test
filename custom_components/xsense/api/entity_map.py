@@ -174,9 +174,7 @@ def _xs01_wx_test_shadow(entity) -> str:
 
 
 def _xs01_wx_test_extra(entity) -> Dict:
-    if _xs01_wx_is_sbs50_linked(entity) and _is_smoke_v9(entity):
-        return {"userParam": "source=1"}
-    return {}
+    return {"userParam": "source=1"}
 
 
 def _xs01_wx_test_target(entity):
@@ -187,17 +185,11 @@ def XS01WXTestAction():
     """XS01-WX self test using the APK standalone and SBS50-linked paths."""
     return {
         "action": "test",
-        "topic": lambda entity: (
-            f"2nd_selftest_{entity.sn}"
-            if _xs01_wx_is_sbs50_linked(entity)
-            else f"appselftest_{entity.sn}"
-        ),
+        "topic": lambda entity: f"2nd_selftest_{entity.sn}",
         "shadow": _xs01_wx_test_shadow,
         "extra": _xs01_wx_test_extra,
         "target": _xs01_wx_test_target,
-        "time_format": lambda entity: (
-            "epoch_ms" if _xs01_wx_is_sbs50_linked(entity) else None
-        ),
+        "time_format": "epoch_ms",
     }
 
 

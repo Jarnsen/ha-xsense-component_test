@@ -1128,7 +1128,7 @@ async def _capture_action(client, target, action):
             "SBS50",
             "2nd_selftest_device-sn",
             "appSelfTest",
-            None,
+            "source=1",
             13,
             "SBS50station-sn",
         ),
@@ -1284,12 +1284,16 @@ async def test_xs01_wx_standalone_self_test_uses_own_station_entity_path(
 
     assert station_arg is station
     assert station_arg.shadow_name == expected_thing
-    assert page == f"appselftest_{station_sn}"
-    assert desired == {
+    assert page == f"2nd_selftest_{station_sn}"
+    assert desired["time"].isdigit()
+    assert len(desired["time"]) == 13
+    desired_without_time = {k: v for k, v in desired.items() if k != "time"}
+    assert desired_without_time == {
         "deviceSN": station_sn,
         "shadow": "appSelfTest",
         "stationSN": station_sn,
         "userId": "user-id",
+        "userParam": "source=1",
     }
 
 

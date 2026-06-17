@@ -164,19 +164,46 @@ def test_candidate_init_payload_matches_home_assistant_model_shape():
 
 
 def test_answer_sdp_normalization_replaces_invalid_actpass_answer_setup():
+    offer_sdp = (
+        "v=0\r\n"
+        "m=audio 9 UDP/TLS/RTP/SAVPF 0\r\n"
+        "a=mid:0\r\n"
+        "a=recvonly\r\n"
+        "m=video 9 UDP/TLS/RTP/SAVPF 103\r\n"
+        "a=mid:1\r\n"
+        "a=recvonly\r\n"
+        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
+        "a=mid:2\r\n"
+        "a=sendrecv\r\n"
+    )
     sdp = (
         "v=0\r\n"
         "m=audio 9 UDP/TLS/RTP/SAVPF 0\r\n"
+        "a=mid:0\r\n"
         "a=setup:actpass\r\n"
+        "a=sendrecv\r\n"
         "m=video 9 UDP/TLS/RTP/SAVPF 103\r\n"
+        "a=mid:1\r\n"
         "a=setup:passive\r\n"
+        "a=sendonly\r\n"
+        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
+        "a=mid:2\r\n"
+        "a=setup:actpass\r\n"
+        "a=sendrecv\r\n"
     )
 
-    normalized, context = webrtc_signal._normalize_answer_sdp(sdp)
+    normalized, context = webrtc_signal._normalize_answer_sdp(sdp, offer_sdp)
 
     assert "a=setup:actpass" not in normalized
-    assert normalized.count("a=setup:passive") == 2
-    assert context == {"setup_actpass_replaced": 1}
+    assert normalized.count("a=setup:passive") == 3
+    assert normalized.count("a=sendonly") == 2
+    assert (
+        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
+        "a=mid:2\r\n"
+        "a=setup:passive\r\n"
+        "a=sendrecv\r\n"
+    ) in normalized
+    assert context == {"setup_actpass_replaced": 2, "sendrecv_replaced": 1}
 
 
 def test_sdp_debug_includes_browser_rejection_shape_without_raw_values():

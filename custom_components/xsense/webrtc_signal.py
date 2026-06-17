@@ -396,7 +396,9 @@ class XSenseWebRTCSignalSession:
         if event == "SDP_ANSWER":
             answer = _owned_answer_sdp(payload, self._ticket)
             if answer:
-                answer, normalize_context = _normalize_answer_sdp(answer)
+                answer, normalize_context = _normalize_answer_sdp(
+                    answer, self._offer_sdp
+                )
                 LOGGER.debug(
                     "X-Sense WebRTC signal relay received SDP answer: %s",
                     self._debug_context(
@@ -876,6 +878,12 @@ def _normalize_offer_media_section(
     }
 
 
+def _media_section_kind(section: list[str]) -> str | None:
+    if not section or not section[0].startswith("m="):
+        return None
+    return section[0].split(maxsplit=1)[0].removeprefix("m=")
+
+
 def _payload_codecs(section: list[str]) -> dict[str, str]:
     codecs: dict[str, str] = {}
     for line in section:
@@ -901,9 +909,13 @@ def _offer_payload_allowed(
 
 
 def _replace_media_payloads(line: str, payloads: list[str]) -> str:
-    ending = "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
+    ending = _line_ending(line)
     parts = line.rstrip("\r\n").split()
     return " ".join([*parts[:3], *payloads]) + ending
+
+
+def _line_ending(line: str) -> str:
+    return "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
 
 
 def _offer_attribute_payload(line: str) -> str | None:
@@ -959,27 +971,71 @@ def _sdp_debug(sdp: str | None) -> dict[str, Any]:
     }
 
 
-def _normalize_answer_sdp(sdp: str) -> tuple[str, dict[str, Any]]:
+def _normalize_answer_sdp(
+    sdp: str, offer_sdp: str | None = None
+) -> tuple[str, dict[str, Any]]:
     """Normalize browser-rejected SDP answer attributes without changing media."""
-    lines = sdp.splitlines(keepends=True)
-    normalized: list[str] = []
     setup_actpass_replaced = 0
-    for line in lines:
-        if line.rstrip("\r\n") == "a=setup:actpass":
-            ending = (
-                "\r\n"
-                if line.endswith("\r\n")
-                else "\n"
-                if line.endswith("\n")
-                else ""
-            )
-            normalized.append(f"a=setup:passive{ending}")
-            setup_actpass_replaced += 1
-        else:
-            normalized.append(line)
-    return "".join(normalized), {
+    sendrecv_replaced = 0
+    recvonly_offer_mids = _offer_recvonly_media_mids(offer_sdp)
+    normalized_sections: list[list[str]] = []
+    for section in _sdp_sections(sdp):
+        normalized_section: list[str] = []
+        media_kind = _media_section_kind(section)
+        mid = _media_section_mid(section)
+        for line in section:
+            stripped = line.rstrip("\r\n")
+            ending = _line_ending(line)
+            if stripped == "a=setup:actpass":
+                normalized_section.append(f"a=setup:passive{ending}")
+                setup_actpass_replaced += 1
+            elif (
+                media_kind in {"audio", "video"}
+                and stripped == "a=sendrecv"
+                and (
+                    (recvonly_offer_mids is None)
+                    or (mid is not None and mid in recvonly_offer_mids)
+                )
+            ):
+                normalized_section.append(f"a=sendonly{ending}")
+                sendrecv_replaced += 1
+            else:
+                normalized_section.append(line)
+        normalized_sections.append(normalized_section)
+    return "".join(line for section in normalized_sections for line in section), {
         "setup_actpass_replaced": setup_actpass_replaced,
+        "sendrecv_replaced": sendrecv_replaced,
     }
+
+
+def _offer_recvonly_media_mids(sdp: str | None) -> set[str] | None:
+    if sdp is None:
+        return None
+    mids: set[str] = set()
+    for section in _sdp_sections(sdp):
+        if _media_section_kind(section) not in {"audio", "video"}:
+            continue
+        if _media_section_direction(section) != "recvonly":
+            continue
+        mid = _media_section_mid(section)
+        if mid is not None:
+            mids.add(mid)
+    return mids
+
+
+def _media_section_mid(section: list[str]) -> str | None:
+    for line in section:
+        if line.startswith("a=mid:"):
+            return line.removeprefix("a=mid:").strip()
+    return None
+
+
+def _media_section_direction(section: list[str]) -> str | None:
+    for line in section:
+        stripped = line.rstrip("\r\n")
+        if stripped in {"a=sendrecv", "a=sendonly", "a=recvonly", "a=inactive"}:
+            return stripped.removeprefix("a=")
+    return None
 
 
 def _candidate_debug_summary(candidates: list[dict[str, Any]]) -> dict[str, Any]:
