@@ -10,7 +10,16 @@ for module_name in list(sys.modules):
 if not hasattr(sys.modules.get("custom_components"), "__path__"):
     sys.modules.pop("custom_components", None)
 
-from custom_components.xsense import binary_sensor, button, camera, number, select, sensor, switch
+from custom_components.xsense import (
+    binary_sensor,
+    button,
+    camera,
+    event,
+    number,
+    select,
+    sensor,
+    switch,
+)
 from custom_components.xsense.api import mapping
 
 
@@ -141,6 +150,112 @@ def test_ai_detection_sensors_require_camera_entity():
         description = next(item for item in sensor.SENSORS if item.key == key)
         assert not description.exists_fn(non_camera)
         assert description.exists_fn(camera)
+
+
+def test_ai_detection_sensors_precreate_for_supported_camera():
+    supported_camera = entity("SSC0A", {"supportPersonDetect": True})
+    unsupported_camera = entity("SSC0A", {"supportPersonDetect": False})
+    camera_with_event_data = entity(
+        "SSC0A",
+        {
+            "supportPersonDetect": False,
+            "lastPackagePickUpDetectionTime": "20260614231812",
+        },
+    )
+
+    for key in ("last_ai_detection", "last_package_pick_up_detection_time"):
+        description = next(item for item in sensor.SENSORS if item.key == key)
+        assert description.exists_fn(supported_camera)
+        assert description.value_fn(supported_camera) is None
+        assert not description.exists_fn(unsupported_camera)
+        assert description.exists_fn(camera_with_event_data)
+
+
+def test_ai_detection_event_entity_precreates_for_supported_camera():
+    supported_camera = entity("SSC0A", {"supportPersonDetect": True})
+    unsupported_camera = entity("SSC0A", {"supportPersonDetect": False})
+    camera_with_event_data = entity(
+        "SSC0A", {"supportPersonDetect": False, "lastAiDetection": "person"}
+    )
+    non_camera = entity("XS01-WX", {"supportPersonDetect": True})
+
+    description = event.AI_DETECTION_DESCRIPTION
+
+    assert description.exists_fn(supported_camera)
+    assert not description.exists_fn(unsupported_camera)
+    assert description.exists_fn(camera_with_event_data)
+    assert not description.exists_fn(non_camera)
+
+
+def test_ai_detection_event_data_uses_apk_detection_payload():
+    event_data = event.ai_detection_event_data(
+        {
+            "lastAiDetection": "package_pick_up,person",
+            "lastPackagePickUpDetectionTime": "20260614230200",
+            "lastPersonDetectionTime": "20260614230100",
+        }
+    )
+
+    assert event_data == {
+        "objects": ["package_pick_up", "person"],
+        "last_ai_detection": "package_pick_up,person",
+        "object_times": {
+            "package_pick_up": "20260614230200",
+            "person": "20260614230100",
+        },
+        "time": "20260614230200",
+    }
+    assert event.ai_detection_fingerprint(event_data) == (
+        ("package_pick_up", "person"),
+        (
+            ("package_pick_up", "20260614230200"),
+            ("person", "20260614230100"),
+        ),
+        "20260614230200",
+    )
+
+
+def test_ai_detection_event_data_ignores_missing_or_unknown_objects():
+    assert event.ai_detection_event_data({}) is None
+    assert event.ai_detection_event_data({"lastAiDetection": "unknown"}) is None
+
+
+def test_ai_detection_event_entity_triggers_first_new_event_after_empty_startup():
+    camera_entity = entity("SSC0A", {"supportPersonDetect": True})
+    event_entity = event.XSenseEventEntity.__new__(event.XSenseEventEntity)
+    event_entity._ai_detection_initialized = False
+    event_entity._last_ai_detection_fingerprint = None
+    event_entity._current_entity = lambda: camera_entity
+    triggered = []
+    event_entity._trigger_event = lambda event_type, data: triggered.append(
+        (event_type, data)
+    )
+    event_entity.async_write_ha_state = lambda: triggered.append(("write", None))
+
+    event_entity._handle_coordinator_update()
+    assert triggered == []
+
+    camera_entity.data.update(
+        {
+            "lastAiDetection": "person",
+            "lastPersonDetectionTime": "20260614230100",
+        }
+    )
+    event_entity._handle_coordinator_update()
+    event_entity._handle_coordinator_update()
+
+    assert triggered == [
+        (
+            "person",
+            {
+                "objects": ["person"],
+                "last_ai_detection": "person",
+                "object_times": {"person": "20260614230100"},
+                "time": "20260614230100",
+            },
+        ),
+        ("write", None),
+    ]
 
 
 def test_camera_availability_follows_apk_non_offline_statuses():

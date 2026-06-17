@@ -2882,7 +2882,7 @@ def test_camera_data_normalizes_apk_integer_support_flags():
     ):
         assert data[key] is True
 
-    assert data["supportPersonDetect"] is False
+    assert data["supportPersonDetect"] is True
 
 
 def test_camera_data_uses_explicit_apk_webrtc_support_flag():

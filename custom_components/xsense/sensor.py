@@ -74,6 +74,11 @@ def data_value(key: str) -> Callable[[Entity], StateType]:
     return lambda entity: entity.data[key]
 
 
+def optional_data_value(key: str) -> Callable[[Entity], StateType]:
+    """Return an optional value function for late-reporting X-Sense data."""
+    return lambda entity: entity.data.get(key)
+
+
 def timestamp_value(value) -> datetime | None:
     """Return an aware datetime for X-Sense timestamp payload values."""
     if value in (None, ""):
@@ -135,6 +140,30 @@ def has_data(key: str) -> Callable[[Entity], bool]:
 def has_camera_data(key: str) -> Callable[[Entity], bool]:
     """Return an exists function for an IPC camera data key."""
     return lambda entity: is_camera_entity(entity) and key in entity.data
+
+
+_CAMERA_AI_DETECTION_DATA_KEYS = {
+    "lastAiDetection",
+    "lastPersonDetectionTime",
+    "lastPetDetectionTime",
+    "lastVehicleDetectionTime",
+    "lastPackageDetectionTime",
+    "lastOtherDetectionTime",
+    "lastVehicleEnterDetectionTime",
+    "lastVehicleOutDetectionTime",
+    "lastVehicleHeldUpDetectionTime",
+    "lastPackageDropOffDetectionTime",
+    "lastPackagePickUpDetectionTime",
+    "lastPackageExistDetectionTime",
+}
+
+
+def has_camera_ai_detection(entity: Entity) -> bool:
+    """Return if an IPC camera should expose AI detection event sensors."""
+    return is_camera_entity(entity) and (
+        entity.data.get("supportPersonDetect") is not False
+        or any(key in entity.data for key in _CAMERA_AI_DETECTION_DATA_KEYS)
+    )
 
 
 def has_report_time(entity: Entity) -> bool:
@@ -664,85 +693,85 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         key="last_ai_detection",
         name="Last AI Detection",
         icon="mdi:shape-outline",
-        value_fn=data_value("lastAiDetection"),
-        exists_fn=has_camera_data("lastAiDetection"),
+        value_fn=optional_data_value("lastAiDetection"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_person_detection_time",
         name="Last Person Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastPersonDetectionTime"),
-        exists_fn=has_camera_data("lastPersonDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_pet_detection_time",
         name="Last Pet Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastPetDetectionTime"),
-        exists_fn=has_camera_data("lastPetDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_vehicle_detection_time",
         name="Last Vehicle Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastVehicleDetectionTime"),
-        exists_fn=has_camera_data("lastVehicleDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_package_detection_time",
         name="Last Package Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastPackageDetectionTime"),
-        exists_fn=has_camera_data("lastPackageDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_other_detection_time",
         name="Last Other Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastOtherDetectionTime"),
-        exists_fn=has_camera_data("lastOtherDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_vehicle_enter_detection_time",
         name="Last Vehicle Enter Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastVehicleEnterDetectionTime"),
-        exists_fn=has_camera_data("lastVehicleEnterDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_vehicle_out_detection_time",
         name="Last Vehicle Exit Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastVehicleOutDetectionTime"),
-        exists_fn=has_camera_data("lastVehicleOutDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_vehicle_held_up_detection_time",
         name="Last Vehicle Held Up Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastVehicleHeldUpDetectionTime"),
-        exists_fn=has_camera_data("lastVehicleHeldUpDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_package_drop_off_detection_time",
         name="Last Package Drop-Off Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastPackageDropOffDetectionTime"),
-        exists_fn=has_camera_data("lastPackageDropOffDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_package_pick_up_detection_time",
         name="Last Package Pick-Up Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastPackagePickUpDetectionTime"),
-        exists_fn=has_camera_data("lastPackagePickUpDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="last_package_exist_detection_time",
         name="Last Package Present Detection Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=optional_data_timestamp("lastPackageExistDetectionTime"),
-        exists_fn=has_camera_data("lastPackageExistDetectionTime"),
+        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="timezone",

@@ -1096,6 +1096,14 @@ def _camera_data(data: Dict) -> Dict:
     device_model = data.get("deviceModel") or {}
     device_support = data.get("deviceSupport") or {}
     sd_card = data.get("sdCard") or {}
+    person_detect_support = _first_present(
+        device_model.get("devicePersonDetect"),
+        device_support.get("devicePersonDetect"),
+        device_support.get("supportPersonDetect"),
+        data.get("devicePersonDetect"),
+        data.get("supportPersonDetect"),
+        data.get("personDetectSupport"),
+    )
 
     return {
         "activatedTime": data.get("activatedTime"),
@@ -1150,7 +1158,7 @@ def _camera_data(data: Dict) -> Dict:
         ),
         "supportMirrorFlip": _addx_bool(device_support.get("deviceSupportMirrorFlip")),
         "supportMotionTrack": _addx_bool(device_model.get("supportMotionTrack")),
-        "supportPersonDetect": False,
+        "supportPersonDetect": _addx_bool(person_detect_support),
         "supportPirCooldown": _addx_bool(device_support.get("supportPirCooldown")),
         "supportRecLamp": _addx_bool(device_support.get("supportRecLamp")),
         "supportRecordingAudio": _addx_bool(
@@ -1265,6 +1273,14 @@ def _addx_bool(value) -> bool | None:
         return value
     if isinstance(value, int):
         return value == 1
+    return None
+
+
+def _first_present(*values):
+    """Return the first value that is explicitly present."""
+    for value in values:
+        if value is not None:
+            return value
     return None
 
 

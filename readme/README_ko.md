@@ -194,3 +194,31 @@ automation:
 - 버튼은 앱에서 지원하는 동작에 대해서만 생성됩니다.
 - 카메라 제어는 API가 사용 가능하다고 표시할 때만 생성됩니다.
 - 문제 보고에는 정확한 모델, 통합 버전, diagnostics, logs, X-Sense 앱에서 값이 바뀌는지 여부가 필요합니다.
+
+____________________________________________________________
+
+## Camera AI Notifications
+Supported cameras expose AI detections as Home Assistant `event` entities. Use the camera device's `AI Detection` event entity in automations with the `event.received` trigger. Event entities are momentary notifications, so they do not stay `on` or `off` like binary sensors.
+
+Available event types include `person`, `pet`, `vehicle`, `vehicle_enter`, `vehicle_out`, `vehicle_held_up`, `package`, `package_drop_off`, `package_pick_up`, `package_exist`, `other`, and `ai_detection`. The `ai_detection` event type is used when one camera notification contains more than one detected object.
+
+Example automation:
+
+```yaml
+alias: "Notify when X-Sense detects a person"
+triggers:
+  - trigger: event.received
+    target:
+      entity_id: event.front_camera_ai_detection
+    options:
+      event_type:
+        - person
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      message: "X-Sense camera detected a person."
+```
+
+For dashboards or conditions that need the most recent detection, use the `Last AI Detection` and related last-detection timestamp sensors. Those sensors are history values; the actual notification trigger is the `AI Detection` event entity.
+
+____________________________________________________________

@@ -63,6 +63,11 @@
         "name": "Mute"
       }
     },
+    "event": {
+      "ai_detection": {
+        "name": "AI Detection"
+      }
+    },
     "sensor": {
       "alarm_vol": {
         "name": "Alarm Volume"

@@ -21,6 +21,7 @@ This HACS integration is actively maintained for users who want broader X-Sense 
 - Support for automations based on X-Sense sensor data.
 - Support for the following device types: base stations, smoke detectors, carbon monoxide detectors, heat alarms, water leak detectors, hygrometers, door sensors, motion sensors, lights, keypads, mailbox sensors, audio monitoring devices, and supported cameras when they are available in the X-Sense account.
 - Real-time updates through X-Sense MQTT shadows, with periodic cloud polling as a fallback.
+- Supported cameras expose AI notification detections as Home Assistant event entities, and keep last-detection sensors for recent person, pet, vehicle, package, and other detection history when those events are reported.
 - Easy setup through HACS (Home Assistant Community Store).
 
 ## Requirements
@@ -115,6 +116,31 @@ Some entities are diagnostic or configuration-related and are grouped that way i
 
 ____________________________________________________________
 
+## Camera AI Notifications
+Supported cameras expose AI detections as Home Assistant `event` entities. Use the camera device's `AI Detection` event entity in automations with the `event.received` trigger. Event entities are momentary notifications, so they do not stay `on` or `off` like binary sensors.
+
+Available event types include `person`, `pet`, `vehicle`, `vehicle_enter`, `vehicle_out`, `vehicle_held_up`, `package`, `package_drop_off`, `package_pick_up`, `package_exist`, `other`, and `ai_detection`. The `ai_detection` event type is used when one camera notification contains more than one detected object.
+
+Example automation:
+
+```yaml
+alias: "Notify when X-Sense detects a person"
+triggers:
+  - trigger: event.received
+    target:
+      entity_id: event.front_camera_ai_detection
+    options:
+      event_type:
+        - person
+actions:
+  - action: notify.mobile_app_phone
+    data:
+      message: "X-Sense camera detected a person."
+```
+
+For dashboards or conditions that need the most recent detection, use the `Last AI Detection` and related last-detection timestamp sensors. Those sensors are history values; the actual notification trigger is the `AI Detection` event entity.
+
+____________________________________________________________
 ## Automation Examples
 With this integration, various automations can be created. Here are some examples:
 
