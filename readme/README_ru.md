@@ -103,8 +103,7 @@ ____________________________________________________________
 
 - Бинарные сенсоры для alarm, mute, end-of-life, AC-break, water alarm, temperature alarm, charging, motion, door, armed, warning, reminder, light, PIR и состояния keypad.
 - Сенсоры батареи, сигнала RF, сигнала Wi-Fi, прошивки, температуры, влажности, уровня CO, пикового CO, громкости тревоги, громкости голосовых сообщений, громкости короткого сигнала, громкости напоминаний, порогов предупреждений, таймеров отключения звука, читаемых меток времени, часового пояса и других диагностических данных.
-- Переключатели для записываемых настроек, которые сообщает X-Sense, например LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light и doorbell controls.
-- Select и number сущности для поддерживаемых настроек камеры, например language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold и doorbell ring key.
+- Camera setup and tuning controls remain in the X-Sense app.
 - Кнопки test, mute, fire-drill и camera wake для моделей, где приложение X-Sense предоставляет соответствующее действие.
 
 Некоторые сущности являются диагностическими или конфигурационными и группируются так в Home Assistant. Если устройство не сообщает конкретное поле или приложение X-Sense помечает функцию как неподдерживаемую для этого устройства/аккаунта, соответствующая сущность не создается. Привязка, удаление, совместный доступ, аккаунт, платежи, обновление прошивки, форматирование SD-карты и другие административные действия остаются в приложении X-Sense.
@@ -136,7 +135,6 @@ actions:
       message: "X-Sense camera detected a person."
 ```
 
-Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
 ____________________________________________________________
 ## Примеры автоматизаций
 С помощью этой интеграции можно создать различные автоматизации. Вот несколько примеров:

@@ -21,7 +21,7 @@ This HACS integration is actively maintained for users who want broader X-Sense 
 - Support for automations based on X-Sense sensor data.
 - Support for the following device types: base stations, smoke detectors, carbon monoxide detectors, heat alarms, water leak detectors, hygrometers, door sensors, motion sensors, lights, keypads, mailbox sensors, audio monitoring devices, and supported cameras when they are available in the X-Sense account.
 - Real-time updates through X-Sense MQTT shadows, with periodic cloud polling as a fallback.
-- Supported cameras expose AI notification detections as Home Assistant event entities, and keep last-detection sensors for recent person, pet, vehicle, package, and other detection history when those events are reported.
+- Supported cameras expose AI notification detections as Home Assistant event entities for use with the included automation blueprint. Camera setup and tuning remain in the X-Sense app.
 - Easy setup through HACS (Home Assistant Community Store).
 
 ## Requirements
@@ -98,7 +98,7 @@ This integration supports a variety of X-Sense devices. Supported entities depen
 - **Hygrometer-thermometer (STH51, STH0A, STH0B, STH0C)**: Monitors temperature and humidity.
 - **Door sensor (SDS0A)**: Exposes door state when provided by the X-Sense account.
 - **Motion detector (SMS0A)**: Exposes motion alarm state when provided by the X-Sense account.
-- **Camera (SSC0A, SSC0B)**: Exposes camera entities, thumbnails, live stream URLs, status diagnostics, and Android-app-backed settings when supported by the device and account.
+- **Camera (SSC0A, SSC0B)**: Exposes camera entities, thumbnails, live stream URLs, status diagnostics, regular motion detection, and AI notification events when supported by the device and account.
 - **Other station-connected devices**: Light, keypad, mailbox, audio monitoring device, driveway alarm, smart delivery device, remote, and radon device data is exposed when the X-Sense API reports supported fields.
 
 These devices can be used to create automations and alerts after being integrated into Home Assistant.
@@ -108,8 +108,7 @@ The integration creates Home Assistant entities only for fields that are present
 
 - Alarm, mute, end-of-life, AC-break, water-alarm, temperature-alarm, charging, motion, door, armed, warning, reminder, light, PIR, and keypad status binary sensors.
 - Battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, readable timestamp fields, timezone, and other diagnostic sensors.
-- Switches for supported writable settings reported by X-Sense, such as LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light, and doorbell controls.
-- Selects and numbers for supported camera settings such as language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold, and doorbell ring key.
+- Camera setup and tuning controls such as recording, night vision, audio, cooldown, codec, motion sensitivity, and doorbell settings remain in the X-Sense app.
 - Test, mute, fire-drill, and camera wake buttons for device models where the X-Sense app exposes the matching action.
 
 Some entities are diagnostic or configuration-related and are grouped that way in Home Assistant. If a device does not report a specific field, or the X-Sense app marks the feature unsupported for that device/account, the matching entity is not created. Device binding, removal, sharing, account, payment, firmware update, SD-card format, and other management actions remain in the X-Sense app.
@@ -142,7 +141,6 @@ actions:
       message: "X-Sense camera detected a person."
 ```
 
-Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
 ____________________________________________________________
 ## Automation Examples
 With this integration, various automations can be created. Here are some examples:
@@ -224,5 +222,4 @@ For discussions and support, you can join our Discord server or visit the Home A
 - Alarm, mute, battery, RF/Wi-Fi signal, temperature, humidity, CO, water, motion, door, light, reminder, warning, and readable timestamp fields appear only when reported by X-Sense.
 
 ### Controls and reporting
-- Switches, selects, numbers, and buttons are created only for writable settings and actions that the device/account exposes.
 - Good bug reports include the exact model, integration version, diagnostics, logs, and whether the value changes correctly in the X-Sense app.

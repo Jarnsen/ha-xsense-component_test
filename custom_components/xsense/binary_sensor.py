@@ -105,6 +105,21 @@ def has_camera_data(key: str) -> Callable[[Entity], bool]:
     return lambda entity: is_camera_entity(entity) and key in entity.data
 
 
+def has_motion_detection(entity: Entity) -> bool:
+    """Return if an entity can expose regular motion detection state."""
+    return "isMoved" in entity.data or (
+        is_camera_entity(entity)
+        and any(
+            key in entity.data
+            for key in (
+                "needMotion",
+                "motionSensitivity",
+                "motionSensitivityOptionList",
+            )
+        )
+    )
+
+
 SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="is_life_end",
@@ -185,85 +200,8 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="moved",
         name="Motion",
         device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_data("isMoved"),
-        value_fn=data_bool("isMoved"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="person_detected",
-        name="Person Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("personDetected"),
-        value_fn=data_bool("personDetected"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="pet_detected",
-        name="Pet Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("petDetected"),
-        value_fn=data_bool("petDetected"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="vehicle_detected",
-        name="Vehicle Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("vehicleDetected"),
-        value_fn=data_bool("vehicleDetected"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="package_detected",
-        name="Package Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("packageDetected"),
-        value_fn=data_bool("packageDetected"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="other_detected",
-        name="Other Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("otherDetected"),
-        value_fn=data_bool("otherDetected"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="vehicle_enter_detected",
-        name="Vehicle Enter Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("vehicleEnterDetected"),
-        value_fn=data_bool("vehicleEnterDetected"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="vehicle_out_detected",
-        name="Vehicle Exit Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("vehicleOutDetected"),
-        value_fn=data_bool("vehicleOutDetected"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="vehicle_held_up_detected",
-        name="Vehicle Held Up Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("vehicleHeldUpDetected"),
-        value_fn=data_bool("vehicleHeldUpDetected"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="package_drop_off_detected",
-        name="Package Drop-Off Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("packageDropOffDetected"),
-        value_fn=data_bool("packageDropOffDetected"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="package_pick_up_detected",
-        name="Package Pick-Up Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("packagePickUpDetected"),
-        value_fn=data_bool("packagePickUpDetected"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="package_exist_detected",
-        name="Package Present Detected",
-        device_class=BinarySensorDeviceClass.MOTION,
-        exists_fn=has_camera_data("packageExistDetected"),
-        value_fn=data_bool("packageExistDetected"),
+        exists_fn=has_motion_detection,
+        value_fn=lambda entity: boolean_state(entity.data.get("isMoved")),
     ),
     XSenseBinarySensorEntityDescription(
         key="usb_charge",

@@ -1189,22 +1189,22 @@ async def _capture_action(client, target, action):
             entity_map.EntityType.SMOKE,
             {"smokeEdition": "8"},
             "SBS10",
-            "2nd_selftest_device-sn",
+            "appselftest_device-sn",
             "appSelfTest",
-            "source=1",
-            13,
-            "XS01-Mstation-sn",
+            None,
+            None,
+            "station-sn",
         ),
         (
             "XS03-iWX",
             entity_map.EntityType.SMOKE,
             {},
             "SBS10",
-            "2nd_selftest_device-sn",
+            "appselftest_device-sn",
             "appSelfTest",
-            "source=1",
-            13,
-            "XS03-iWXstation-sn",
+            None,
+            None,
+            "station-sn",
         ),
         (
             "SD11-MR",
@@ -2934,114 +2934,6 @@ def test_camera_data_uses_explicit_apk_webrtc_support_flag():
         ]
         is None
     )
-
-
-def test_camera_user_config_payload_sends_only_changed_cloud_fields_like_apk():
-    camera = device_module.Device(
-        None,
-        deviceId="cam-id",
-        deviceName="Camera",
-        deviceSn="cam-sn",
-        deviceType="SSC0A",
-    )
-    camera.set_data(
-        {
-            "needMotion": True,
-            "deviceCallToggleOn": True,
-            "deviceSupportLanguage": ["en"],
-            "supportDeviceCall": True,
-        }
-    )
-
-    payload = async_xsense._camera_user_config_payload(
-        camera, {"needVideo": 1, "supportDeviceCall": False}
-    )
-
-    assert payload == {"serialNumber": "cam-sn", "needVideo": 1}
-
-
-def test_camera_user_config_payload_adds_apk_toggle_companions():
-    camera = device_module.Device(
-        None,
-        deviceId="cam-id",
-        deviceName="Camera",
-        deviceSn="cam-sn",
-        deviceType="SSC0A",
-    )
-    camera.set_data(
-        {
-            "alarmSeconds": 20,
-            "motionSensitivity": 0,
-            "nightThresholdLevel": 3,
-            "supportRocker": False,
-            "videoSeconds": 0,
-        }
-    )
-
-    assert async_xsense._camera_user_config_payload(camera, {"needMotion": 1}) == {
-        "serialNumber": "cam-sn",
-        "needMotion": 1,
-        "motionSensitivity": 1,
-    }
-    assert async_xsense._camera_user_config_payload(camera, {"needVideo": 1}) == {
-        "serialNumber": "cam-sn",
-        "needVideo": 1,
-        "videoSeconds": -1,
-    }
-    assert async_xsense._camera_user_config_payload(camera, {"needAlarm": 1}) == {
-        "serialNumber": "cam-sn",
-        "needAlarm": 1,
-        "alarmSeconds": 20,
-    }
-    assert async_xsense._camera_user_config_payload(camera, {"needNightVision": 1}) == {
-        "serialNumber": "cam-sn",
-        "needNightVision": 1,
-        "nightThresholdLevel": 3,
-    }
-
-
-def test_camera_user_config_payload_uses_apk_rocker_alarm_seconds():
-    camera = device_module.Device(
-        None,
-        deviceId="cam-id",
-        deviceName="Camera",
-        deviceSn="cam-sn",
-        deviceType="SSC0A",
-    )
-    camera.set_data({"alarmSeconds": 20, "supportRocker": True})
-
-    assert async_xsense._camera_user_config_payload(camera, {"needAlarm": 1}) == {
-        "serialNumber": "cam-sn",
-        "needAlarm": 1,
-        "alarmSeconds": 10,
-    }
-
-
-def test_camera_user_config_payload_uses_apk_non_rocker_alarm_seconds_default():
-    camera = device_module.Device(
-        None,
-        deviceId="cam-id",
-        deviceName="Camera",
-        deviceSn="cam-sn",
-        deviceType="SSC0A",
-    )
-    camera.set_data({"supportRocker": False})
-
-    assert async_xsense._camera_user_config_payload(camera, {"needAlarm": 1}) == {
-        "serialNumber": "cam-sn",
-        "needAlarm": 1,
-        "alarmSeconds": 5,
-    }
-
-
-def test_camera_config_write_value_uses_apk_field_types():
-    assert async_xsense._camera_config_write_value("deviceCallToggleOn", True) is True
-    assert async_xsense._camera_config_write_value("deviceCallToggleOn", False) is False
-    assert async_xsense._camera_config_write_value("needMotion", True) == 1
-    assert async_xsense._camera_config_write_value("needMotion", False) == 0
-    assert async_xsense._camera_config_payload_value("needMotion", True) == 1
-    assert async_xsense._camera_config_payload_value("needMotion", False) == 0
-    assert async_xsense._camera_config_payload_value("deviceCallToggleOn", 1) is True
 
 
 def test_camera_config_data_normalizes_boolean_fields():

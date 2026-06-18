@@ -25,37 +25,6 @@ from .entity import (
 )
 
 
-def has_data(key: str) -> Callable[[Entity], bool]:
-    """Return an exists function for a X-Sense data key."""
-    return lambda entity: (
-        is_camera_entity(entity)
-        and key in entity.data
-        and entity.data.get("isAdmin") is True
-    )
-
-
-def has_supported_data(key: str, support_key: str) -> Callable[[Entity], bool]:
-    """Return if the app exposes a supported camera setting."""
-    return lambda entity: (
-        is_camera_entity(entity)
-        and key in entity.data
-        and entity.data.get("isAdmin") is True
-        and entity.data.get(support_key) is True
-    )
-
-
-def has_apk_default_supported_data(
-    key: str, support_key: str
-) -> Callable[[Entity], bool]:
-    """Return if the APK shows a camera setting when support is missing or enabled."""
-    return lambda entity: (
-        is_camera_entity(entity)
-        and key in entity.data
-        and entity.data.get("isAdmin") is True
-        and entity.data.get(support_key) is not False
-    )
-
-
 def has_shadow_volume(key: str) -> Callable[[Entity], bool]:
     """Return if a non-camera X-Sense shadow exposes a writable volume field."""
 
@@ -69,31 +38,12 @@ def has_shadow_volume(key: str) -> Callable[[Entity], bool]:
     return exists
 
 
-def _required_bool_state(value) -> bool:
-    """Return an explicit X-Sense boolean value or raise if it is unknown."""
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, int):
-        if value == 1:
-            return True
-        if value == 0:
-            return False
-    if isinstance(value, str):
-        normalized = value.strip().lower()
-        if normalized in {"1", "true", "on"}:
-            return True
-        if normalized in {"0", "false", "off"}:
-            return False
-    raise HomeAssistantError("X-Sense cooldown enabled state is unknown")
-
-
 @dataclass(kw_only=True, frozen=True)
 class XSenseNumberEntityDescription(NumberEntityDescription):
     """Describes X-Sense number entity."""
 
     data_key: str
     exists_fn: Callable[[Entity], bool]
-    addx_key: str | None = None
     entity_category: EntityCategory | None = EntityCategory.CONFIG
 
 
@@ -141,108 +91,6 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_max_value=100,
         native_step=1,
         exists_fn=has_shadow_volume("remindVol"),
-    ),
-    XSenseNumberEntityDescription(
-        key="camera_alarm_volume",
-        data_key="alarmVol",
-        addx_key="alarmVolume",
-        name="Alarm Volume",
-        icon="mdi:volume-high",
-        native_unit_of_measurement=PERCENTAGE,
-        native_min_value=0,
-        native_max_value=100,
-        native_step=1,
-        exists_fn=has_supported_data("alarmVol", "supportAlarmVolume"),
-    ),
-    XSenseNumberEntityDescription(
-        key="camera_voice_volume",
-        data_key="voiceVol",
-        addx_key="voiceVolume",
-        name="Voice Volume",
-        icon="mdi:volume-high",
-        native_unit_of_measurement=PERCENTAGE,
-        native_min_value=0,
-        native_max_value=100,
-        native_step=1,
-        exists_fn=has_supported_data("voiceVol", "supportVoiceVolume"),
-    ),
-    XSenseNumberEntityDescription(
-        key="camera_live_speaker_volume",
-        data_key="liveSpeakerVolume",
-        addx_key="audio.liveSpeakerVolume",
-        name="Live Speaker Volume",
-        icon="mdi:volume-high",
-        native_unit_of_measurement=PERCENTAGE,
-        native_min_value=0,
-        native_max_value=100,
-        native_step=1,
-        exists_fn=has_apk_default_supported_data(
-            "liveSpeakerVolume", "supportLiveSpeakerVolume"
-        ),
-    ),
-    XSenseNumberEntityDescription(
-        key="camera_alarm_seconds",
-        data_key="alarmSeconds",
-        addx_key="alarmSeconds",
-        name="Alarm Seconds",
-        icon="mdi:timer-outline",
-        native_min_value=0,
-        native_max_value=300,
-        native_step=1,
-        exists_fn=has_supported_data("alarmSeconds", "supportAlarm"),
-    ),
-    XSenseNumberEntityDescription(
-        key="camera_night_threshold",
-        data_key="nightThresholdLevel",
-        addx_key="nightThresholdLevel",
-        name="Night Threshold",
-        icon="mdi:weather-night",
-        native_min_value=1,
-        native_max_value=3,
-        native_step=1,
-        exists_fn=has_data("nightThresholdLevel"),
-    ),
-    XSenseNumberEntityDescription(
-        key="camera_cry_detection_level",
-        data_key="cryDetectLevel",
-        addx_key="cryDetectLevel",
-        name="Cry Detection Level",
-        icon="mdi:baby-face-outline",
-        native_min_value=1,
-        native_max_value=3,
-        native_step=1,
-        exists_fn=has_supported_data("cryDetectLevel", "supportCryDetect"),
-    ),
-    XSenseNumberEntityDescription(
-        key="camera_cooldown",
-        data_key="cooldownValue",
-        addx_key="cooldown.value",
-        name="Cooldown",
-        icon="mdi:timer-sand",
-        native_min_value=5,
-        native_max_value=300,
-        native_step=1,
-        exists_fn=lambda entity: (
-            is_camera_entity(entity)
-            and "cooldownValue" in entity.data
-            and entity.data.get("isAdmin") is True
-            and "cooldownOptions" not in entity.data
-            and entity.data.get("cooldownSupported") is True
-            and entity.data.get("supportPirCooldown") is True
-        ),
-    ),
-    XSenseNumberEntityDescription(
-        key="camera_mechanical_ding_dong_duration",
-        data_key="mechanicalDingDongDuration",
-        addx_key="mechanicalDingDongDuration",
-        name="Mechanical Ding-Dong Duration",
-        icon="mdi:bell-ring",
-        native_min_value=0,
-        native_max_value=30,
-        native_step=1,
-        exists_fn=has_supported_data(
-            "mechanicalDingDongDuration", "supportMechanicalDingDong"
-        ),
     ),
 )
 
@@ -319,24 +167,8 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
             raise HomeAssistantError("X-Sense entity is no longer available")
 
         int_value = round(value)
-        if self.entity_description.addx_key is None:
-            await self.coordinator.xsense.update_shadow_volume(
-                entity, self.entity_description.data_key, int_value
-            )
-        elif self.entity_description.addx_key == "cooldown.value":
-            await self.coordinator.xsense.update_camera_cooldown(
-                entity,
-                user_enable=_required_bool_state(entity.data.get("cooldownEnabled")),
-                value=int_value,
-            )
-        elif self.entity_description.addx_key.startswith("audio."):
-            await self.coordinator.xsense.update_camera_audio(
-                entity,
-                **{self.entity_description.addx_key.removeprefix("audio."): int_value},
-            )
-        else:
-            await self.coordinator.xsense.update_camera_config(
-                entity, **{self.entity_description.addx_key: int_value}
-            )
+        await self.coordinator.xsense.update_shadow_volume(
+            entity, self.entity_description.data_key, int_value
+        )
         entity.data[self.entity_description.data_key] = int_value
         self.coordinator.async_update_listeners()

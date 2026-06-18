@@ -23,7 +23,6 @@ PLATFORMS: list[Platform] = [
     Platform.CAMERA,
     Platform.EVENT,
     Platform.NUMBER,
-    Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
 ]
@@ -51,6 +50,18 @@ OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
     "camera_alarm_seconds",
     "camera_motion_sensitivity",
     "camera_night_vision_mode",
+    "camera_language",
+    "camera_antiflicker_rate",
+    "camera_motion_tracking_mode",
+    "camera_doorbell_ring_key",
+    "camera_auto_power_on_capacity",
+    "camera_alarm_volume",
+    "camera_voice_volume",
+    "camera_live_speaker_volume",
+    "camera_night_threshold",
+    "camera_cry_detection_level",
+    "camera_cooldown",
+    "camera_mechanical_ding_dong_duration",
     "camera_model",
     "camera_status_code",
     "camera_device_status",
@@ -63,6 +74,19 @@ OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
     "camera_codec",
     "camera_time_zone",
     "camera_time_zone_area",
+    "last_ai_detection",
+    "last_person_detection_time",
+    "last_pet_detection_time",
+    "last_vehicle_detection_time",
+    "last_package_detection_time",
+    "last_other_detection_time",
+    "last_vehicle_enter_detection_time",
+    "last_vehicle_out_detection_time",
+    "last_vehicle_held_up_detection_time",
+    "last_package_drop_off_detection_time",
+    "last_package_pick_up_detection_time",
+    "last_package_exist_detection_time",
+    "last_motion_time",
 )
 
 
@@ -80,7 +104,72 @@ OBSOLETE_BINARY_SENSOR_KEYS: tuple[str, ...] = (
     "camera_cooldown_enabled",
     "camera_awake",
     "camera_webrtc_supported",
+    "person_detected",
+    "pet_detected",
+    "vehicle_detected",
+    "package_detected",
+    "other_detected",
+    "vehicle_enter_detected",
+    "vehicle_out_detected",
+    "vehicle_held_up_detected",
+    "package_drop_off_detected",
+    "package_pick_up_detected",
+    "package_exist_detected",
 )
+
+OBSOLETE_SWITCH_KEYS: tuple[str, ...] = (
+    "camera_motion_detection",
+    "camera_video_recording",
+    "camera_night_vision",
+    "camera_recording_light",
+    "camera_alarm",
+    "camera_mirror_flip",
+    "camera_antiflicker",
+    "camera_cry_detection",
+    "camera_cooldown",
+    "camera_device_call",
+    "camera_ding_dong",
+    "camera_motion_tracking",
+    "camera_voice_volume",
+    "camera_live_audio",
+    "camera_recording_audio",
+    "camera_auto_power_on",
+    "camera_white_light",
+    "camera_alarm_when_removed",
+)
+
+OBSOLETE_SELECT_KEYS: tuple[str, ...] = (
+    "camera_language",
+    "camera_recording_resolution",
+    "camera_motion_sensitivity",
+    "camera_video_seconds",
+    "camera_antiflicker_rate",
+    "camera_default_codec",
+    "camera_motion_tracking_mode",
+    "camera_night_vision_mode",
+    "camera_cooldown",
+    "camera_doorbell_ring_key",
+    "camera_auto_power_on_capacity",
+)
+
+OBSOLETE_NUMBER_KEYS: tuple[str, ...] = (
+    "camera_alarm_volume",
+    "camera_voice_volume",
+    "camera_live_speaker_volume",
+    "camera_alarm_seconds",
+    "camera_night_threshold",
+    "camera_cry_detection_level",
+    "camera_cooldown",
+    "camera_mechanical_ding_dong_duration",
+)
+
+OBSOLETE_ENTITY_KEYS_BY_DOMAIN = {
+    Platform.SENSOR: OBSOLETE_SENSOR_KEYS,
+    Platform.BINARY_SENSOR: OBSOLETE_BINARY_SENSOR_KEYS,
+    Platform.SWITCH: OBSOLETE_SWITCH_KEYS,
+    Platform.SELECT: OBSOLETE_SELECT_KEYS,
+    Platform.NUMBER: OBSOLETE_NUMBER_KEYS,
+}
 
 
 def _sensor_unique_id(entity_id: str, key: str) -> str:
@@ -145,6 +234,19 @@ def _is_obsolete_binary_sensor_entry(registry_entry) -> bool:
     )
 
 
+def _is_obsolete_entity_entry(registry_entry) -> bool:
+    """Return whether a registry entry is an obsolete X-Sense entity."""
+    domain = _registry_entry_domain(registry_entry)
+    keys = OBSOLETE_ENTITY_KEYS_BY_DOMAIN.get(domain)
+    if keys is None:
+        return False
+    unique_id = _registry_entry_unique_id(registry_entry)
+    return (
+        getattr(registry_entry, "platform", None) == DOMAIN
+        and any(unique_id.endswith(suffix) for suffix in _obsolete_unique_id_suffixes(keys))
+    )
+
+
 def _remove_obsolete_sensor_entities(
     hass: HomeAssistant, data, entry: ConfigEntry
 ) -> None:
@@ -163,10 +265,7 @@ def _remove_obsolete_sensor_entities(
             continue
         seen_entity_ids.add(registry_entry.entity_id)
         checked_unique_ids.add(registry_entry.unique_id)
-        if (
-            _is_obsolete_sensor_entry(registry_entry)
-            or _is_obsolete_binary_sensor_entry(registry_entry)
-        ):
+        if _is_obsolete_entity_entry(registry_entry):
             entity_registry.async_remove(registry_entry.entity_id)
 
     for unique_id in _obsolete_sensor_unique_ids(data) - checked_unique_ids:

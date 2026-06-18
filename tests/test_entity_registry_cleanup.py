@@ -11,7 +11,10 @@ if not hasattr(sys.modules.get("custom_components"), "__path__"):
 
 from custom_components.xsense import (
     OBSOLETE_BINARY_SENSOR_KEYS,
+    OBSOLETE_NUMBER_KEYS,
+    OBSOLETE_SELECT_KEYS,
     OBSOLETE_SENSOR_KEYS,
+    OBSOLETE_SWITCH_KEYS,
     _is_obsolete_binary_sensor_entry,
     _is_obsolete_sensor_entry,
     _migrate_legacy_none_entity_ids,
@@ -343,7 +346,37 @@ def test_obsolete_binary_sensor_keys_only_remove_removed_binary_sensors():
         'camera_cooldown_enabled',
         "camera_awake",
         "camera_webrtc_supported",
+        "person_detected",
+        "pet_detected",
+        "vehicle_detected",
+        "package_detected",
+        "other_detected",
+        "vehicle_enter_detected",
+        "vehicle_out_detected",
+        "vehicle_held_up_detected",
+        "package_drop_off_detected",
+        "package_pick_up_detected",
+        "package_exist_detected",
     )
+
+
+def test_obsolete_camera_setup_controls_are_removed_registry_entries():
+    assert {
+        "camera_motion_detection",
+        "camera_live_audio",
+        "camera_recording_audio",
+        "camera_alarm_when_removed",
+    }.issubset(set(OBSOLETE_SWITCH_KEYS))
+    assert {
+        "camera_language",
+        "camera_recording_resolution",
+        "camera_default_codec",
+    }.issubset(set(OBSOLETE_SELECT_KEYS))
+    assert {
+        "camera_alarm_volume",
+        "camera_live_speaker_volume",
+        "camera_cooldown",
+    }.issubset(set(OBSOLETE_NUMBER_KEYS))
 
 
 def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
@@ -377,6 +410,24 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
             entity_id='binary_sensor.kitchen_smoke_alarm_led_light',
         ),
         SimpleNamespace(
+            domain='switch',
+            platform='xsense',
+            unique_id='camera-1-camera-motion-detection',
+            entity_id='switch.camera_1_camera_motion_detection',
+        ),
+        SimpleNamespace(
+            domain='select',
+            platform='xsense',
+            unique_id='camera-1-camera-default-codec',
+            entity_id='select.camera_1_camera_default_codec',
+        ),
+        SimpleNamespace(
+            domain='number',
+            platform='xsense',
+            unique_id='camera-1-camera-live-speaker-volume',
+            entity_id='number.camera_1_camera_live_speaker_volume',
+        ),
+        SimpleNamespace(
             domain='binary_sensor',
             platform='xsense',
             unique_id='kitchen-smoke-alarm-connected',
@@ -407,6 +458,9 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
     assert removed == [
         'sensor.missing_device_serial_number',
         'binary_sensor.kitchen_smoke_alarm_led_light',
+        'switch.camera_1_camera_motion_detection',
+        'select.camera_1_camera_default_codec',
+        'number.camera_1_camera_live_speaker_volume',
     ]
 
 
@@ -835,6 +889,7 @@ def test_camera_metadata_entities_are_obsolete_registry_entries():
         "camera_codec",
         "camera_time_zone",
         "camera_time_zone_area",
+        "last_motion_time",
     }
     binary_sensor_keys = {"camera_awake", "camera_webrtc_supported"}
 

@@ -102,8 +102,7 @@ ____________________________________________________________
 
 - alarm、mute、end-of-life、AC-break、水漏れアラーム、温度アラーム、充電、モーション、ドア、armed 状態、warning、reminder、light、PIR、keypad 状態のバイナリセンサー。
 - バッテリー、RF信号、Wi-Fi信号、ファームウェア、温度、湿度、CO濃度、COピーク、アラーム音量、音声音量、チャープ音量、リマインダー音量、警告しきい値、ミュートタイマー、読みやすい タイムスタンプ、タイムゾーン、その他の診断センサー。
-- X-Sense が対応を報告する書き込み可能な設定用スイッチ。例: LED light、alarm enablement、continued alarm、chirp tone、reminders、PIR、sunshine/white light、await、keypad sound、camera motion detection、recording、night vision、audio、cooldown、light、doorbell controls。
-- language、recording resolution、codec、anti-flicker rate、motion sensitivity、video length、volume、alarm duration、cooldown、night threshold、doorbell ring key など、対応するカメラ設定用の select と number エンティティ。
+- Camera setup and tuning controls remain in the X-Sense app.
 - X-Sense アプリが該当モデルで対応操作を提供している場合の test、mute、fire-drill、camera wake ボタン。
 
 一部のエンティティは診断または設定関連であり、Home Assistant でもそのように分類されます。デバイスが特定のフィールドを報告しない場合、または X-Sense アプリがそのデバイス/アカウントで機能非対応と示す場合、対応するエンティティは作成されません。デバイスの追加、削除、共有、アカウント、支払い、ファームウェア 更新、SD カード初期化、その他の管理操作は X-Sense アプリ側に残ります。
@@ -135,7 +134,6 @@ actions:
       message: "X-Sense camera detected a person."
 ```
 
-Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
 ____________________________________________________________
 ## 自動化の例
 この統合を使用すると、さまざまな自動化を作成できます。以下はいくつかの例です：

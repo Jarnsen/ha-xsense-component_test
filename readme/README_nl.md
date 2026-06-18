@@ -102,8 +102,7 @@ De integratie maakt Home Assistant-entiteiten alleen voor velden die echt aanwez
 
 - Binaire sensoren voor alarm, mute, end-of-life, AC-break, wateralarm, temperatuuralarm, laden, beweging, deur, armed status, warning, reminder, light, PIR en keypad-status.
 - Sensoren voor batterij, RF-signaal, Wi-Fi-signaal, firmware, temperatuur, luchtvochtigheid, CO-niveau, CO-piek, alarmvolume, spraakvolume, pieptoonvolume, herinneringsvolume, waarschuwingsdrempels, stilte-timers, leesbare tijdstempels, tijdzone en andere diagnostische gegevens.
-- Schakelaars voor door X-Sense gemelde schrijfbare instellingen, zoals LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light en doorbell controls.
-- Select- en number-entiteiten voor ondersteunde camera-instellingen zoals language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold en doorbell ring key.
+- Camera setup and tuning controls remain in the X-Sense app.
 - Test-, mute-, fire-drill- en camera wake-knoppen voor modellen waarbij de X-Sense-app de bijbehorende actie aanbiedt.
 
 Sommige entiteiten zijn diagnostisch of configuratiegerelateerd en worden zo gegroepeerd in Home Assistant. Als een apparaat een bepaald veld niet rapporteert, of als de X-Sense-app de functie als niet ondersteund markeert voor dat apparaat/account, wordt de bijbehorende entiteit niet aangemaakt. Apparaat koppelen, verwijderen, delen, account, betaling, firmware-update, SD-kaart formatteren en andere beheeracties blijven in de X-Sense-app.
@@ -135,7 +134,6 @@ actions:
       message: "X-Sense camera detected a person."
 ```
 
-Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
 ____________________________________________________________
 ## Voorbeelden van automatiseringen
 Met deze integratie kun je verschillende automatiseringen maken. Hier zijn enkele voorbeelden:

@@ -103,8 +103,7 @@ L'integrazione crea entità Home Assistant solo per i campi realmente presenti n
 
 - Sensori binari per alarm, mute, end-of-life, AC-break, allarme acqua, allarme temperatura, ricarica, movimento, porta, stato armed, warning, reminder, light, PIR e stato keypad.
 - Sensori per batteria, segnale RF, segnale Wi-Fi, firmware, temperatura, umidità, livello CO, picco CO, volume allarme, volume voce, volume del segnale, volume promemoria, soglie di avviso, timer di silenziamento, marche temporali leggibili, fuso orario e altri dati diagnostici.
-- Switch per impostazioni scrivibili segnalate da X-Sense, come LED light, abilitazione alarm, continued alarm, chirp tone, reminder, PIR, sunshine/white light, await, suono keypad, camera motion detection, recording, night vision, audio, cooldown, light e controlli doorbell.
-- Select e number per impostazioni camera supportate come language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold e doorbell ring key.
+- Camera setup and tuning controls remain in the X-Sense app.
 - Pulsanti test, mute, fire-drill e camera wake per i modelli in cui l'app X-Sense espone l'azione corrispondente.
 
 Alcune entità sono diagnostiche o di configurazione e vengono raggruppate così in Home Assistant. Se un dispositivo non segnala un campo specifico, o se l'app X-Sense indica che la funzione non è supportata per quel dispositivo/account, l'entità corrispondente non viene creata. Associazione, rimozione, condivisione, account, pagamenti, aggiornamento firmware, formattazione SD e altre azioni di gestione restano nell'app X-Sense.
@@ -136,7 +135,6 @@ actions:
       message: "X-Sense camera detected a person."
 ```
 
-Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
 ____________________________________________________________
 ## Esempi di automazioni
 Con questa integrazione, è possibile creare diverse automazioni. Ecco alcuni esempi:

@@ -103,8 +103,7 @@ ____________________________________________________________
 
 - alarm, mute, end-of-life, AC-break, water alarm, तापमान alarm, charging, motion, door, armed, warning, reminder, light, PIR और keypad status के लिए binary sensors।
 - बैटरी, RF signal, Wi-Fi signal, firmware, तापमान, आर्द्रता, CO level, CO peak, अलार्म वॉल्यूम, आवाज़ वॉल्यूम, चर्प वॉल्यूम, रिमाइंडर वॉल्यूम, चेतावनी सीमाएँ, म्यूट टाइमर, पढ़ने योग्य समय-चिह्न, समय क्षेत्र और अन्य डायग्नोस्टिक सेंसर।
-- X-Sense द्वारा रिपोर्ट की गई writable settings के switches, जैसे LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light और doorbell controls।
-- समर्थित camera settings के लिए select और number entities, जैसे language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold और doorbell ring key।
+- Camera setup and tuning controls remain in the X-Sense app.
 - जिन मॉडलों में X-Sense ऐप संबंधित action दिखाता है, उनके लिए test, mute, fire-drill और camera wake buttons।
 
 कुछ एंटिटी डायग्नोस्टिक या कॉन्फ़िगरेशन से जुड़ी होती हैं और Home Assistant में उसी तरह समूहित की जाती हैं। यदि डिवाइस कोई खास फ़ील्ड रिपोर्ट नहीं करता, या X-Sense ऐप उस डिवाइस/खाते के लिए सुविधा समर्थित नहीं बताता, तो संबंधित एंटिटी नहीं बनाई जाती। डिवाइस जोड़ना, हटाना, शेयर करना, खाता, भुगतान, फ़र्मवेयर अपडेट, SD-card format और अन्य प्रबंधन कार्य X-Sense ऐप में ही रहते हैं।
@@ -190,7 +189,6 @@ ____________________________________________________________
 - Alarm, mute, बैटरी, RF/Wi-Fi signal, तापमान, आर्द्रता, CO, water, motion, door, light, reminders, warnings और पढ़ने योग्य समय-चिह्न केवल X-Sense द्वारा रिपोर्ट किए जाने पर दिखते हैं।
 
 ### नियंत्रण और रिपोर्टिंग
-- Switches, selects, numbers और buttons केवल उन writable settings और actions के लिए बनते हैं जिन्हें device/account expose करता है।
 - अच्छी bug report में exact model, integration version, diagnostics, logs और X-Sense app में value सही बदलती है या नहीं, शामिल होना चाहिए।
 
 ____________________________________________________________
@@ -221,5 +219,4 @@ actions:
       message: "X-Sense camera detected a person."
 ```
 
-Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
 ____________________________________________________________

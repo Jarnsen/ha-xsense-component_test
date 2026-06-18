@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 from .api.async_xsense import AsyncXSense
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
@@ -163,4 +163,44 @@ class XSenseButtonEntity(XSenseEntity, ButtonEntity):
         if device is None:
             raise HomeAssistantError("X-Sense entity is no longer available")
 
-        await self.entity_description.press_fn(device, xsense)
+        LOGGER.debug(
+            "X-Sense button action requested: %s",
+            _button_debug_context(device, self.entity_description.key),
+        )
+        try:
+            await self.entity_description.press_fn(device, xsense)
+        except Exception as err:
+            LOGGER.debug(
+                "X-Sense button action failed: %s",
+                _button_debug_context(
+                    device, self.entity_description.key, error=type(err).__name__
+                ),
+            )
+            raise
+        LOGGER.debug(
+            "X-Sense button action completed: %s",
+            _button_debug_context(device, self.entity_description.key),
+        )
+
+
+def _short_id(value):
+    """Return a short diagnostic id without logging full serial-like values."""
+    if value in (None, ""):
+        return None
+    text = str(value)
+    return text if len(text) <= 6 else f"...{text[-6:]}"
+
+
+def _button_debug_context(entity: Entity, action: str, **extra):
+    """Return safe button action context without full serials."""
+    station = getattr(entity, "station", None)
+    context = {
+        "action": action,
+        "device": _short_id(getattr(entity, "sn", None)),
+        "device_type": getattr(entity, "type", None),
+        "station": _short_id(getattr(station, "sn", None)),
+        "station_type": getattr(station, "type", None),
+        "online": getattr(entity, "online", None),
+    }
+    context.update(extra)
+    return context

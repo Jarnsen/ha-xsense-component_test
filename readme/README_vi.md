@@ -134,7 +134,6 @@ actions:
       message: "X-Sense camera detected a person."
 ```
 
-Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
 ____________________________________________________________
 ## Ví dụ tự động hóa
 Với tích hợp này, có thể tạo nhiều automation khác nhau. Một vài ví dụ:

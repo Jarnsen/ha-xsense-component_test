@@ -104,8 +104,7 @@ Integracja tworzy encje Home Assistant tylko dla pól faktycznie obecnych w chmu
 
 - Czujniki binarne dla alarm, mute, end-of-life, AC-break, alarmu wody, alarmu temperatury, ładowania, ruchu, drzwi, stanu armed, warning, reminder, light, PIR i stanu keypad.
 - Czujniki baterii, sygnału RF, sygnału Wi-Fi, firmware, temperatury, wilgotności, poziomu CO, szczytu CO, głośności alarmu, głośności głosu, głośności sygnału, głośności przypomnień, progów ostrzeżeń, timerów wyciszenia, czytelnych znaczników czasu, strefy czasowej i innych danych diagnostycznych.
-- Przełączniki dla zapisywalnych ustawień zgłaszanych przez X-Sense, takich jak LED light, alarm enablement, continued alarm, chirp tone, reminders, PIR, sunshine/white light, await, keypad sound, camera motion detection, recording, night vision, audio, cooldown, light i doorbell controls.
-- Select i number dla obsługiwanych ustawień kamery, takich jak language, recording resolution, codec, anti-flicker rate, motion sensitivity, video length, volume, alarm duration, cooldown, night threshold i doorbell ring key.
+- Camera setup and tuning controls remain in the X-Sense app.
 - Przyciski test, mute, fire-drill i camera wake dla modeli, w których aplikacja X-Sense udostępnia odpowiednią akcję.
 
 Część encji jest diagnostyczna lub konfiguracyjna i tak jest grupowana w Home Assistant. Jeśli urządzenie nie zgłasza konkretnego pola albo aplikacja X-Sense oznacza funkcję jako nieobsługiwaną dla danego urządzenia/konta, odpowiednia encja nie jest tworzona. Parowanie, usuwanie, udostępnianie urządzeń, konto, płatności, aktualizacja firmware, formatowanie karty SD i inne akcje administracyjne pozostają w aplikacji X-Sense.
@@ -137,7 +136,6 @@ actions:
       message: "X-Sense camera detected a person."
 ```
 
-Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
 ____________________________________________________________
 ## Przykłady automatyzacji
 Dzięki tej integracji można tworzyć różne automatyzacje. Oto kilka przykładów:

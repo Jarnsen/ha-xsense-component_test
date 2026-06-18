@@ -111,7 +111,6 @@ ____________________________________________________________
 - حساسات ثنائية لحالة alarm و mute و end-of-life و AC-break و water alarm و temperature alarm و charging و motion و door و armed و warning و reminder و light و PIR وحالة keypad.
 - حساسات للبطارية، إشارة RF، إشارة Wi-Fi، البرنامج الثابت، درجة الحرارة، الرطوبة، مستوى CO، ذروة CO، حجم صوت الإنذار، حجم الصوت، حجم صوت التنبيه، حجم التذكير، حدود التحذير، مؤقتات الكتم، طوابع زمنية مقروءة، المنطقة الزمنية وبيانات تشخيص أخرى.
 - مفاتيح للإعدادات القابلة للكتابة التي يعلن X-Sense دعمها، مثل LED light، تفعيل alarm، continued alarm، chirp tone، reminders، PIR، sunshine/white light، await، صوت keypad، كشف حركة camera، recording، night vision، audio، cooldown، light وتحكم doorbell.
-- عناصر select و number لإعدادات الكاميرا المدعومة مثل language، recording resolution، codec، anti-flicker rate، motion sensitivity، video length، volume، alarm duration، cooldown، night threshold و doorbell ring key.
 - أزرار test و mute و fire-drill و camera wake للطرازات التي يعرض تطبيق X-Sense الإجراء المطابق لها.
 
 بعض الكيانات تشخيصية أو متعلقة بالإعدادات ويتم تجميعها كذلك في Home Assistant. إذا لم يرسل الجهاز حقلًا معينًا، أو وضع تطبيق X-Sense الميزة كغير مدعومة لهذا الجهاز/الحساب، فلن يتم إنشاء الكيان المقابل. تبقى إجراءات ربط الجهاز، إزالته، مشاركته، الحساب، الدفع، تحديث البرنامج الثابت، تهيئة بطاقة SD، والإدارة الأخرى داخل تطبيق X-Sense.
@@ -232,5 +231,4 @@ actions:
       message: "X-Sense camera detected a person."
 ```
 
-Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
 ____________________________________________________________

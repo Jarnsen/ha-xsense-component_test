@@ -645,65 +645,6 @@ class AsyncXSense(XSenseBase):
         house.stations[station.entity_id] = station
         return station
 
-    async def update_camera_config(self, camera: Entity, **updates):
-        """Write camera user config through the Android app endpoint."""
-        payload = _camera_user_config_payload(camera, updates)
-        await self.addx_call("/device/updateuserconfig", **payload)
-        camera.set_data(updates)
-
-    async def update_camera_audio(self, camera: Entity, **updates):
-        """Write camera audio config through the Android app endpoint."""
-        device_audio = {
-            key: camera.data.get(key)
-            for key in (
-                "doorBellRingKey",
-                "liveAudioToggleOn",
-                "liveSpeakerVolume",
-                "recordingAudioToggleOn",
-            )
-            if camera.data.get(key) is not None
-        }
-        device_audio.update(
-            {key: value for key, value in updates.items() if value is not None}
-        )
-        await self.addx_call(
-            "/device/config/updatedeviceaudio",
-            serialNumber=camera.sn,
-            deviceAudio=device_audio,
-        )
-        camera.set_data(updates)
-
-    async def update_camera_recording_resolution(
-        self, camera: Entity, resolution: str
-    ) -> None:
-        """Write camera recording resolution through the Android app endpoint."""
-        await self.addx_call(
-            "/device/updaterecresolution",
-            serialNumber=camera.sn,
-            recResolution=resolution,
-        )
-        camera.set_data({"recResolution": resolution})
-
-    async def update_camera_default_codec(self, camera: Entity, codec: str) -> None:
-        """Write the default camera codec through the Android app endpoint."""
-        await self.addx_call(
-            "/device/config/updatedefaultcodec",
-            serialNumber=camera.sn,
-            defaultCodec=codec,
-        )
-        camera.set_data({"defaultCodec": codec})
-
-    async def update_camera_cooldown(
-        self, camera: Entity, *, user_enable: bool, value: int
-    ) -> None:
-        """Write camera cooldown through the Android app cooldown endpoint."""
-        await self.addx_call(
-            "/device/updateCooldown",
-            serialNumber=camera.sn,
-            cooldown={"userEnable": user_enable, "value": value},
-        )
-        camera.set_data({"cooldownEnabled": user_enable, "cooldownValue": value})
-
     async def get_camera_webrtc_ticket(
         self, camera: Entity, *, force_refresh: bool = False
     ) -> dict | None:
@@ -780,19 +721,6 @@ class AsyncXSense(XSenseBase):
     async def wake_camera(self, camera: Entity) -> None:
         """Wake a sleeping camera through the Android app endpoint."""
         await self.addx_call("/device/wakeupDevice", serialNumber=camera.sn)
-
-    async def update_camera_doorbell_config(self, camera: Entity, **updates) -> None:
-        """Write doorbell config through the Android app endpoint."""
-        doorbell_config = {
-            "alarmWhenRemoveToggleOn": camera.data.get("alarmWhenRemoveToggleOn")
-        }
-        doorbell_config.update(updates)
-        await self.addx_call(
-            "/device/config/updatedoorbellconfig",
-            serialNumber=camera.sn,
-            doorbellConfig=doorbell_config,
-        )
-        camera.set_data(updates)
 
     async def get_client_info(self):
         data = await self.api_call("101001", unauth=True)
@@ -903,6 +831,12 @@ class AsyncXSense(XSenseBase):
         desired.update(action_data)
 
         data = {"state": {"desired": desired}}
+        LOGGER.debug(
+            "X-Sense action shadow update: %s",
+            _action_debug_context(
+                entity, definition.get("action"), target, topic, desired
+            ),
+        )
 
         return await self.do_thing(target, topic, data)
 
@@ -1061,6 +995,31 @@ def _action_timestamp(definition: Dict, entity: Entity) -> str | None:
     return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
 
+def _short_id(value):
+    """Return a short diagnostic id without logging full serial-like values."""
+    if value in (None, ""):
+        return None
+    text = str(value)
+    return text if len(text) <= 6 else f"...{text[-6:]}"
+
+
+def _action_debug_context(entity: Entity, action: str, target, topic, desired: Dict):
+    """Return safe action metadata without full serials or payload values."""
+    station = getattr(entity, "station", entity)
+    return {
+        "action": action,
+        "device": _short_id(getattr(entity, "sn", None)),
+        "device_type": getattr(entity, "type", None),
+        "station": _short_id(getattr(station, "sn", None)),
+        "station_type": getattr(station, "type", None),
+        "target": _short_id(getattr(target, "shadow_name", None)),
+        "topic": topic,
+        "shadow": desired.get("shadow"),
+        "has_time": "time" in desired,
+        "has_user_param": "userParam" in desired,
+    }
+
+
 def _ipc_node_type(mqtt_region: str | None) -> str:
     """Return the IPC node type from the APK current-house MQTT region."""
     if not mqtt_region or len(mqtt_region) <= 2:
@@ -1180,89 +1139,6 @@ def _camera_data(data: Dict) -> Dict:
         "wifiChannel": data.get("wifiChannel"),
         "wiredMacAddress": data.get("wiredMacAddress"),
     }
-
-
-_CAMERA_USER_CONFIG_KEYS = (
-    "alarmSeconds",
-    "alarmVolume",
-    "antiflicker",
-    "antiflickerSwitch",
-    "chargeAutoPowerOnCapacity",
-    "chargeAutoPowerOnSwitch",
-    "cryDetect",
-    "cryDetectLevel",
-    "deviceCallToggleOn",
-    "deviceLanguage",
-    "mechanicalDingDongDuration",
-    "mechanicalDingDongSwitch",
-    "mirrorFlip",
-    "motionSensitivity",
-    "motionTrack",
-    "motionTrackMode",
-    "needAlarm",
-    "needMotion",
-    "needNightVision",
-    "needVideo",
-    "nightThresholdLevel",
-    "nightVisionMode",
-    "recLamp",
-    "timeZone",
-    "timeZoneArea",
-    "videoSeconds",
-    "voiceVolume",
-    "voiceVolumeSwitch",
-    "whiteLightScintillation",
-)
-
-_CAMERA_BOOLEAN_USER_CONFIG_KEYS = {"deviceCallToggleOn"}
-
-
-def _camera_user_config_payload(camera: Entity, updates: Dict) -> Dict:
-    """Return the APK UserConfigBean-style camera config payload."""
-    payload = {"serialNumber": camera.sn}
-    payload.update(
-        {
-            key: _camera_config_payload_value(key, value)
-            for key, value in updates.items()
-            if key in _CAMERA_USER_CONFIG_KEYS and value is not None
-        }
-    )
-    _add_camera_config_companions(camera, payload)
-    return payload
-
-
-def _add_camera_config_companions(camera: Entity, payload: Dict) -> None:
-    """Add companion config fields the APK sends with selected toggles."""
-    if "needMotion" in payload and camera.data.get("motionSensitivity") in (None, 0):
-        payload["motionSensitivity"] = 1
-    if "needVideo" in payload and camera.data.get("videoSeconds") == 0:
-        payload["videoSeconds"] = -1
-    if "needAlarm" in payload:
-        if camera.data.get("supportRocker") is True:
-            payload["alarmSeconds"] = 10
-        elif camera.data.get("alarmSeconds") in (None, 0):
-            payload["alarmSeconds"] = 5
-        else:
-            payload["alarmSeconds"] = camera.data["alarmSeconds"]
-    if (
-        "needNightVision" in payload
-        and camera.data.get("nightThresholdLevel") is not None
-    ):
-        payload["nightThresholdLevel"] = camera.data["nightThresholdLevel"]
-
-
-def _camera_config_payload_value(key: str, value):
-    """Return the value type used by the APK UserConfigBean field."""
-    if key in _CAMERA_BOOLEAN_USER_CONFIG_KEYS:
-        return value if isinstance(value, bool) else _addx_bool(value)
-    if isinstance(value, bool):
-        return 1 if value else 0
-    return value
-
-
-def _camera_config_write_value(key: str, enabled: bool):
-    """Return the value type used by the APK UserConfigBean field."""
-    return _camera_config_payload_value(key, enabled)
 
 
 def _addx_bool(value) -> bool | None:

@@ -104,8 +104,7 @@ ____________________________________________________________
 
 - 用于 alarm、mute、end-of-life、AC-break、水浸报警、温度报警、充电、运动、门、布防状态、warning、reminder、light、PIR 和 keypad 状态的二进制传感器。
 - 电池、RF 信号、Wi-Fi 信号、固件、温度、湿度、CO 浓度、CO 峰值、警报音量、语音音量、提示音音量、提醒音量、警告阈值、静音计时器、可读时间戳、时区以及其他诊断传感器。
-- X-Sense 报告支持的可写设置开关，例如 LED light、alarm enablement、continued alarm、chirp tone、reminders、PIR、sunshine/white light、await、keypad sound、camera motion detection、recording、night vision、audio、cooldown、light 和 doorbell 控制。
-- 用于受支持摄像机设置的 select 和 number，例如 language、recording resolution、codec、anti-flicker rate、motion sensitivity、video length、volume、alarm duration、cooldown、night threshold 和 doorbell ring key。
+- Camera setup and tuning controls remain in the X-Sense app.
 - 当 X-Sense 应用为该型号提供相应操作时，创建 test、mute、fire-drill 和 camera wake 按钮。
 
 部分实体属于诊断或配置类，会在 Home Assistant 中按相应类别分组。如果设备未上报某个字段，或 X-Sense 应用标记该设备/账号不支持该功能，则不会创建对应实体。设备绑定、删除、共享、账号、支付、固件更新、SD 卡格式化以及其他管理操作仍保留在 X-Sense 应用中。
@@ -137,7 +136,6 @@ actions:
       message: "X-Sense camera detected a person."
 ```
 
-Use the `Last AI Detection` sensor and related last-detection timestamp sensors only for last-known history, dashboards, or conditions. These sensors can be unknown until the first notification arrives and are not the main notification trigger.
 ____________________________________________________________
 ## 自动化示例
 通过此集成，可以创建各种自动化。以下是一些示例：

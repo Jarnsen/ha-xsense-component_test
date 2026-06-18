@@ -68,21 +68,43 @@ def _smoke_rf_test_shadow(entity) -> str:
     return "app2ndSelfTest" if _is_smoke_v9(entity) else "appSelfTest"
 
 
-def _smoke_rf_test_extra(entity) -> Dict:
-    return {"userParam": "source=1"}
-
-
 def _smoke_rf_test_target(entity):
     station = getattr(entity, "station", entity)
     if _is_smoke_v9(entity) or getattr(station, "type", None) == "SBS50":
         return station
-    return _ThingTarget(station, f"{entity.type}{station.sn}")
+    return _ThingTarget(station, station.sn)
+
+
+def _smoke_rf_test_topic(entity):
+    station = getattr(entity, "station", entity)
+    if _is_smoke_v9(entity) or getattr(station, "type", None) == "SBS50":
+        return f"2nd_selftest_{entity.sn}"
+    return f"appselftest_{entity.sn}"
+
+
+def _smoke_rf_test_time_format(entity) -> str | None:
+    station = getattr(entity, "station", entity)
+    if _is_smoke_v9(entity) or getattr(station, "type", None) == "SBS50":
+        return "epoch_ms"
+    return None
+
+
+def _smoke_rf_test_extra(entity) -> Dict:
+    station = getattr(entity, "station", entity)
+    if _is_smoke_v9(entity) or getattr(station, "type", None) == "SBS50":
+        return {"userParam": "source=1"}
+    return {}
 
 
 def SmokeRFTestAction():
-    return TestAction(
-        _smoke_rf_test_shadow, extra=_smoke_rf_test_extra, target=_smoke_rf_test_target
-    )
+    return {
+        "action": "test",
+        "topic": _smoke_rf_test_topic,
+        "shadow": _smoke_rf_test_shadow,
+        "extra": _smoke_rf_test_extra,
+        "target": _smoke_rf_test_target,
+        "time_format": _smoke_rf_test_time_format,
+    }
 
 
 class _ThingTarget:

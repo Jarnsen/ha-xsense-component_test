@@ -147,30 +147,6 @@ def has_camera_data(key: str) -> Callable[[Entity], bool]:
     return lambda entity: is_camera_entity(entity) and key in entity.data
 
 
-_CAMERA_AI_DETECTION_DATA_KEYS = {
-    "lastAiDetection",
-    "lastPersonDetectionTime",
-    "lastPetDetectionTime",
-    "lastVehicleDetectionTime",
-    "lastPackageDetectionTime",
-    "lastOtherDetectionTime",
-    "lastVehicleEnterDetectionTime",
-    "lastVehicleOutDetectionTime",
-    "lastVehicleHeldUpDetectionTime",
-    "lastPackageDropOffDetectionTime",
-    "lastPackagePickUpDetectionTime",
-    "lastPackageExistDetectionTime",
-}
-
-
-def has_camera_ai_detection(entity: Entity) -> bool:
-    """Return if an IPC camera should expose AI detection event sensors."""
-    return is_camera_entity(entity) and (
-        entity.data.get("supportPersonDetect") is not False
-        or any(key in entity.data for key in _CAMERA_AI_DETECTION_DATA_KEYS)
-    )
-
-
 def has_report_time(entity: Entity) -> bool:
     """Return whether a report timestamp should be exposed as a sensor."""
     return "time" in entity.data and entity.entity_type is not EntityType.BASESTATION
@@ -686,97 +662,6 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=optional_data_timestamp("lastSelfTestTime"),
         exists_fn=has_self_test_report,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_motion_time",
-        name="Last Motion Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastMotionTime"),
-        exists_fn=has_data("lastMotionTime"),
-    ),
-    XSenseSensorEntityDescription(
-        key="last_ai_detection",
-        name="Last AI Detection",
-        icon="mdi:shape-outline",
-        value_fn=optional_data_value("lastAiDetection"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_person_detection_time",
-        name="Last Person Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastPersonDetectionTime"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_pet_detection_time",
-        name="Last Pet Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastPetDetectionTime"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_vehicle_detection_time",
-        name="Last Vehicle Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastVehicleDetectionTime"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_package_detection_time",
-        name="Last Package Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastPackageDetectionTime"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_other_detection_time",
-        name="Last Other Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastOtherDetectionTime"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_vehicle_enter_detection_time",
-        name="Last Vehicle Enter Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastVehicleEnterDetectionTime"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_vehicle_out_detection_time",
-        name="Last Vehicle Exit Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastVehicleOutDetectionTime"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_vehicle_held_up_detection_time",
-        name="Last Vehicle Held Up Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastVehicleHeldUpDetectionTime"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_package_drop_off_detection_time",
-        name="Last Package Drop-Off Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastPackageDropOffDetectionTime"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_package_pick_up_detection_time",
-        name="Last Package Pick-Up Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastPackagePickUpDetectionTime"),
-        exists_fn=has_camera_ai_detection,
-    ),
-    XSenseSensorEntityDescription(
-        key="last_package_exist_detection_time",
-        name="Last Package Present Detection Time",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        value_fn=optional_data_timestamp("lastPackageExistDetectionTime"),
-        exists_fn=has_camera_ai_detection,
     ),
     XSenseSensorEntityDescription(
         key="timezone",
