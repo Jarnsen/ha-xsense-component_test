@@ -155,7 +155,7 @@ def has_report_time(entity: Entity) -> bool:
 def has_self_test_report(entity: Entity) -> bool:
     """Return whether the entity can report an app-style self-test result."""
     entity_def = entities.get(entity.type, {})
-    return "lastSelfTest" in entity.data or any(
+    return entity.type == "XS01-WX" or "lastSelfTest" in entity.data or any(
         action.get("action") == "test" for action in entity_def.get("actions", [])
     )
 

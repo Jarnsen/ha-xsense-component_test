@@ -162,9 +162,35 @@ def test_child_controls_require_parent_station_online():
 
     assert button.available
 
-    station.online = False
+    station._set_online(False)
 
     assert not button.available
+
+
+def test_child_controls_ignore_timestamp_only_offline_guess():
+    station = _xs01_wx_from_real_shadow()
+    station.entity_id = "station-id"
+    child = station.__class__(
+        station.house,
+        stationId="child-id",
+        stationName="Smoke RF",
+        stationSn="child-sn",
+        category="XS03-iWX",
+    )
+    child.entity_id = "child-id"
+    child.station = station
+    child.set_data({"onlineTime": "20260531010101", "utcTime": "20260602090102"})
+    coordinator = Coordinator(station, {child.entity_id: child})
+    button = XSenseButtonEntity(
+        coordinator,
+        child,
+        XSenseButtonEntityDescription(key="test", press_fn=_noop_press),
+        station_id=device_station_id(child),
+    )
+
+    assert child.online is False
+    assert not child._online_from_explicit_flag
+    assert button.available
 
 
 def test_standalone_child_control_uses_device_map_without_parent_station():

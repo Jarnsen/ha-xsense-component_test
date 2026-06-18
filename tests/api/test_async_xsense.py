@@ -1152,28 +1152,6 @@ async def _capture_action(client, target, action):
             "SBS50station-sn",
         ),
         (
-            "XS01-WX",
-            entity_map.EntityType.SMOKE,
-            {},
-            "SBS50",
-            "2nd_selftest_device-sn",
-            "appSelfTest",
-            "source=1",
-            13,
-            "SBS50station-sn",
-        ),
-        (
-            "XS01-WX",
-            entity_map.EntityType.SMOKE,
-            {"smokeEdition": "9"},
-            "SBS50",
-            "2nd_selftest_device-sn",
-            "app2ndSelfTest",
-            "source=1",
-            13,
-            "SBS50station-sn",
-        ),
-        (
             "XS01-M",
             entity_map.EntityType.SMOKE,
             {"smokeEdition": "9"},
@@ -1294,37 +1272,12 @@ async def test_self_test_uses_apk_payload_shape(
         assert len(desired["time"]) == expected_time_len
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("station_sn", "expected_thing"),
-    [
-        ("ABC123", "XS01-WXABC123"),
-        ("ABCEN123", "XS01-WX-ABCEN123"),
-    ],
-)
-async def test_xs01_wx_standalone_self_test_uses_own_station_entity_path(
-    station_sn, expected_thing
-):
+def test_xs01_wx_does_not_expose_manual_self_test_action():
     client = async_xsense.AsyncXSense()
-    client.userid = "user-id"
-    station = FakeXSenseStation("XS01-WX", station_sn)
+    station = FakeXSenseStation("XS01-WX", "ABC123")
     station.entity_type = entity_map.EntityType.SMOKE
 
-    station_arg, page, desired = await _capture_action(client, station, "test")
-
-    assert station_arg is station
-    assert station_arg.shadow_name == expected_thing
-    assert page == f"2nd_selftest_{station_sn}"
-    assert desired["time"].isdigit()
-    assert len(desired["time"]) == 13
-    desired_without_time = {k: v for k, v in desired.items() if k != "time"}
-    assert desired_without_time == {
-        "deviceSN": station_sn,
-        "shadow": "appSelfTest",
-        "stationSN": station_sn,
-        "userId": "user-id",
-        "userParam": "source=1",
-    }
+    assert client.has_action(station, "test") is False
 
 
 @pytest.mark.asyncio
@@ -1425,7 +1378,6 @@ async def test_wifi_device_mute_uses_apk_factory_payload_shape(
 @pytest.mark.parametrize(
     ("device_type", "entity_type", "expected_thing"),
     [
-        ("XP0J-iA", entity_map.EntityType.COMBI, "XP0J-iA-station-sn"),
         ("XS0R-iA", entity_map.EntityType.SMOKE, "XS0R-iA-station-sn"),
     ],
 )
@@ -1442,6 +1394,26 @@ async def test_standalone_wifi_self_test_uses_own_station_entity_path(
     assert station_arg.shadow_name == expected_thing
     assert page == "2nd_selftest_station-sn"
     assert desired["shadow"] == "appSelfTest"
+    assert desired["stationSN"] == "station-sn"
+    assert desired["deviceSN"] == "station-sn"
+    assert desired["userId"] == "user-id"
+    assert desired["userParam"] == "source=1"
+    assert desired["time"].isdigit()
+    assert len(desired["time"]) == 13
+
+
+@pytest.mark.asyncio
+async def test_xp0j_ia_self_test_uses_apk_device_test_v2_path():
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    station = FakeXSenseStation("XP0J-iA")
+    station.entity_type = entity_map.EntityType.COMBI
+
+    station_arg, page, desired = await _capture_action(client, station, "test")
+
+    assert station_arg.shadow_name == "SBS50station-sn"
+    assert page == "2nd_selftest_station-sn"
+    assert desired["shadow"] == "app2ndSelfTest"
     assert desired["stationSN"] == "station-sn"
     assert desired["deviceSN"] == "station-sn"
     assert desired["userId"] == "user-id"

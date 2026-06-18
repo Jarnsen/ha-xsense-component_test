@@ -64,6 +64,14 @@ def SBS50SecondGenTestAction():
     return TestAction("app2ndSelfTest", extra={"userParam": "source=1"})
 
 
+def XP0JTestAction():
+    return TestAction(
+        "app2ndSelfTest",
+        extra={"userParam": "source=1"},
+        target=lambda entity: _ThingTarget(entity, f"SBS50{entity.sn}"),
+    )
+
+
 def _smoke_rf_test_shadow(entity) -> str:
     return "app2ndSelfTest" if _is_smoke_v9(entity) else "appSelfTest"
 
@@ -182,36 +190,6 @@ def SATestAction(shadow="appSelfTest"):
         "topic": lambda x: f"appselftest_{x.sn}",
         "shadow": shadow,
         "time_format": None,
-    }
-
-
-def _xs01_wx_is_sbs50_linked(entity) -> bool:
-    return getattr(getattr(entity, "station", None), "type", None) == "SBS50"
-
-
-def _xs01_wx_test_shadow(entity) -> str:
-    if _xs01_wx_is_sbs50_linked(entity) and _is_smoke_v9(entity):
-        return "app2ndSelfTest"
-    return "appSelfTest"
-
-
-def _xs01_wx_test_extra(entity) -> Dict:
-    return {"userParam": "source=1"}
-
-
-def _xs01_wx_test_target(entity):
-    return getattr(entity, "station", entity)
-
-
-def XS01WXTestAction():
-    """XS01-WX self test using the APK standalone and SBS50-linked paths."""
-    return {
-        "action": "test",
-        "topic": lambda entity: f"2nd_selftest_{entity.sn}",
-        "shadow": _xs01_wx_test_shadow,
-        "extra": _xs01_wx_test_extra,
-        "target": _xs01_wx_test_target,
-        "time_format": "epoch_ms",
     }
 
 
@@ -562,7 +540,6 @@ entities = {
     "XS01-WX": {
         "type": EntityType.SMOKE,
         "actions": [
-            XS01WXTestAction(),
             XS01WXMuteAction(),
         ],
     },
@@ -621,7 +598,7 @@ entities = {
     "XP0J-iA": {
         "type": EntityType.COMBI,
         "actions": [
-            WifiSelfTestAction(),
+            XP0JTestAction(),
             WifiAlarmMuteAction(),
             FireDrillAction(),
         ],

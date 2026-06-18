@@ -33,6 +33,13 @@ def _apk_entity_is_available(entity: Entity) -> bool:
     return entity.online is True
 
 
+def _entity_is_not_explicitly_offline(entity: Entity) -> bool:
+    """Return whether the entity has not reported an authoritative offline flag."""
+    return entity.online is not False or not getattr(
+        entity, "_online_from_explicit_flag", False
+    )
+
+
 class XSenseEntity(CoordinatorEntity):
     """Represent a XSense Entity."""
 
@@ -92,8 +99,8 @@ class XSenseEntity(CoordinatorEntity):
             )
             return (
                 station is not None
-                and _apk_entity_is_available(station)
-                and entity.online is not False
+                and _entity_is_not_explicitly_offline(station)
+                and _entity_is_not_explicitly_offline(entity)
             )
 
         return _apk_entity_is_available(entity)
