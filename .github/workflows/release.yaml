@@ -28,6 +28,7 @@ jobs:
         run: |
           tag="${GITHUB_REF_NAME}"
           notes_file=".github/release-notes/${tag}.md"
+          version_notes_file=".github/release-notes/${tag#v}.md"
           title="${tag}"
 
           release_args=(--verify-tag --title "$title")
@@ -36,6 +37,10 @@ jobs:
           IFS='.' read -r -a version_parts <<< "$version"
           if (( ${#version_parts[@]} >= 4 )); then
             release_args+=(--prerelease)
+          fi
+
+          if [[ ! -f "$notes_file" && -f "$version_notes_file" ]]; then
+            notes_file="$version_notes_file"
           fi
 
           if gh release view "$tag" >/dev/null 2>&1; then

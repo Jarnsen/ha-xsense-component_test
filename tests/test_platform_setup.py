@@ -79,3 +79,15 @@ def test_ai_notification_blueprint_selector_lists_xsense_event_entities():
     ]["filter"][0]
 
     assert entity_filter == {"integration": "xsense", "domain": "event"}
+
+
+def test_ai_notification_blueprint_default_action_does_not_template_trigger():
+    with open(
+        "blueprints/automation/xsense/camera_ai_notification.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    default_actions = blueprint["blueprint"]["input"]["actions"]["default"]
+
+    assert "trigger." not in str(default_actions)

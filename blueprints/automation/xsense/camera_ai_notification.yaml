@@ -67,9 +67,7 @@ blueprint:
       default:
         - action: notify.notify
           data:
-            message: >
-              X-Sense camera detected
-              {{ trigger.event.data.event_type | default('AI activity') | replace('_', ' ') }}.
+            message: X-Sense camera detected AI activity.
       selector:
         action:
 

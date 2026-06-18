@@ -250,6 +250,7 @@ def test_camera_entities_include_device_cameras():
     device_camera.station = station
 
     class Coordinator:
+        last_update_success = True
         data = {
             "stations": {
                 station.entity_id: station,
@@ -268,8 +269,9 @@ def test_camera_entities_include_device_cameras():
         device_camera.entity_id,
     ]
     assert entities[0]._station_id is None
-    assert entities[1]._station_id == station.entity_id
+    assert entities[1]._station_id == ""
     assert entities[1]._current_entity() is device_camera
+    assert entities[1].available is True
 
 
 def test_camera_entities_include_standalone_device_cameras():
@@ -1100,6 +1102,53 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
     assert len(created_sessions) == 1
     assert isinstance(messages[0], WebRTCAnswer)
     assert messages[0].answer == "v=0\r\nanswer"
+
+
+async def test_frontend_webrtc_close_closes_signal_session():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseWebRTCCameraEntity,
+    )
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class Coordinator:
+        data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    class Session:
+        def __init__(self):
+            self.closed = False
+
+        async def close(self):
+            self.closed = True
+
+    tasks = []
+
+    class FakeHass:
+        def async_create_task(self, coro):
+            task = asyncio.create_task(coro)
+            tasks.append(task)
+            return task
+
+    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.hass = FakeHass()
+    session = Session()
+    camera._webrtc_sessions["session-1"] = session
+    camera._pending_webrtc_candidates["session-1"] = [object()]
+
+    camera.close_webrtc_session("session-1")
+    await tasks[0]
+
+    assert session.closed is True
+    assert camera._webrtc_sessions == {}
+    assert camera._pending_webrtc_candidates == {}
 
 
 def test_camera_online_uses_parsed_entity_online_state_like_apk():

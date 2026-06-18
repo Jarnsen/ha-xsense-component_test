@@ -28,10 +28,10 @@ from .api.async_xsense import camera_live_resolution, is_camera_entity
 from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
+    DEVICE_ENTITY_WITHOUT_STATION,
     XSenseEntity,
     coordinator_devices,
     coordinator_stations,
-    device_station_id,
 )
 
 
@@ -73,7 +73,9 @@ def _camera_entities(
         if not is_camera_entity(device) or device.entity_id in seen_entity_ids:
             continue
         entities.append(
-            _camera_entity(coordinator, device, station_id=device_station_id(device))
+            _camera_entity(
+                coordinator, device, station_id=DEVICE_ENTITY_WITHOUT_STATION
+            )
         )
 
     return entities
