@@ -1,0 +1,87 @@
+blueprint:
+  name: X-Sense Camera AI Detection
+  description: >
+    Send a notification or run actions when an X-Sense camera reports an AI
+    detection. Select the camera AI Detection event entity, then keep the
+    defaults or adjust the actions.
+  domain: automation
+  author: X-Sense Home Security
+  homeassistant:
+    min_version: 2025.3.0
+  input:
+    ai_detection_event:
+      name: Camera AI Detection
+      description: Select the AI Detection event entity for the camera.
+      selector:
+        entity:
+          filter:
+            - integration: xsense
+              domain: event
+              device_class: motion
+    event_types:
+      name: Detection types
+      description: Leave all selected to notify for every AI detection, or choose only the types you want.
+      default:
+        - person
+        - pet
+        - vehicle
+        - vehicle_enter
+        - vehicle_out
+        - vehicle_held_up
+        - package
+        - package_drop_off
+        - package_pick_up
+        - package_exist
+        - other
+        - ai_detection
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Person
+              value: person
+            - label: Pet
+              value: pet
+            - label: Vehicle
+              value: vehicle
+            - label: Vehicle entered
+              value: vehicle_enter
+            - label: Vehicle exited
+              value: vehicle_out
+            - label: Vehicle held up
+              value: vehicle_held_up
+            - label: Package
+              value: package
+            - label: Package drop-off
+              value: package_drop_off
+            - label: Package pick-up
+              value: package_pick_up
+            - label: Package present
+              value: package_exist
+            - label: Other
+              value: other
+            - label: Multiple objects
+              value: ai_detection
+    actions:
+      name: What should happen
+      description: The default sends a basic Home Assistant notification. Replace it with a mobile notification or any other actions you want.
+      default:
+        - action: notify.notify
+          data:
+            message: >
+              X-Sense camera detected
+              {{ trigger.event.data.event_type | default('AI activity') | replace('_', ' ') }}.
+      selector:
+        action:
+
+triggers:
+  - trigger: event.received
+    target:
+      entity_id: !input ai_detection_event
+    options:
+      event_type: !input event_types
+
+actions: !input actions
+
+mode: queued
+max: 10
