@@ -17,8 +17,7 @@
     "pycognito",
     "paho-mqtt>=2.1.0,<3"
   ],
-  "homeassistant": "2025.3.0",
   "ssdp": [],
   "zeroconf": [],
-  "version": "1.3.6"
+  "version": "1.3.7"
 }
