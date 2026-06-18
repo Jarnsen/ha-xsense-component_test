@@ -298,7 +298,7 @@ class FakeCognitoClient:
         return {
             "AuthenticationResult": {
                 "AccessToken": "access",
-                "IdToken": "id",
+                "IdToken": _test_jwt({"user_id_code": "user-id-code"}),
                 "RefreshToken": "refresh",
                 "ExpiresIn": 3600,
             }
@@ -324,6 +324,14 @@ def _login_client():
     return client
 
 
+def _test_jwt(claims):
+    header = base64.urlsafe_b64encode(b'{"alg":"none"}').rstrip(b"=").decode()
+    payload = (
+        base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
+    )
+    return f"{header}.{payload}."
+
+
 def test_sync_login_uses_bounded_cognito_network_config(monkeypatch):
     session = FakeBotoSession()
     monkeypatch.setattr(base.boto3, "Session", lambda: session)
@@ -340,6 +348,28 @@ def test_sync_login_uses_bounded_cognito_network_config(monkeypatch):
     assert config.read_timeout == 15
     assert config.retries == {"total_max_attempts": 4, "mode": "standard"}
     assert client.access_token == "access"
+    assert client.user_id_code == "user-id-code"
+
+
+def test_restore_session_sets_user_id_code_from_token():
+    client = _login_client()
+
+    client.restore_session(
+        "user@example.com",
+        "access",
+        "refresh",
+        _test_jwt({"user_id_code": "restored-user-id-code"}),
+    )
+
+    assert client.user_id_code == "restored-user-id-code"
+
+
+def test_restore_session_ignores_malformed_user_id_code_token():
+    client = _login_client()
+
+    client.restore_session("user@example.com", "bad-token", "refresh", "also.bad")
+
+    assert client.user_id_code is None
 
 
 def test_sync_login_maps_cognito_network_errors_to_api_failure(monkeypatch):

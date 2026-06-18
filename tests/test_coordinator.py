@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from custom_components.xsense.coordinator import _is_self_test_topic
@@ -426,3 +428,61 @@ def test_mqtt_camera_ai_event_accepts_apk_nested_event_items():
     assert data["lastPersonDetectionTime"] == "20260614230100"
     assert data["lastPackageDetectionTime"] == "20260614230200"
     assert data["lastPackagePickUpDetectionTime"] == "20260614230200"
+
+
+def test_mqtt_camera_ai_plan_event_uses_apk_dispatch_device_identity():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "userId": "user-id",
+            "eventType": "ai_event",
+            "eventTime": "20260614230000",
+            "eventData": {
+                "serverId": "service-id",
+                "dispatchDevs": [
+                    {
+                        "stationSn": "station-sn",
+                        "deviceSn": "camera-sn",
+                        "deviceType": "SSC0A",
+                        "eventTime": "20260614230100",
+                    }
+                ],
+                "eventItems": [
+                    {
+                        "eventType": "person",
+                        "eventTime": "20260614230200",
+                    }
+                ],
+            },
+        }
+    )
+
+    assert data["stationSN"] == "station-sn"
+    assert data["deviceSN"] == "camera-sn"
+    assert data["serialNumber"] == "camera-sn"
+    assert data["lastAiDetection"] == "person"
+    assert data["lastPersonDetectionTime"] == "20260614230200"
+
+
+async def test_assure_subscriptions_includes_apk_ai_plan_topic():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    calls = []
+
+    async def assure_subscription(server, topic):
+        calls.append((server, topic))
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(userid="user-id", user_id_code="user-id-code")
+    coordinator.assure_subscription = assure_subscription
+    house = SimpleNamespace(
+        mqtt_server="mqtt.example",
+        house_id="house-id",
+        stations={},
+    )
+
+    await XSenseDataUpdateCoordinator.assure_subscriptions(coordinator, house)
+
+    assert ("mqtt.example", "@xsense/events/+/house-id") in calls
+    assert ("mqtt.example", "@xsense/events/aiplan/user-id-code") in calls

@@ -1,4 +1,5 @@
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -29,6 +30,27 @@ def _mac_scalar(value) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
     return str(value)
+
+
+def _jwt_claim(token: str | None, claim: str):
+    if not token:
+        return None
+    try:
+        payload = token.split(".")[1]
+        padding = "=" * (-len(payload) % 4)
+        decoded = base64.urlsafe_b64decode(payload + padding)
+        claims = json.loads(decoded)
+    except (
+        IndexError,
+        TypeError,
+        ValueError,
+        UnicodeDecodeError,
+        binascii.Error,
+        json.JSONDecodeError,
+    ):
+        return None
+    value = claims.get(claim)
+    return str(value) if value is not None else None
 
 
 _COGNITO_CLIENT_CONFIG = Config(
@@ -62,6 +84,7 @@ class XSenseBase:
     ADDX_APP_VERSION_NAME = "2.7.5"
 
     userid = None
+    user_id_code = None
     username = None
     clientid = None
     clientsecret = None
@@ -141,6 +164,7 @@ class XSenseBase:
             self.access_token = auth_result["AccessToken"]
             self.id_token = auth_result["IdToken"]
             self.refresh_token = auth_result["RefreshToken"]
+            self._set_user_id_code_from_tokens()
             self.access_token_expiry = datetime.now(timezone.utc) + timedelta(
                 seconds=auth_result["ExpiresIn"]
             )
@@ -155,8 +179,16 @@ class XSenseBase:
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.id_token = id_token
+        self._set_user_id_code_from_tokens()
         self.access_token_expiry = datetime.now(timezone.utc)
         self.aws_access_expiry = datetime.now(timezone.utc)
+
+    def _set_user_id_code_from_tokens(self):
+        self.user_id_code = None
+        for token in (self.id_token, self.access_token):
+            if user_id_code := _jwt_claim(token, "user_id_code"):
+                self.user_id_code = user_id_code
+                return
 
     def _access_token_expiring(self):
         return datetime.now(timezone.utc) > self.access_token_expiry - timedelta(

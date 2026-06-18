@@ -187,6 +187,68 @@ def test_ai_detection_event_entity_precreates_for_supported_camera():
     assert not description.exists_fn(non_camera)
 
 
+def test_ai_detection_event_entities_include_device_cameras():
+    station = entity("SBS50", {})
+    station.entity_id = "station-1"
+    station.name = "Station"
+    station.online = True
+
+    station_camera = entity("SSC0A", {"supportPersonDetect": True})
+    station_camera.entity_id = "station-camera"
+    station_camera.name = "Station Camera"
+    station_camera.online = True
+
+    device_camera = entity("SSC0A", {"supportPersonDetect": True})
+    device_camera.entity_id = "device-camera"
+    device_camera.name = "Device Camera"
+    device_camera.online = True
+    device_camera.station = station
+
+    class Coordinator:
+        data = {
+            "stations": {
+                station.entity_id: station,
+                station_camera.entity_id: station_camera,
+            },
+            "devices": {device_camera.entity_id: device_camera},
+        }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    entities = event._ai_detection_event_entities(Coordinator())
+
+    assert [entity._dev_id for entity in entities] == [
+        station_camera.entity_id,
+        device_camera.entity_id,
+    ]
+    assert entities[0]._station_id is None
+    assert entities[1]._station_id == station.entity_id
+    assert entities[1]._current_entity() is device_camera
+
+
+def test_ai_detection_event_entities_include_standalone_device_cameras():
+    device_camera = entity("SSC0A", {"supportPersonDetect": True})
+    device_camera.entity_id = "standalone-camera"
+    device_camera.name = "Standalone Camera"
+    device_camera.online = True
+
+    class Coordinator:
+        data = {
+            "stations": {},
+            "devices": {device_camera.entity_id: device_camera},
+        }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    entities = event._ai_detection_event_entities(Coordinator())
+
+    assert [entity._dev_id for entity in entities] == [device_camera.entity_id]
+    assert entities[0]._station_id is None
+    assert entities[0]._current_entity() is device_camera
+
+
 def test_ai_detection_event_data_uses_apk_detection_payload():
     event_data = event.ai_detection_event_data(
         {

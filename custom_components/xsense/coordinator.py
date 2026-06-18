@@ -459,6 +459,12 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         2nd_safemode, without creating duplicate per-shadow subscriptions.
         """
         await self.assure_subscription(h.mqtt_server, f"@xsense/events/+/{h.house_id}")
+        if user_id := getattr(self.xsense, "user_id_code", None) or getattr(
+            self.xsense, "userid", None
+        ):
+            await self.assure_subscription(
+                h.mqtt_server, f"@xsense/events/aiplan/{user_id}"
+            )
         await self.assure_subscription(
             h.mqtt_server, f"$aws/things/{h.house_id}/shadow/name/+/update"
         )
@@ -557,10 +563,33 @@ def _mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any] | list[Any]:
             result.setdefault("time", event_time)
         if event_type := data.get("eventType") or result.get("eventType"):
             result.setdefault("eventType", event_type)
+        _apply_apk_dispatch_aliases(result)
         _apply_apk_event_aliases(result)
         return result
 
     return {}
+
+
+def _apply_apk_dispatch_aliases(data: dict[str, Any]) -> None:
+    """Apply APK dispatch device identifiers to normal MQTT lookup keys."""
+    dispatch_devs = data.get("dispatchDevs")
+    if not isinstance(dispatch_devs, list):
+        return
+
+    dispatch_dev = next(
+        (item for item in dispatch_devs if isinstance(item, dict)),
+        None,
+    )
+    if dispatch_dev is None:
+        return
+
+    if station_sn := dispatch_dev.get("stationSn"):
+        data.setdefault("stationSN", station_sn)
+    if device_sn := dispatch_dev.get("deviceSn"):
+        data.setdefault("deviceSN", device_sn)
+        data.setdefault("serialNumber", device_sn)
+    if event_time := dispatch_dev.get("eventTime"):
+        data.setdefault("time", event_time)
 
 
 def _apply_apk_event_aliases(data: dict[str, Any]) -> None:

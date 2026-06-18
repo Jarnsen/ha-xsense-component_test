@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from .api.async_xsense import is_camera_entity
+from .api.device import Device
 from .api.entity import Entity
 
 from homeassistant import config_entries
@@ -87,11 +88,7 @@ async def async_setup_entry(
     """Set up X-Sense event entities."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        XSenseEventEntity(coordinator, station, AI_DETECTION_DESCRIPTION)
-        for station in coordinator.data["stations"].values()
-        if AI_DETECTION_DESCRIPTION.exists_fn(station)
-    )
+    async_add_entities(_ai_detection_event_entities(coordinator))
 
 
 class XSenseEventEntity(XSenseEntity, EventEntity):
@@ -104,12 +101,22 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
         coordinator: XSenseDataUpdateCoordinator,
         entity: Entity,
         entity_description: XSenseEventEntityDescription,
+        station_id: str | None = None,
+        device_entity: bool = False,
     ) -> None:
         """Set up the instance."""
+        self._station_id = station_id
+        self._device_entity = device_entity
         self.entity_description = entity_description
         self._last_ai_detection_fingerprint: tuple[Any, ...] | None = None
         self._ai_detection_initialized = False
-        super().__init__(coordinator, entity)
+        super().__init__(coordinator, entity, station_id)
+
+    def _current_entity(self) -> Entity | None:
+        """Return the current coordinator entity for this event entity."""
+        if self._device_entity:
+            return self.coordinator.data["devices"].get(self._dev_id)
+        return super()._current_entity()
 
     def _handle_coordinator_update(self) -> None:
         """Handle updated coordinator data."""
@@ -149,6 +156,43 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
         ):
             return
         self.async_write_ha_state()
+
+
+def _ai_detection_event_entities(
+    coordinator: XSenseDataUpdateCoordinator,
+) -> list[XSenseEventEntity]:
+    """Return X-Sense event entities for supported cameras."""
+    entities: list[XSenseEventEntity] = []
+
+    for station in coordinator.data["stations"].values():
+        if AI_DETECTION_DESCRIPTION.exists_fn(station):
+            entities.append(
+                XSenseEventEntity(coordinator, station, AI_DETECTION_DESCRIPTION)
+            )
+
+    for device in coordinator.data["devices"].values():
+        if not AI_DETECTION_DESCRIPTION.exists_fn(device):
+            continue
+
+        entities.append(
+            XSenseEventEntity(
+                coordinator,
+                device,
+                AI_DETECTION_DESCRIPTION,
+                station_id=_device_station_id(device),
+                device_entity=True,
+            )
+        )
+
+    return entities
+
+
+def _device_station_id(device: Device) -> str | None:
+    """Return the parent station ID for a device entity."""
+    station = getattr(device, "station", None)
+    if station is None:
+        return None
+    return getattr(station, "entity_id", None)
 
 
 def ai_detection_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
