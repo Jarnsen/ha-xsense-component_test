@@ -23,7 +23,7 @@ Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. 
 
 - The integration now includes its X-Sense API client directly, removing the external `python-xsense` dependency.
 - MQTT shadow updates and polling have been improved to reduce unnecessary cloud requests while keeping device state current.
-- X-Sense camera support has been expanded using the Android app API behavior as a guide, including camera entities, thumbnails/live streams, readable status fields, and supported camera settings such as motion detection, recording, night vision, audio, cooldown, light, doorbell, wake, and codec controls.
+- X-Sense camera support now includes native Home Assistant WebRTC live video and audio, camera entities, thumbnails, readable status fields, and supported camera settings such as motion detection, recording, night vision, audio, cooldown, light, doorbell, wake, and codec controls.
 - Supported cameras expose AI notification detections through Home Assistant event entities, with a simple automation blueprint and last-detection history sensors available in the language documentation.
 - More X-Sense-reported entities are exposed, including additional smoke, CO, water, temperature, humidity, light, keypad, mailbox, motion, door, reminder, warning, and diagnostic fields when devices report them.
 - Device actions such as test, mute, and fire drill are available for supported models, and supported settings such as LED light, reminders, alarm, PIR, related toggles, and alarm, voice, chirp, and reminder volume levels are exposed as Home Assistant controls.

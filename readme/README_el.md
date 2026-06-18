@@ -110,8 +110,8 @@ ____________________________________________________________
 Ορισμένες οντότητες είναι διαγνωστικές ή σχετικές με διαμόρφωση και ομαδοποιούνται έτσι στο Home Assistant. Αν μια συσκευή δεν αναφέρει συγκεκριμένο πεδίο, ή αν η εφαρμογή X-Sense σημειώνει τη λειτουργία ως μη υποστηριζόμενη για αυτή τη συσκευή/λογαριασμό, η αντίστοιχη οντότητα δεν δημιουργείται. Σύνδεση συσκευής, αφαίρεση, κοινή χρήση, λογαριασμός, πληρωμές, ενημέρωση υλικολογισμικό, μορφοποίηση SD και άλλες διαχειριστικές ενέργειες παραμένουν στην εφαρμογή X-Sense.
 ____________________________________________________________
 
-## Camera AI Notifications
-Supported cameras create an `AI Detection` event entity, such as `event.front_camera_ai_detection`. Use this `event.*` entity for notification automations, and replace the sample entity ID with the actual entity ID shown in your Home Assistant instance.
+## Camera Live View and AI Notifications
+Supported cameras use native Home Assistant WebRTC for live video and audio. They also create an `AI Detection` event entity, such as `event.front_camera_ai_detection`. Use this `event.*` entity for notification automations, and replace the sample entity ID with the actual entity ID shown in your Home Assistant instance.
 
 The easiest UI path is the included blueprint. Use the button below to import it, select the camera `AI Detection` event entity, leave Detection types selected to notify for every AI event, then keep or replace the default notification action.
 

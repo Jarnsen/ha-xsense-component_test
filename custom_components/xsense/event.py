@@ -54,7 +54,9 @@ _AI_DETECTION_TIME_KEYS: dict[str, str] = {
     "other": "lastOtherDetectionTime",
 }
 
-_AI_DETECTION_DATA_KEYS = frozenset({"lastAiDetection", *_AI_DETECTION_TIME_KEYS.values()})
+_AI_DETECTION_DATA_KEYS = frozenset(
+    {"lastAiDetection", *_AI_DETECTION_TIME_KEYS.values()}
+)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -120,20 +122,32 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
         if fingerprint is None:
             if not self._ai_detection_initialized:
                 self._ai_detection_initialized = True
+            self._write_state_if_added()
             return
 
         if not self._ai_detection_initialized:
             self._last_ai_detection_fingerprint = fingerprint
             self._ai_detection_initialized = True
+            self._write_state_if_added()
             return
 
         if fingerprint == self._last_ai_detection_fingerprint:
+            self._write_state_if_added()
             return
 
         self._last_ai_detection_fingerprint = fingerprint
         objects = event_data["objects"]
         event_type = objects[0] if len(objects) == 1 else AI_DETECTION_EVENT_TYPE
         self._trigger_event(event_type, event_data)
+        self._write_state_if_added()
+
+    def _write_state_if_added(self) -> None:
+        """Write HA state after the entity is registered."""
+        if (
+            getattr(self, "hass", None) is None
+            or getattr(self, "platform", None) is None
+        ):
+            return
         self.async_write_ha_state()
 
 
@@ -166,7 +180,9 @@ def ai_detection_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
     return event_data
 
 
-def ai_detection_fingerprint(event_data: dict[str, Any] | None) -> tuple[Any, ...] | None:
+def ai_detection_fingerprint(
+    event_data: dict[str, Any] | None,
+) -> tuple[Any, ...] | None:
     """Return a stable duplicate-detection fingerprint for AI events."""
     if event_data is None:
         return None

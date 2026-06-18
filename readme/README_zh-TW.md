@@ -109,8 +109,8 @@ ____________________________________________________________
 部分實體屬於診斷或設定類別，Home Assistant 會依此分組。如果裝置沒有回報特定欄位，或 X-Sense App 標示該裝置/帳號不支援該功能，就不會建立對應實體。裝置綁定、移除、分享、帳號、付款、韌體更新、SD 卡格式化與其他管理操作仍保留在 X-Sense App 中。
 ____________________________________________________________
 
-## Camera AI Notifications
-Supported cameras create an `AI Detection` event entity, such as `event.front_camera_ai_detection`. Use this `event.*` entity for notification automations, and replace the sample entity ID with the actual entity ID shown in your Home Assistant instance.
+## Camera Live View and AI Notifications
+Supported cameras use native Home Assistant WebRTC for live video and audio. They also create an `AI Detection` event entity, such as `event.front_camera_ai_detection`. Use this `event.*` entity for notification automations, and replace the sample entity ID with the actual entity ID shown in your Home Assistant instance.
 
 The easiest UI path is the included blueprint. Use the button below to import it, select the camera `AI Detection` event entity, leave Detection types selected to notify for every AI event, then keep or replace the default notification action.
 

@@ -225,6 +225,8 @@ def test_ai_detection_event_entity_triggers_first_new_event_after_empty_startup(
     event_entity = event.XSenseEventEntity.__new__(event.XSenseEventEntity)
     event_entity._ai_detection_initialized = False
     event_entity._last_ai_detection_fingerprint = None
+    event_entity.hass = object()
+    event_entity.platform = object()
     event_entity._current_entity = lambda: camera_entity
     triggered = []
     event_entity._trigger_event = lambda event_type, data: triggered.append(
@@ -233,7 +235,7 @@ def test_ai_detection_event_entity_triggers_first_new_event_after_empty_startup(
     event_entity.async_write_ha_state = lambda: triggered.append(("write", None))
 
     event_entity._handle_coordinator_update()
-    assert triggered == []
+    assert triggered == [("write", None)]
 
     camera_entity.data.update(
         {
@@ -245,6 +247,7 @@ def test_ai_detection_event_entity_triggers_first_new_event_after_empty_startup(
     event_entity._handle_coordinator_update()
 
     assert triggered == [
+        ("write", None),
         (
             "person",
             {
@@ -255,7 +258,22 @@ def test_ai_detection_event_entity_triggers_first_new_event_after_empty_startup(
             },
         ),
         ("write", None),
+        ("write", None),
     ]
+
+
+def test_ai_detection_event_entity_does_not_write_before_added():
+    camera_entity = entity("SSC0A", {"supportPersonDetect": True})
+    event_entity = event.XSenseEventEntity.__new__(event.XSenseEventEntity)
+    event_entity._ai_detection_initialized = False
+    event_entity._last_ai_detection_fingerprint = None
+    event_entity._current_entity = lambda: camera_entity
+    triggered = []
+    event_entity.async_write_ha_state = lambda: triggered.append(("write", None))
+
+    event_entity._handle_coordinator_update()
+
+    assert triggered == []
 
 
 def test_camera_availability_follows_apk_non_offline_statuses():

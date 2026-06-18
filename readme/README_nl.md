@@ -109,8 +109,8 @@ De integratie maakt Home Assistant-entiteiten alleen voor velden die echt aanwez
 Sommige entiteiten zijn diagnostisch of configuratiegerelateerd en worden zo gegroepeerd in Home Assistant. Als een apparaat een bepaald veld niet rapporteert, of als de X-Sense-app de functie als niet ondersteund markeert voor dat apparaat/account, wordt de bijbehorende entiteit niet aangemaakt. Apparaat koppelen, verwijderen, delen, account, betaling, firmware-update, SD-kaart formatteren en andere beheeracties blijven in de X-Sense-app.
 ____________________________________________________________
 
-## Camera AI Notifications
-Supported cameras create an `AI Detection` event entity, such as `event.front_camera_ai_detection`. Use this `event.*` entity for notification automations, and replace the sample entity ID with the actual entity ID shown in your Home Assistant instance.
+## Camera Live View and AI Notifications
+Supported cameras use native Home Assistant WebRTC for live video and audio. They also create an `AI Detection` event entity, such as `event.front_camera_ai_detection`. Use this `event.*` entity for notification automations, and replace the sample entity ID with the actual entity ID shown in your Home Assistant instance.
 
 The easiest UI path is the included blueprint. Use the button below to import it, select the camera `AI Detection` event entity, leave Detection types selected to notify for every AI event, then keep or replace the default notification action.
 
