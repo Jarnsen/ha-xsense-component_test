@@ -6,7 +6,6 @@ on:
   push:
     tags:
       - "v*.*.*"
-      - "[0-9]*.[0-9]*.[0-9]*"
   workflow_dispatch:
 
 permissions:
@@ -31,9 +30,20 @@ jobs:
           version_notes_file=".github/release-notes/${tag#v}.md"
           title="${tag}"
 
+          if [[ ! "$tag" =~ ^v[0-9]+[.][0-9]+[.][0-9]+([.][0-9]+)?$ ]]; then
+            echo "Release tags must use vX.Y.Z or vX.Y.Z.N format."
+            exit 1
+          fi
+
           release_args=(--verify-tag --title "$title")
           version="${tag#v}"
-          version="${version#v.}"
+
+          manifest_version="$(jq -r '.version' custom_components/xsense/manifest.json)"
+          if [[ "$manifest_version" != "$version" ]]; then
+            echo "Manifest version ${manifest_version} does not match tag version ${version}."
+            exit 1
+          fi
+
           IFS='.' read -r -a version_parts <<< "$version"
           if (( ${#version_parts[@]} >= 4 )); then
             release_args+=(--prerelease)

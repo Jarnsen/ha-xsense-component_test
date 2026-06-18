@@ -283,6 +283,63 @@ def test_mqtt_camera_motion_event_accepts_json_string_event_data():
     assert data["isMoved"] == "1"
 
 
+def test_mqtt_camera_motion_event_accepts_apk_motion_event_names():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventType": "motion_detection",
+            "eventTime": "20260614221612",
+            "eventData": {
+                "serialNumber": "camera-sn",
+                "deviceName": "Garden",
+            },
+        }
+    )
+
+    assert data["serialNumber"] == "camera-sn"
+    assert data["eventType"] == "motion_detection"
+    assert data["isMoved"] == "1"
+    assert data["lastMotionTime"] == "20260614221612"
+
+
+def test_mqtt_camera_motion_event_accepts_nested_apk_motion_event_items():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventTime": "20260614221712",
+            "eventData": {
+                "serialNumber": "camera-sn",
+                "eventItems": [
+                    {"eventType": "motion_detected", "eventTime": "20260614221712"}
+                ],
+            },
+        }
+    )
+
+    assert data["serialNumber"] == "camera-sn"
+    assert data["isMoved"] == "1"
+    assert data["lastMotionTime"] == "20260614221712"
+
+
+def test_mqtt_top_level_camera_motion_event_is_not_discarded():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventType": "camera_motion",
+            "eventTime": "20260614221812",
+            "serialNumber": "camera-sn",
+        }
+    )
+
+    assert data["serialNumber"] == "camera-sn"
+    assert data["eventType"] == "camera_motion"
+    assert data["isMoved"] == "1"
+    assert data["lastMotionTime"] == "20260614221812"
+
+
 def test_mqtt_camera_ai_event_maps_apk_detection_objects():
     from custom_components.xsense.coordinator import _mqtt_reported_data
 
@@ -297,6 +354,8 @@ def test_mqtt_camera_ai_event_maps_apk_detection_objects():
     )
 
     assert data["lastAiDetection"] == "person"
+    assert data["isMoved"] == "1"
+    assert data["lastMotionTime"] == "20260614231512"
     assert data["personDetected"] is True
     assert data["petDetected"] is False
     assert data["vehicleDetected"] is False

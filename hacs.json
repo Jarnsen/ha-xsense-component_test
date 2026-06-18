@@ -1,4 +1,6 @@
 {
-    "name": "xsense",
-    "render_readme": true
+    "name": "X-Sense Home Security",
+    "homeassistant": "2025.3.0",
+    "hacs": "2.0.0",
+    "render_readme": false
 }
