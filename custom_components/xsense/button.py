@@ -20,7 +20,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DOMAIN
 from .api.async_xsense import AsyncXSense
 from .coordinator import XSenseDataUpdateCoordinator
-from .entity import XSenseEntity
+from .entity import (
+    XSenseEntity,
+    coordinator_devices,
+    coordinator_stations,
+    device_station_id,
+)
 
 
 async def run_action(entity: Entity, xsense: AsyncXSense, action: str) -> None:
@@ -102,17 +107,17 @@ async def async_setup_entry(
     devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    for station in coordinator.data["stations"].values():
+    for station in coordinator_stations(coordinator).values():
         devices.extend(
             XSenseButtonEntity(coordinator, station, description)
             for description in BUTTONS
             if description.exists_fn(station, coordinator.xsense)
         )
 
-    for dev in coordinator.data["devices"].values():
+    for dev in coordinator_devices(coordinator).values():
         devices.extend(
             XSenseButtonEntity(
-                coordinator, dev, description, station_id=dev.station.entity_id
+                coordinator, dev, description, station_id=device_station_id(dev)
             )
             for description in BUTTONS
             if description.exists_fn(dev, coordinator.xsense)

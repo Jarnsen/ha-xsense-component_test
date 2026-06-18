@@ -19,7 +19,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
-from .entity import XSenseEntity
+from .entity import (
+    XSenseEntity,
+    coordinator_devices,
+    coordinator_stations,
+    device_station_id,
+)
 
 
 def boolean_state(value) -> bool | None:
@@ -400,17 +405,17 @@ async def async_setup_entry(
     devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    for station in coordinator.data["stations"].values():
+    for station in coordinator_stations(coordinator).values():
         devices.extend(
             XSenseSwitchEntity(coordinator, station, description)
             for description in SWITCHES
             if description.exists_fn(station)
         )
 
-    for dev in coordinator.data["devices"].values():
+    for dev in coordinator_devices(coordinator).values():
         devices.extend(
             XSenseSwitchEntity(
-                coordinator, dev, description, station_id=dev.station.entity_id
+                coordinator, dev, description, station_id=device_station_id(dev)
             )
             for description in SWITCHES
             if description.exists_fn(dev)

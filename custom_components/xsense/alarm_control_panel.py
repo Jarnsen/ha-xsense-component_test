@@ -17,6 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
+from .entity import coordinator_stations
 from .coordinator import XSenseDataUpdateCoordinator
 
 LOGGER = logging.getLogger(__name__)
@@ -37,7 +38,9 @@ async def async_setup_entry(
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = []
-    for house in coordinator.xsense.houses.values():
+    xsense = getattr(coordinator, "xsense", None)
+    houses = getattr(xsense, "houses", {}) or {}
+    for house in houses.values():
         for station in house.stations.values():
             if station_supports_alarm_panel(station):
                 LOGGER.debug(
@@ -107,7 +110,7 @@ class XSenseAlarmControlPanel(
     @property
     def _station(self):
         """Return the current station object from coordinator data."""
-        return self.coordinator.data["stations"].get(self._station_id)
+        return coordinator_stations(self.coordinator).get(self._station_id)
 
     @property
     def available(self) -> bool:

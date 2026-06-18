@@ -171,9 +171,9 @@ def test_ai_detection_sensors_precreate_for_supported_camera():
         assert description.exists_fn(camera_with_event_data)
 
 
-def test_ai_detection_event_entity_precreates_for_supported_camera():
+def test_ai_detection_event_entity_precreates_for_camera_notifications():
     supported_camera = entity("SSC0A", {"supportPersonDetect": True})
-    unsupported_camera = entity("SSC0A", {"supportPersonDetect": False})
+    camera_without_ai_plan = entity("SSC0A", {"supportPersonDetect": False})
     camera_with_event_data = entity(
         "SSC0A", {"supportPersonDetect": False, "lastAiDetection": "person"}
     )
@@ -182,9 +182,14 @@ def test_ai_detection_event_entity_precreates_for_supported_camera():
     description = event.AI_DETECTION_DESCRIPTION
 
     assert description.exists_fn(supported_camera)
-    assert not description.exists_fn(unsupported_camera)
+    assert description.exists_fn(camera_without_ai_plan)
     assert description.exists_fn(camera_with_event_data)
     assert not description.exists_fn(non_camera)
+
+
+def test_ai_detection_event_entities_handle_missing_coordinator_data():
+    assert event._ai_detection_event_entities(SimpleNamespace(data=None)) == []
+    assert event._ai_detection_event_entities(SimpleNamespace(data={})) == []
 
 
 def test_ai_detection_event_entities_include_device_cameras():
@@ -225,6 +230,89 @@ def test_ai_detection_event_entities_include_device_cameras():
     assert entities[0]._station_id is None
     assert entities[1]._station_id == station.entity_id
     assert entities[1]._current_entity() is device_camera
+
+
+def test_camera_entities_include_device_cameras():
+    station = entity("SBS50", {})
+    station.entity_id = "station-1"
+    station.name = "Station"
+    station.online = True
+
+    station_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
+    station_camera.entity_id = "station-camera"
+    station_camera.name = "Station Camera"
+    station_camera.online = True
+
+    device_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
+    device_camera.entity_id = "device-camera"
+    device_camera.name = "Device Camera"
+    device_camera.online = True
+    device_camera.station = station
+
+    class Coordinator:
+        data = {
+            "stations": {
+                station.entity_id: station,
+                station_camera.entity_id: station_camera,
+            },
+            "devices": {device_camera.entity_id: device_camera},
+        }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    entities = camera._camera_entities(Coordinator())
+
+    assert [entity._dev_id for entity in entities] == [
+        station_camera.entity_id,
+        device_camera.entity_id,
+    ]
+    assert entities[0]._station_id is None
+    assert entities[1]._station_id == station.entity_id
+    assert entities[1]._current_entity() is device_camera
+
+
+def test_camera_entities_include_standalone_device_cameras():
+    device_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
+    device_camera.entity_id = "standalone-camera"
+    device_camera.name = "Standalone Camera"
+    device_camera.online = True
+
+    class Coordinator:
+        data = {
+            "stations": {},
+            "devices": {device_camera.entity_id: device_camera},
+        }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    entities = camera._camera_entities(Coordinator())
+
+    assert [entity._dev_id for entity in entities] == [device_camera.entity_id]
+    assert entities[0]._station_id == ""
+    assert entities[0]._current_entity() is device_camera
+
+
+def test_camera_entities_do_not_duplicate_station_backed_cameras():
+    station_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
+    station_camera.entity_id = "camera-id"
+    station_camera.name = "Station Camera"
+    station_camera.online = True
+
+    class Coordinator:
+        data = {
+            "stations": {station_camera.entity_id: station_camera},
+            "devices": {station_camera.entity_id: station_camera},
+        }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    entities = camera._camera_entities(Coordinator())
+
+    assert [entity._dev_id for entity in entities] == [station_camera.entity_id]
+    assert entities[0]._station_id is None
 
 
 def test_ai_detection_event_entities_include_standalone_device_cameras():

@@ -17,7 +17,6 @@ blueprint:
           filter:
             - integration: xsense
               domain: event
-              device_class: motion
     event_types:
       name: Detection types
       description: Leave all selected to notify for every AI detection, or choose only the types you want.

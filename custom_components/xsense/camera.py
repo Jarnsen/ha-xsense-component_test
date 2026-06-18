@@ -27,7 +27,12 @@ from webrtc_models import RTCIceCandidateInit
 from .api.async_xsense import camera_live_resolution, is_camera_entity
 from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
-from .entity import XSenseEntity
+from .entity import (
+    XSenseEntity,
+    coordinator_devices,
+    coordinator_stations,
+    device_station_id,
+)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -49,15 +54,41 @@ async def async_setup_entry(
     """Set up X-Sense camera entities."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        (
-            XSenseWebRTCCameraEntity(coordinator, station, CAMERA_DESCRIPTION)
-            if _is_webrtc_camera(station)
-            else XSenseCameraEntity(coordinator, station, CAMERA_DESCRIPTION)
+    async_add_entities(_camera_entities(coordinator))
+
+
+def _camera_entities(
+    coordinator: XSenseDataUpdateCoordinator,
+) -> list[XSenseCameraEntity]:
+    """Return X-Sense camera entities from station and device records."""
+    entities: list[XSenseCameraEntity] = []
+    seen_entity_ids: set[str] = set()
+
+    for station in coordinator_stations(coordinator).values():
+        if is_camera_entity(station):
+            entities.append(_camera_entity(coordinator, station))
+            seen_entity_ids.add(station.entity_id)
+
+    for device in coordinator_devices(coordinator).values():
+        if not is_camera_entity(device) or device.entity_id in seen_entity_ids:
+            continue
+        entities.append(
+            _camera_entity(coordinator, device, station_id=device_station_id(device))
         )
-        for station in coordinator.data["stations"].values()
-        if is_camera_entity(station)
+
+    return entities
+
+
+def _camera_entity(
+    coordinator: XSenseDataUpdateCoordinator,
+    entity,
+    station_id: str | None = None,
+) -> XSenseCameraEntity:
+    """Return the correct Home Assistant camera entity for an X-Sense camera."""
+    entity_cls = (
+        XSenseWebRTCCameraEntity if _is_webrtc_camera(entity) else XSenseCameraEntity
     )
+    return entity_cls(coordinator, entity, CAMERA_DESCRIPTION, station_id=station_id)
 
 
 class XSenseCameraEntity(XSenseEntity, Camera):
@@ -70,11 +101,12 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         coordinator: XSenseDataUpdateCoordinator,
         entity,
         entity_description: XSenseCameraEntityDescription,
+        station_id: str | None = None,
     ) -> None:
         """Set up the camera entity."""
         Camera.__init__(self)
         self.entity_description = entity_description
-        super().__init__(coordinator, entity)
+        super().__init__(coordinator, entity, station_id=station_id)
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -147,9 +179,12 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         coordinator: XSenseDataUpdateCoordinator,
         entity,
         entity_description: XSenseCameraEntityDescription,
+        station_id: str | None = None,
     ) -> None:
         """Set up the WebRTC camera entity."""
-        super().__init__(coordinator, entity, entity_description)
+        super().__init__(
+            coordinator, entity, entity_description, station_id=station_id
+        )
         self._webrtc_sessions: dict[str, object] = {}
         self._pending_webrtc_candidates: dict[str, list[object]] = {}
 

@@ -20,7 +20,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .entity import XSenseEntity
+from .entity import XSenseEntity, coordinator_devices
 
 if TYPE_CHECKING:
     from .coordinator import XSenseDataUpdateCoordinator
@@ -55,11 +55,6 @@ _AI_DETECTION_TIME_KEYS: dict[str, str] = {
     "other": "lastOtherDetectionTime",
 }
 
-_AI_DETECTION_DATA_KEYS = frozenset(
-    {"lastAiDetection", *_AI_DETECTION_TIME_KEYS.values()}
-)
-
-
 @dataclass(kw_only=True, frozen=True)
 class XSenseEventEntityDescription(EventEntityDescription):
     """Describes X-Sense event entity."""
@@ -72,11 +67,7 @@ AI_DETECTION_DESCRIPTION = XSenseEventEntityDescription(
     translation_key="ai_detection",
     device_class=EventDeviceClass.MOTION,
     event_types=[AI_DETECTION_EVENT_TYPE, *AI_DETECTION_TYPES],
-    exists_fn=lambda entity: is_camera_entity(entity)
-    and (
-        entity.data.get("supportPersonDetect") is not False
-        or any(key in entity.data for key in _AI_DETECTION_DATA_KEYS)
-    ),
+    exists_fn=is_camera_entity,
 )
 
 
@@ -115,7 +106,7 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
     def _current_entity(self) -> Entity | None:
         """Return the current coordinator entity for this event entity."""
         if self._device_entity:
-            return self.coordinator.data["devices"].get(self._dev_id)
+            return coordinator_devices(self.coordinator).get(self._dev_id)
         return super()._current_entity()
 
     def _handle_coordinator_update(self) -> None:
@@ -163,14 +154,17 @@ def _ai_detection_event_entities(
 ) -> list[XSenseEventEntity]:
     """Return X-Sense event entities for supported cameras."""
     entities: list[XSenseEventEntity] = []
+    data = coordinator.data or {}
+    stations = data.get("stations", {})
+    devices = data.get("devices", {})
 
-    for station in coordinator.data["stations"].values():
+    for station in stations.values():
         if AI_DETECTION_DESCRIPTION.exists_fn(station):
             entities.append(
                 XSenseEventEntity(coordinator, station, AI_DETECTION_DESCRIPTION)
             )
 
-    for device in coordinator.data["devices"].values():
+    for device in devices.values():
         if not AI_DETECTION_DESCRIPTION.exists_fn(device):
             continue
 

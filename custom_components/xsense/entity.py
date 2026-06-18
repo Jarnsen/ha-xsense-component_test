@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 OFFLINE_STATES = {False, 0, "0", "false", "False", "offline", "Offline"}
 _APK_CAMERA_NON_OFFLINE_STATUSES = {11, 12}
+DEVICE_ENTITY_WITHOUT_STATION = ""
 
 
 def _apk_entity_is_available(entity: Entity) -> bool:
@@ -47,6 +48,7 @@ class XSenseEntity(CoordinatorEntity):
         """Initialise the gateway."""
         super().__init__(coordinator)
         self._dev_id = entity.entity_id
+        self._station_id = station_id
 
         self._attr_unique_id = (
             f"{entity.entity_id}-{self.entity_description.key}".replace(
@@ -68,9 +70,10 @@ class XSenseEntity(CoordinatorEntity):
 
     def _current_entity(self) -> Entity | None:
         """Return the current coordinator entity for this Home Assistant entity."""
-        if self._station_id:
-            return self.coordinator.data["devices"].get(self._dev_id)
-        return self.coordinator.data["stations"].get(self._dev_id)
+        data = self.coordinator.data or {}
+        if self._station_id is not None:
+            return data.get("devices", {}).get(self._dev_id)
+        return data.get("stations", {}).get(self._dev_id)
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to updates."""
@@ -84,7 +87,9 @@ class XSenseEntity(CoordinatorEntity):
             return False
 
         if self._station_id:
-            station = self.coordinator.data["stations"].get(self._station_id)
+            station = (self.coordinator.data or {}).get("stations", {}).get(
+                self._station_id
+            )
             return (
                 station is not None
                 and _apk_entity_is_available(station)
@@ -97,3 +102,19 @@ class XSenseEntity(CoordinatorEntity):
     def available(self) -> bool:
         """Return if entity data is available."""
         return self._current_entity() is not None and super().available
+
+
+def coordinator_stations(coordinator: XSenseDataUpdateCoordinator) -> dict:
+    """Return coordinator station records, tolerating partial refresh state."""
+    return (coordinator.data or {}).get("stations", {})
+
+
+def coordinator_devices(coordinator: XSenseDataUpdateCoordinator) -> dict:
+    """Return coordinator device records, tolerating partial refresh state."""
+    return (coordinator.data or {}).get("devices", {})
+
+
+def device_station_id(device: Entity) -> str:
+    """Return a device parent station ID or a device-entity sentinel."""
+    station = getattr(device, "station", None)
+    return getattr(station, "entity_id", None) or DEVICE_ENTITY_WITHOUT_STATION

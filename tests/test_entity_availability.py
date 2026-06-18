@@ -21,6 +21,7 @@ from custom_components.xsense.switch import (
     XSenseSwitchEntity,
     XSenseSwitchEntityDescription,
 )
+from custom_components.xsense.entity import device_station_id
 
 
 class Coordinator:
@@ -164,6 +165,30 @@ def test_child_controls_require_parent_station_online():
     station.online = False
 
     assert not button.available
+
+
+def test_standalone_child_control_uses_device_map_without_parent_station():
+    station = _xs01_wx_from_real_shadow()
+    child = station.__class__(
+        station.house,
+        stationId="child-id",
+        stationName="Standalone Device",
+        stationSn="child-sn",
+        category="SSC0A",
+        online=1,
+    )
+    child.entity_id = "child-id"
+    coordinator = Coordinator(station, {child.entity_id: child})
+    button = XSenseButtonEntity(
+        coordinator,
+        child,
+        XSenseButtonEntityDescription(key="test", press_fn=_noop_press),
+        station_id=device_station_id(child),
+    )
+
+    assert button._station_id == ""
+    assert button._current_entity() is child
+    assert button.available
 
 
 def test_controls_are_unavailable_when_online_state_is_unknown():

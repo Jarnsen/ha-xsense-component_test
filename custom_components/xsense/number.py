@@ -17,7 +17,12 @@ from .api.device import Device
 from .api.entity import Entity
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
-from .entity import XSenseEntity
+from .entity import (
+    XSenseEntity,
+    coordinator_devices,
+    coordinator_stations,
+    device_station_id,
+)
 
 
 def has_data(key: str) -> Callable[[Entity], bool]:
@@ -251,17 +256,17 @@ async def async_setup_entry(
     devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    for station in coordinator.data["stations"].values():
+    for station in coordinator_stations(coordinator).values():
         devices.extend(
             XSenseNumberEntity(coordinator, station, description)
             for description in NUMBERS
             if description.exists_fn(station)
         )
 
-    for dev in coordinator.data["devices"].values():
+    for dev in coordinator_devices(coordinator).values():
         devices.extend(
             XSenseNumberEntity(
-                coordinator, dev, description, station_id=dev.station.entity_id
+                coordinator, dev, description, station_id=device_station_id(dev)
             )
             for description in NUMBERS
             if description.exists_fn(dev)
