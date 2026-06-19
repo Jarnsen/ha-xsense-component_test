@@ -102,7 +102,7 @@ De integratie maakt Home Assistant-entiteiten alleen voor velden die echt aanwez
 
 - Binaire sensoren voor alarm, mute, end-of-life, AC-break, wateralarm, temperatuuralarm, laden, beweging, deur, armed status, warning, reminder, light, PIR en keypad-status.
 - Sensoren voor batterij, RF-signaal, Wi-Fi-signaal, firmware, temperatuur, luchtvochtigheid, CO-niveau, CO-piek, alarmvolume, spraakvolume, pieptoonvolume, herinneringsvolume, waarschuwingsdrempels, stilte-timers, leesbare tijdstempels, tijdzone en andere diagnostische gegevens.
-- Camera setup and tuning controls remain in the X-Sense app.
+- Supported camera setup and tuning controls are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - Test-, mute-, fire-drill- en camera wake-knoppen voor modellen waarbij de X-Sense-app de bijbehorende actie aanbiedt.
 
 Sommige entiteiten zijn diagnostisch of configuratiegerelateerd en worden zo gegroepeerd in Home Assistant. Als een apparaat een bepaald veld niet rapporteert, of als de X-Sense-app de functie als niet ondersteund markeert voor dat apparaat/account, wordt de bijbehorende entiteit niet aangemaakt. Apparaat koppelen, verwijderen, delen, account, betaling, firmware-update, SD-kaart formatteren en andere beheeracties blijven in de X-Sense-app.

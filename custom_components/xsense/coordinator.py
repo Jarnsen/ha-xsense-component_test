@@ -437,10 +437,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 topic,
             )
 
-        if _is_self_test_topic(topic) and "selfTest" in station_data:
-            station_data["lastSelfTest"] = station_data.pop("selfTest")
-            if test_time := station_data.pop("time", None):
-                station_data["lastSelfTestTime"] = test_time
+        if _is_self_test_topic(topic):
+            _normalize_self_test_report(station_data)
 
         children = station_data.pop("devs", {}) or {}
         target_device_sn = (
@@ -862,6 +860,52 @@ def _is_self_test_topic(topic: str) -> bool:
             "selftestup_v2/update",
         )
     )
+
+
+_SELF_TEST_RESULT_KEYS = (
+    "lastSelfTest",
+    "selfTest",
+    "selfTestResult",
+    "selfTestStatus",
+    "testResult",
+    "testStatus",
+    "result",
+)
+
+_SELF_TEST_TIME_KEYS = (
+    "lastSelfTestTime",
+    "selfTestTime",
+    "testTime",
+    "eventTime",
+    "timestamp",
+    "time",
+)
+
+
+def _normalize_self_test_report(data: dict[str, Any]) -> None:
+    """Normalize APK self-test report fields into HA sensor keys."""
+    for key in _SELF_TEST_RESULT_KEYS:
+        value = data.get(key)
+        if value not in (None, ""):
+            data["lastSelfTest"] = _normalize_self_test_result(value)
+            break
+
+    for key in _SELF_TEST_TIME_KEYS:
+        value = data.get(key)
+        if value not in (None, ""):
+            data["lastSelfTestTime"] = value
+            break
+
+
+def _normalize_self_test_result(value: Any) -> Any:
+    """Return the app-style success code when the report uses readable text."""
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"success", "successful", "ok", "pass", "passed"}:
+            return "0"
+        if normalized in {"fail", "failed", "failure", "error"}:
+            return "1"
+    return value
 
 
 def _is_presence_topic(topic: str) -> bool:

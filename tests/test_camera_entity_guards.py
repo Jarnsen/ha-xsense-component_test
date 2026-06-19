@@ -51,14 +51,27 @@ def test_is_life_end_uses_explicit_boolean_parser():
     assert description.value_fn(entity("XS01-WX", {"isLifeEnd": "unknown"})) is None
 
 
-def test_camera_setup_controls_are_not_exposed_in_home_assistant():
-    assert not any(
-        description.key.startswith("camera_") for description in switch.SWITCHES
-    )
-    assert select.SELECTS == ()
-    assert not any(
-        description.key.startswith("camera_") for description in number.NUMBERS
-    )
+def test_camera_setup_controls_are_exposed_for_automation_when_supported():
+    switch_keys = {description.key for description in switch.SWITCHES}
+    select_keys = {description.key for description in select.SELECTS}
+    number_keys = {description.key for description in number.NUMBERS}
+
+    assert {
+        "camera_motion_detection",
+        "camera_live_audio",
+        "camera_recording_audio",
+        "camera_alarm_when_removed",
+    }.issubset(switch_keys)
+    assert {
+        "camera_language",
+        "camera_recording_resolution",
+        "camera_default_codec",
+    }.issubset(select_keys)
+    assert {
+        "camera_alarm_volume",
+        "camera_live_speaker_volume",
+        "camera_cooldown",
+    }.issubset(number_keys)
 
 
 def test_read_only_camera_entities_require_camera_entity():

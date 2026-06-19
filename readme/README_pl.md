@@ -104,7 +104,7 @@ Integracja tworzy encje Home Assistant tylko dla pól faktycznie obecnych w chmu
 
 - Czujniki binarne dla alarm, mute, end-of-life, AC-break, alarmu wody, alarmu temperatury, ładowania, ruchu, drzwi, stanu armed, warning, reminder, light, PIR i stanu keypad.
 - Czujniki baterii, sygnału RF, sygnału Wi-Fi, firmware, temperatury, wilgotności, poziomu CO, szczytu CO, głośności alarmu, głośności głosu, głośności sygnału, głośności przypomnień, progów ostrzeżeń, timerów wyciszenia, czytelnych znaczników czasu, strefy czasowej i innych danych diagnostycznych.
-- Camera setup and tuning controls remain in the X-Sense app.
+- Supported camera setup and tuning controls are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - Przyciski test, mute, fire-drill i camera wake dla modeli, w których aplikacja X-Sense udostępnia odpowiednią akcję.
 
 Część encji jest diagnostyczna lub konfiguracyjna i tak jest grupowana w Home Assistant. Jeśli urządzenie nie zgłasza konkretnego pola albo aplikacja X-Sense oznacza funkcję jako nieobsługiwaną dla danego urządzenia/konta, odpowiednia encja nie jest tworzona. Parowanie, usuwanie, udostępnianie urządzeń, konto, płatności, aktualizacja firmware, formatowanie karty SD i inne akcje administracyjne pozostają w aplikacji X-Sense.

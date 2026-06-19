@@ -132,7 +132,7 @@ def self_test_result(entity: Entity) -> str | None:
     value = entity.data.get("lastSelfTest")
     if value in (None, ""):
         return "not_run"
-    if str(value) == "0":
+    if str(value).strip().lower() in {"0", "success", "successful", "ok", "pass"}:
         return "success"
     return "failed"
 

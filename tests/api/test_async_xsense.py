@@ -1478,22 +1478,13 @@ async def test_sbs50_child_mute_uses_apk_payload_shape(device_type, expected_sha
 
 
 @pytest.mark.asyncio
-async def test_xs03_iwx_mute_uses_apk_station_serial_thing_name():
+async def test_xs03_iwx_mute_is_not_exposed_without_confirmed_app_path():
     client = async_xsense.AsyncXSense()
-    client.userid = "user-id"
     device = fake_child_device("XS03-iWX", station=FakeXSenseStation("SBS10"))
 
-    station_arg, page, desired = await _capture_action(client, device, "mute")
-
-    assert station_arg.shadow_name == "station-sn"
-    assert page == "appmute"
-    assert desired["shadow"] == "appMute"
-    assert desired["stationSN"] == "station-sn"
-    assert desired["deviceSN"] == "device-sn"
-    assert desired["userId"] == "user-id"
-    assert desired["muteType"] == "1"
-    assert desired["time"].isdigit()
-    assert len(desired["time"]) == 14
+    assert not client.has_action(device, "mute")
+    with pytest.raises(exceptions.XSenseError):
+        await client.action(device, "mute")
 
 
 @pytest.mark.asyncio
@@ -2490,6 +2481,133 @@ async def test_update_camera_data_queries_audio_when_apk_support_is_unspecified(
     assert camera.data["recordingAudioToggleOn"] is True
     assert camera.data["liveSpeakerVolume"] == 80
     assert ("/device/config/querydeviceaudio", {"serialNumber": "cam-sn"}) in calls
+
+
+@pytest.mark.asyncio
+async def test_update_camera_config_uses_apk_user_config_payload():
+    client = async_xsense.AsyncXSense()
+    camera = entity.Entity()
+    camera.sn = "cam-sn"
+    camera.type = "SSC0A"
+    camera.set_data(
+        {
+            "motionSensitivity": 0,
+            "videoSeconds": 0,
+            "alarmSeconds": 0,
+            "nightThresholdLevel": 2,
+        }
+    )
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_config(
+        camera, needMotion=True, needVideo=True, needAlarm=True, needNightVision=True
+    )
+
+    assert calls == [
+        (
+            "/device/updateuserconfig",
+            {
+                "serialNumber": "cam-sn",
+                "needMotion": 1,
+                "needVideo": 1,
+                "needAlarm": 1,
+                "needNightVision": 1,
+                "motionSensitivity": 1,
+                "videoSeconds": -1,
+                "alarmSeconds": 5,
+                "nightThresholdLevel": 2,
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_update_camera_audio_preserves_existing_audio_fields():
+    client = async_xsense.AsyncXSense()
+    camera = entity.Entity()
+    camera.sn = "cam-sn"
+    camera.type = "SSC0A"
+    camera.set_data(
+        {
+            "doorBellRingKey": 3,
+            "liveAudioToggleOn": True,
+            "liveSpeakerVolume": 70,
+            "recordingAudioToggleOn": False,
+        }
+    )
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_audio(camera, liveSpeakerVolume=80)
+
+    assert calls == [
+        (
+            "/device/config/updatedeviceaudio",
+            {
+                "serialNumber": "cam-sn",
+                "deviceAudio": {
+                    "doorBellRingKey": 3,
+                    "liveAudioToggleOn": True,
+                    "liveSpeakerVolume": 80,
+                    "recordingAudioToggleOn": False,
+                },
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_update_camera_control_helpers_use_apk_endpoints():
+    client = async_xsense.AsyncXSense()
+    camera = entity.Entity()
+    camera.sn = "cam-sn"
+    camera.type = "SSC0A"
+    camera.set_data({"alarmWhenRemoveToggleOn": False})
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_recording_resolution(camera, "P1080")
+    await client.update_camera_default_codec(camera, "h265")
+    await client.update_camera_cooldown(camera, user_enable=True, value=30)
+    await client.update_camera_doorbell_config(camera, alarmWhenRemoveToggleOn=True)
+
+    assert calls == [
+        (
+            "/device/updaterecresolution",
+            {"serialNumber": "cam-sn", "recResolution": "P1080"},
+        ),
+        (
+            "/device/config/updatedefaultcodec",
+            {"serialNumber": "cam-sn", "defaultCodec": "h265"},
+        ),
+        (
+            "/device/updateCooldown",
+            {"serialNumber": "cam-sn", "cooldown": {"userEnable": True, "value": 30}},
+        ),
+        (
+            "/device/config/updatedoorbellconfig",
+            {
+                "serialNumber": "cam-sn",
+                "doorbellConfig": {"alarmWhenRemoveToggleOn": True},
+            },
+        ),
+    ]
 
 
 @pytest.mark.asyncio

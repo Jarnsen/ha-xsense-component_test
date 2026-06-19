@@ -102,7 +102,7 @@ ____________________________________________________________
 
 - alarm、mute、end-of-life、AC-break、水漏れアラーム、温度アラーム、充電、モーション、ドア、armed 状態、warning、reminder、light、PIR、keypad 状態のバイナリセンサー。
 - バッテリー、RF信号、Wi-Fi信号、ファームウェア、温度、湿度、CO濃度、COピーク、アラーム音量、音声音量、チャープ音量、リマインダー音量、警告しきい値、ミュートタイマー、読みやすい タイムスタンプ、タイムゾーン、その他の診断センサー。
-- Camera setup and tuning controls remain in the X-Sense app.
+- Supported camera setup and tuning controls are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - X-Sense アプリが該当モデルで対応操作を提供している場合の test、mute、fire-drill、camera wake ボタン。
 
 一部のエンティティは診断または設定関連であり、Home Assistant でもそのように分類されます。デバイスが特定のフィールドを報告しない場合、または X-Sense アプリがそのデバイス/アカウントで機能非対応と示す場合、対応するエンティティは作成されません。デバイスの追加、削除、共有、アカウント、支払い、ファームウェア 更新、SD カード初期化、その他の管理操作は X-Sense アプリ側に残ります。

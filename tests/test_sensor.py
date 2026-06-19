@@ -40,6 +40,12 @@ def test_self_test_result_success_code_matches_apk():
     assert self_test_result(entity) == "success"
 
 
+def test_self_test_result_accepts_success_text():
+    entity = SimpleNamespace(data={"lastSelfTest": "successful"})
+
+    assert self_test_result(entity) == "success"
+
+
 def test_self_test_result_preserves_failure_code():
     entity = SimpleNamespace(data={"lastSelfTest": "3"})
 

@@ -101,7 +101,7 @@ Installation আৰু configuration সফল হলে integration Home Assist
 
 - এলাৰ্ম, mute, end-of-life, AC-break, water alarm, তাপমাত্ৰা এলাৰ্ম, charging, motion, door, armed, warning, reminder, light, PIR, আৰু keypad status-ৰ binary sensor।
 - বেটাৰী, RF সংকেত, Wi-Fi সংকেত, ফাৰ্মৱেৰ, তাপমাত্ৰা, আৰ্দ্ৰতা, CO স্তৰ, CO সৰ্বোচ্চ মান, এলাৰ্মৰ volume, কণ্ঠস্বৰৰ ভলিউম, চাৰ্প ভলিউম, সোঁৱৰাই দিয়াৰ ভলিউম, সতৰ্কতাৰ সীমা, নীৰৱ কৰাৰ টাইমাৰ, পঢ়িব পৰা সময়চিহ্ন, সময় মণ্ডল, আৰু অন্য diagnostic চেন্সৰ।
-- Camera setup and tuning controls remain in the X-Sense app.
+- Supported camera setup and tuning controls are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - যি মডেলত X-Sense app-এ মিল থকা কাৰ্য দিয়ে, সেইবোৰৰ বাবে test, mute, fire-drill, আৰু camera wake button।
 
 কিছুমান এণ্টিটি diagnostic বা configuration-সম্পৰ্কীয় আৰু Home Assistant-ত তেনেকৈ group কৰা হয়। ডিভাইচে কোনো ক্ষেত্ৰ report নকৰিলে, বা X-Sense app-এ সেই ডিভাইচ/একাউণ্টৰ বাবে সুবিধা সমৰ্থিত নহয় বুলি দেখুৱালে, সংশ্লিষ্ট এণ্টিটি সৃষ্টি নহয়। ডিভাইচ জোৰা লগোৱা, আঁতৰোৱা, ভাগ-বতৰা কৰা, একাউণ্ট, payment, ফাৰ্মৱেৰ আপডেট, SD-card format, আৰু অন্য পৰিচালনামূলক কাৰ্য X-Sense app-তেই থাকে।

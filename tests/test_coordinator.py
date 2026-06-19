@@ -2,7 +2,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from custom_components.xsense.coordinator import _is_self_test_topic
+from custom_components.xsense.coordinator import (
+    _is_self_test_topic,
+    _normalize_self_test_report,
+)
 
 
 def test_connect_path_does_not_reintroduce_integration_login_timeout():
@@ -32,6 +35,15 @@ def test_self_test_topic_detection_matches_apk_markers():
     assert not _is_self_test_topic(
         "$aws/things/SBS50sn/shadow/name/2nd_safemode/update"
     )
+
+
+def test_self_test_report_normalizes_apk_result_aliases():
+    data = {"result": "successful", "eventTime": "20260619120000"}
+
+    _normalize_self_test_report(data)
+
+    assert data["lastSelfTest"] == "0"
+    assert data["lastSelfTestTime"] == "20260619120000"
 
 
 @pytest.mark.asyncio

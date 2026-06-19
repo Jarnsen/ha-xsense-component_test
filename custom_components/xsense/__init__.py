@@ -117,51 +117,11 @@ OBSOLETE_BINARY_SENSOR_KEYS: tuple[str, ...] = (
     "package_exist_detected",
 )
 
-OBSOLETE_SWITCH_KEYS: tuple[str, ...] = (
-    "camera_motion_detection",
-    "camera_video_recording",
-    "camera_night_vision",
-    "camera_recording_light",
-    "camera_alarm",
-    "camera_mirror_flip",
-    "camera_antiflicker",
-    "camera_cry_detection",
-    "camera_cooldown",
-    "camera_device_call",
-    "camera_ding_dong",
-    "camera_motion_tracking",
-    "camera_voice_volume",
-    "camera_live_audio",
-    "camera_recording_audio",
-    "camera_auto_power_on",
-    "camera_white_light",
-    "camera_alarm_when_removed",
-)
+OBSOLETE_SWITCH_KEYS: tuple[str, ...] = ()
 
-OBSOLETE_SELECT_KEYS: tuple[str, ...] = (
-    "camera_language",
-    "camera_recording_resolution",
-    "camera_motion_sensitivity",
-    "camera_video_seconds",
-    "camera_antiflicker_rate",
-    "camera_default_codec",
-    "camera_motion_tracking_mode",
-    "camera_night_vision_mode",
-    "camera_cooldown",
-    "camera_doorbell_ring_key",
-    "camera_auto_power_on_capacity",
-)
+OBSOLETE_SELECT_KEYS: tuple[str, ...] = ()
 
-OBSOLETE_NUMBER_KEYS: tuple[str, ...] = (
-    "camera_alarm_volume",
-    "camera_voice_volume",
-    "camera_live_speaker_volume",
-    "camera_alarm_seconds",
-    "camera_night_threshold",
-    "camera_cry_detection_level",
-    "camera_cooldown",
-    "camera_mechanical_ding_dong_duration",
-)
+OBSOLETE_NUMBER_KEYS: tuple[str, ...] = ()
 
 OBSOLETE_ENTITY_KEYS_BY_DOMAIN = {
     Platform.SENSOR: OBSOLETE_SENSOR_KEYS,
@@ -169,6 +129,10 @@ OBSOLETE_ENTITY_KEYS_BY_DOMAIN = {
     Platform.SWITCH: OBSOLETE_SWITCH_KEYS,
     Platform.SELECT: OBSOLETE_SELECT_KEYS,
     Platform.NUMBER: OBSOLETE_NUMBER_KEYS,
+}
+
+OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
+    "XS03-iWX": ("mute",),
 }
 
 
@@ -187,6 +151,20 @@ def _obsolete_sensor_unique_ids(data) -> set[str]:
         unique_ids.update(
             _sensor_unique_id(entity.entity_id, key) for key in OBSOLETE_SENSOR_KEYS
         )
+    return unique_ids
+
+
+def _obsolete_action_unique_ids(data) -> set[str]:
+    """Return obsolete action entity unique IDs for specific device models."""
+    unique_ids: set[str] = set()
+    for entity in (
+        *data.get("stations", {}).values(),
+        *data.get("devices", {}).values(),
+    ):
+        for key in OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE.get(
+            getattr(entity, "type", None), ()
+        ):
+            unique_ids.add(_sensor_unique_id(entity.entity_id, key))
     return unique_ids
 
 
@@ -253,6 +231,7 @@ def _remove_obsolete_sensor_entities(
     """Remove old serial/MAC diagnostic sensors from prior releases."""
     entity_registry = er.async_get(hass)
     checked_unique_ids = set()
+    obsolete_action_unique_ids = _obsolete_action_unique_ids(data)
 
     seen_entity_ids = set()
     registry_entries = list(
@@ -265,12 +244,24 @@ def _remove_obsolete_sensor_entities(
             continue
         seen_entity_ids.add(registry_entry.entity_id)
         checked_unique_ids.add(registry_entry.unique_id)
-        if _is_obsolete_entity_entry(registry_entry):
+        if _is_obsolete_entity_entry(registry_entry) or (
+            _registry_entry_domain(registry_entry) == Platform.BUTTON
+            and getattr(registry_entry, "platform", None) == DOMAIN
+            and _registry_entry_unique_id(registry_entry)
+            in obsolete_action_unique_ids
+        ):
             entity_registry.async_remove(registry_entry.entity_id)
 
     for unique_id in _obsolete_sensor_unique_ids(data) - checked_unique_ids:
         entity_id = entity_registry.async_get_entity_id(
             Platform.SENSOR, DOMAIN, unique_id
+        )
+        if entity_id is not None:
+            entity_registry.async_remove(entity_id)
+
+    for unique_id in obsolete_action_unique_ids - checked_unique_ids:
+        entity_id = entity_registry.async_get_entity_id(
+            Platform.BUTTON, DOMAIN, unique_id
         )
         if entity_id is not None:
             entity_registry.async_remove(entity_id)

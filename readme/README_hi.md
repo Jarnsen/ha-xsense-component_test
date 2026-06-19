@@ -103,7 +103,7 @@ ____________________________________________________________
 
 - alarm, mute, end-of-life, AC-break, water alarm, तापमान alarm, charging, motion, door, armed, warning, reminder, light, PIR और keypad status के लिए binary sensors।
 - बैटरी, RF signal, Wi-Fi signal, firmware, तापमान, आर्द्रता, CO level, CO peak, अलार्म वॉल्यूम, आवाज़ वॉल्यूम, चर्प वॉल्यूम, रिमाइंडर वॉल्यूम, चेतावनी सीमाएँ, म्यूट टाइमर, पढ़ने योग्य समय-चिह्न, समय क्षेत्र और अन्य डायग्नोस्टिक सेंसर।
-- Camera setup and tuning controls remain in the X-Sense app.
+- Supported camera setup and tuning controls are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - जिन मॉडलों में X-Sense ऐप संबंधित action दिखाता है, उनके लिए test, mute, fire-drill और camera wake buttons।
 
 कुछ एंटिटी डायग्नोस्टिक या कॉन्फ़िगरेशन से जुड़ी होती हैं और Home Assistant में उसी तरह समूहित की जाती हैं। यदि डिवाइस कोई खास फ़ील्ड रिपोर्ट नहीं करता, या X-Sense ऐप उस डिवाइस/खाते के लिए सुविधा समर्थित नहीं बताता, तो संबंधित एंटिटी नहीं बनाई जाती। डिवाइस जोड़ना, हटाना, शेयर करना, खाता, भुगतान, फ़र्मवेयर अपडेट, SD-card format और अन्य प्रबंधन कार्य X-Sense ऐप में ही रहते हैं।

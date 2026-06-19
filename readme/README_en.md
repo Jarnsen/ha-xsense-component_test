@@ -21,7 +21,7 @@ This HACS integration is actively maintained for users who want broader X-Sense 
 - Support for automations based on X-Sense sensor data.
 - Support for the following device types: base stations, smoke detectors, carbon monoxide detectors, heat alarms, water leak detectors, hygrometers, door sensors, motion sensors, lights, keypads, mailbox sensors, audio monitoring devices, and supported cameras when they are available in the X-Sense account.
 - Real-time updates through X-Sense MQTT shadows, with periodic cloud polling as a fallback.
-- Supported cameras expose AI notification detections as Home Assistant event entities for use with the included automation blueprint. Camera setup and tuning remain in the X-Sense app.
+- Supported cameras expose AI notification detections as Home Assistant event entities for use with the included automation blueprint. Supported camera setup and tuning controls are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - Easy setup through HACS (Home Assistant Community Store).
 
 ## Requirements
@@ -108,7 +108,7 @@ The integration creates Home Assistant entities only for fields that are present
 
 - Alarm, mute, end-of-life, AC-break, water-alarm, temperature-alarm, charging, motion, door, armed, warning, reminder, light, PIR, and keypad status binary sensors.
 - Battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, readable timestamp fields, timezone, and other diagnostic sensors.
-- Camera setup and tuning controls such as recording, night vision, audio, cooldown, codec, motion sensitivity, and doorbell settings remain in the X-Sense app.
+- Supported camera setup and tuning controls such as recording, night vision, audio, cooldown, codec, motion sensitivity, and doorbell settings are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - Test, mute, fire-drill, and camera wake buttons for device models where the X-Sense app exposes the matching action.
 
 Some entities are diagnostic or configuration-related and are grouped that way in Home Assistant. If a device does not report a specific field, or the X-Sense app marks the feature unsupported for that device/account, the matching entity is not created. Device binding, removal, sharing, account, payment, firmware update, SD-card format, and other management actions remain in the X-Sense app.

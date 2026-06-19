@@ -103,7 +103,7 @@ L'integrazione crea entità Home Assistant solo per i campi realmente presenti n
 
 - Sensori binari per alarm, mute, end-of-life, AC-break, allarme acqua, allarme temperatura, ricarica, movimento, porta, stato armed, warning, reminder, light, PIR e stato keypad.
 - Sensori per batteria, segnale RF, segnale Wi-Fi, firmware, temperatura, umidità, livello CO, picco CO, volume allarme, volume voce, volume del segnale, volume promemoria, soglie di avviso, timer di silenziamento, marche temporali leggibili, fuso orario e altri dati diagnostici.
-- Camera setup and tuning controls remain in the X-Sense app.
+- Supported camera setup and tuning controls are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - Pulsanti test, mute, fire-drill e camera wake per i modelli in cui l'app X-Sense espone l'azione corrispondente.
 
 Alcune entità sono diagnostiche o di configurazione e vengono raggruppate così in Home Assistant. Se un dispositivo non segnala un campo specifico, o se l'app X-Sense indica che la funzione non è supportata per quel dispositivo/account, l'entità corrispondente non viene creata. Associazione, rimozione, condivisione, account, pagamenti, aggiornamento firmware, formattazione SD e altre azioni di gestione restano nell'app X-Sense.

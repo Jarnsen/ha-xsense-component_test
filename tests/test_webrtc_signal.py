@@ -317,18 +317,27 @@ async def test_peer_out_before_answer_resets_offer_for_next_peer_in():
     )
     session._ws = FakeWs()
     peer_payload = {"id": "SSC0ATEST", "name": "SSC0ATEST", "role": "master"}
+    candidate = SimpleNamespace(
+        candidate="candidate:1 1 udp 1 192.0.2.1 123 typ host",
+        sdp_mid="0",
+        sdp_m_line_index=0,
+    )
 
+    await session.add_candidate(candidate)
     await session._handle_signal_event("PEER_IN", peer_payload)
     await session._handle_signal_event("PEER_OUT", peer_payload)
     await session._handle_signal_event("PEER_IN", peer_payload)
 
     assert [message["messageType"] for message in session._ws.messages] == [
         "SDP_OFFER",
+        "ICE_CANDIDATE",
         "SDP_OFFER",
+        "ICE_CANDIDATE",
     ]
     assert session._offer_sent is True
     assert session._camera_peer_ready is True
     assert session._debug_context()["offer_attempt_count"] == 2
+    assert session._debug_context()["sent_candidate_count"] == 1
 
 
 async def test_signal_close_schedules_reconnect_before_answer(monkeypatch):

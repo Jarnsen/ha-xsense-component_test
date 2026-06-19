@@ -645,6 +645,95 @@ class AsyncXSense(XSenseBase):
         house.stations[station.entity_id] = station
         return station
 
+    async def update_camera_config(self, camera: Entity, **updates):
+        """Write camera user config through the Android app endpoint."""
+        payload = _camera_user_config_payload(camera, updates)
+        LOGGER.debug(
+            "X-Sense camera config update: %s",
+            _camera_write_debug_context(camera, "/device/updateuserconfig", updates),
+        )
+        await self.addx_call("/device/updateuserconfig", **payload)
+        camera.set_data(updates)
+
+    async def update_camera_audio(self, camera: Entity, **updates):
+        """Write camera audio config through the Android app endpoint."""
+        device_audio = {
+            key: camera.data.get(key)
+            for key in (
+                "doorBellRingKey",
+                "liveAudioToggleOn",
+                "liveSpeakerVolume",
+                "recordingAudioToggleOn",
+            )
+            if camera.data.get(key) is not None
+        }
+        device_audio.update(
+            {key: value for key, value in updates.items() if value is not None}
+        )
+        LOGGER.debug(
+            "X-Sense camera config update: %s",
+            _camera_write_debug_context(
+                camera, "/device/config/updatedeviceaudio", updates
+            ),
+        )
+        await self.addx_call(
+            "/device/config/updatedeviceaudio",
+            serialNumber=camera.sn,
+            deviceAudio=device_audio,
+        )
+        camera.set_data(updates)
+
+    async def update_camera_recording_resolution(
+        self, camera: Entity, resolution: str
+    ) -> None:
+        """Write camera recording resolution through the Android app endpoint."""
+        LOGGER.debug(
+            "X-Sense camera config update: %s",
+            _camera_write_debug_context(
+                camera, "/device/updaterecresolution", {"recResolution": resolution}
+            ),
+        )
+        await self.addx_call(
+            "/device/updaterecresolution",
+            serialNumber=camera.sn,
+            recResolution=resolution,
+        )
+        camera.set_data({"recResolution": resolution})
+
+    async def update_camera_default_codec(self, camera: Entity, codec: str) -> None:
+        """Write the default camera codec through the Android app endpoint."""
+        LOGGER.debug(
+            "X-Sense camera config update: %s",
+            _camera_write_debug_context(
+                camera, "/device/config/updatedefaultcodec", {"defaultCodec": codec}
+            ),
+        )
+        await self.addx_call(
+            "/device/config/updatedefaultcodec",
+            serialNumber=camera.sn,
+            defaultCodec=codec,
+        )
+        camera.set_data({"defaultCodec": codec})
+
+    async def update_camera_cooldown(
+        self, camera: Entity, *, user_enable: bool, value: int
+    ) -> None:
+        """Write camera cooldown through the Android app cooldown endpoint."""
+        LOGGER.debug(
+            "X-Sense camera config update: %s",
+            _camera_write_debug_context(
+                camera,
+                "/device/updateCooldown",
+                {"cooldown.userEnable": user_enable, "cooldown.value": value},
+            ),
+        )
+        await self.addx_call(
+            "/device/updateCooldown",
+            serialNumber=camera.sn,
+            cooldown={"userEnable": user_enable, "value": value},
+        )
+        camera.set_data({"cooldownEnabled": user_enable, "cooldownValue": value})
+
     async def get_camera_webrtc_ticket(
         self, camera: Entity, *, force_refresh: bool = False
     ) -> dict | None:
@@ -721,6 +810,25 @@ class AsyncXSense(XSenseBase):
     async def wake_camera(self, camera: Entity) -> None:
         """Wake a sleeping camera through the Android app endpoint."""
         await self.addx_call("/device/wakeupDevice", serialNumber=camera.sn)
+
+    async def update_camera_doorbell_config(self, camera: Entity, **updates) -> None:
+        """Write doorbell config through the Android app endpoint."""
+        doorbell_config = {
+            "alarmWhenRemoveToggleOn": camera.data.get("alarmWhenRemoveToggleOn")
+        }
+        doorbell_config.update(updates)
+        LOGGER.debug(
+            "X-Sense camera config update: %s",
+            _camera_write_debug_context(
+                camera, "/device/config/updatedoorbellconfig", updates
+            ),
+        )
+        await self.addx_call(
+            "/device/config/updatedoorbellconfig",
+            serialNumber=camera.sn,
+            doorbellConfig=doorbell_config,
+        )
+        camera.set_data(updates)
 
     async def get_client_info(self):
         data = await self.api_call("101001", unauth=True)
@@ -1020,6 +1128,16 @@ def _action_debug_context(entity: Entity, action: str, target, topic, desired: D
     }
 
 
+def _camera_write_debug_context(camera: Entity, endpoint: str, updates: Dict):
+    """Return safe camera write metadata without full serials or payload values."""
+    return {
+        "endpoint": endpoint,
+        "device": _short_id(getattr(camera, "sn", None)),
+        "device_type": getattr(camera, "type", None),
+        "fields": sorted(str(key) for key in updates),
+    }
+
+
 def _ipc_node_type(mqtt_region: str | None) -> str:
     """Return the IPC node type from the APK current-house MQTT region."""
     if not mqtt_region or len(mqtt_region) <= 2:
@@ -1139,6 +1257,89 @@ def _camera_data(data: Dict) -> Dict:
         "wifiChannel": data.get("wifiChannel"),
         "wiredMacAddress": data.get("wiredMacAddress"),
     }
+
+
+_CAMERA_USER_CONFIG_KEYS = (
+    "alarmSeconds",
+    "alarmVolume",
+    "antiflicker",
+    "antiflickerSwitch",
+    "chargeAutoPowerOnCapacity",
+    "chargeAutoPowerOnSwitch",
+    "cryDetect",
+    "cryDetectLevel",
+    "deviceCallToggleOn",
+    "deviceLanguage",
+    "mechanicalDingDongDuration",
+    "mechanicalDingDongSwitch",
+    "mirrorFlip",
+    "motionSensitivity",
+    "motionTrack",
+    "motionTrackMode",
+    "needAlarm",
+    "needMotion",
+    "needNightVision",
+    "needVideo",
+    "nightThresholdLevel",
+    "nightVisionMode",
+    "recLamp",
+    "timeZone",
+    "timeZoneArea",
+    "videoSeconds",
+    "voiceVolume",
+    "voiceVolumeSwitch",
+    "whiteLightScintillation",
+)
+
+_CAMERA_BOOLEAN_USER_CONFIG_KEYS = {"deviceCallToggleOn"}
+
+
+def _camera_user_config_payload(camera: Entity, updates: Dict) -> Dict:
+    """Return the APK UserConfigBean-style camera config payload."""
+    payload = {"serialNumber": camera.sn}
+    payload.update(
+        {
+            key: _camera_config_payload_value(key, value)
+            for key, value in updates.items()
+            if key in _CAMERA_USER_CONFIG_KEYS and value is not None
+        }
+    )
+    _add_camera_config_companions(camera, payload)
+    return payload
+
+
+def _add_camera_config_companions(camera: Entity, payload: Dict) -> None:
+    """Add companion config fields the APK sends with selected toggles."""
+    if "needMotion" in payload and camera.data.get("motionSensitivity") in (None, 0):
+        payload["motionSensitivity"] = 1
+    if "needVideo" in payload and camera.data.get("videoSeconds") == 0:
+        payload["videoSeconds"] = -1
+    if "needAlarm" in payload:
+        if camera.data.get("supportRocker") is True:
+            payload["alarmSeconds"] = 10
+        elif camera.data.get("alarmSeconds") in (None, 0):
+            payload["alarmSeconds"] = 5
+        else:
+            payload["alarmSeconds"] = camera.data["alarmSeconds"]
+    if (
+        "needNightVision" in payload
+        and camera.data.get("nightThresholdLevel") is not None
+    ):
+        payload["nightThresholdLevel"] = camera.data["nightThresholdLevel"]
+
+
+def _camera_config_payload_value(key: str, value):
+    """Return the value type used by the APK UserConfigBean field."""
+    if key in _CAMERA_BOOLEAN_USER_CONFIG_KEYS:
+        return value if isinstance(value, bool) else _addx_bool(value)
+    if isinstance(value, bool):
+        return 1 if value else 0
+    return value
+
+
+def _camera_config_write_value(key: str, enabled: bool):
+    """Return the value type used by the APK UserConfigBean field."""
+    return _camera_config_payload_value(key, enabled)
 
 
 def _addx_bool(value) -> bool | None:

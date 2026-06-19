@@ -10,6 +10,7 @@ if not hasattr(sys.modules.get("custom_components"), "__path__"):
     sys.modules.pop("custom_components", None)
 
 from custom_components.xsense import (
+    OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE,
     OBSOLETE_BINARY_SENSOR_KEYS,
     OBSOLETE_NUMBER_KEYS,
     OBSOLETE_SELECT_KEYS,
@@ -18,6 +19,7 @@ from custom_components.xsense import (
     _is_obsolete_binary_sensor_entry,
     _is_obsolete_sensor_entry,
     _migrate_legacy_none_entity_ids,
+    _obsolete_action_unique_ids,
     _obsolete_sensor_unique_ids,
     _sensor_unique_id,
     _clear_visible_device_metadata,
@@ -46,6 +48,18 @@ def test_obsolete_sensor_cleanup_targets_static_identifier_entities_only():
     assert "device-1-bluetooth-mac" in unique_ids
     assert "station-1-ip" not in unique_ids
     assert "device-1-wifi-rssi" not in unique_ids
+
+
+def test_obsolete_action_unique_ids_target_removed_model_actions_only():
+    xs03_iwx = SimpleNamespace(entity_id="hall_smoke", type="XS03-iWX")
+    xs01_wx = SimpleNamespace(entity_id="kitchen_smoke", type="XS01-WX")
+
+    unique_ids = _obsolete_action_unique_ids(
+        {"stations": {}, "devices": {"hall": xs03_iwx, "kitchen": xs01_wx}}
+    )
+
+    assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["XS03-iWX"] == ("mute",)
+    assert unique_ids == {"hall-smoke-mute"}
 
 
 def test_software_version_is_device_info_not_sensor():
@@ -360,23 +374,10 @@ def test_obsolete_binary_sensor_keys_only_remove_removed_binary_sensors():
     )
 
 
-def test_obsolete_camera_setup_controls_are_removed_registry_entries():
-    assert {
-        "camera_motion_detection",
-        "camera_live_audio",
-        "camera_recording_audio",
-        "camera_alarm_when_removed",
-    }.issubset(set(OBSOLETE_SWITCH_KEYS))
-    assert {
-        "camera_language",
-        "camera_recording_resolution",
-        "camera_default_codec",
-    }.issubset(set(OBSOLETE_SELECT_KEYS))
-    assert {
-        "camera_alarm_volume",
-        "camera_live_speaker_volume",
-        "camera_cooldown",
-    }.issubset(set(OBSOLETE_NUMBER_KEYS))
+def test_camera_setup_controls_are_not_obsolete_registry_entries():
+    assert OBSOLETE_SWITCH_KEYS == ()
+    assert OBSOLETE_SELECT_KEYS == ()
+    assert OBSOLETE_NUMBER_KEYS == ()
 
 
 def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
@@ -433,6 +434,18 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
             unique_id='kitchen-smoke-alarm-connected',
             entity_id='binary_sensor.kitchen_smoke_alarm_connected',
         ),
+        SimpleNamespace(
+            domain='button',
+            platform='xsense',
+            unique_id='hall-smoke-mute',
+            entity_id='button.hall_smoke_mute',
+        ),
+        SimpleNamespace(
+            domain='button',
+            platform='xsense',
+            unique_id='kitchen-smoke-mute',
+            entity_id='button.kitchen_smoke_mute',
+        ),
     ]
 
     import custom_components.xsense as xsense
@@ -450,7 +463,10 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
             'stations': {
                 'station_1': SimpleNamespace(entity_id='station_1')
             },
-            'devices': {},
+            'devices': {
+                'hall': SimpleNamespace(entity_id='hall_smoke', type='XS03-iWX'),
+                'kitchen': SimpleNamespace(entity_id='kitchen_smoke', type='XS01-WX'),
+            },
         },
         SimpleNamespace(entry_id='entry-id'),
     )
@@ -458,9 +474,7 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
     assert removed == [
         'sensor.missing_device_serial_number',
         'binary_sensor.kitchen_smoke_alarm_led_light',
-        'switch.camera_1_camera_motion_detection',
-        'select.camera_1_camera_default_codec',
-        'number.camera_1_camera_live_speaker_volume',
+        'button.hall_smoke_mute',
     ]
 
 

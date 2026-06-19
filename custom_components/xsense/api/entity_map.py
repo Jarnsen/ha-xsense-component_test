@@ -556,7 +556,6 @@ entities = {
         "type": EntityType.SMOKE,
         "actions": [
             SmokeRFTestAction(),
-            SmokeRFAppMuteAction(),
         ],
     },
     "XS03-WX": {

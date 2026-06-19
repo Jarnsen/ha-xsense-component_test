@@ -142,6 +142,7 @@ class XSenseWebRTCSignalSession:
         self._offer_attempt_count = 0
         self._signal_reconnect_count = 0
         self._pending_remote_candidates: list[Any] = []
+        self._ha_candidate_history: list[dict[str, Any]] = []
         self._pending_client_candidates: list[dict[str, Any]] = []
         self._remote_candidate_callback = remote_candidate_callback
         self._forward_client_candidates = False
@@ -228,6 +229,8 @@ class XSenseWebRTCSignalSession:
                 self._debug_context(candidate_type=type(candidate).__name__),
             )
             return
+        if payload not in self._ha_candidate_history:
+            self._ha_candidate_history.append(payload)
         if self._ws is None or self._ws.closed or not self._offer_sent:
             self._pending_remote_candidates.append(payload)
             LOGGER.debug(
@@ -483,6 +486,16 @@ class XSenseWebRTCSignalSession:
         )
         for candidate in candidates:
             await self._send_candidate(candidate)
+        if self._offer_attempt_count > 1 and self._ha_candidate_history:
+            LOGGER.debug(
+                "X-Sense WebRTC signal relay replaying HA ICE candidates after offer retry: %s",
+                self._debug_context(
+                    replay_candidate_count=len(self._ha_candidate_history)
+                ),
+            )
+            self._pending_remote_candidates.clear()
+            for candidate in self._ha_candidate_history:
+                await self._send_candidate(candidate)
         await self._flush_pending_remote_candidates()
 
     async def _flush_pending_remote_candidates(self) -> None:
