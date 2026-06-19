@@ -120,6 +120,14 @@ def has_motion_detection(entity: Entity) -> bool:
     )
 
 
+def motion_detection_value(entity: Entity) -> bool | None:
+    """Return motion state, defaulting supported cameras to idle before events."""
+    value = boolean_state(entity.data.get("isMoved"))
+    if value is None and is_camera_entity(entity):
+        return False
+    return value
+
+
 SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="is_life_end",
@@ -145,28 +153,6 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         translation_key="activate",
         exists_fn=lambda entity: "activate" in entity.data,
         value_fn=lambda entity: boolean_state(entity.data["activate"]),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="alarm_enabled",
-        name="Alarm Enabled",
-        icon="mdi:bell-check",
-        exists_fn=lambda entity: (
-            "alarmEnable" in entity.data or "alarmEnabled" in entity.data
-        ),
-        value_fn=lambda entity: boolean_state(
-            entity.data.get("alarmEnable", entity.data.get("alarmEnabled"))
-        ),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="continued_alarm",
-        name="Continued Alarm",
-        icon="mdi:bell-plus",
-        exists_fn=lambda entity: (
-            "continueAlarm" in entity.data or "continuedAlarm" in entity.data
-        ),
-        value_fn=lambda entity: boolean_state(
-            entity.data.get("continueAlarm", entity.data.get("continuedAlarm"))
-        ),
     ),
     XSenseBinarySensorEntityDescription(
         key="ac_break",
@@ -201,7 +187,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         name="Motion",
         device_class=BinarySensorDeviceClass.MOTION,
         exists_fn=has_motion_detection,
-        value_fn=lambda entity: boolean_state(entity.data.get("isMoved")),
+        value_fn=motion_detection_value,
     ),
     XSenseBinarySensorEntityDescription(
         key="usb_charge",
@@ -273,40 +259,11 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         value_fn=data_bool("test"),
     ),
     XSenseBinarySensorEntityDescription(
-        key="on",
-        name="On",
-        icon="mdi:power",
-        exists_fn=has_data("on"),
-        value_fn=data_bool("on"),
-    ),
-    XSenseBinarySensorEntityDescription(
         key="mute",
         name="Mute",
         icon="mdi:volume-off",
         exists_fn=has_data("mute"),
         value_fn=data_bool("mute"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="await_enabled",
-        name="Await Enabled",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:timer-sand",
-        exists_fn=has_data("awaitEnable"),
-        value_fn=data_bool("awaitEnable"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="pir_enabled",
-        name="PIR Enabled",
-        icon="mdi:motion-sensor",
-        exists_fn=has_data("pirEnable"),
-        value_fn=data_bool("pirEnable"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="sunshine_enabled",
-        name="Sunshine Enabled",
-        icon="mdi:white-balance-sunny",
-        exists_fn=has_data("sunshineEnable"),
-        value_fn=data_bool("sunshineEnable"),
     ),
     XSenseBinarySensorEntityDescription(
         key="alarm_sound_enabled",
@@ -315,14 +272,6 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         icon="mdi:volume-high",
         exists_fn=has_data("alarmSound"),
         value_fn=data_bool("alarmSound"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="key_sound_enabled",
-        name="Key Sound Enabled",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:volume-high",
-        exists_fn=has_data("keySound"),
-        value_fn=data_bool("keySound"),
     ),
     XSenseBinarySensorEntityDescription(
         key="app_tip_enabled",
@@ -381,37 +330,6 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         exists_fn=has_data("timeZoneValid"),
         value_fn=data_bool("timeZoneValid"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="warning_enabled",
-        name="Warning Enabled",
-        icon="mdi:alert",
-        exists_fn=has_data("warnIsOpen"),
-        value_fn=data_bool("warnIsOpen"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="chirp_tone_enabled",
-        name="Chirp Tone Enabled",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:volume-high",
-        exists_fn=has_data("chirpToneEnable"),
-        value_fn=data_bool("chirpToneEnable"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="reminder_enabled",
-        name="Reminder Enabled",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:bell-clock",
-        exists_fn=has_data("remindOn"),
-        value_fn=data_bool("remindOn"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="reminder_tone_enabled",
-        name="Reminder Tone Enabled",
-        entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:volume-high",
-        exists_fn=has_data("remindToneEnable"),
-        value_fn=data_bool("remindToneEnable"),
     ),
     XSenseBinarySensorEntityDescription(
         key="door",

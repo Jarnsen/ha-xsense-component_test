@@ -72,6 +72,9 @@
             "alarm_vol": {
                 "name": "Alarm Volume"
             },
+            "wifi_rssi": {
+                "name": "Wi-Fi RSSI"
+            },
             "ip_address": {
                 "name": "IP Address"
             },
@@ -123,6 +126,86 @@
             },
             "reminder_volume": {
                 "name": "Reminder Volume"
+            },
+            "temperature_adjustment": {
+                "name": "Temperature Adjustment"
+            },
+            "humidity_adjustment": {
+                "name": "Humidity Adjustment"
+            },
+            "warning_period": {
+                "name": "Warning Period"
+            },
+            "temperature_min": {
+                "name": "Temperature Minimum"
+            },
+            "temperature_max": {
+                "name": "Temperature Maximum"
+            },
+            "humidity_min": {
+                "name": "Humidity Minimum"
+            },
+            "humidity_max": {
+                "name": "Humidity Maximum"
+            },
+            "temperature_comfort_min": {
+                "name": "Comfort Temperature Minimum"
+            },
+            "temperature_comfort_max": {
+                "name": "Comfort Temperature Maximum"
+            },
+            "humidity_comfort_min": {
+                "name": "Comfort Humidity Minimum"
+            },
+            "humidity_comfort_max": {
+                "name": "Comfort Humidity Maximum"
+            },
+            "detection_sensitivity": {
+                "name": "Detection Sensitivity"
+            },
+            "driveway_sensitivity": {
+                "name": "Driveway Sensitivity"
+            },
+            "trigger_brightness": {
+                "name": "Trigger Brightness"
+            },
+            "standby_brightness": {
+                "name": "Standby Brightness"
+            }
+        },
+        "select": {
+            "alarm_tone": {
+                "name": "Alarm Tone"
+            },
+            "chirp_tone": {
+                "name": "Chirp Tone"
+            },
+            "reminder_tone": {
+                "name": "Reminder Tone"
+            },
+            "alarm_interval": {
+                "name": "Alarm Interval"
+            },
+            "reminder_time": {
+                "name": "Reminder Time"
+            },
+            "temperature_unit": {
+                "name": "Temperature Unit"
+            },
+            "comfort_type": {
+                "name": "Comfort Type"
+            },
+            "led_brightness": {
+                "name": "LED Brightness"
+            },
+            "light_motion_on_time": {
+                "name": "Motion On Time"
+            },
+            "light_scene": {
+                "name": "Light Scene"
+            },
+            "light_app_on_time": {
+                "name": "App On Time"
             }
         }
     }

@@ -6,16 +6,26 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+import voluptuous as vol
+
 from .api.device import Device
 from .api.entity import Entity
-from .api.async_xsense import _camera_config_write_value, is_camera_entity
+from .api.entity_map import EntityType
+from .api.async_xsense import (
+    CAMERA_AI_ASSISTANT_TYPES,
+    CAMERA_AI_NOTIFICATION_TYPES,
+    _camera_config_write_value,
+    is_camera_entity,
+)
 
 from homeassistant import config_entries
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import entity_platform
 
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
@@ -25,6 +35,74 @@ from .entity import (
     coordinator_stations,
     device_station_id,
 )
+
+
+ATTR_ENABLED = "enabled"
+ATTR_END_TIME = "end_time"
+ATTR_GROUP_ID = "group_id"
+ATTR_DEVICE_IDS = "device_ids"
+ATTR_NAME = "name"
+ATTR_SCHEDULE_ID = "schedule_id"
+ATTR_START_TIME = "start_time"
+ATTR_TIME_ZONE = "time_zone"
+ATTR_TIMER = "timer"
+ATTR_VALUE = "value"
+ATTR_WEEK_DAYS = "week_days"
+
+LIGHT_SCHEDULE_CREATE_SCHEMA = {
+    vol.Required(ATTR_NAME): cv.string,
+    vol.Required(ATTR_START_TIME): cv.string,
+    vol.Required(ATTR_END_TIME): cv.string,
+    vol.Required(ATTR_WEEK_DAYS): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(ATTR_ENABLED, default=True): cv.boolean,
+    vol.Optional(ATTR_TIME_ZONE): cv.string,
+}
+
+LIGHT_SCHEDULE_UPDATE_SCHEMA = {
+    vol.Required(ATTR_SCHEDULE_ID): cv.string,
+    vol.Required(ATTR_START_TIME): cv.string,
+    vol.Required(ATTR_END_TIME): cv.string,
+    vol.Required(ATTR_WEEK_DAYS): vol.All(cv.ensure_list, [cv.string]),
+    vol.Optional(ATTR_ENABLED, default=True): cv.boolean,
+    vol.Optional(ATTR_TIME_ZONE): cv.string,
+}
+
+LIGHT_SCHEDULE_RENAME_SCHEMA = {
+    vol.Required(ATTR_SCHEDULE_ID): cv.string,
+    vol.Required(ATTR_NAME): cv.string,
+}
+
+LIGHT_SCHEDULE_DELETE_SCHEMA = {
+    vol.Required(ATTR_SCHEDULE_ID): cv.string,
+}
+
+LIGHT_GROUP_CREATE_SCHEMA = {
+    vol.Required(ATTR_NAME): cv.string,
+}
+
+LIGHT_GROUP_RENAME_SCHEMA = {
+    vol.Required(ATTR_GROUP_ID): cv.string,
+    vol.Required(ATTR_NAME): cv.string,
+}
+
+LIGHT_GROUP_TIMER_SCHEMA = {
+    vol.Required(ATTR_GROUP_ID): cv.string,
+    vol.Required(ATTR_TIMER): vol.In(["pirTime", "appTime"]),
+    vol.Required(ATTR_VALUE): cv.string,
+}
+
+LIGHT_GROUP_BIND_SCHEMA = {
+    vol.Required(ATTR_NAME): cv.string,
+    vol.Required(ATTR_DEVICE_IDS): vol.All(cv.ensure_list, [cv.string]),
+}
+
+LIGHT_GROUP_DELETE_SCHEMA = {
+    vol.Required(ATTR_GROUP_ID): cv.string,
+}
+
+LIGHT_GROUP_REMOVE_DEVICES_SCHEMA = {
+    vol.Required(ATTR_DEVICE_IDS): vol.All(cv.ensure_list, [cv.string]),
+}
 
 
 def boolean_state(value) -> bool | None:
@@ -54,6 +132,19 @@ def on_off_value(value: bool) -> str:
 def has_data(key: str) -> Callable[[Entity], bool]:
     """Return an exists function for an X-Sense data key."""
     return lambda entity: key in entity.data
+
+
+def has_shadow_data(key: str) -> Callable[[Entity], bool]:
+    """Return if a non-camera setting can be written through an app shadow."""
+    return lambda entity: key in entity.data and _has_shadow_write_route(entity)
+
+
+def _has_shadow_write_route(entity: Entity) -> bool:
+    """Return if an entity has the serial context needed for shadow writes."""
+    if is_camera_entity(entity) or not getattr(entity, "sn", None):
+        return False
+    station = getattr(entity, "station", entity)
+    return bool(getattr(station, "sn", None) and getattr(station, "shadow_name", None))
 
 
 def has_camera_data(key: str) -> Callable[[Entity], bool]:
@@ -87,9 +178,51 @@ def has_apk_default_supported_data(
     )
 
 
+def has_camera_person_detection(entity: Entity) -> bool:
+    """Return if the app exposes the camera person detection setting."""
+    return (
+        is_camera_entity(entity)
+        and entity.data.get("isAdmin") is True
+        and (
+            entity.data.get("supportPersonDetect") is True
+            or (
+                "devicePersonDetect" in entity.data
+                and entity.data.get("supportPersonDetect") is not False
+            )
+        )
+    )
+
+
+def has_camera_ai_notification(event_type: str) -> Callable[[Entity], bool]:
+    """Return if the app exposes a camera AI notification category."""
+    data_key = f"aiNotification{_camel_suffix(event_type)}"
+    return lambda entity: (
+        is_camera_entity(entity)
+        and entity.data.get("isAdmin") is True
+        and data_key in entity.data
+        and event_type in entity.data.get("aiNotificationSupportedTypes", ())
+    )
+
+
+def has_camera_ai_assistant(event_object: str) -> Callable[[Entity], bool]:
+    """Return if the app exposes a camera AI assistant object switch."""
+    data_key = f"aiAssistant{_camel_suffix(event_object)}"
+    return lambda entity: (
+        is_camera_entity(entity)
+        and entity.data.get("isAdmin") is True
+        and data_key in entity.data
+        and event_object in entity.data.get("aiAssistantSupportedTypes", ())
+    )
+
+
 def data_bool(key: str) -> Callable[[Entity], bool | None]:
     """Return a value function for an X-Sense boolean data key."""
     return lambda entity: boolean_state(entity.data[key])
+
+
+def optional_data_bool(key: str) -> Callable[[Entity], bool | None]:
+    """Return a value function for optional X-Sense boolean data."""
+    return lambda entity: boolean_state(entity.data.get(key))
 
 
 def entity_topic(entity: Entity) -> str:
@@ -98,6 +231,38 @@ def entity_topic(entity: Entity) -> str:
     if station and station.type == "SBS50":
         return f"2nd_cfg_{entity.sn}"
     return f"info_{entity.sn}"
+
+
+def _camel_suffix(value: str) -> str:
+    """Return PascalCase for snake-style APK object names."""
+    return "".join(part.capitalize() for part in value.split("_") if part)
+
+
+def _ai_notification_name(event_type: str) -> str:
+    """Return a readable switch name for an AI notification category."""
+    labels = {
+        "person": "Person",
+        "pet": "Pet",
+        "vehicle_enter": "Vehicle Enter",
+        "vehicle_out": "Vehicle Out",
+        "vehicle_held_up": "Vehicle Held Up",
+        "package_exist": "Package Present",
+        "package_drop_off": "Package Drop-Off",
+        "package_pick_up": "Package Pick-Up",
+        "other": "Other",
+    }
+    return f"AI Notification {labels[event_type]}"
+
+
+def _ai_assistant_name(event_object: str) -> str:
+    """Return a readable switch name for an AI assistant object."""
+    labels = {
+        "person": "Person",
+        "pet": "Pet",
+        "vehicle": "Vehicle",
+        "package": "Package",
+    }
+    return f"AI Assistant {labels[event_object]}"
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -109,6 +274,7 @@ class XSenseSwitchEntityDescription(SwitchEntityDescription):
     value_fn: Callable[[Entity], bool | None]
     read_key: str | None = None
     addx_key: str | None = None
+    light_on_event: str | None = None
     write_value_fn: Callable[[bool], str] = on_off_value
     entity_category: EntityCategory | None = EntityCategory.CONFIG
 
@@ -119,7 +285,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         data_key="ledLight",
         name="LED Light",
         icon="mdi:led-on",
-        exists_fn=has_data("ledLight"),
+        exists_fn=has_shadow_data("ledLight"),
         value_fn=data_bool("ledLight"),
     ),
     XSenseSwitchEntityDescription(
@@ -127,6 +293,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         data_key="on",
         name="Light Power",
         icon="mdi:lightbulb",
+        entity_category=None,
         exists_fn=lambda entity: (
             getattr(entity, "entity_type", None) is not None
             and entity.entity_type.value == "light"
@@ -141,7 +308,8 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         name="Alarm Enabled",
         icon="mdi:bell-check",
         exists_fn=lambda entity: (
-            "alarmEnable" in entity.data or "alarmEnabled" in entity.data
+            _has_shadow_write_route(entity)
+            and ("alarmEnable" in entity.data or "alarmEnabled" in entity.data)
         ),
         value_fn=lambda entity: boolean_state(
             entity.data.get("alarmEnable", entity.data.get("alarmEnabled"))
@@ -154,7 +322,8 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         name="Continued Alarm",
         icon="mdi:bell-plus",
         exists_fn=lambda entity: (
-            "continueAlarm" in entity.data or "continuedAlarm" in entity.data
+            _has_shadow_write_route(entity)
+            and ("continueAlarm" in entity.data or "continuedAlarm" in entity.data)
         ),
         value_fn=lambda entity: boolean_state(
             entity.data.get("continueAlarm", entity.data.get("continuedAlarm"))
@@ -165,7 +334,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         data_key="chirpToneEnable",
         name="Chirp Tone Enabled",
         icon="mdi:volume-high",
-        exists_fn=has_data("chirpToneEnable"),
+        exists_fn=has_shadow_data("chirpToneEnable"),
         value_fn=data_bool("chirpToneEnable"),
     ),
     XSenseSwitchEntityDescription(
@@ -173,7 +342,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         data_key="remindOn",
         name="Reminder Enabled",
         icon="mdi:bell-clock",
-        exists_fn=has_data("remindOn"),
+        exists_fn=has_shadow_data("remindOn"),
         value_fn=data_bool("remindOn"),
     ),
     XSenseSwitchEntityDescription(
@@ -181,7 +350,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         data_key="remindToneEnable",
         name="Reminder Tone Enabled",
         icon="mdi:volume-high",
-        exists_fn=has_data("remindToneEnable"),
+        exists_fn=has_shadow_data("remindToneEnable"),
         value_fn=data_bool("remindToneEnable"),
     ),
     XSenseSwitchEntityDescription(
@@ -189,32 +358,43 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         data_key="awaitEnable",
         name="Await Enabled",
         icon="mdi:timer-sand",
-        exists_fn=has_data("awaitEnable"),
+        exists_fn=has_shadow_data("awaitEnable"),
         value_fn=data_bool("awaitEnable"),
+        light_on_event="0",
     ),
     XSenseSwitchEntityDescription(
         key="pir_enabled",
         data_key="pirEnable",
         name="PIR Enabled",
         icon="mdi:motion-sensor",
-        exists_fn=has_data("pirEnable"),
+        exists_fn=has_shadow_data("pirEnable"),
         value_fn=data_bool("pirEnable"),
+        light_on_event="0",
     ),
     XSenseSwitchEntityDescription(
         key="sunshine_enabled",
         data_key="sunshineEnable",
         name="Sunshine Enabled",
         icon="mdi:white-balance-sunny",
-        exists_fn=has_data("sunshineEnable"),
+        exists_fn=has_shadow_data("sunshineEnable"),
         value_fn=data_bool("sunshineEnable"),
+        light_on_event="0",
     ),
     XSenseSwitchEntityDescription(
         key="key_sound_enabled",
         data_key="keySound",
         name="Key Sound Enabled",
         icon="mdi:volume-high",
-        exists_fn=has_data("keySound"),
+        exists_fn=has_shadow_data("keySound"),
         value_fn=data_bool("keySound"),
+    ),
+    XSenseSwitchEntityDescription(
+        key="warning_enabled",
+        data_key="warnIsOpen",
+        name="Warning Enabled",
+        icon="mdi:alert",
+        exists_fn=has_shadow_data("warnIsOpen"),
+        value_fn=data_bool("warnIsOpen"),
     ),
     XSenseSwitchEntityDescription(
         key="camera_motion_detection",
@@ -224,6 +404,15 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         icon="mdi:motion-sensor",
         exists_fn=has_camera_data("needMotion"),
         value_fn=data_bool("needMotion"),
+    ),
+    XSenseSwitchEntityDescription(
+        key="camera_person_detection",
+        data_key="devicePersonDetect",
+        addx_key="devicePersonDetect",
+        name="Person Detection",
+        icon="mdi:account-alert",
+        exists_fn=has_camera_person_detection,
+        value_fn=lambda entity: boolean_state(entity.data.get("devicePersonDetect")),
     ),
     XSenseSwitchEntityDescription(
         key="camera_video_recording",
@@ -393,6 +582,30 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         exists_fn=has_supported_data("alarmWhenRemoveToggleOn", "supportDoorBellAlarm"),
         value_fn=data_bool("alarmWhenRemoveToggleOn"),
     ),
+    *(
+        XSenseSwitchEntityDescription(
+            key=f"camera_ai_notification_{event_type}",
+            data_key=f"aiNotification{_camel_suffix(event_type)}",
+            addx_key=f"ai_notification.{event_type}",
+            name=_ai_notification_name(event_type),
+            icon="mdi:bell-badge",
+            exists_fn=has_camera_ai_notification(event_type),
+            value_fn=optional_data_bool(f"aiNotification{_camel_suffix(event_type)}"),
+        )
+        for event_type in CAMERA_AI_NOTIFICATION_TYPES
+    ),
+    *(
+        XSenseSwitchEntityDescription(
+            key=f"camera_ai_assistant_{event_object}",
+            data_key=f"aiAssistant{_camel_suffix(event_object)}",
+            addx_key=f"ai_assistant.{event_object}",
+            name=_ai_assistant_name(event_object),
+            icon="mdi:brain",
+            exists_fn=has_camera_ai_assistant(event_object),
+            value_fn=optional_data_bool(f"aiAssistant{_camel_suffix(event_object)}"),
+        )
+        for event_object in CAMERA_AI_ASSISTANT_TYPES
+    ),
 )
 
 
@@ -405,6 +618,68 @@ async def async_setup_entry(
     devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     seen_entity_ids: set[str] = set()
+    platform = entity_platform.current_platform.get()
+    if platform is not None:
+        platform.async_register_entity_service(
+            "query_light_schedules",
+            {},
+            "async_query_light_schedules",
+        )
+        platform.async_register_entity_service(
+            "create_light_schedule",
+            LIGHT_SCHEDULE_CREATE_SCHEMA,
+            "async_create_light_schedule",
+        )
+        platform.async_register_entity_service(
+            "update_light_schedule",
+            LIGHT_SCHEDULE_UPDATE_SCHEMA,
+            "async_update_light_schedule",
+        )
+        platform.async_register_entity_service(
+            "rename_light_schedule",
+            LIGHT_SCHEDULE_RENAME_SCHEMA,
+            "async_rename_light_schedule",
+        )
+        platform.async_register_entity_service(
+            "delete_light_schedule",
+            LIGHT_SCHEDULE_DELETE_SCHEMA,
+            "async_delete_light_schedule",
+        )
+        platform.async_register_entity_service(
+            "query_light_groups",
+            {},
+            "async_query_light_groups",
+        )
+        platform.async_register_entity_service(
+            "create_light_group",
+            LIGHT_GROUP_CREATE_SCHEMA,
+            "async_create_light_group",
+        )
+        platform.async_register_entity_service(
+            "rename_light_group",
+            LIGHT_GROUP_RENAME_SCHEMA,
+            "async_rename_light_group",
+        )
+        platform.async_register_entity_service(
+            "update_light_group_timer",
+            LIGHT_GROUP_TIMER_SCHEMA,
+            "async_update_light_group_timer",
+        )
+        platform.async_register_entity_service(
+            "bind_light_group",
+            LIGHT_GROUP_BIND_SCHEMA,
+            "async_bind_light_group",
+        )
+        platform.async_register_entity_service(
+            "delete_light_group",
+            LIGHT_GROUP_DELETE_SCHEMA,
+            "async_delete_light_group",
+        )
+        platform.async_register_entity_service(
+            "remove_light_group_devices",
+            LIGHT_GROUP_REMOVE_DEVICES_SCHEMA,
+            "async_remove_light_group_devices",
+        )
 
     for station in coordinator_stations(coordinator).values():
         seen_entity_ids.add(station.entity_id)
@@ -461,6 +736,22 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
 
         return self.entity_description.value_fn(entity)
 
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        """Return cached light schedule data for schedule-capable switches."""
+        entity = self._current_entity()
+        if (
+            entity is None
+            or self.entity_description.data_key != "on"
+        ):
+            return None
+        attrs = {}
+        if "lightSchedules" in entity.data:
+            attrs["light_schedules"] = entity.data["lightSchedules"]
+        if "lightGroups" in entity.data:
+            attrs["light_groups"] = entity.data["lightGroups"]
+        return attrs or None
+
     async def async_turn_on(self, **kwargs) -> None:
         """Turn on the X-Sense setting."""
         await self._async_set_state(True)
@@ -468,6 +759,160 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs) -> None:
         """Turn off the X-Sense setting."""
         await self._async_set_state(False)
+
+    async def async_query_light_schedules(self) -> None:
+        """Query and cache SBS50 light schedules from the APK schedule API."""
+        entity = self._light_schedule_entity()
+        schedules = await self.coordinator.xsense.query_light_schedules(entity)
+        entity.data["lightSchedules"] = _light_schedule_list(schedules)
+        self.coordinator.async_update_listeners()
+
+    async def async_create_light_schedule(
+        self,
+        name: str,
+        start_time: str,
+        end_time: str,
+        week_days: list[str],
+        enabled: bool = True,
+        time_zone: str | None = None,
+    ) -> None:
+        """Create an SBS50 light schedule using the APK schedule API."""
+        entity = self._light_schedule_entity()
+        await self.coordinator.xsense.create_light_schedule(
+            entity,
+            name=name,
+            start_time=_schedule_time(start_time),
+            end_time=_schedule_time(end_time),
+            week_days=_schedule_week_days(week_days),
+            enabled=enabled,
+            time_zone=self._schedule_time_zone(time_zone),
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_update_light_schedule(
+        self,
+        schedule_id: str,
+        start_time: str,
+        end_time: str,
+        week_days: list[str],
+        enabled: bool = True,
+        time_zone: str | None = None,
+    ) -> None:
+        """Update an SBS50 light schedule using the APK schedule API."""
+        entity = self._light_schedule_entity()
+        await self.coordinator.xsense.update_light_schedule(
+            entity,
+            schedule_id=schedule_id,
+            start_time=_schedule_time(start_time),
+            end_time=_schedule_time(end_time),
+            week_days=_schedule_week_days(week_days),
+            enabled=enabled,
+            time_zone=self._schedule_time_zone(time_zone),
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_rename_light_schedule(self, schedule_id: str, name: str) -> None:
+        """Rename an SBS50 light schedule using the APK schedule API."""
+        entity = self._light_schedule_entity()
+        await self.coordinator.xsense.rename_light_schedule(
+            entity, schedule_id=schedule_id, name=name
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_delete_light_schedule(self, schedule_id: str) -> None:
+        """Delete an SBS50 light schedule using the APK schedule API."""
+        entity = self._light_schedule_entity()
+        await self.coordinator.xsense.delete_light_schedule(
+            entity, schedule_id=schedule_id
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_query_light_groups(self) -> None:
+        """Query and cache SBS50 light groups from the APK group API."""
+        entity = self._light_group_entity()
+        groups = await self.coordinator.xsense.query_light_groups(entity)
+        entity.data["lightGroups"] = _light_group_list(groups)
+        self.coordinator.async_update_listeners()
+
+    async def async_create_light_group(self, name: str) -> None:
+        """Create an SBS50 light group using the APK group API."""
+        entity = self._light_group_entity()
+        await self.coordinator.xsense.create_light_group(entity, name=name)
+        self.coordinator.async_update_listeners()
+
+    async def async_rename_light_group(self, group_id: str, name: str) -> None:
+        """Rename an SBS50 light group using the APK group API."""
+        entity = self._light_group_entity()
+        await self.coordinator.xsense.rename_light_group(
+            entity, group_id=group_id, name=name
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_update_light_group_timer(
+        self, group_id: str, timer: str, value: str
+    ) -> None:
+        """Update an SBS50 light group timer using the APK group API."""
+        entity = self._light_group_entity()
+        await self.coordinator.xsense.update_light_group_timer(
+            entity, group_id=group_id, data_key=timer, value=value
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_bind_light_group(self, name: str, device_ids: list[str]) -> None:
+        """Add SBS50 light devices to a group using the APK group API."""
+        entity = self._light_group_entity()
+        await self.coordinator.xsense.bind_light_group(
+            entity,
+            name=name,
+            device_ids=_non_empty_strings(device_ids, "device_ids"),
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_delete_light_group(self, group_id: str) -> None:
+        """Delete an SBS50 light group using the APK group API."""
+        entity = self._light_group_entity()
+        await self.coordinator.xsense.delete_light_group(entity, group_id=group_id)
+        self.coordinator.async_update_listeners()
+
+    async def async_remove_light_group_devices(self, device_ids: list[str]) -> None:
+        """Remove SBS50 light devices from their group using the APK group API."""
+        entity = self._light_group_entity()
+        await self.coordinator.xsense.remove_light_group_devices(
+            entity, device_ids=_non_empty_strings(device_ids, "device_ids")
+        )
+        self.coordinator.async_update_listeners()
+
+    def _light_schedule_entity(self) -> Entity:
+        """Return the current light entity or raise for unsupported switches."""
+        return self._sbs50_light_power_entity("light schedule services")
+
+    def _light_group_entity(self) -> Entity:
+        """Return the current SBS50 light/group entity for group services."""
+        return self._sbs50_light_power_entity("light group services")
+
+    def _sbs50_light_power_entity(self, service_name: str) -> Entity:
+        """Return the current SBS50 light power entity or raise if unsupported."""
+        entity = self._current_entity()
+        if entity is None:
+            raise HomeAssistantError("X-Sense entity is no longer available")
+        if self.entity_description.data_key != "on" or getattr(
+            entity, "entity_type", None
+        ) != EntityType.LIGHT:
+            raise HomeAssistantError(
+                f"X-Sense {service_name} require a light power switch"
+            )
+        station = getattr(entity, "station", None)
+        if not station or station.type != "SBS50":
+            raise HomeAssistantError(f"X-Sense {service_name} require an SBS50 station")
+        if not getattr(entity, "entity_id", None) or not getattr(
+            station, "entity_id", None
+        ):
+            raise HomeAssistantError(f"X-Sense {service_name} IDs are missing")
+        return entity
+
+    def _schedule_time_zone(self, time_zone: str | None) -> str:
+        """Return the supplied or Home Assistant configured timezone."""
+        return time_zone or self.coordinator.hass.config.time_zone
 
     async def _async_set_state(self, enabled: bool) -> None:
         """Write the switch state through the X-Sense device settings shadow."""
@@ -517,11 +962,48 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
                 self.coordinator.async_update_listeners()
                 return
 
+            if self.entity_description.addx_key.startswith("ai_notification."):
+                await xsense.update_camera_ai_notification(
+                    entity,
+                    self.entity_description.addx_key.removeprefix(
+                        "ai_notification."
+                    ),
+                    enabled,
+                )
+                self.coordinator.async_update_listeners()
+                return
+
+            if self.entity_description.addx_key.startswith("ai_assistant."):
+                await xsense.update_camera_ai_assistant(
+                    entity,
+                    self.entity_description.addx_key.removeprefix("ai_assistant."),
+                    enabled,
+                )
+                self.coordinator.async_update_listeners()
+                return
+
             value = _camera_config_write_value(
                 self.entity_description.addx_key, enabled
             )
             await xsense.update_camera_config(
                 entity, **{self.entity_description.addx_key: value}
+            )
+            entity.data[self.entity_description.data_key] = enabled
+            self.coordinator.async_update_listeners()
+            return
+
+        if self.entity_description.data_key == "warnIsOpen":
+            await xsense.update_co_pre_alarm(entity, enabled=enabled)
+            entity.data[self.entity_description.data_key] = enabled
+            self.coordinator.async_update_listeners()
+            return
+
+        if self.entity_description.light_on_event is not None:
+            await xsense.update_light_setting(
+                entity,
+                self.entity_description.data_key,
+                self.entity_description.write_value_fn(enabled),
+                on_event=self.entity_description.light_on_event,
             )
             entity.data[self.entity_description.data_key] = enabled
             self.coordinator.async_update_listeners()
@@ -544,3 +1026,55 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         if self.entity_description.read_key:
             entity.data[self.entity_description.read_key] = enabled
         self.coordinator.async_update_listeners()
+
+
+def _schedule_time(value: str) -> str:
+    """Return an APK schedule time in HHMM form."""
+    text = str(value).strip()
+    if ":" in text:
+        hour, minute = text.split(":", 1)
+        text = f"{hour.zfill(2)}{minute.zfill(2)}"
+    if len(text) != 4 or not text.isdigit():
+        raise HomeAssistantError("X-Sense schedule time must be HH:MM or HHMM")
+    hour = int(text[:2])
+    minute = int(text[2:])
+    if hour > 23 or minute > 59:
+        raise HomeAssistantError("X-Sense schedule time is out of range")
+    return text
+
+
+def _schedule_week_days(values: list[str]) -> list[str]:
+    """Return APK weekday values, where 1 is Sunday and 7 is Saturday."""
+    result = [str(value).strip() for value in values]
+    if not result:
+        raise HomeAssistantError("X-Sense schedule must include at least one weekday")
+    invalid = [value for value in result if value not in {"1", "2", "3", "4", "5", "6", "7"}]
+    if invalid:
+        raise HomeAssistantError("X-Sense schedule weekdays must be 1 through 7")
+    return result
+
+
+def _light_schedule_list(value) -> list:
+    """Return a normalized schedule list from the APK query response."""
+    if isinstance(value, dict):
+        data = value.get("schedList") or value.get("schedule") or value.get("list")
+        return data if isinstance(data, list) else []
+    return value if isinstance(value, list) else []
+
+
+def _light_group_list(value) -> list:
+    """Return a normalized group list from the APK query response."""
+    if isinstance(value, dict):
+        data = value.get("groupList") or value.get("groups") or value.get("list")
+        if data is None and isinstance(value.get("reData"), dict):
+            data = value["reData"].get("groupList")
+        return data if isinstance(data, list) else []
+    return value if isinstance(value, list) else []
+
+
+def _non_empty_strings(values: list[str], field_name: str) -> list[str]:
+    """Return stripped non-empty strings for service list fields."""
+    result = [str(value).strip() for value in values if str(value).strip()]
+    if not result:
+        raise HomeAssistantError(f"X-Sense {field_name} must include at least one ID")
+    return result

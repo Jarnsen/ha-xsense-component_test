@@ -15,6 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .api.async_xsense import is_camera_entity
 from .api.device import Device
 from .api.entity import Entity
+from .api.entity_map import EntityType
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
@@ -44,11 +45,60 @@ def has_supported_data(*keys: str, support_key: str) -> Callable[[Entity], bool]
     )
 
 
+def has_shadow_select(key: str) -> Callable[[Entity], bool]:
+    """Return if a non-camera X-Sense shadow exposes a writable select field."""
+    return lambda entity: (
+        not is_camera_entity(entity)
+        and key in entity.data
+        and _has_shadow_write_route(entity)
+    )
+
+
+def _has_shadow_write_route(entity: Entity) -> bool:
+    """Return if an entity has the serial context needed for shadow writes."""
+    if not getattr(entity, "sn", None):
+        return False
+    station = getattr(entity, "station", entity)
+    return bool(getattr(station, "sn", None) and getattr(station, "shadow_name", None))
+
+
+def has_camera_motion_sensitivity(entity: Entity) -> bool:
+    """Return if the app exposes camera motion sensitivity controls."""
+    return (
+        is_camera_entity(entity)
+        and entity.data.get("isAdmin") is True
+        and (
+            "motionSensitivity" in entity.data
+            or "motionSensitivityOptionList" in entity.data
+            or "needMotion" in entity.data
+        )
+    )
+
+
+def has_camera_video_seconds(entity: Entity) -> bool:
+    """Return if the app exposes camera recording duration controls."""
+    options = entity.data.get("videoSecondsValues")
+    return (
+        is_camera_entity(entity)
+        and entity.data.get("isAdmin") is True
+        and isinstance(options, list)
+        and any(option is not None for option in options)
+    )
+
+
 def option_strings(value) -> list[str]:
     """Return API-provided options as strings for Home Assistant selects."""
     if not isinstance(value, list):
         return []
     return [str(item) for item in value if item is not None]
+
+
+def shadow_select_options(entity: Entity, description) -> list[str]:
+    """Return conservative APK option values for non-camera settings."""
+    if description.fixed_options is not None:
+        return option_strings(list(description.fixed_options))
+    value = entity.data.get(description.data_key)
+    return [] if value in (None, "") else [str(value)]
 
 
 def _required_bool_state(value) -> bool:
@@ -78,10 +128,110 @@ class XSenseSelectEntityDescription(SelectEntityDescription):
     exists_fn: Callable[[Entity], bool]
     addx_key: str | None = None
     fixed_options: tuple[int | str, ...] | None = None
+    light_on_event: str | None = None
     entity_category: EntityCategory | None = EntityCategory.CONFIG
 
 
 SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
+    XSenseSelectEntityDescription(
+        key="alarm_tone",
+        data_key="alarmTone",
+        translation_key="alarm_tone",
+        fixed_options=("1", "2", "3"),
+        icon="mdi:bell-ring",
+        exists_fn=has_shadow_select("alarmTone"),
+    ),
+    XSenseSelectEntityDescription(
+        key="chirp_tone",
+        data_key="chirpTone",
+        translation_key="chirp_tone",
+        fixed_options=("1", "2", "3"),
+        icon="mdi:volume-high",
+        exists_fn=has_shadow_select("chirpTone"),
+    ),
+    XSenseSelectEntityDescription(
+        key="reminder_tone",
+        data_key="remindTone",
+        translation_key="reminder_tone",
+        fixed_options=("1", "2", "3"),
+        icon="mdi:bell-clock",
+        exists_fn=has_shadow_select("remindTone"),
+    ),
+    XSenseSelectEntityDescription(
+        key="alarm_interval",
+        data_key="alarmInterval",
+        translation_key="alarm_interval",
+        fixed_options=("50", "60", "90", "120", "180"),
+        icon="mdi:timer-outline",
+        exists_fn=has_shadow_select("alarmInterval"),
+    ),
+    XSenseSelectEntityDescription(
+        key="reminder_time",
+        data_key="remindTime",
+        translation_key="reminder_time",
+        fixed_options=("9:00", "12:00", "15:00", "18:00"),
+        icon="mdi:bell-clock",
+        exists_fn=has_shadow_select("remindTime"),
+    ),
+    XSenseSelectEntityDescription(
+        key="temperature_unit",
+        data_key="tempUnit",
+        translation_key="temperature_unit",
+        fixed_options=("1", "2"),
+        icon="mdi:temperature-celsius",
+        exists_fn=has_shadow_select("tempUnit"),
+    ),
+    XSenseSelectEntityDescription(
+        key="comfort_type",
+        data_key="comfortType",
+        translation_key="comfort_type",
+        fixed_options=("0", "1"),
+        icon="mdi:home-thermometer-outline",
+        exists_fn=has_shadow_select("comfortType"),
+    ),
+    XSenseSelectEntityDescription(
+        key="led_brightness",
+        data_key="ledBrt",
+        translation_key="led_brightness",
+        fixed_options=("2", "4", "6", "8"),
+        icon="mdi:led-on",
+        exists_fn=has_shadow_select("ledBrt"),
+    ),
+    XSenseSelectEntityDescription(
+        key="light_motion_on_time",
+        data_key="pirTime",
+        translation_key="light_motion_on_time",
+        fixed_options=("30", "60", "180", "300", "600", "900"),
+        icon="mdi:timer-outline",
+        exists_fn=lambda entity: (
+            getattr(entity, "entity_type", None) == EntityType.LIGHT
+            and has_shadow_select("pirTime")(entity)
+        ),
+        light_on_event="1",
+    ),
+    XSenseSelectEntityDescription(
+        key="light_scene",
+        data_key="lightScene",
+        translation_key="light_scene",
+        fixed_options=("1", "2", "3"),
+        icon="mdi:lightbulb-group",
+        exists_fn=lambda entity: (
+            getattr(entity, "entity_type", None) == EntityType.LIGHT
+            and has_shadow_select("lightScene")(entity)
+        ),
+    ),
+    XSenseSelectEntityDescription(
+        key="light_app_on_time",
+        data_key="appTime",
+        translation_key="light_app_on_time",
+        fixed_options=("30", "60", "180", "300", "600", "900"),
+        icon="mdi:timer-outline",
+        exists_fn=lambda entity: (
+            getattr(entity, "entity_type", None) == EntityType.LIGHT
+            and has_shadow_select("appTime")(entity)
+        ),
+        light_on_event="2",
+    ),
     XSenseSelectEntityDescription(
         key="camera_language",
         data_key="deviceLanguage",
@@ -107,7 +257,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         fixed_options=(1, 2, 3),
         name="Motion Sensitivity",
         icon="mdi:motion-sensor",
-        exists_fn=has_data("motionSensitivity"),
+        exists_fn=has_camera_motion_sensitivity,
     ),
     XSenseSelectEntityDescription(
         key="camera_video_seconds",
@@ -116,7 +266,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         options_key="videoSecondsValues",
         name="Video Seconds",
         icon="mdi:timer-outline",
-        exists_fn=has_data("videoSeconds", "videoSecondsValues"),
+        exists_fn=has_camera_video_seconds,
     ),
     XSenseSelectEntityDescription(
         key="camera_antiflicker_rate",
@@ -221,7 +371,7 @@ async def async_setup_entry(
         devices.extend(
             XSenseSelectEntity(coordinator, station, description)
             for description in SELECTS
-            if is_camera_entity(station) and description.exists_fn(station)
+            if description.exists_fn(station)
         )
 
     for dev in coordinator_devices(coordinator).values():
@@ -270,6 +420,8 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
             options = entity.data.get("motionSensitivityOptionList")
             if isinstance(options, list) and len(options) == 4:
                 return option_strings(options)
+        if not is_camera_entity(entity):
+            return shadow_select_options(entity, self.entity_description)
         if self.entity_description.fixed_options is not None:
             return option_strings(list(self.entity_description.fixed_options))
         return option_strings(entity.data.get(self.entity_description.options_key))
@@ -316,11 +468,51 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
             await self.coordinator.xsense.update_camera_config(
                 entity, **{self.entity_description.addx_key: _typed_option(option)}
             )
+        elif not is_camera_entity(entity):
+            if self.entity_description.data_key == "comfortType":
+                await self._async_select_comfort_type(entity, option)
+            elif self.entity_description.data_key == "lightScene":
+                await self.coordinator.xsense.update_light_scene(entity, option)
+                entity.data["pirEnable"] = option in {"1", "3"}
+                entity.data["awaitEnable"] = option in {"2", "3"}
+            elif self.entity_description.light_on_event is not None:
+                await self.coordinator.xsense.update_light_setting(
+                    entity,
+                    self.entity_description.data_key,
+                    option,
+                    on_event=self.entity_description.light_on_event,
+                )
+            else:
+                await self.coordinator.xsense.update_shadow_setting(
+                    entity, self.entity_description.data_key, option
+                )
         else:
             raise HomeAssistantError("X-Sense select cannot be written")
 
         entity.data[self.entity_description.data_key] = _typed_option(option)
         self.coordinator.async_update_listeners()
+
+    async def _async_select_comfort_type(self, entity: Entity, option: str) -> None:
+        """Write comfort mode with the same paired defaults the APK sends."""
+        if option == "0":
+            await self.coordinator.xsense.update_shadow_settings(
+                entity,
+                {"tComfort": [20.0, 26.0], "hComfort": [30.0, 60.0]},
+                comfort_type="0",
+            )
+            entity.data["tComfort"] = [20.0, 26.0]
+            entity.data["hComfort"] = [30.0, 60.0]
+            return
+
+        t_comfort = _comfort_pair(entity.data.get("tComfort"), [20.0, 26.0])
+        h_comfort = _comfort_pair(entity.data.get("hComfort"), [30.0, 60.0])
+        await self.coordinator.xsense.update_shadow_settings(
+            entity,
+            {"tComfort": t_comfort, "hComfort": h_comfort},
+            comfort_type="1",
+        )
+        entity.data["tComfort"] = t_comfort
+        entity.data["hComfort"] = h_comfort
 
 
 def _typed_option(option: str) -> int | str:
@@ -329,3 +521,13 @@ def _typed_option(option: str) -> int | str:
         return int(option)
     except ValueError:
         return option
+
+
+def _comfort_pair(value, default: list[float]) -> list[float]:
+    """Return a comfort range pair for APK comfort mode writes."""
+    if isinstance(value, (list, tuple)) and len(value) >= 2:
+        try:
+            return [float(value[0]), float(value[1])]
+        except (TypeError, ValueError):
+            pass
+    return list(default)

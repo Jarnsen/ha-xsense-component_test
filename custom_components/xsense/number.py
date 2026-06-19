@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from homeassistant import config_entries
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
-from homeassistant.const import EntityCategory, PERCENTAGE
+from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -15,6 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .api.async_xsense import is_camera_entity
 from .api.device import Device
 from .api.entity import Entity
+from .api.entity_map import EntityType
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
@@ -60,13 +61,34 @@ def has_shadow_volume(key: str) -> Callable[[Entity], bool]:
     """Return if a non-camera X-Sense shadow exposes a writable volume field."""
 
     def exists(entity: Entity) -> bool:
-        if is_camera_entity(entity) or key not in entity.data:
+        if (
+            is_camera_entity(entity)
+            or key not in entity.data
+            or not _has_shadow_write_route(entity)
+        ):
             return False
         if key == "alarmVol" and entity.type == "SBS50":
             return False
         return True
 
     return exists
+
+
+def has_shadow_number(key: str) -> Callable[[Entity], bool]:
+    """Return if a non-camera X-Sense shadow exposes a writable numeric field."""
+    return lambda entity: (
+        not is_camera_entity(entity)
+        and key in entity.data
+        and _has_shadow_write_route(entity)
+    )
+
+
+def _has_shadow_write_route(entity: Entity) -> bool:
+    """Return if an entity has the serial context needed for shadow writes."""
+    if not getattr(entity, "sn", None):
+        return False
+    station = getattr(entity, "station", entity)
+    return bool(getattr(station, "sn", None) and getattr(station, "shadow_name", None))
 
 
 def _required_bool_state(value) -> bool:
@@ -94,6 +116,12 @@ class XSenseNumberEntityDescription(NumberEntityDescription):
     data_key: str
     exists_fn: Callable[[Entity], bool]
     addx_key: str | None = None
+    shadow_array_key: str | None = None
+    shadow_array_index: int | None = None
+    shadow_array_defaults: tuple[float, float] | None = None
+    shadow_array_comfort_type: str | None = None
+    shadow_setting: bool = False
+    light_on_event: str | None = None
     entity_category: EntityCategory | None = EntityCategory.CONFIG
 
 
@@ -141,6 +169,212 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_max_value=100,
         native_step=1,
         exists_fn=has_shadow_volume("remindVol"),
+    ),
+    XSenseNumberEntityDescription(
+        key="temperature_adjustment",
+        data_key="tAdjust",
+        translation_key="temperature_adjustment",
+        icon="mdi:thermometer-lines",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=-10,
+        native_max_value=10,
+        native_step=0.1,
+        exists_fn=has_shadow_number("tAdjust"),
+        shadow_setting=True,
+    ),
+    XSenseNumberEntityDescription(
+        key="humidity_adjustment",
+        data_key="hAdjust",
+        translation_key="humidity_adjustment",
+        icon="mdi:water-percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=-20,
+        native_max_value=20,
+        native_step=1,
+        exists_fn=has_shadow_number("hAdjust"),
+        shadow_setting=True,
+    ),
+    XSenseNumberEntityDescription(
+        key="detection_sensitivity",
+        data_key="detcSens",
+        translation_key="detection_sensitivity",
+        icon="mdi:smoke-detector-variant",
+        native_min_value=1,
+        native_max_value=3,
+        native_step=1,
+        exists_fn=has_shadow_number("detcSens"),
+        shadow_setting=True,
+    ),
+    XSenseNumberEntityDescription(
+        key="driveway_sensitivity",
+        data_key="sensitivity",
+        translation_key="driveway_sensitivity",
+        icon="mdi:motion-sensor",
+        native_min_value=1,
+        native_max_value=3,
+        native_step=1,
+        exists_fn=has_shadow_number("sensitivity"),
+        shadow_setting=True,
+    ),
+    XSenseNumberEntityDescription(
+        key="trigger_brightness",
+        data_key="triggerBrightness",
+        translation_key="trigger_brightness",
+        icon="mdi:brightness-6",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=10,
+        native_max_value=100,
+        native_step=1,
+        exists_fn=lambda entity: (
+            getattr(entity, "entity_type", None) == EntityType.LIGHT
+            and has_shadow_number("triggerBrightness")(entity)
+        ),
+        light_on_event="0",
+    ),
+    XSenseNumberEntityDescription(
+        key="standby_brightness",
+        data_key="awaitBrightness",
+        translation_key="standby_brightness",
+        icon="mdi:brightness-5",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=10,
+        native_max_value=100,
+        native_step=1,
+        exists_fn=lambda entity: (
+            getattr(entity, "entity_type", None) == EntityType.LIGHT
+            and has_shadow_number("awaitBrightness")(entity)
+        ),
+        light_on_event="0",
+    ),
+    XSenseNumberEntityDescription(
+        key="warning_period",
+        data_key="warnPeriod",
+        translation_key="warning_period",
+        icon="mdi:calendar-clock",
+        native_min_value=1,
+        native_max_value=60,
+        native_step=1,
+        exists_fn=has_shadow_number("warnPeriod"),
+    ),
+    XSenseNumberEntityDescription(
+        key="temperature_min",
+        data_key="tempRangeMin",
+        translation_key="temperature_min",
+        icon="mdi:thermometer-low",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=-40,
+        native_max_value=60,
+        native_step=0.1,
+        shadow_array_key="tRange",
+        shadow_array_index=0,
+        exists_fn=lambda entity: _has_shadow_range_number(
+            entity, "tRange", "tempRangeMin", "tempRangeMax"
+        ),
+    ),
+    XSenseNumberEntityDescription(
+        key="temperature_max",
+        data_key="tempRangeMax",
+        translation_key="temperature_max",
+        icon="mdi:thermometer-high",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=-40,
+        native_max_value=60,
+        native_step=0.1,
+        shadow_array_key="tRange",
+        shadow_array_index=1,
+        exists_fn=lambda entity: _has_shadow_range_number(
+            entity, "tRange", "tempRangeMin", "tempRangeMax"
+        ),
+    ),
+    XSenseNumberEntityDescription(
+        key="humidity_min",
+        data_key="humRangeMin",
+        translation_key="humidity_min",
+        icon="mdi:water-percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=1,
+        shadow_array_key="hRange",
+        shadow_array_index=0,
+        exists_fn=lambda entity: _has_shadow_range_number(
+            entity, "hRange", "humRangeMin", "humRangeMax"
+        ),
+    ),
+    XSenseNumberEntityDescription(
+        key="humidity_max",
+        data_key="humRangeMax",
+        translation_key="humidity_max",
+        icon="mdi:water-percent",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=1,
+        shadow_array_key="hRange",
+        shadow_array_index=1,
+        exists_fn=lambda entity: _has_shadow_range_number(
+            entity, "hRange", "humRangeMin", "humRangeMax"
+        ),
+    ),
+    XSenseNumberEntityDescription(
+        key="temperature_comfort_min",
+        data_key="tComfortMin",
+        translation_key="temperature_comfort_min",
+        icon="mdi:home-thermometer-outline",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=-40,
+        native_max_value=60,
+        native_step=0.1,
+        shadow_array_key="tComfort",
+        shadow_array_index=0,
+        shadow_array_defaults=(20, 26),
+        shadow_array_comfort_type="1",
+        exists_fn=lambda entity: _has_shadow_range_number(entity, "tComfort"),
+    ),
+    XSenseNumberEntityDescription(
+        key="temperature_comfort_max",
+        data_key="tComfortMax",
+        translation_key="temperature_comfort_max",
+        icon="mdi:home-thermometer-outline",
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        native_min_value=-40,
+        native_max_value=60,
+        native_step=0.1,
+        shadow_array_key="tComfort",
+        shadow_array_index=1,
+        shadow_array_defaults=(20, 26),
+        shadow_array_comfort_type="1",
+        exists_fn=lambda entity: _has_shadow_range_number(entity, "tComfort"),
+    ),
+    XSenseNumberEntityDescription(
+        key="humidity_comfort_min",
+        data_key="hComfortMin",
+        translation_key="humidity_comfort_min",
+        icon="mdi:home-thermometer-outline",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=1,
+        shadow_array_key="hComfort",
+        shadow_array_index=0,
+        shadow_array_defaults=(30, 60),
+        shadow_array_comfort_type="1",
+        exists_fn=lambda entity: _has_shadow_range_number(entity, "hComfort"),
+    ),
+    XSenseNumberEntityDescription(
+        key="humidity_comfort_max",
+        data_key="hComfortMax",
+        translation_key="humidity_comfort_max",
+        icon="mdi:home-thermometer-outline",
+        native_unit_of_measurement=PERCENTAGE,
+        native_min_value=0,
+        native_max_value=100,
+        native_step=1,
+        shadow_array_key="hComfort",
+        shadow_array_index=1,
+        shadow_array_defaults=(30, 60),
+        shadow_array_comfort_type="1",
+        exists_fn=lambda entity: _has_shadow_range_number(entity, "hComfort"),
     ),
     XSenseNumberEntityDescription(
         key="camera_alarm_volume",
@@ -309,6 +543,8 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         if entity is None:
             return None
         value = entity.data.get(self.entity_description.data_key)
+        if self.entity_description.shadow_array_key:
+            value = _shadow_array_value(entity, self.entity_description)
         if value is None:
             return None
         try:
@@ -322,25 +558,143 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         if entity is None:
             raise HomeAssistantError("X-Sense entity is no longer available")
 
-        int_value = round(value)
-        if self.entity_description.addx_key is None:
+        if self.entity_description.data_key == "warnPeriod":
+            int_value = round(value)
+            await self.coordinator.xsense.update_co_pre_alarm(entity, period=int_value)
+            entity.data[self.entity_description.data_key] = int_value
+        elif self.entity_description.shadow_array_key:
+            values = _updated_shadow_array_values(
+                entity, self.entity_description, value
+            )
+            await self.coordinator.xsense.update_shadow_array_setting(
+                entity,
+                self.entity_description.shadow_array_key,
+                values,
+                comfort_type=self.entity_description.shadow_array_comfort_type,
+            )
+            _store_shadow_array_values(entity, self.entity_description, values)
+        elif self.entity_description.light_on_event is not None:
+            int_value = round(value)
+            await self.coordinator.xsense.update_light_setting(
+                entity,
+                self.entity_description.data_key,
+                int_value,
+                on_event=self.entity_description.light_on_event,
+            )
+            entity.data[self.entity_description.data_key] = int_value
+        elif self.entity_description.shadow_setting:
+            await self.coordinator.xsense.update_shadow_setting(
+                entity, self.entity_description.data_key, value
+            )
+            entity.data[self.entity_description.data_key] = value
+        elif self.entity_description.addx_key is None:
+            int_value = round(value)
             await self.coordinator.xsense.update_shadow_volume(
                 entity, self.entity_description.data_key, int_value
             )
+            entity.data[self.entity_description.data_key] = int_value
         elif self.entity_description.addx_key == "cooldown.value":
+            int_value = round(value)
             await self.coordinator.xsense.update_camera_cooldown(
                 entity,
                 user_enable=_required_bool_state(entity.data.get("cooldownEnabled")),
                 value=int_value,
             )
+            entity.data[self.entity_description.data_key] = int_value
         elif self.entity_description.addx_key.startswith("audio."):
+            int_value = round(value)
             await self.coordinator.xsense.update_camera_audio(
                 entity,
                 **{self.entity_description.addx_key.removeprefix("audio."): int_value},
             )
+            entity.data[self.entity_description.data_key] = int_value
         else:
+            int_value = round(value)
             await self.coordinator.xsense.update_camera_config(
                 entity, **{self.entity_description.addx_key: int_value}
             )
-        entity.data[self.entity_description.data_key] = int_value
+            entity.data[self.entity_description.data_key] = int_value
         self.coordinator.async_update_listeners()
+
+
+def _has_shadow_range_number(
+    entity: Entity,
+    array_key: str,
+    min_key: str | None = None,
+    max_key: str | None = None,
+) -> bool:
+    """Return if the app exposes a paired range setting for this entity."""
+    if is_camera_entity(entity) or not _has_shadow_write_route(entity):
+        return False
+    if _number_pair(entity.data.get(array_key)) is not None:
+        return True
+    if array_key in {"tComfort", "hComfort"} and "comfortType" in entity.data:
+        return True
+    return bool(
+        min_key
+        and max_key
+        and entity.data.get(min_key) is not None
+        and entity.data.get(max_key) is not None
+    )
+
+
+def _number_pair(value) -> list[float] | None:
+    """Return a two-number list from an APK range payload."""
+    if not isinstance(value, (list, tuple)) or len(value) < 2:
+        return None
+    try:
+        return [float(value[0]), float(value[1])]
+    except (TypeError, ValueError):
+        return None
+
+
+def _shadow_array_values(entity: Entity, description) -> list[float] | None:
+    """Return current paired values for a range-backed setting."""
+    values = _number_pair(entity.data.get(description.shadow_array_key))
+    if values is not None:
+        return values
+    if description.data_key == "tempRangeMin" or description.data_key == "tempRangeMax":
+        if (
+            entity.data.get("tempRangeMin") is not None
+            and entity.data.get("tempRangeMax") is not None
+        ):
+            return [float(entity.data["tempRangeMin"]), float(entity.data["tempRangeMax"])]
+    if description.data_key == "humRangeMin" or description.data_key == "humRangeMax":
+        if (
+            entity.data.get("humRangeMin") is not None
+            and entity.data.get("humRangeMax") is not None
+        ):
+            return [float(entity.data["humRangeMin"]), float(entity.data["humRangeMax"])]
+    if description.shadow_array_defaults is not None:
+        return list(description.shadow_array_defaults)
+    return None
+
+
+def _shadow_array_value(entity: Entity, description) -> float | None:
+    """Return the current value for one side of a range-backed setting."""
+    values = _shadow_array_values(entity, description)
+    if values is None or description.shadow_array_index is None:
+        return None
+    return values[description.shadow_array_index]
+
+
+def _updated_shadow_array_values(
+    entity: Entity, description, value: float
+) -> list[float]:
+    """Return a paired APK range payload with one side updated."""
+    values = _shadow_array_values(entity, description)
+    if values is None or description.shadow_array_index is None:
+        raise HomeAssistantError("X-Sense range setting is missing its paired value")
+    values[description.shadow_array_index] = float(value)
+    if values[0] > values[1]:
+        raise HomeAssistantError("X-Sense minimum cannot be greater than maximum")
+    return values
+
+
+def _store_shadow_array_values(entity: Entity, description, values: list[float]) -> None:
+    """Update cached values after a successful range-backed write."""
+    entity.data[description.shadow_array_key] = values
+    if description.shadow_array_key == "tRange":
+        entity.data["tempRangeMin"], entity.data["tempRangeMax"] = values
+    elif description.shadow_array_key == "hRange":
+        entity.data["humRangeMin"], entity.data["humRangeMax"] = values

@@ -208,6 +208,13 @@ def ai_detection_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
         for object_name, time_key in _AI_DETECTION_TIME_KEYS.items()
         if object_name in objects and time_key in data
     }
+    fallback_time = data.get("time") or data.get("eventTime") or data.get(
+        "lastMotionTime"
+    )
+    if fallback_time is not None:
+        for object_name in objects:
+            object_times.setdefault(object_name, fallback_time)
+
     event_data: dict[str, Any] = {
         "objects": list(objects),
         "last_ai_detection": ",".join(objects),

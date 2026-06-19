@@ -66,6 +66,18 @@ def safe_float(value: typing.Any) -> float | None:
         return None
 
 
+def safe_float_list(value: typing.Any) -> list[float] | None:
+    if not isinstance(value, (list, tuple)):
+        return None
+    result = []
+    for item in value:
+        parsed = safe_float(item)
+        if parsed is None:
+            return None
+        result.append(parsed)
+    return result
+
+
 def safe_int(value: typing.Any) -> int | None:
     if value in (None, ""):
         return None
@@ -148,10 +160,12 @@ type_mapping: dict[str, Callable[[typing.Any], typing.Any]] = {
     "tempRangeMax": safe_float,
     "humRangeMin": safe_float,
     "humRangeMax": safe_float,
+    "hRange": safe_float_list,
     "hAdjust": safe_float,
-    "hComfort": safe_float,
+    "hComfort": safe_float_list,
+    "tRange": safe_float_list,
     "tAdjust": safe_float,
-    "tComfort": safe_float,
+    "tComfort": safe_float_list,
     "alarmVol": safe_int,
     "alarmSeconds": safe_int,
     "awaitBrightness": safe_int,

@@ -1280,6 +1280,50 @@ def test_xs01_wx_does_not_expose_manual_self_test_action():
     assert client.has_action(station, "test") is False
 
 
+def test_actions_require_resolvable_apk_shadow_route():
+    client = async_xsense.AsyncXSense()
+    station = FakeXSenseStation("SBS50")
+    device = fake_child_device("XS0B-MR", station=station)
+
+    assert client.has_action(device, "mute")
+
+    device.sn = None
+    assert not client.has_action(device, "mute")
+
+
+def test_wifi_action_requires_resolvable_target_context():
+    client = async_xsense.AsyncXSense()
+    station = FakeXSenseStation("SBS50")
+    device = fake_child_device("XS0R-iA", station=station)
+
+    assert client.has_action(device, "mute")
+
+    del station.sn
+    assert not client.has_action(device, "mute")
+
+
+def test_all_declared_model_actions_resolve_for_representative_entities():
+    client = async_xsense.AsyncXSense()
+    base_station = FakeXSenseStation("SBS50")
+
+    for device_type, definition in entity_map.entities.items():
+        actions = definition.get("actions", [])
+        if not actions:
+            continue
+
+        if device_type in {"SBS10", "SBS50"}:
+            entity_obj = FakeXSenseStation(device_type)
+        else:
+            entity_obj = fake_child_device(device_type, station=base_station)
+        entity_obj.data.setdefault("smokeEdition", "9")
+
+        for action_def in actions:
+            assert client.has_action(entity_obj, action_def["action"]), (
+                device_type,
+                action_def["action"],
+            )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("station_sn", "smoke_edition", "expected_topic", "expected_thing"),
@@ -1679,6 +1723,20 @@ async def _capture_volume_update(client, target, volume_key, volume):
     return station_arg, page, data["state"]["desired"]
 
 
+async def _capture_shadow_setting_update(client, target, data_key, value):
+    calls = []
+
+    async def do_thing(station_arg, page, data):
+        calls.append((station_arg, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+    await client.update_shadow_setting(target, data_key, value)
+    assert len(calls) == 1
+    station_arg, page, data = calls[0]
+    return station_arg, page, data["state"]["desired"]
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     (
@@ -1838,6 +1896,543 @@ async def test_device_volume_uses_apk_device_payload_shape(
     assert station_arg is device.station
     assert page == "2nd_cfg_device-sn"
     assert desired == expected_desired
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "station_type",
+        "station_data",
+        "data_key",
+        "value",
+        "expected_page",
+        "expected_desired",
+    ),
+    [
+        (
+            "SBS50",
+            {"alarmVol": 70},
+            "alarmTone",
+            "2",
+            "2nd_cfg_station-sn",
+            {
+                "shadow": "infoBase",
+                "stationSN": "station-sn",
+                "alarmTone": "2",
+                "alarmVol": "70",
+            },
+        ),
+        (
+            "SBS10",
+            {"voiceVol": 45, "alarmVol": 55},
+            "alarmTone",
+            "3",
+            "info_station-sn",
+            {
+                "shadow": "infoBase",
+                "stationSN": "station-sn",
+                "alarmTone": "3",
+                "voiceVol": "45",
+                "alarmVol": "55",
+            },
+        ),
+    ],
+)
+async def test_station_shadow_selects_use_apk_payload_shape(
+    station_type, station_data, data_key, value, expected_page, expected_desired
+):
+    client = async_xsense.AsyncXSense()
+    station_obj = FakeXSenseStation(station_type)
+    station_obj.data = station_data
+
+    station_arg, page, desired = await _capture_shadow_setting_update(
+        client, station_obj, data_key, value
+    )
+
+    assert station_arg is station_obj
+    assert page == expected_page
+    assert desired == expected_desired
+
+
+@pytest.mark.asyncio
+async def test_station_led_brightness_uses_apk_station_payload_shape():
+    client = async_xsense.AsyncXSense()
+    station_obj = FakeXSenseStation("SBS50")
+
+    station_arg, page, desired = await _capture_shadow_setting_update(
+        client, station_obj, "ledBrt", "6"
+    )
+
+    assert station_arg is station_obj
+    assert page == "2nd_cfg_station-sn"
+    assert desired == {
+        "shadow": "infoBase",
+        "stationSN": "station-sn",
+        "ledBrt": "6",
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "device_type",
+        "entity_type",
+        "device_data",
+        "data_key",
+        "value",
+        "expected_desired",
+    ),
+    [
+        (
+            "XS0B-MR",
+            entity_map.EntityType.SMOKE,
+            {"alarmVol": 65},
+            "alarmTone",
+            "2",
+            {
+                "shadow": "infoDev",
+                "stationSN": "station-sn",
+                "alarmTone": "2",
+                "deviceSN": "device-sn",
+                "alarmVol": "65",
+            },
+        ),
+        (
+            "SDS0A",
+            entity_map.EntityType.DOOR,
+            {"chirpVol": 40},
+            "chirpTone",
+            "3",
+            {
+                "shadow": "infoDev",
+                "chirpTone": "3",
+                "deviceSN": "device-sn",
+                "chirpVol": "40",
+            },
+        ),
+        (
+            "SDS0A",
+            entity_map.EntityType.DOOR,
+            {"remindVol": 30},
+            "remindTone",
+            "2",
+            {
+                "shadow": "infoDev",
+                "remindTone": "2",
+                "deviceSN": "device-sn",
+                "remindVol": "30",
+            },
+        ),
+        (
+            "STH0B",
+            entity_map.EntityType.TEMPERATURE,
+            {"alarmVol": 60},
+            "alarmTone",
+            "1",
+            {
+                "shadow": "infoDev",
+                "alarmTone": "1",
+                "deviceSN": "device-sn",
+                "alarmVol": "60",
+            },
+        ),
+        (
+            "STH0B",
+            entity_map.EntityType.TEMPERATURE,
+            {},
+            "tempUnit",
+            "2",
+            {
+                "shadow": "infoDev",
+                "tempUnit": "2",
+                "deviceSN": "device-sn",
+                "stationSN": "station-sn",
+                "changeUnit": "1",
+            },
+        ),
+        (
+            "STH0B",
+            entity_map.EntityType.TEMPERATURE,
+            {},
+            "tAdjust",
+            "0.5",
+            {
+                "shadow": "infoDev",
+                "tAdjust": "0.5",
+                "deviceSN": "device-sn",
+                "stationSN": "station-sn",
+            },
+        ),
+    ],
+)
+async def test_device_shadow_selects_use_apk_payload_shape(
+    device_type, entity_type, device_data, data_key, value, expected_desired
+):
+    client = async_xsense.AsyncXSense()
+    device = fake_child_device(
+        device_type, station=FakeXSenseStation("SBS50"), entity_type=entity_type
+    )
+    device.data = device_data
+
+    station_arg, page, desired = await _capture_shadow_setting_update(
+        client, device, data_key, value
+    )
+
+    assert station_arg is device.station
+    assert page == "2nd_cfg_device-sn"
+    assert desired == expected_desired
+
+
+@pytest.mark.asyncio
+async def test_light_setting_uses_apk_light_shadow_payload_shape():
+    client = async_xsense.AsyncXSense()
+    device = fake_child_device(
+        "SSL51",
+        station=FakeXSenseStation("SBS50"),
+        entity_type=entity_map.EntityType.LIGHT,
+    )
+    calls = []
+
+    async def do_thing(station_arg, page, data):
+        calls.append((station_arg, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+
+    await client.update_light_setting(
+        device, "awaitBrightness", 55, on_event="0"
+    )
+
+    assert len(calls) == 1
+    station_arg, page, data = calls[0]
+    assert station_arg is device.station
+    assert page == "2nd_cfg_device-sn"
+    assert data["state"]["desired"] == {
+        "shadow": "infoDev",
+        "deviceSN": "device-sn",
+        "awaitBrightness": "55",
+        "onEvent": "0",
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("scene", "expected_pir", "expected_await"),
+    [
+        ("1", "1", "0"),
+        ("2", "0", "1"),
+        ("3", "1", "1"),
+    ],
+)
+async def test_light_scene_uses_apk_scene_payload_shape(
+    scene, expected_pir, expected_await
+):
+    client = async_xsense.AsyncXSense()
+    device = fake_child_device(
+        "SSL51",
+        station=FakeXSenseStation("SBS50"),
+        entity_type=entity_map.EntityType.LIGHT,
+    )
+    calls = []
+
+    async def do_thing(station_arg, page, data):
+        calls.append((station_arg, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+
+    await client.update_light_scene(device, scene)
+
+    assert len(calls) == 1
+    station_arg, page, data = calls[0]
+    assert station_arg is device.station
+    assert page == "2nd_cfg_device-sn"
+    assert data["state"]["desired"] == {
+        "shadow": "infoDev",
+        "deviceSN": "device-sn",
+        "lightScene": scene,
+        "onEvent": "1",
+        "pirEnable": expected_pir,
+        "awaitEnable": expected_await,
+    }
+
+
+@pytest.mark.asyncio
+async def test_light_schedule_api_uses_apk_biz_codes_and_payloads():
+    client = async_xsense.AsyncXSense()
+    station = FakeXSenseStation("SBS50")
+    station.entity_id = "station-id"
+    device = fake_child_device(
+        "SSL51",
+        station=station,
+        entity_type=entity_map.EntityType.LIGHT,
+    )
+    device.entity_id = "device-id"
+    calls = []
+
+    async def api_call(code, **kwargs):
+        calls.append((code, kwargs))
+        return {"requestId": f"request-{code}"}
+
+    client.api_call = api_call
+
+    await client.query_light_schedules(device)
+    await client.create_light_schedule(
+        device,
+        name="Evening",
+        start_time="1800",
+        end_time="2300",
+        week_days=["1", "2"],
+        enabled=True,
+        time_zone="America/St_Johns",
+    )
+    await client.update_light_schedule(
+        device,
+        schedule_id="schedule-id",
+        start_time="1900",
+        end_time="2200",
+        week_days=["3"],
+        enabled=False,
+        time_zone="America/St_Johns",
+    )
+    await client.rename_light_schedule(
+        device, schedule_id="schedule-id", name="Night"
+    )
+    await client.delete_light_schedule(device, schedule_id="schedule-id")
+
+    assert calls == [
+        ("405105", {"stationId": "station-id", "deviceId": "device-id"}),
+        (
+            "405101",
+            {
+                "stationId": "station-id",
+                "schedName": "Evening",
+                "deviceIds": ["device-id"],
+                "timeZone": "America/St_Johns",
+                "startTime": "1800",
+                "endTime": "2300",
+                "isEnable": "1",
+                "weekDays": ["1", "2"],
+                "newTimeZoneMode": "1",
+            },
+        ),
+        (
+            "405103",
+            {
+                "stationId": "station-id",
+                "schedId": "schedule-id",
+                "deviceId": "device-id",
+                "timeZone": "America/St_Johns",
+                "startTime": "1900",
+                "endTime": "2200",
+                "isEnable": "0",
+                "weekDays": ["3"],
+                "newTimeZoneMode": "1",
+            },
+        ),
+        (
+            "405102",
+            {
+                "stationId": "station-id",
+                "schedId": "schedule-id",
+                "schedName": "Night",
+            },
+        ),
+        (
+            "405104",
+            {
+                "stationId": "station-id",
+                "schedId": "schedule-id",
+                "deviceId": "device-id",
+            },
+        ),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_light_group_api_uses_apk_biz_codes_and_payloads():
+    client = async_xsense.AsyncXSense()
+    station = FakeXSenseStation("SBS50")
+    station.entity_id = "station-id"
+    device = fake_child_device(
+        "SSL51",
+        station=station,
+        entity_type=entity_map.EntityType.LIGHT,
+    )
+    calls = []
+
+    async def api_call(code, **kwargs):
+        calls.append((code, kwargs))
+        return {"requestId": f"request-{code}"}
+
+    client.api_call = api_call
+
+    await client.query_light_groups(device)
+    await client.create_light_group(device, name="Porch")
+    await client.rename_light_group(device, group_id="group-id", name="Drive")
+    await client.update_light_group_timer(
+        device, group_id="group-id", data_key="pirTime", value="60"
+    )
+    await client.update_light_group_timer(
+        device, group_id="group-id", data_key="appTime", value="300"
+    )
+    await client.bind_light_group(
+        device,
+        name="Drive",
+        device_ids=["light-1", "light-2"],
+    )
+    await client.bind_light_group(
+        device,
+        name="New Group",
+        device_ids=["light-3"],
+    )
+    await client.delete_light_group(device, group_id="group-id")
+    await client.remove_light_group_devices(device, device_ids=["light-1"])
+
+    assert calls == [
+        ("405001", {"stationId": "station-id"}),
+        ("405002", {"stationId": "station-id", "groupName": "Porch"}),
+        (
+            "405003",
+            {"stationId": "station-id", "groupId": "group-id", "groupName": "Drive"},
+        ),
+        (
+            "405004",
+            {
+                "stationId": "station-id",
+                "groupId": "group-id",
+                "pirTime": "60",
+                "onEvent": "1",
+            },
+        ),
+        (
+            "405004",
+            {
+                "stationId": "station-id",
+                "groupId": "group-id",
+                "appTime": "300",
+                "onEvent": "2",
+            },
+        ),
+        (
+            "405005",
+            {
+                "stationId": "station-id",
+                "groupName": "Drive",
+                "deviceIds": ["light-1", "light-2"],
+            },
+        ),
+        (
+            "405005",
+            {
+                "stationId": "station-id",
+                "groupName": "New Group",
+                "deviceIds": ["light-3"],
+            },
+        ),
+        ("405006", {"stationId": "station-id", "groupId": "group-id"}),
+        ("405007", {"stationId": "station-id", "deviceIds": ["light-1"]}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_co_pre_alarm_uses_apk_warnperiod_payload_shape():
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    device = fake_child_device(
+        "XC0C-MR",
+        station=FakeXSenseStation("SBS50"),
+        entity_type=entity_map.EntityType.CO,
+    )
+    calls = []
+
+    async def do_thing(station_arg, page, data):
+        calls.append((station_arg, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+
+    await client.update_co_pre_alarm(device, enabled=True, period=5)
+
+    assert len(calls) == 1
+    station_arg, page, data = calls[0]
+    desired = data["state"]["desired"]
+    assert station_arg is device.station
+    assert page == "2nd_warnperiod"
+    assert desired["shadow"] == "appWarnPerion"
+    assert desired["stationSN"] == "station-sn"
+    assert desired["deviceSN"] == "device-sn"
+    assert desired["userId"] == "user-id"
+    assert desired["warnIsOpen"] == "1"
+    assert desired["warnPeriod"] == "5"
+    assert desired["time"].isdigit()
+    assert len(desired["time"]) == 14
+
+
+@pytest.mark.asyncio
+async def test_shadow_array_setting_uses_apk_temp_humidity_payload_shape():
+    client = async_xsense.AsyncXSense()
+    device = fake_child_device(
+        "STH0B",
+        station=FakeXSenseStation("SBS50"),
+        entity_type=entity_map.EntityType.TEMPERATURE,
+    )
+    calls = []
+
+    async def do_thing(station_arg, page, data):
+        calls.append((station_arg, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+
+    await client.update_shadow_array_setting(device, "tRange", [10.0, 30.0])
+
+    assert len(calls) == 1
+    station_arg, page, data = calls[0]
+    assert station_arg is device.station
+    assert page == "2nd_cfg_device-sn"
+    assert data["state"]["desired"] == {
+        "shadow": "infoDev",
+        "deviceSN": "device-sn",
+        "stationSN": "station-sn",
+        "tRange": [10.0, 30.0],
+    }
+
+
+@pytest.mark.asyncio
+async def test_shadow_settings_write_comfort_arrays_together():
+    client = async_xsense.AsyncXSense()
+    device = fake_child_device(
+        "STH0B",
+        station=FakeXSenseStation("SBS50"),
+        entity_type=entity_map.EntityType.TEMPERATURE,
+    )
+    calls = []
+
+    async def do_thing(station_arg, page, data):
+        calls.append((station_arg, page, data))
+        return {"ok": True}
+
+    client.do_thing = do_thing
+
+    await client.update_shadow_settings(
+        device,
+        {"tComfort": [20.0, 26.0], "hComfort": [30.0, 60.0]},
+        comfort_type="0",
+    )
+
+    assert len(calls) == 1
+    station_arg, page, data = calls[0]
+    assert station_arg is device.station
+    assert page == "2nd_cfg_device-sn"
+    assert data["state"]["desired"] == {
+        "shadow": "infoDev",
+        "deviceSN": "device-sn",
+        "stationSN": "station-sn",
+        "tComfort": [20.0, 26.0],
+        "hComfort": [30.0, 60.0],
+        "comfortType": "0",
+    }
 
 
 @pytest.mark.asyncio
@@ -3054,6 +3649,169 @@ def test_camera_config_data_normalizes_boolean_fields():
     assert data["cooldownEnabled"] is True
     assert data["devicePersonDetect"] is False
     assert data["needNightVision"] is False
+
+
+def test_camera_ai_notification_data_parses_apk_category_response():
+    data = async_xsense._camera_ai_notification_data(
+        {
+            "list": [
+                {"name": "person", "choice": True},
+                {"name": "pet", "choice": False},
+                {
+                    "name": "vehicle",
+                    "choice": True,
+                    "subEvent": [
+                        {"name": "vehicle_enter", "choice": True},
+                        {"name": "vehicle_out", "choice": False},
+                        {"name": "vehicle_held_up", "choice": True},
+                    ],
+                },
+                {
+                    "name": "package",
+                    "subEvent": [
+                        {"name": "package_exist", "choice": False},
+                        {"name": "package_drop_off", "choice": True},
+                        {"name": "package_pick_up", "choice": False},
+                    ],
+                },
+                {"name": "other", "choice": True},
+            ]
+        }
+    )
+
+    assert data["aiNotificationPerson"] is True
+    assert data["aiNotificationPet"] is False
+    assert data["aiNotificationVehicleEnter"] is True
+    assert data["aiNotificationVehicleOut"] is False
+    assert data["aiNotificationVehicleHeldUp"] is True
+    assert data["aiNotificationPackageExist"] is False
+    assert data["aiNotificationPackageDropOff"] is True
+    assert data["aiNotificationPackagePickUp"] is False
+    assert data["aiNotificationOther"] is True
+    assert data["aiNotificationSupportedTypes"] == [
+        "other",
+        "package_drop_off",
+        "package_exist",
+        "package_pick_up",
+        "person",
+        "pet",
+        "vehicle_enter",
+        "vehicle_held_up",
+        "vehicle_out",
+    ]
+
+
+def test_camera_ai_notification_payload_matches_apk_shape():
+    payload = async_xsense._camera_ai_notification_payload(
+        {
+            "person",
+            "vehicle_enter",
+            "package_pick_up",
+            "other",
+        }
+    )
+
+    assert payload == {
+        "person": [],
+        "vehicle": ["vehicle_enter"],
+        "package": ["package_pick_up"],
+        "other": [],
+    }
+
+
+def test_camera_ai_assistant_data_parses_apk_object_switches():
+    data = async_xsense._camera_ai_assistant_data(
+        {
+            "data": [
+                {
+                    "serialNumber": "other-camera",
+                    "list": [{"eventObject": "person", "checked": False}],
+                },
+                {
+                    "serialNumber": "camera-sn",
+                    "list": [
+                        {"eventObject": "person", "checked": True},
+                        {"eventObject": "pet", "checked": False},
+                        {"eventObject": "vehicle", "checked": True},
+                        {"eventObject": "package", "checked": False},
+                    ],
+                },
+            ]
+        },
+        "camera-sn",
+    )
+
+    assert data == {
+        "aiAssistantPerson": True,
+        "aiAssistantPet": False,
+        "aiAssistantVehicle": True,
+        "aiAssistantPackage": False,
+        "aiAssistantSupportedTypes": ["person", "pet", "vehicle", "package"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_update_camera_ai_notification_writes_full_apk_payload():
+    client = async_xsense.AsyncXSense()
+    calls = []
+    camera = types.SimpleNamespace(
+        sn="camera-sn",
+        type="SSC0A",
+        data={
+            "aiNotificationPerson": True,
+            "aiNotificationVehicleEnter": True,
+            "aiNotificationPackagePickUp": True,
+        },
+    )
+    camera.set_data = camera.data.update
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+
+    client.addx_call = addx_call
+
+    await client.update_camera_ai_notification(camera, "vehicle_enter", False)
+
+    assert calls == [
+        (
+            "/device/updateMessageNotification/v1",
+            {
+                "serialNumber": "camera-sn",
+                "eventObjectType": {
+                    "person": [],
+                    "vehicle": [],
+                    "package": ["package_pick_up"],
+                },
+            },
+        )
+    ]
+    assert camera.data["aiNotificationVehicleEnter"] is False
+
+
+@pytest.mark.asyncio
+async def test_update_camera_ai_assistant_writes_object_switch():
+    client = async_xsense.AsyncXSense()
+    calls = []
+    camera = types.SimpleNamespace(sn="camera-sn", type="SSC0A", data={})
+    camera.set_data = camera.data.update
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+
+    client.addx_call = addx_call
+
+    await client.update_camera_ai_assistant(camera, "vehicle", True)
+
+    assert calls == [
+        (
+            "/aiAssist/updateEventObjectSwitch",
+            {
+                "serialNumber": "camera-sn",
+                "list": [{"checked": True, "eventObject": "vehicle"}],
+            },
+        )
+    ]
+    assert camera.data["aiAssistantVehicle"] is True
 
 
 def test_camera_data_requires_apk_sd_card_support_status():

@@ -339,12 +339,50 @@ class XSenseBase:
             if station := house.get_station_by_sn(sn):
                 self.parse_get_state(station, i)
 
+    def action_definition(self, entity: Entity, action: str) -> Dict | None:
+        """Return the supported action definition for an entity, if resolvable."""
+        entity_def = entities.get(entity.type)
+        if not entity_def:
+            return None
+        action_def = next(
+            (a for a in entity_def.get("actions", []) if a.get("action") == action),
+            None,
+        )
+        if action_def is None or not _action_route_resolves(entity, action_def):
+            return None
+        return action_def
+
     def has_action(self, entity: Entity, action: str):
-        if entity_def := entities.get(entity.type):
-            return any(
-                a for a in entity_def.get("actions", []) if a.get("action") == action
-            )
+        return self.action_definition(entity, action) is not None
+
+
+def _action_route_resolves(entity: Entity, action_def: Dict) -> bool:
+    """Return whether an APK shadow action can resolve for this entity context."""
+    if not getattr(entity, "sn", None):
         return False
+    try:
+        topic = _resolve_action_value(action_def.get("topic"), entity)
+        shadow = _resolve_action_value(action_def.get("shadow"), entity)
+        target = _resolve_action_value(action_def.get("target"), entity)
+        extra = _resolve_action_value(action_def.get("extra", {}), entity)
+        data = _resolve_action_value(action_def.get("data", {}), entity)
+    except (AttributeError, TypeError, KeyError, ValueError):
+        return False
+
+    if not topic or not shadow:
+        return False
+    if not isinstance(extra, dict) or not isinstance(data, dict):
+        return False
+
+    target = target if target is not None else getattr(entity, "station", entity)
+    return bool(getattr(target, "shadow_name", None) or getattr(target, "sn", None))
+
+
+def _resolve_action_value(value, entity: Entity):
+    """Return an action value, resolving callables against the entity."""
+    if callable(value):
+        return value(entity)
+    return value
 
 
 def _state_child_device(station: Station, child_key, child_state):

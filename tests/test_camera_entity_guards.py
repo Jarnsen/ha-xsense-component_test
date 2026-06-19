@@ -2,6 +2,9 @@ import asyncio
 import sys
 from types import SimpleNamespace
 
+import pytest
+from homeassistant.exceptions import HomeAssistantError
+
 for module_name in list(sys.modules):
     if module_name == "custom_components.xsense" or module_name.startswith(
         "custom_components.xsense."
@@ -11,6 +14,7 @@ if not hasattr(sys.modules.get("custom_components"), "__path__"):
     sys.modules.pop("custom_components", None)
 
 from custom_components.xsense import (
+    PLATFORMS,
     binary_sensor,
     button,
     camera,
@@ -21,10 +25,25 @@ from custom_components.xsense import (
     switch,
 )
 from custom_components.xsense.api import mapping
+from homeassistant.const import Platform
 
 
 def entity(device_type, data):
     return SimpleNamespace(type=device_type, data=data)
+
+
+def routed_entity(device_type, data, *, station_type="SBS50"):
+    station = SimpleNamespace(
+        type=station_type,
+        sn="station-sn",
+        shadow_name=f"{station_type}station-sn",
+    )
+    return SimpleNamespace(
+        type=device_type,
+        sn="device-sn",
+        station=station,
+        data=data,
+    )
 
 
 def test_boolean_state_does_not_invent_unknown_values():
@@ -39,6 +58,9 @@ def test_boolean_state_does_not_invent_unknown_values():
     assert switch.boolean_state(2) is None
     assert mapping.bool_state("off") is False
     assert mapping.bool_state("unexpected") is None
+    assert mapping.map_type("tComfort", ["20", 26]) == [20.0, 26.0]
+    assert mapping.map_type("hComfort", ["30", 60]) == [30.0, 60.0]
+    assert mapping.map_type("tComfort", ["bad", 26]) is None
 
 
 def test_is_life_end_uses_explicit_boolean_parser():
@@ -58,6 +80,7 @@ def test_camera_setup_controls_are_exposed_for_automation_when_supported():
 
     assert {
         "camera_motion_detection",
+        "camera_person_detection",
         "camera_live_audio",
         "camera_recording_audio",
         "camera_alarm_when_removed",
@@ -72,6 +95,328 @@ def test_camera_setup_controls_are_exposed_for_automation_when_supported():
         "camera_live_speaker_volume",
         "camera_cooldown",
     }.issubset(number_keys)
+
+
+def test_select_platform_is_loaded_for_camera_and_non_camera_controls():
+    assert Platform.SELECT in PLATFORMS
+
+
+def test_non_camera_selects_require_shadow_write_route():
+    descriptions = {description.key: description for description in select.SELECTS}
+    routed = routed_entity(
+        "XS01-WX",
+        {
+            "alarmTone": "1",
+            "tempUnit": "1",
+            "ledBrt": "6",
+        },
+    )
+    light = routed_entity(
+        "SSL51",
+        {
+            "pirTime": "60",
+            "appTime": "300",
+            "lightScene": "3",
+        },
+    )
+    light.entity_type = select.EntityType.LIGHT
+    missing_station = SimpleNamespace(
+        type="XS01-WX",
+        sn="device-sn",
+        station=SimpleNamespace(type="SBS50", sn="station-sn"),
+        data={"alarmTone": "1", "tempUnit": "1"},
+    )
+
+    assert descriptions["alarm_tone"].exists_fn(routed)
+    assert descriptions["alarm_tone"].fixed_options == ("1", "2", "3")
+    assert not descriptions["alarm_tone"].exists_fn(missing_station)
+    assert descriptions["temperature_unit"].exists_fn(routed)
+    assert descriptions["temperature_unit"].fixed_options == ("1", "2")
+    assert descriptions["led_brightness"].exists_fn(routed)
+    assert descriptions["led_brightness"].fixed_options == ("2", "4", "6", "8")
+    assert descriptions["light_motion_on_time"].exists_fn(light)
+    assert descriptions["light_app_on_time"].exists_fn(light)
+    assert descriptions["light_scene"].exists_fn(light)
+    assert descriptions["light_scene"].fixed_options == ("1", "2", "3")
+    assert descriptions["light_motion_on_time"].fixed_options == (
+        "30",
+        "60",
+        "180",
+        "300",
+        "600",
+        "900",
+    )
+
+
+def test_non_camera_numbers_include_apk_setting_controls():
+    descriptions = {description.key: description for description in number.NUMBERS}
+    routed = routed_entity(
+        "STH0B",
+        {
+            "tAdjust": "0.5",
+            "hAdjust": "2",
+            "warnPeriod": "5",
+            "detcSens": "2",
+            "sensitivity": "3",
+            "tempRangeMin": 10,
+            "tempRangeMax": 30,
+            "humRangeMin": 20,
+            "humRangeMax": 80,
+            "comfortType": "0",
+        },
+    )
+    light = routed_entity(
+        "SSL51",
+        {
+            "triggerBrightness": "60",
+            "awaitBrightness": "30",
+        },
+    )
+    light.entity_type = number.EntityType.LIGHT
+    missing_station = SimpleNamespace(
+        type="STH0B",
+        sn="device-sn",
+        station=SimpleNamespace(type="SBS50", sn="station-sn"),
+        data={"tAdjust": "0.5", "hAdjust": "2", "warnPeriod": "5"},
+    )
+
+    assert descriptions["temperature_adjustment"].exists_fn(routed)
+    assert descriptions["humidity_adjustment"].exists_fn(routed)
+    assert descriptions["warning_period"].exists_fn(routed)
+    assert descriptions["detection_sensitivity"].exists_fn(routed)
+    assert descriptions["driveway_sensitivity"].exists_fn(routed)
+    assert descriptions["trigger_brightness"].exists_fn(light)
+    assert descriptions["standby_brightness"].exists_fn(light)
+    assert descriptions["temperature_min"].exists_fn(routed)
+    assert descriptions["temperature_max"].exists_fn(routed)
+    assert descriptions["humidity_min"].exists_fn(routed)
+    assert descriptions["humidity_max"].exists_fn(routed)
+    assert descriptions["temperature_comfort_min"].exists_fn(routed)
+    assert descriptions["temperature_comfort_max"].exists_fn(routed)
+    assert descriptions["humidity_comfort_min"].exists_fn(routed)
+    assert descriptions["humidity_comfort_max"].exists_fn(routed)
+    assert not descriptions["temperature_adjustment"].exists_fn(missing_station)
+
+
+def test_shadow_range_number_values_use_apk_arrays_and_defaults():
+    descriptions = {description.key: description for description in number.NUMBERS}
+    routed = routed_entity(
+        "STH0B",
+        {
+            "tRange": [9, 31],
+            "hRange": [25, 75],
+            "comfortType": "0",
+        },
+    )
+
+    assert number._shadow_array_value(routed, descriptions["temperature_min"]) == 9
+    assert number._shadow_array_value(routed, descriptions["temperature_max"]) == 31
+    assert number._shadow_array_value(routed, descriptions["humidity_min"]) == 25
+    assert number._shadow_array_value(routed, descriptions["humidity_max"]) == 75
+    assert (
+        number._shadow_array_value(routed, descriptions["temperature_comfort_min"])
+        == 20
+    )
+    assert (
+        number._shadow_array_value(routed, descriptions["temperature_comfort_max"])
+        == 26
+    )
+
+
+def test_warning_enabled_switch_uses_write_route_guard():
+    descriptions = {description.key: description for description in switch.SWITCHES}
+    routed = routed_entity("XC0C-MR", {"warnIsOpen": "1"})
+    light = routed_entity(
+        "SSL51",
+        {
+            "awaitEnable": "1",
+            "pirEnable": "1",
+            "sunshineEnable": "0",
+        },
+    )
+    missing_station = SimpleNamespace(
+        type="XC0C-MR",
+        sn="device-sn",
+        station=SimpleNamespace(type="SBS50", sn="station-sn"),
+        data={"warnIsOpen": "1"},
+    )
+
+    assert descriptions["warning_enabled"].exists_fn(routed)
+    assert descriptions["warning_enabled"].value_fn(routed) is True
+    assert not descriptions["warning_enabled"].exists_fn(missing_station)
+    assert descriptions["await_enabled"].exists_fn(light)
+    assert descriptions["await_enabled"].light_on_event == "0"
+    assert descriptions["pir_enabled"].light_on_event == "0"
+    assert descriptions["sunshine_enabled"].light_on_event == "0"
+
+
+def test_light_power_switch_is_primary_control_not_config_entity():
+    descriptions = {description.key: description for description in switch.SWITCHES}
+    light_power = descriptions["light_power"]
+    light = routed_entity("SSL51", {"on": "1"})
+    light.entity_type = switch.EntityType.LIGHT
+
+    assert light_power.entity_category is None
+    assert light_power.exists_fn(light)
+    assert light_power.value_fn(light) is True
+
+
+def test_light_schedule_service_helpers_validate_apk_values():
+    assert switch._schedule_time("06:05") == "0605"
+    assert switch._schedule_time("2300") == "2300"
+    assert switch._schedule_week_days(["1", 7]) == ["1", "7"]
+    assert switch._light_schedule_list({"schedList": [{"schedId": "1"}]}) == [
+        {"schedId": "1"}
+    ]
+    assert switch._light_group_list(
+        {"reData": {"groupList": [{"groupId": "1"}]}}
+    ) == [{"groupId": "1"}]
+    assert switch._non_empty_strings([" light-1 ", ""], "device_ids") == ["light-1"]
+
+    with pytest.raises(HomeAssistantError):
+        switch._schedule_time("24:00")
+    with pytest.raises(HomeAssistantError):
+        switch._schedule_week_days(["0"])
+    with pytest.raises(HomeAssistantError):
+        switch._non_empty_strings([""], "device_ids")
+
+
+def test_camera_selects_survive_unknown_current_setting_values():
+    camera = entity(
+        "SSC0A",
+        {
+            "isAdmin": True,
+            "needMotion": True,
+            "videoSecondsValues": [-1, 10, 20],
+        },
+    )
+
+    descriptions = {description.key: description for description in select.SELECTS}
+
+    assert descriptions["camera_motion_sensitivity"].exists_fn(camera)
+    assert descriptions["camera_video_seconds"].exists_fn(camera)
+
+
+def test_camera_person_detection_switch_follows_apk_support_flag():
+    descriptions = {description.key: description for description in switch.SWITCHES}
+    description = descriptions["camera_person_detection"]
+
+    supported = entity("SSC0A", {"isAdmin": True, "supportPersonDetect": True})
+    unsupported = entity(
+        "SSC0A",
+        {
+            "isAdmin": True,
+            "supportPersonDetect": False,
+            "devicePersonDetect": True,
+        },
+    )
+
+    assert description.exists_fn(supported)
+    assert description.value_fn(supported) is None
+    assert not description.exists_fn(unsupported)
+
+
+def test_camera_ai_setting_switches_follow_apk_support_lists():
+    descriptions = {description.key: description for description in switch.SWITCHES}
+    camera = entity(
+        "SSC0A",
+        {
+            "isAdmin": True,
+            "aiNotificationPerson": True,
+            "aiNotificationVehicleEnter": False,
+            "aiNotificationSupportedTypes": ["person", "vehicle_enter"],
+            "aiAssistantPerson": True,
+            "aiAssistantVehicle": False,
+            "aiAssistantSupportedTypes": ["person", "vehicle"],
+        },
+    )
+
+    assert descriptions["camera_ai_notification_person"].exists_fn(camera)
+    assert descriptions["camera_ai_notification_person"].value_fn(camera) is True
+    assert descriptions["camera_ai_notification_vehicle_enter"].exists_fn(camera)
+    assert (
+        descriptions["camera_ai_notification_vehicle_enter"].value_fn(camera) is False
+    )
+    assert not descriptions["camera_ai_notification_pet"].exists_fn(camera)
+    assert descriptions["camera_ai_assistant_person"].exists_fn(camera)
+    assert descriptions["camera_ai_assistant_person"].value_fn(camera) is True
+    assert descriptions["camera_ai_assistant_vehicle"].exists_fn(camera)
+    assert descriptions["camera_ai_assistant_vehicle"].value_fn(camera) is False
+    assert not descriptions["camera_ai_assistant_package"].exists_fn(camera)
+
+
+def test_non_camera_switches_require_shadow_write_route():
+    descriptions = {description.key: description for description in switch.SWITCHES}
+    routed = routed_entity("XS01-WX", {"keySound": "1"})
+    missing_station = SimpleNamespace(
+        type="XS01-WX",
+        sn="device-sn",
+        station=SimpleNamespace(type="SBS50", sn="station-sn"),
+        data={"keySound": "1"},
+    )
+    missing_device_serial = routed_entity("XS01-WX", {"keySound": "1"})
+    missing_device_serial.sn = None
+
+    assert descriptions["key_sound_enabled"].exists_fn(routed)
+    assert not descriptions["key_sound_enabled"].exists_fn(missing_station)
+    assert not descriptions["key_sound_enabled"].exists_fn(missing_device_serial)
+
+
+def test_non_camera_volume_numbers_require_shadow_write_route():
+    descriptions = {description.key: description for description in number.NUMBERS}
+    routed = routed_entity("XS01-WX", {"voiceVol": 40})
+    missing_station = SimpleNamespace(
+        type="XS01-WX",
+        sn="device-sn",
+        station=SimpleNamespace(type="SBS50", sn="station-sn"),
+        data={"voiceVol": 40},
+    )
+
+    assert descriptions["voice_volume"].exists_fn(routed)
+    assert not descriptions["voice_volume"].exists_fn(missing_station)
+
+
+def test_camera_diagnostic_sensors_expose_apk_metadata():
+    descriptions = {description.key: description for description in sensor.SENSORS}
+    camera = entity(
+        "SSC0A",
+        {
+            "activatedTime": "20260619120000",
+            "cameraStatusCode": 0,
+            "deviceDormancyMessage": "sleeping",
+            "deviceDormancyWakeTime": "20260619120500",
+            "firmwareStatus": 1,
+            "firmwareVersion": "1.0.0",
+            "networkName": "Front WiFi",
+            "offlineTime": "20260619121000",
+            "sdCardFormatStatus": 0,
+            "sdCardTotal": 128000,
+            "sdCardUsed": 64000,
+            "thumbImgTime": "20260619121500",
+            "timeZoneArea": "America/New_York",
+            "wifiChannel": "6",
+            "wiredMacAddress": "00:11:22:33:44:55",
+        },
+    )
+
+    for key in {
+        "camera_activated_time",
+        "camera_status_code",
+        "camera_dormancy_message",
+        "camera_dormancy_wake_time",
+        "camera_firmware_status",
+        "camera_firmware_version",
+        "camera_network_name",
+        "camera_offline_time",
+        "camera_sd_card_status",
+        "camera_sd_card_total",
+        "camera_sd_card_used",
+        "camera_thumbnail_time",
+        "camera_time_zone_area",
+        "camera_wifi_channel",
+        "camera_wired_mac_address",
+    }:
+        assert descriptions[key].exists_fn(camera)
 
 
 def test_read_only_camera_entities_require_camera_entity():
@@ -90,7 +435,14 @@ def test_regular_motion_entities_precreate_for_motion_capable_cameras():
 
     assert not motion.exists_fn(non_camera)
     assert motion.exists_fn(camera)
-    assert motion.value_fn(camera) is None
+    assert motion.value_fn(camera) is False
+
+
+def test_camera_motion_entity_uses_reported_motion_state():
+    motion = next(item for item in binary_sensor.SENSORS if item.key == "moved")
+
+    assert motion.value_fn(entity("SSC0A", {"isMoved": "1"})) is True
+    assert motion.value_fn(entity("SSC0A", {"isMoved": "0"})) is False
 
 
 def test_ai_detection_event_entity_precreates_for_camera_notifications():
@@ -287,6 +639,50 @@ def test_ai_detection_event_data_uses_apk_detection_payload():
         ),
         "20260614230200",
     )
+
+
+def test_ai_detection_event_data_uses_fallback_event_time():
+    event_data = event.ai_detection_event_data(
+        {
+            "lastAiDetection": "person",
+            "lastMotionTime": "20260614230300",
+        }
+    )
+
+    assert event_data == {
+        "objects": ["person"],
+        "last_ai_detection": "person",
+        "object_times": {"person": "20260614230300"},
+        "time": "20260614230300",
+    }
+
+
+def test_ai_detection_event_entity_triggers_repeated_same_object_with_new_time():
+    camera_entity = entity(
+        "SSC0A",
+        {
+            "supportPersonDetect": True,
+            "lastAiDetection": "person",
+            "lastPersonDetectionTime": "20260614230100",
+        },
+    )
+    event_entity = event.XSenseEventEntity.__new__(event.XSenseEventEntity)
+    event_entity._ai_detection_initialized = False
+    event_entity._last_ai_detection_fingerprint = None
+    event_entity.hass = object()
+    event_entity.platform = object()
+    event_entity._current_entity = lambda: camera_entity
+    triggered = []
+    event_entity._trigger_event = lambda event_type, data: triggered.append(
+        (event_type, data["time"])
+    )
+    event_entity.async_write_ha_state = lambda: None
+
+    event_entity._handle_coordinator_update()
+    camera_entity.data["lastPersonDetectionTime"] = "20260614230200"
+    event_entity._handle_coordinator_update()
+
+    assert triggered == [("person", "20260614230200")]
 
 
 def test_ai_detection_event_data_ignores_missing_or_unknown_objects():
@@ -953,20 +1349,15 @@ def test_camera_online_uses_parsed_entity_online_state_like_apk():
     assert camera._camera_online(camera_entity) is False
 
 
-def test_camera_metadata_fields_are_kept_out_of_entity_registry():
+def test_stale_camera_metadata_fields_are_kept_out_of_entity_registry():
     forbidden = {
         "camera_model",
-        "camera_status_code",
         "camera_device_status",
         "camera_sleep_message",
         "camera_wake_time",
-        "camera_firmware_status",
-        "camera_firmware_version",
-        "camera_network_name",
         "camera_stream_protocol",
         "camera_codec",
         "camera_time_zone",
-        "camera_time_zone_area",
         "camera_awake",
         "camera_webrtc_supported",
     }

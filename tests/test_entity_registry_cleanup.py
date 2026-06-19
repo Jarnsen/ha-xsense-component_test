@@ -371,6 +371,17 @@ def test_obsolete_binary_sensor_keys_only_remove_removed_binary_sensors():
         "package_drop_off_detected",
         "package_pick_up_detected",
         "package_exist_detected",
+        "alarm_enabled",
+        "continued_alarm",
+        "on",
+        "await_enabled",
+        "pir_enabled",
+        "sunshine_enabled",
+        "key_sound_enabled",
+        "warning_enabled",
+        "chirp_tone_enabled",
+        "reminder_enabled",
+        "reminder_tone_enabled",
     )
 
 
@@ -892,20 +903,69 @@ def test_legacy_none_entity_id_migration_skips_existing_target(monkeypatch):
 def test_camera_metadata_entities_are_obsolete_registry_entries():
     sensor_keys = {
         "camera_model",
-        "camera_status_code",
         "camera_device_status",
         "camera_sleep_message",
         "camera_wake_time",
-        "camera_firmware_status",
-        "camera_firmware_version",
-        "camera_network_name",
         "camera_stream_protocol",
         "camera_codec",
         "camera_time_zone",
-        "camera_time_zone_area",
         "last_motion_time",
     }
     binary_sensor_keys = {"camera_awake", "camera_webrtc_supported"}
 
     assert sensor_keys.issubset(set(OBSOLETE_SENSOR_KEYS))
     assert binary_sensor_keys.issubset(set(OBSOLETE_BINARY_SENSOR_KEYS))
+
+
+def test_writable_config_values_are_not_exposed_as_read_only_entities():
+    from custom_components.xsense.binary_sensor import SENSORS as BINARY_SENSORS
+    from custom_components.xsense.sensor import SENSORS
+
+    removed_sensor_keys = {
+        "led_brightness",
+        "await_brightness",
+        "trigger_brightness",
+        "temperature_min",
+        "temperature_max",
+        "humidity_min",
+        "humidity_max",
+        "temperature_unit",
+        "temperature_adjustment",
+        "humidity_adjustment",
+        "temperature_comfort",
+        "humidity_comfort",
+        "temperature_range",
+        "humidity_range",
+        "comfort_type",
+        "alarm_tone",
+        "chirp_tone",
+        "reminder_tone",
+        "alarm_interval",
+        "reminder_time",
+        "detection_sensitivity",
+        "sensitivity",
+        "pir_time",
+        "warning_period",
+        "app_time",
+        "light_scene",
+    }
+    removed_binary_keys = {
+        "alarm_enabled",
+        "continued_alarm",
+        "on",
+        "await_enabled",
+        "pir_enabled",
+        "sunshine_enabled",
+        "key_sound_enabled",
+        "warning_enabled",
+        "chirp_tone_enabled",
+        "reminder_enabled",
+        "reminder_tone_enabled",
+    }
+
+    assert removed_sensor_keys.isdisjoint({description.key for description in SENSORS})
+    assert removed_binary_keys.isdisjoint(
+        {description.key for description in BINARY_SENSORS}
+    )
+    assert removed_sensor_keys.issubset(set(OBSOLETE_SENSOR_KEYS))
+    assert removed_binary_keys.issubset(set(OBSOLETE_BINARY_SENSOR_KEYS))

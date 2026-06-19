@@ -680,6 +680,7 @@ def _apk_ai_detection_object_times(
         data.get("eventObjectType"),
         data.get("eventItems"),
         data.get("lastType"),
+        data.get("lastAiDetection"),
     ]
     objects: dict[str, Any] = {}
     for raw_value in raw_values:

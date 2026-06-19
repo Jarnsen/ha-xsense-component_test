@@ -52,6 +52,33 @@ _CAMERA_RESOLUTION_ALIASES = {
     "P1536": "2048x1536",
 }
 
+CAMERA_AI_NOTIFICATION_TYPES = (
+    "person",
+    "pet",
+    "vehicle_enter",
+    "vehicle_out",
+    "vehicle_held_up",
+    "package_exist",
+    "package_drop_off",
+    "package_pick_up",
+    "other",
+)
+CAMERA_AI_ASSISTANT_TYPES = ("person", "pet", "vehicle", "package")
+_CAMERA_AI_NOTIFICATION_GROUPS = {
+    "person": ("person",),
+    "pet": ("pet",),
+    "vehicle": ("vehicle_enter", "vehicle_out", "vehicle_held_up"),
+    "package": ("package_exist", "package_drop_off", "package_pick_up"),
+    "other": ("other",),
+}
+_CAMERA_AI_NOTIFICATION_PAYLOAD_KEYS = {
+    "package": "package",
+    "person": "person",
+    "pet": "pet",
+    "vehicle": "vehicle",
+    "other": "other",
+}
+
 # The Android app reads these standalone Wi-Fi device categories from the
 # house-level mainpage/2nd_mainpage shadows, not from station-level mainpage
 # shadows. Querying a station-level mainpage for them returns 404 on accounts
@@ -590,6 +617,33 @@ class AsyncXSense(XSenseBase):
                 if doorbell:
                     camera.set_data(_camera_doorbell_data(doorbell))
 
+            if camera.data.get("supportPersonDetect") is not False:
+                try:
+                    notification_settings = await self.addx_call(
+                        "/device/queryMessageNotification/v1",
+                        serialNumber=camera.sn,
+                        userId=self.userid,
+                    )
+                except APIFailure:
+                    notification_settings = None
+                if notification_settings:
+                    camera.set_data(
+                        _camera_ai_notification_data(notification_settings)
+                    )
+
+                try:
+                    ai_event_settings = await self.addx_call(
+                        "/aiAssist/queryEventObjectSwitch",
+                        isAll=False,
+                        serialNumbers=[camera.sn],
+                    )
+                except APIFailure:
+                    ai_event_settings = None
+                if ai_event_settings:
+                    camera.set_data(
+                        _camera_ai_assistant_data(ai_event_settings, camera.sn)
+                    )
+
     def _camera_from_addx_device(self, data: Dict) -> Station | None:
         """Return the X-Sense camera entity backed by an ADDX DeviceBean."""
         serial = data.get("serialNumber")
@@ -830,6 +884,50 @@ class AsyncXSense(XSenseBase):
         )
         camera.set_data(updates)
 
+    async def update_camera_ai_notification(
+        self, camera: Entity, event_object: str, enabled: bool
+    ) -> None:
+        """Write camera AI notification category settings through the app endpoint."""
+        current = _camera_ai_notification_enabled(camera.data)
+        if enabled:
+            current.add(event_object)
+        else:
+            current.discard(event_object)
+        payload = _camera_ai_notification_payload(current)
+        LOGGER.debug(
+            "X-Sense camera config update: %s",
+            _camera_write_debug_context(
+                camera,
+                "/device/updateMessageNotification/v1",
+                {f"aiNotification.{event_object}": enabled},
+            ),
+        )
+        await self.addx_call(
+            "/device/updateMessageNotification/v1",
+            serialNumber=camera.sn,
+            eventObjectType=payload,
+        )
+        camera.set_data(_camera_ai_notification_state_data(current))
+
+    async def update_camera_ai_assistant(
+        self, camera: Entity, event_object: str, enabled: bool
+    ) -> None:
+        """Write camera AI assistant object switch through the app endpoint."""
+        LOGGER.debug(
+            "X-Sense camera config update: %s",
+            _camera_write_debug_context(
+                camera,
+                "/aiAssist/updateEventObjectSwitch",
+                {f"aiAssistant.{event_object}": enabled},
+            ),
+        )
+        await self.addx_call(
+            "/aiAssist/updateEventObjectSwitch",
+            serialNumber=camera.sn,
+            list=[{"checked": enabled, "eventObject": event_object}],
+        )
+        camera.set_data({_camera_ai_assistant_key(event_object): enabled})
+
     async def get_client_info(self):
         data = await self.api_call("101001", unauth=True)
         self.clientid = data["clientId"]
@@ -984,13 +1082,17 @@ class AsyncXSense(XSenseBase):
 
     async def update_shadow_volume(self, entity: Entity, data_key: str, value: int):
         """Write a volume value through the same settings shadow as the app."""
+        return await self.update_shadow_setting(entity, data_key, value)
+
+    async def update_shadow_setting(self, entity: Entity, data_key: str, value):
+        """Write a non-camera setting through the same settings shadow as the app."""
         station = getattr(entity, "station", entity)
         desired = {
             "shadow": "infoBase" if entity is station else "infoDev",
             data_key: str(value),
         }
 
-        if data_key in {"alarmVol", "voiceVol"}:
+        if data_key in {"alarmVol", "voiceVol", "alarmTone"}:
             if _volume_includes_station_sn(entity, data_key):
                 desired["stationSN"] = station.sn
 
@@ -1000,33 +1102,320 @@ class AsyncXSense(XSenseBase):
                         desired["voiceVol"] = str(entity.data["voiceVol"])
                     if data_key != "alarmVol" and "alarmVol" in entity.data:
                         desired["alarmVol"] = str(entity.data["alarmVol"])
+                    if data_key != "alarmTone" and "alarmTone" in entity.data:
+                        desired["alarmTone"] = str(entity.data["alarmTone"])
             else:
                 desired["deviceSN"] = entity.sn
 
             if data_key == "alarmVol":
                 if alarm_tone := entity.data.get("alarmTone"):
                     desired["alarmTone"] = str(alarm_tone)
+            if data_key == "alarmTone":
+                if alarm_vol := entity.data.get("alarmVol"):
+                    desired["alarmVol"] = str(alarm_vol)
         else:
-            desired["deviceSN"] = entity.sn
-            tone_key = _volume_tone_key(data_key)
-            if tone_key and (tone := entity.data.get(tone_key)):
-                desired[tone_key] = str(tone)
+            if entity is station:
+                desired["stationSN"] = station.sn
+            else:
+                desired["deviceSN"] = entity.sn
+                if _shadow_setting_includes_station_sn(entity, data_key):
+                    desired["stationSN"] = station.sn
+            if data_key == "tempUnit":
+                desired["changeUnit"] = "1"
+            companion_key = _shadow_setting_companion_key(data_key)
+            if companion_key and (companion := entity.data.get(companion_key)):
+                desired[companion_key] = str(companion)
+
+        return await self.do_thing(
+            station, _shadow_config_topic(entity), {"state": {"desired": desired}}
+        )
+
+    async def update_light_setting(
+        self,
+        entity: Entity,
+        data_key: str,
+        value,
+        *,
+        on_event: str,
+    ):
+        """Write an SBS50 light setting through the APK light shadow path."""
+        station = getattr(entity, "station", entity)
+        desired = {
+            "shadow": "infoDev",
+            "deviceSN": entity.sn,
+            data_key: str(value),
+            "onEvent": on_event,
+        }
+
+        return await self.do_thing(
+            station, f"2nd_cfg_{entity.sn}", {"state": {"desired": desired}}
+        )
+
+    async def update_light_scene(self, entity: Entity, scene: str):
+        """Write the SBS50 light scene payload used by the APK."""
+        station = getattr(entity, "station", entity)
+        desired = {
+            "shadow": "infoDev",
+            "deviceSN": entity.sn,
+            "lightScene": str(scene),
+            "onEvent": "1",
+        }
+        if str(scene) == "1":
+            desired["pirEnable"] = "1"
+            desired["awaitEnable"] = "0"
+        elif str(scene) == "2":
+            desired["pirEnable"] = "0"
+            desired["awaitEnable"] = "1"
+        else:
+            desired["pirEnable"] = "1"
+            desired["awaitEnable"] = "1"
+
+        return await self.do_thing(
+            station, f"2nd_cfg_{entity.sn}", {"state": {"desired": desired}}
+        )
+
+    async def query_light_schedules(self, entity: Entity):
+        """Query SBS50 light schedules through the same REST API as the APK."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "405105",
+            stationId=station.entity_id,
+            deviceId=entity.entity_id,
+        )
+
+    async def create_light_schedule(
+        self,
+        entity: Entity,
+        *,
+        name: str,
+        start_time: str,
+        end_time: str,
+        week_days: list[str],
+        enabled: bool,
+        time_zone: str,
+    ):
+        """Create an SBS50 light schedule through the APK schedule API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "405101",
+            stationId=station.entity_id,
+            schedName=name,
+            deviceIds=[entity.entity_id],
+            timeZone=time_zone,
+            startTime=start_time,
+            endTime=end_time,
+            isEnable="1" if enabled else "0",
+            weekDays=week_days,
+            newTimeZoneMode="1",
+        )
+
+    async def update_light_schedule(
+        self,
+        entity: Entity,
+        *,
+        schedule_id: str,
+        start_time: str,
+        end_time: str,
+        week_days: list[str],
+        enabled: bool,
+        time_zone: str,
+    ):
+        """Update an SBS50 light schedule through the APK schedule API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "405103",
+            stationId=station.entity_id,
+            schedId=schedule_id,
+            deviceId=entity.entity_id,
+            timeZone=time_zone,
+            startTime=start_time,
+            endTime=end_time,
+            isEnable="1" if enabled else "0",
+            weekDays=week_days,
+            newTimeZoneMode="1",
+        )
+
+    async def rename_light_schedule(
+        self,
+        entity: Entity,
+        *,
+        schedule_id: str,
+        name: str,
+    ):
+        """Rename an SBS50 light schedule through the APK schedule API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "405102",
+            stationId=station.entity_id,
+            schedId=schedule_id,
+            schedName=name,
+        )
+
+    async def delete_light_schedule(self, entity: Entity, *, schedule_id: str):
+        """Delete an SBS50 light schedule through the APK schedule API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "405104",
+            stationId=station.entity_id,
+            schedId=schedule_id,
+            deviceId=entity.entity_id,
+        )
+
+    async def query_light_groups(self, entity: Entity):
+        """Query SBS50 light groups through the same REST API as the APK."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call("405001", stationId=station.entity_id)
+
+    async def create_light_group(
+        self,
+        entity: Entity,
+        *,
+        name: str,
+    ):
+        """Create an SBS50 light group through the APK group API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "405002",
+            stationId=station.entity_id,
+            groupName=name,
+        )
+
+    async def rename_light_group(
+        self,
+        entity: Entity,
+        *,
+        group_id: str,
+        name: str,
+    ):
+        """Rename an SBS50 light group through the APK group API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "405003",
+            stationId=station.entity_id,
+            groupId=group_id,
+            groupName=name,
+        )
+
+    async def update_light_group_timer(
+        self,
+        entity: Entity,
+        *,
+        group_id: str,
+        data_key: str,
+        value: str,
+    ):
+        """Update an SBS50 light group timer through the APK group API."""
+        station = getattr(entity, "station", entity)
+        payload = {
+            "stationId": station.entity_id,
+            "groupId": group_id,
+            data_key: value,
+            "onEvent": "1" if data_key == "pirTime" else "2",
+        }
+        return await self.api_call("405004", **payload)
+
+    async def bind_light_group(
+        self,
+        entity: Entity,
+        *,
+        name: str,
+        device_ids: list[str],
+    ):
+        """Add SBS50 lights to a group through the APK group API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "405005",
+            stationId=station.entity_id,
+            groupName=name,
+            deviceIds=device_ids,
+        )
+
+    async def delete_light_group(self, entity: Entity, *, group_id: str):
+        """Delete an SBS50 light group through the APK group API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "405006",
+            stationId=station.entity_id,
+            groupId=group_id,
+        )
+
+    async def remove_light_group_devices(
+        self,
+        entity: Entity,
+        *,
+        device_ids: list[str],
+    ):
+        """Remove SBS50 lights from their group through the APK group API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "405007",
+            stationId=station.entity_id,
+            deviceIds=device_ids,
+        )
+
+    async def update_co_pre_alarm(
+        self,
+        entity: Entity,
+        *,
+        enabled: bool | None = None,
+        period: int | str | None = None,
+    ):
+        """Write CO low pre-alarm settings through the APK warn-period shadow."""
+        station = getattr(entity, "station", entity)
+        desired = {
+            "shadow": "appWarnPerion",
+            "deviceSN": entity.sn,
+            "stationSN": station.sn,
+            "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
+            "userId": self.userid,
+        }
+        if enabled is not None:
+            desired["warnIsOpen"] = "1" if enabled else "0"
+        if period is not None:
+            desired["warnPeriod"] = str(period)
+
+        return await self.do_thing(
+            station, "2nd_warnperiod", {"state": {"desired": desired}}
+        )
+
+    async def update_shadow_array_setting(
+        self,
+        entity: Entity,
+        data_key: str,
+        values: list[float],
+        *,
+        comfort_type: str | None = None,
+    ):
+        """Write paired range settings through the same array payload as the app."""
+        updates = {data_key: values}
+        return await self.update_shadow_settings(
+            entity, updates, comfort_type=comfort_type
+        )
+
+    async def update_shadow_settings(
+        self,
+        entity: Entity,
+        updates: Dict,
+        *,
+        comfort_type: str | None = None,
+    ):
+        """Write multiple non-camera settings in one APK-style shadow payload."""
+        station = getattr(entity, "station", entity)
+        desired = {
+            "shadow": "infoDev",
+            "deviceSN": entity.sn,
+            "stationSN": station.sn,
+        }
+        desired.update(updates)
+        if comfort_type is not None:
+            desired["comfortType"] = comfort_type
 
         return await self.do_thing(
             station, _shadow_config_topic(entity), {"state": {"desired": desired}}
         )
 
     async def action(self, entity: Entity, action: str):
-        entity_def = entities.get(entity.type)
-        if not entity_def:
-            raise XSenseError(
-                f"Entity type {entity.type} is unknown, action {action} not possible"
-            )
-
-        action_def = next(
-            (a for a in entity_def.get("actions", []) if a.get("action") == action),
-            None,
-        )
+        action_def = self.action_definition(entity, action)
         if not action_def:
             raise XSenseError(
                 f"Action {action} is not supported for entity type {entity.type}"
@@ -1070,6 +1459,10 @@ def _volume_includes_station_sn(entity: Entity, data_key: str) -> bool:
     """Return if the APK volume payload includes stationSN for this entity."""
     if data_key == "voiceVol":
         return True
+    if data_key == "alarmTone":
+        if entity is getattr(entity, "station", entity):
+            return True
+        data_key = "alarmVol"
     if getattr(entity, "entity_type", None) in {
         EntityType.CO,
         EntityType.LIGHT,
@@ -1079,13 +1472,24 @@ def _volume_includes_station_sn(entity: Entity, data_key: str) -> bool:
     return True
 
 
-def _volume_tone_key(data_key: str) -> str | None:
-    """Return the companion tone field the app preserves with volume changes."""
+def _shadow_setting_companion_key(data_key: str) -> str | None:
+    """Return the companion setting the app preserves with paired updates."""
     return {
         "alarmVol": "alarmTone",
+        "alarmTone": "alarmVol",
         "chirpVol": "chirpTone",
+        "chirpTone": "chirpVol",
         "remindVol": "remindTone",
+        "remindTone": "remindVol",
     }.get(data_key)
+
+
+def _shadow_setting_includes_station_sn(entity: Entity, data_key: str) -> bool:
+    """Return if an APK settings payload includes stationSN for this field."""
+    return (
+        data_key in {"tempUnit", "tAdjust", "hAdjust"}
+        and getattr(entity, "entity_type", None) == EntityType.TEMPERATURE
+    )
 
 
 def _shadow_update_body(data: Dict) -> str:
@@ -1270,6 +1674,7 @@ _CAMERA_USER_CONFIG_KEYS = (
     "cryDetectLevel",
     "deviceCallToggleOn",
     "deviceLanguage",
+    "devicePersonDetect",
     "mechanicalDingDongDuration",
     "mechanicalDingDongSwitch",
     "mirrorFlip",
@@ -1471,3 +1876,128 @@ def _camera_doorbell_data(data: Dict) -> Dict:
             doorbell_config.get("alarmWhenRemoveToggleOn")
         ),
     }
+
+
+def _camera_ai_notification_data(data: Dict) -> Dict:
+    """Return AI notification category settings from the APK response."""
+    raw_items = data.get("list")
+    if isinstance(data.get("data"), dict):
+        raw_items = data["data"].get("list", raw_items)
+    if not isinstance(raw_items, list):
+        return {}
+
+    enabled: set[str] = set()
+    supported: set[str] = set()
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        group_types = _CAMERA_AI_NOTIFICATION_GROUPS.get(name)
+        if group_types is None:
+            continue
+
+        sub_events = item.get("subEvent")
+        if isinstance(sub_events, list) and sub_events:
+            item_types = []
+            for sub_event in sub_events:
+                if not isinstance(sub_event, dict):
+                    continue
+                sub_name = str(sub_event.get("name") or "").strip()
+                if sub_name in group_types:
+                    item_types.append(sub_name)
+                    supported.add(sub_name)
+                    if sub_event.get("choice") is True:
+                        enabled.add(sub_name)
+        else:
+            item_types = list(group_types)
+            supported.update(item_types)
+            if item.get("choice") is True:
+                enabled.update(item_types)
+
+    result = _camera_ai_notification_state_data(enabled)
+    result["aiNotificationSupportedTypes"] = sorted(supported)
+    return result
+
+
+def _camera_ai_notification_enabled(data: Dict) -> set[str]:
+    """Return currently enabled AI notification categories from entity data."""
+    return {
+        event_type
+        for event_type in CAMERA_AI_NOTIFICATION_TYPES
+        if data.get(_camera_ai_notification_key(event_type)) is True
+    }
+
+
+def _camera_ai_notification_payload(enabled: set[str]) -> Dict:
+    """Return the APK updateMessageNotification eventObjectType payload."""
+    payload: dict[str, list[str]] = {"vehicle": [], "package": []}
+    for group, group_types in _CAMERA_AI_NOTIFICATION_GROUPS.items():
+        selected = [event_type for event_type in group_types if event_type in enabled]
+        payload_key = _CAMERA_AI_NOTIFICATION_PAYLOAD_KEYS[group]
+        if group in {"vehicle", "package"}:
+            payload[payload_key] = selected
+        elif selected:
+            payload[payload_key] = []
+    return payload
+
+
+def _camera_ai_notification_state_data(enabled: set[str]) -> Dict:
+    """Return flat entity data for AI notification category settings."""
+    return {
+        _camera_ai_notification_key(event_type): event_type in enabled
+        for event_type in CAMERA_AI_NOTIFICATION_TYPES
+    }
+
+
+def _camera_ai_notification_key(event_type: str) -> str:
+    """Return the entity data key for an AI notification category."""
+    return f"aiNotification{_camel_suffix(event_type)}"
+
+
+def _camera_ai_assistant_data(data: Dict, serial_number: str | None = None) -> Dict:
+    """Return AI assistant object switches from the APK response."""
+    raw_items = data.get("data", data)
+    if isinstance(raw_items, dict):
+        raw_items = raw_items.get("data") or raw_items.get("list") or [raw_items]
+    if not isinstance(raw_items, list):
+        return {}
+
+    selected_device = None
+    for item in raw_items:
+        if not isinstance(item, dict):
+            continue
+        if serial_number is None or str(item.get("serialNumber")) == str(serial_number):
+            selected_device = item
+            break
+    if selected_device is None:
+        return {}
+
+    object_list = selected_device.get("list")
+    if not isinstance(object_list, list):
+        return {}
+
+    result: Dict[str, bool] = {}
+    supported: list[str] = []
+    for item in object_list:
+        if not isinstance(item, dict):
+            continue
+        event_object = str(item.get("eventObject") or "").strip()
+        if event_object not in CAMERA_AI_ASSISTANT_TYPES:
+            continue
+        supported.append(event_object)
+        result[_camera_ai_assistant_key(event_object)] = item.get("checked") is True
+    if supported:
+        result["aiAssistantSupportedTypes"] = supported
+    return result
+
+
+def _camera_ai_assistant_key(event_object: str) -> str:
+    """Return the entity data key for an AI assistant object switch."""
+    return f"aiAssistant{_camel_suffix(event_object)}"
+
+
+def _camel_suffix(value: str) -> str:
+    """Return PascalCase for snake-style APK object names."""
+    return "".join(part.capitalize() for part in value.split("_") if part)

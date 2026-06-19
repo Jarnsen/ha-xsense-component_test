@@ -536,6 +536,25 @@ def test_mqtt_camera_ai_plan_event_uses_apk_dispatch_device_identity():
     assert data["lastPersonDetectionTime"] == "20260614230200"
 
 
+def test_mqtt_camera_ai_event_uses_last_ai_detection_with_event_time():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventTime": "20260614230300",
+            "eventData": {
+                "serialNumber": "camera-sn",
+                "lastAiDetection": "person",
+            },
+        }
+    )
+
+    assert data["lastAiDetection"] == "person"
+    assert data["lastPersonDetectionTime"] == "20260614230300"
+    assert data["isMoved"] == "1"
+    assert data["lastMotionTime"] == "20260614230300"
+
+
 async def test_assure_subscriptions_includes_apk_ai_plan_topic():
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 

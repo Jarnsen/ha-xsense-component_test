@@ -1,0 +1,200 @@
+query_light_schedules:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+
+create_light_schedule:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    name:
+      required: true
+      selector:
+        text:
+    start_time:
+      required: true
+      selector:
+        text:
+    end_time:
+      required: true
+      selector:
+        text:
+    week_days:
+      required: true
+      selector:
+        select:
+          multiple: true
+          options:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+    enabled:
+      default: true
+      selector:
+        boolean:
+    time_zone:
+      selector:
+        text:
+
+update_light_schedule:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    schedule_id:
+      required: true
+      selector:
+        text:
+    start_time:
+      required: true
+      selector:
+        text:
+    end_time:
+      required: true
+      selector:
+        text:
+    week_days:
+      required: true
+      selector:
+        select:
+          multiple: true
+          options:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+    enabled:
+      default: true
+      selector:
+        boolean:
+    time_zone:
+      selector:
+        text:
+
+rename_light_schedule:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    schedule_id:
+      required: true
+      selector:
+        text:
+    name:
+      required: true
+      selector:
+        text:
+
+delete_light_schedule:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    schedule_id:
+      required: true
+      selector:
+        text:
+
+query_light_groups:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+
+create_light_group:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    name:
+      required: true
+      selector:
+        text:
+
+rename_light_group:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    group_id:
+      required: true
+      selector:
+        text:
+    name:
+      required: true
+      selector:
+        text:
+
+update_light_group_timer:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    group_id:
+      required: true
+      selector:
+        text:
+    timer:
+      required: true
+      selector:
+        select:
+          options:
+            - pirTime
+            - appTime
+    value:
+      required: true
+      selector:
+        text:
+
+bind_light_group:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    name:
+      required: true
+      selector:
+        text:
+    device_ids:
+      required: true
+      selector:
+        object:
+
+delete_light_group:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    group_id:
+      required: true
+      selector:
+        text:
+
+remove_light_group_devices:
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    device_ids:
+      required: true
+      selector:
+        object:
