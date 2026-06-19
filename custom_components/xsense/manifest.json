@@ -18,6 +18,6 @@
     "paho-mqtt>=2.1.0,<3"
   ],
   "ssdp": [],
-  "version": "1.3.11",
+  "version": "1.3.11.1",
   "zeroconf": []
 }

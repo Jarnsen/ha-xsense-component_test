@@ -73,6 +73,20 @@ _APK_MOTION_DETECTION_NAMES = {
     "camera_motion",
 }
 
+_MQTT_IDENTIFIER_KEYS = {
+    "camerasn",
+    "cxserialnumber",
+    "deviceid",
+    "devicesn",
+    "devserialnumber",
+    "realcxserialnumber",
+    "serial",
+    "serialnumber",
+    "sn",
+    "stationsn",
+    "stationserialnumber",
+}
+
 
 async def _async_init_and_login(xsense: AsyncXSense, email: str, password: str) -> None:
     """Initialize the X-Sense client and log in."""
@@ -402,6 +416,17 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         station = self._get_station_by_id(station_sn)
         if station is None:
             station = self._get_station_by_device_sn(device_sn)
+        identifier_candidates: list[str] = []
+        if isinstance(station_data, dict):
+            identifier_candidates.extend(_mqtt_identifier_candidates(station_data))
+        identifier_candidates.extend(_mqtt_identifier_candidates(data))
+        if station is None:
+            for identifier in identifier_candidates:
+                station = self._get_station_by_id(identifier)
+                if station is None:
+                    station = self._get_station_by_device_sn(identifier)
+                if station is not None:
+                    break
 
         if station is None and _is_presence_topic(topic):
             station = self._get_station_by_shadow_name(data.get("clientId"))
@@ -412,8 +437,16 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 station = self._get_station_by_shadow_name(parts[2])
 
         if station is None:
-            LOGGER.debug("No station found for MQTT topic: %s", topic)
+            LOGGER.debug(
+                "No X-Sense station found for MQTT event: %s",
+                _mqtt_event_debug_context(topic, data, station_data, identifier_candidates),
+            )
             return
+
+        LOGGER.debug(
+            "X-Sense MQTT event routed: %s",
+            _mqtt_event_debug_context(topic, data, station_data, identifier_candidates),
+        )
 
         if _is_presence_topic(topic):
             if event_type := data.get("eventType"):
@@ -593,6 +626,83 @@ def _mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any] | list[Any]:
         return result
 
     return {}
+
+
+def _mqtt_identifier_candidates(*values: Any) -> list[str]:
+    """Return possible station/device identifiers from nested MQTT payloads."""
+    candidates: list[str] = []
+    seen: set[str] = set()
+
+    def add(value: Any) -> None:
+        if value in (None, ""):
+            return
+        text = str(value).strip()
+        if not text or text in seen:
+            return
+        seen.add(text)
+        candidates.append(text)
+
+    def walk(value: Any) -> None:
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith(("{", "[")):
+                with suppress(json.JSONDecodeError):
+                    walk(json.loads(text))
+            return
+        if isinstance(value, dict):
+            for key, nested_value in value.items():
+                key_name = _mqtt_identifier_key_name(key)
+                if key_name in _MQTT_IDENTIFIER_KEYS and not isinstance(
+                    nested_value, (dict, list, tuple, set)
+                ):
+                    add(nested_value)
+                walk(nested_value)
+            return
+        if isinstance(value, (list, tuple, set)):
+            for item in value:
+                walk(item)
+
+    for value in values:
+        walk(value)
+    return candidates
+
+
+def _mqtt_identifier_key_name(value: Any) -> str:
+    """Return a normalized MQTT identifier key name."""
+    return "".join(char for char in str(value).strip().lower() if char.isalnum())
+
+
+def _mqtt_event_debug_context(
+    topic: str,
+    data: dict[str, Any],
+    station_data: dict[str, Any] | list[Any],
+    identifiers: list[str],
+) -> dict[str, Any]:
+    """Return a redacted debug context for MQTT event routing."""
+    if isinstance(station_data, dict):
+        station_data_keys: list[str] | None = sorted(str(key) for key in station_data)
+    else:
+        station_data_keys = None
+    return {
+        "topic_kind": _mqtt_topic_kind(topic),
+        "payload_keys": sorted(str(key) for key in data),
+        "station_data_keys": station_data_keys,
+        "identifier_count": len(identifiers),
+        "has_event_data": "eventData" in data,
+    }
+
+
+def _mqtt_topic_kind(topic: str) -> str:
+    """Return a non-sensitive MQTT topic category."""
+    if _is_presence_topic(topic):
+        return "presence"
+    if topic.startswith("@xsense/events/aiplan/"):
+        return "ai_plan"
+    if topic.startswith("@xsense/events/"):
+        return "house_event"
+    if "/shadow/name/" in topic:
+        return "shadow"
+    return "other"
 
 
 def _apply_apk_dispatch_aliases(data: dict[str, Any]) -> None:

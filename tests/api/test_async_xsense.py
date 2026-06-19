@@ -3026,7 +3026,7 @@ async def test_update_camera_data_loads_apk_form_options():
     await client.update_camera_data()
 
     camera = test_house.get_station_by_sn("cam-sn")
-    assert camera.data["motionSensitivity"] == 1
+    assert camera.data["motionSensitivity"] == 0
     assert camera.data["videoSeconds"] == -1
     assert camera.data["videoSecondsValues"] == [-1]
     assert camera.data["cooldownOptions"] == [10]
@@ -3113,7 +3113,7 @@ async def test_update_camera_config_uses_apk_user_config_payload():
                 "needVideo": 1,
                 "needAlarm": 1,
                 "needNightVision": 1,
-                "motionSensitivity": 1,
+                "motionSensitivity": 0,
                 "videoSeconds": -1,
                 "alarmSeconds": 5,
                 "nightThresholdLevel": 2,

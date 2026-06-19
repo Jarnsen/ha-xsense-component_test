@@ -536,6 +536,55 @@ def test_mqtt_camera_ai_plan_event_uses_apk_dispatch_device_identity():
     assert data["lastPersonDetectionTime"] == "20260614230200"
 
 
+def test_mqtt_ai_plan_event_routes_by_nested_camera_identity():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Camera:
+        sn = "camera-sn"
+        shadow_name = "SSC0Acamera-sn"
+
+        def __init__(self):
+            self.data = {}
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+        def set_data(self, data):
+            self.data.update(data)
+
+    class House:
+        stations = {"camera-id": Camera()}
+
+        def get_station_by_sn(self, identifier):
+            camera = self.stations["camera-id"]
+            return camera if identifier == camera.sn else None
+
+    parsed = []
+    updates = []
+    house = House()
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": house},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: updates.append(True)
+
+    coordinator.async_event_received(
+        "@xsense/events/aiplan/user-id-code",
+        (
+            '{"eventTime":"20260614230400","eventData":{'
+            '"eventItems":[{"eventType":"person","serialNumber":"camera-sn",'
+            '"eventTime":"20260614230401"}]}}'
+        ).encode(),
+    )
+
+    assert parsed[0][0] is house.stations["camera-id"]
+    assert parsed[0][1]["lastAiDetection"] == "person"
+    assert parsed[0][1]["lastPersonDetectionTime"] == "20260614230401"
+    assert parsed[0][1]["isMoved"] == "1"
+    assert updates == [True]
+
+
 def test_mqtt_camera_ai_event_uses_last_ai_detection_with_event_time():
     from custom_components.xsense.coordinator import _mqtt_reported_data
 

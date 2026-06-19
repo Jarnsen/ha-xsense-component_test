@@ -1715,8 +1715,8 @@ def _camera_user_config_payload(camera: Entity, updates: Dict) -> Dict:
 
 def _add_camera_config_companions(camera: Entity, payload: Dict) -> None:
     """Add companion config fields the APK sends with selected toggles."""
-    if "needMotion" in payload and camera.data.get("motionSensitivity") in (None, 0):
-        payload["motionSensitivity"] = 1
+    if "needMotion" in payload and camera.data.get("motionSensitivity") is not None:
+        payload["motionSensitivity"] = camera.data["motionSensitivity"]
     if "needVideo" in payload and camera.data.get("videoSeconds") == 0:
         payload["videoSeconds"] = -1
     if "needAlarm" in payload:
@@ -1844,8 +1844,8 @@ def _camera_config_data(data: Dict) -> Dict:
 
 
 def _camera_motion_sensitivity_value(value):
-    """Return the APK default for unset camera motion sensitivity."""
-    return 1 if value in (None, 0) else value
+    """Return the APK camera motion sensitivity value."""
+    return value
 
 
 def _camera_video_seconds_value(value):
