@@ -3478,7 +3478,7 @@ async def test_ai_service_history_uses_apk_701008_server_id():
 
 
 @pytest.mark.asyncio
-async def test_camera_event_history_uses_apk_addx_library_event_path():
+async def test_camera_event_history_uses_apk_addx_library_record_path():
     client = async_xsense.AsyncXSense()
     calls = []
 
@@ -3497,13 +3497,15 @@ async def test_camera_event_history_uses_apk_addx_library_event_path():
     assert data["list"][0]["serialNumber"] == "camera-sn"
     assert calls == [
         (
-            "/library/newselectlibrary/event",
+            "/library/newselectlibrary",
             {
                 "startTimestamp": 1781484300,
                 "endTimestamp": 1781487900,
                 "from": 0,
                 "to": 20,
                 "serialNumber": ["camera-sn"],
+                "tags": [],
+                "marked": 0,
             },
         )
     ]

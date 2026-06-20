@@ -1,4 +1,6 @@
 import asyncio
+import inspect
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -753,6 +755,54 @@ async def test_camera_ai_history_timer_notifies_only_when_history_changes():
     await XSenseDataUpdateCoordinator._async_poll_camera_ai_history(coordinator, None)
 
     assert updates == [True]
+
+
+def test_camera_history_polling_starts_interval_and_immediate_poll(monkeypatch):
+    from custom_components.xsense import coordinator as coordinator_module
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    calls = []
+
+    def track_time_interval(hass, callback, interval):
+        calls.append(("interval", callback, interval.total_seconds()))
+        return lambda: None
+
+    class Hass:
+        def async_create_task(self, coro):
+            assert inspect.iscoroutine(coro)
+            calls.append(("task", coro.cr_code.co_name))
+            coro.close()
+
+    monkeypatch.setattr(
+        coordinator_module,
+        "async_track_time_interval",
+        track_time_interval,
+    )
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = Hass()
+    coordinator._camera_ai_history_unsub = None
+
+    XSenseDataUpdateCoordinator.async_start_camera_ai_history_polling(coordinator)
+
+    assert calls == [
+        ("interval", coordinator._async_poll_camera_ai_history, 60.0),
+        ("task", "_async_poll_camera_ai_history"),
+    ]
+
+
+async def test_camera_history_poll_logs_when_no_cameras(caplog):
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(houses={})
+    coordinator._camera_ai_history_seen = set()
+    coordinator._camera_ai_history_lock = asyncio.Lock()
+
+    caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
+
+    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
+    assert "X-Sense camera history poll skipped: no cameras" in caplog.text
 
 
 def test_mqtt_camera_ai_event_uses_last_ai_detection_with_event_time():

@@ -392,20 +392,22 @@ class AsyncXSense(XSenseBase):
         start: int = 0,
         limit: int = 20,
     ) -> dict:
-        """Return ADDX camera library events using the APK event-history path."""
+        """Return ADDX camera library records using the APK playback path."""
         serials = [str(serial) for serial in serial_numbers if serial]
         if not serials:
             return {}
         data = await self.addx_call(
-            "/library/newselectlibrary/event",
+            "/library/newselectlibrary",
             startTimestamp=start_timestamp,
             endTimestamp=end_timestamp,
             to=limit,
             serialNumber=serials,
+            tags=[],
+            marked=0,
             **{"from": start},
         )
         LOGGER.debug(
-            "X-Sense camera event history response: %s",
+            "X-Sense camera record history response: %s",
             _debug_data_shape(data),
         )
         return data if isinstance(data, dict) else {}

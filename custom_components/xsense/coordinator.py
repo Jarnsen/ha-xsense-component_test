@@ -145,6 +145,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def async_start_camera_ai_history_polling(self) -> None:
         """Start the lightweight camera AI-history poller."""
         if self._camera_ai_history_unsub is not None:
+            LOGGER.debug("X-Sense camera history polling already started")
             return
 
         self._camera_ai_history_unsub = async_track_time_interval(
@@ -152,14 +153,25 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._async_poll_camera_ai_history,
             timedelta(seconds=CAMERA_AI_HISTORY_SCAN_INTERVAL),
         )
+        LOGGER.debug(
+            "X-Sense camera history polling started: interval_s=%s",
+            CAMERA_AI_HISTORY_SCAN_INTERVAL,
+        )
+        if hasattr(self.hass, "async_create_task"):
+            self.hass.async_create_task(self._async_poll_camera_ai_history(None))
 
     async def _async_poll_camera_ai_history(self, _now) -> None:
         """Poll camera AI history outside the heavy coordinator refresh."""
         try:
             updated = await self._update_camera_ai_history()
         except (SessionExpired, AuthFailed):
+            LOGGER.debug("X-Sense camera history poll requested auth refresh")
             await self.async_request_refresh()
             return
+        except Exception as ex:  # noqa: BLE001
+            LOGGER.warning("Could not poll X-Sense camera history: %s", ex)
+            return
+        LOGGER.debug("X-Sense camera history poll finished: updated=%s", updated)
         if updated:
             self.async_update_listeners()
 
@@ -372,7 +384,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _update_camera_ai_history_locked(self) -> bool:
         """Poll APK AI-notification history while holding the history lock."""
         cameras = _camera_entities(self)
-        if not self.xsense or not cameras:
+        if not self.xsense:
+            LOGGER.debug("X-Sense camera history poll skipped: no client")
+            return False
+        if not cameras:
+            LOGGER.debug("X-Sense camera history poll skipped: no cameras")
             return False
 
         updated = False
@@ -446,11 +462,14 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return applied > 0
 
     async def _update_camera_event_history(self, cameras: list[Any]) -> bool:
-        """Poll APK ADDX camera event history for regular motion events."""
+        """Poll APK ADDX camera record history for regular motion events."""
         serial_numbers = [
             str(camera.sn) for camera in cameras if getattr(camera, "sn", None)
         ]
         if not serial_numbers:
+            LOGGER.debug(
+                "X-Sense camera record history poll skipped: no serial numbers"
+            )
             return False
 
         first_poll = not self._camera_ai_history_seen
@@ -465,7 +484,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 now,
             )
         except APIFailure as ex:
-            LOGGER.debug("Could not update X-Sense camera event history: %s", ex)
+            LOGGER.debug("Could not update X-Sense camera record history: %s", ex)
             return False
 
         records = _camera_event_history_records(history)
@@ -480,7 +499,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._camera_ai_history_seen.update(seen_now)
         LOGGER.debug(
-            "X-Sense camera event history poll: cameras=%s records=%s seen=%s applied=%s skipped=%s first_poll=%s",
+            "X-Sense camera record history poll: cameras=%s records=%s seen=%s applied=%s skipped=%s first_poll=%s",
             len(serial_numbers),
             len(records),
             len(self._camera_ai_history_seen),
@@ -527,7 +546,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return True
 
     def _apply_camera_event_history_item(self, record: dict[str, Any]) -> bool:
-        """Apply one APK ADDX camera event record to the matching camera entity."""
+        """Apply one APK ADDX camera record to the matching camera entity."""
         station_data = _camera_event_history_station_data(record)
         if not station_data:
             return False
@@ -535,7 +554,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         station = _camera_station_for_event_data(self, station_data, record)
         if station is None:
             LOGGER.debug(
-                "No X-Sense camera found for event history record: %s",
+                "No X-Sense camera found for record history item: %s",
                 {
                     "payload_keys": sorted(str(key) for key in record),
                     "station_data_keys": sorted(str(key) for key in station_data),
@@ -544,7 +563,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return False
 
         LOGGER.debug(
-            "X-Sense camera event history record routed: %s",
+            "X-Sense camera record history item routed: %s",
             {
                 "station_type": station.type,
                 "station_data_keys": sorted(str(key) for key in station_data),
