@@ -321,6 +321,64 @@ class AsyncXSense(XSenseBase):
                 )
             return data["reData"]
 
+    async def ai_service_call(self, code: str, **kwargs):
+        """Call the APK AI-notification service endpoint."""
+        if self._access_token_expiring():
+            await self.refresh()
+
+        session = await self._get_session()
+        async with session.post(
+            f"{self.API}/app",
+            json=self._signed_body(kwargs, code),
+            headers={"Authorization": self.access_token},
+        ) as response:
+            self._lastres = response
+            data = await response.json()
+
+            if response.status >= 400:
+                LOGGER.debug(
+                    "X-Sense AI service failure context: code=%s status=%s keys=%s",
+                    code,
+                    response.status,
+                    _debug_keys(data),
+                )
+                message = data.get("message") or data.get("reMsg") or "unknown error"
+                raise APIFailure(f"AI service failure: {response.status}/{message}")
+
+            if str(data.get("reCode")) != "200":
+                err_code = data.get("errCode", 0)
+                LOGGER.debug(
+                    "X-Sense AI service error context: code=%s reCode=%s errCode=%s keys=%s",
+                    code,
+                    data.get("reCode"),
+                    err_code,
+                    _debug_keys(data),
+                )
+                if err_code in ("10000008", "10000020"):
+                    raise SessionExpired(data.get("reMsg"))
+                raise APIFailure(
+                    f"AI service request for code {code} failed with error {err_code}/{data.get('reCode')} {data.get('reMsg')}"
+                )
+            return data.get("reData")
+
+    async def get_ai_service_list(self) -> list[dict]:
+        """Return APK AI-notification services for the account."""
+        user_id = self.user_id_code or self.userid
+        if not user_id:
+            return []
+        data = await self.ai_service_call("701001", userId=user_id)
+        return data if isinstance(data, list) else []
+
+    async def get_ai_service_history(
+        self, server_id: str, next_token: str | None = None
+    ) -> dict:
+        """Return APK AI-notification history for a service."""
+        payload: dict[str, Any] = {"serverId": server_id}
+        if next_token:
+            payload["nextToken"] = next_token
+        data = await self.ai_service_call("701008", **payload)
+        return data if isinstance(data, dict) else {}
+
     async def ipc_call(self, code: str, **kwargs):
         """Call the X-Sense IPC endpoint used by the Android app."""
         if self._access_token_expiring():

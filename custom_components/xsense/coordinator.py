@@ -13,6 +13,7 @@ from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.logging import catch_log_exception
 
@@ -20,8 +21,9 @@ from .api import AsyncXSense, House
 from .api.async_xsense import is_camera_entity
 from .api.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
 from .const import (
-    DEFAULT_SCAN_INTERVAL,
+    CAMERA_AI_HISTORY_SCAN_INTERVAL,
     CAMERA_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     LOGGER,
     POLL_INTERVAL_MIN,
@@ -106,6 +108,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._camera_initialized: bool = False
         self._last_camera_update_attempt: datetime | None = None
         self._camera_station_cache: dict[str, Any] = {}
+        self._camera_ai_history_seen: set[str] = set()
+        self._camera_ai_history_unsub = None
+        self._camera_ai_history_lock = asyncio.Lock()
         super().__init__(
             hass,
             LOGGER,
@@ -121,6 +126,10 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_shutdown(self) -> None:
         """Disconnect all MQTT clients owned by this coordinator."""
+        if self._camera_ai_history_unsub is not None:
+            self._camera_ai_history_unsub()
+            self._camera_ai_history_unsub = None
+
         mqtt_servers = list(self.mqtt_servers.values())
         self.mqtt_servers.clear()
 
@@ -132,6 +141,27 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if self.xsense is not None:
             await self.xsense.close()
+
+    def async_start_camera_ai_history_polling(self) -> None:
+        """Start the lightweight camera AI-history poller."""
+        if self._camera_ai_history_unsub is not None:
+            return
+
+        self._camera_ai_history_unsub = async_track_time_interval(
+            self.hass,
+            self._async_poll_camera_ai_history,
+            timedelta(seconds=CAMERA_AI_HISTORY_SCAN_INTERVAL),
+        )
+
+    async def _async_poll_camera_ai_history(self, _now) -> None:
+        """Poll camera AI history outside the heavy coordinator refresh."""
+        try:
+            updated = await self._update_camera_ai_history()
+        except (SessionExpired, AuthFailed):
+            await self.async_request_refresh()
+            return
+        if updated:
+            self.async_update_listeners()
 
     async def _connect(self) -> None:
         email = self.entry.data[CONF_EMAIL]
@@ -266,6 +296,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             camera_data_refreshed = await self._update_cameras()
             if camera_data_refreshed:
                 self._cache_camera_stations()
+            await self._update_camera_ai_history()
 
             for h in self.xsense.houses.values():
                 stations.update(h.stations.items())
@@ -332,6 +363,110 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._camera_initialized = True
             LOGGER.debug("X-Sense camera metadata refresh completed")
             return True
+
+    async def _update_camera_ai_history(self) -> bool:
+        """Poll APK AI-notification history for camera events missed by MQTT."""
+        async with self._camera_ai_history_lock:
+            return await self._update_camera_ai_history_locked()
+
+    async def _update_camera_ai_history_locked(self) -> bool:
+        """Poll APK AI-notification history while holding the history lock."""
+        if not self.xsense or not any(
+            is_camera_entity(station)
+            for house in self.xsense.houses.values()
+            for station in house.stations.values()
+        ):
+            return False
+
+        try:
+            services = await self.xsense.get_ai_service_list()
+        except APIFailure as ex:
+            LOGGER.debug("Could not update X-Sense camera AI history: %s", ex)
+            return False
+
+        server_ids = [
+            str(service.get("serverId"))
+            for service in services
+            if isinstance(service, dict) and service.get("serverId")
+        ]
+        if not server_ids:
+            LOGGER.debug("X-Sense camera AI history poll skipped: no services")
+            return False
+
+        first_poll = not self._camera_ai_history_seen
+        applied = 0
+        skipped = 0
+        seen_now: set[str] = set()
+        for server_id in server_ids:
+            try:
+                history = await self.xsense.get_ai_service_history(server_id)
+            except APIFailure as ex:
+                LOGGER.debug(
+                    "Could not update X-Sense camera AI history service: %s",
+                    ex,
+                )
+                continue
+
+            alarm_items = history.get("alarmItems")
+            if not isinstance(alarm_items, list):
+                continue
+            for alarm_item in reversed(alarm_items):
+                if not isinstance(alarm_item, dict):
+                    continue
+                event_key = _camera_ai_history_event_key(server_id, alarm_item)
+                seen_now.add(event_key)
+                if event_key in self._camera_ai_history_seen and not first_poll:
+                    skipped += 1
+                    continue
+                if self._apply_camera_ai_history_item(server_id, alarm_item):
+                    applied += 1
+
+        self._camera_ai_history_seen.update(seen_now)
+        LOGGER.debug(
+            "X-Sense camera AI history poll: services=%s seen=%s applied=%s skipped=%s first_poll=%s",
+            len(server_ids),
+            len(self._camera_ai_history_seen),
+            applied,
+            skipped,
+            first_poll,
+        )
+        return applied > 0
+
+    def _apply_camera_ai_history_item(
+        self, server_id: str, alarm_item: dict[str, Any]
+    ) -> bool:
+        """Apply one APK AI-history alarm item to the matching camera entity."""
+        payload = dict(alarm_item)
+        payload.setdefault("serverId", server_id)
+        if create_time := alarm_item.get("createTime"):
+            payload.setdefault("eventTime", create_time)
+        station_data = _mqtt_reported_data(payload)
+        if not isinstance(station_data, dict) or not station_data:
+            return False
+
+        station = _camera_station_for_event_data(self, station_data, payload)
+        if station is None:
+            LOGGER.debug(
+                "No X-Sense camera found for AI history event: %s",
+                {
+                    "server_id_present": bool(server_id),
+                    "payload_keys": sorted(str(key) for key in payload),
+                    "station_data_keys": sorted(str(key) for key in station_data),
+                },
+            )
+            return False
+
+        LOGGER.debug(
+            "X-Sense camera AI history event routed: %s",
+            {
+                "station_type": station.type,
+                "station_data_keys": sorted(str(key) for key in station_data),
+                "has_ai_detection": "lastAiDetection" in station_data,
+                "has_motion": "isMoved" in station_data,
+            },
+        )
+        self.xsense.parse_get_state(station, station_data)
+        return True
 
     def _cache_camera_stations(self) -> None:
         """Remember ADDX camera stations between camera API refreshes."""
@@ -703,6 +838,36 @@ def _mqtt_topic_kind(topic: str) -> str:
     if "/shadow/name/" in topic:
         return "shadow"
     return "other"
+
+
+def _camera_ai_history_event_key(server_id: str, alarm_item: dict[str, Any]) -> str:
+    """Return a stable key for one APK AI-history alarm item."""
+    if event_id := alarm_item.get("eventId"):
+        return f"{server_id}:{event_id}"
+    payload = json.dumps(
+        alarm_item,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+    return f"{server_id}:{payload}"
+
+
+def _camera_station_for_event_data(
+    coordinator: XSenseDataUpdateCoordinator,
+    station_data: dict[str, Any],
+    payload: dict[str, Any],
+):
+    """Return the camera station matched by APK event identifiers."""
+    identifiers = _mqtt_identifier_candidates(station_data, payload)
+    for identifier in identifiers:
+        station = coordinator._get_station_by_id(identifier)
+        if station is None:
+            station = coordinator._get_station_by_device_sn(identifier)
+        if station is not None and is_camera_entity(station):
+            return station
+    return None
 
 
 def _apply_apk_dispatch_aliases(data: dict[str, Any]) -> None:

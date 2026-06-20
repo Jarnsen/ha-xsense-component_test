@@ -3423,6 +3423,61 @@ async def test_authenticated_app_call_uses_apk_1360_client_metadata():
 
 
 @pytest.mark.asyncio
+async def test_ai_service_list_uses_apk_701001_user_id_code():
+    session = CapturePostSession(
+        {"reCode": "200", "reData": [{"serverId": "service-id"}]}
+    )
+    client = async_xsense.AsyncXSense(session)
+    client.access_token = "access-token"
+    client.access_token_expiry = async_xsense.datetime(
+        2099, 1, 1, tzinfo=async_xsense.timezone.utc
+    )
+    client.clientsecret = b"secret"
+    client.userid = "cognito-user-id"
+    client.user_id_code = "user-id-code"
+
+    assert await client.get_ai_service_list() == [{"serverId": "service-id"}]
+
+    body = session.posts[0][1]["json"]
+    assert body["bizCode"] == "701001"
+    assert body["userId"] == "user-id-code"
+    assert body["appCode"] == "1360"
+    assert session.posts[0][1]["headers"] == {"Authorization": "access-token"}
+
+
+@pytest.mark.asyncio
+async def test_ai_service_history_uses_apk_701008_server_id():
+    session = CapturePostSession(
+        {
+            "reCode": "200",
+            "reData": {
+                "alarmItems": [
+                    {
+                        "eventId": "event-id",
+                        "eventItems": [{"eventType": "person"}],
+                    }
+                ],
+                "nextToken": "next",
+            },
+        }
+    )
+    client = async_xsense.AsyncXSense(session)
+    client.access_token = "access-token"
+    client.access_token_expiry = async_xsense.datetime(
+        2099, 1, 1, tzinfo=async_xsense.timezone.utc
+    )
+    client.clientsecret = b"secret"
+
+    data = await client.get_ai_service_history("service-id")
+
+    assert data["alarmItems"][0]["eventId"] == "event-id"
+    body = session.posts[0][1]["json"]
+    assert body["bizCode"] == "701008"
+    assert body["serverId"] == "service-id"
+    assert "nextToken" not in body
+
+
+@pytest.mark.asyncio
 async def test_ipc_call_uses_same_apk_1360_client_metadata():
     session = CapturePostSession({"reCode": 200, "reData": {"token": "token"}})
     client = async_xsense.AsyncXSense(session)
