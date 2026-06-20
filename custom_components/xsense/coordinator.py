@@ -371,18 +371,16 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _update_camera_ai_history_locked(self) -> bool:
         """Poll APK AI-notification history while holding the history lock."""
-        if not self.xsense or not any(
-            is_camera_entity(station)
-            for house in self.xsense.houses.values()
-            for station in house.stations.values()
-        ):
+        cameras = _camera_entities(self)
+        if not self.xsense or not cameras:
             return False
 
+        updated = False
         try:
             services = await self.xsense.get_ai_service_list()
         except APIFailure as ex:
             LOGGER.debug("Could not update X-Sense camera AI history: %s", ex)
-            return False
+            services = []
 
         server_ids = [
             str(service.get("serverId"))
@@ -390,9 +388,24 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if isinstance(service, dict) and service.get("serverId")
         ]
         if not server_ids:
-            LOGGER.debug("X-Sense camera AI history poll skipped: no services")
-            return False
+            LOGGER.debug(
+                "X-Sense camera AI history poll skipped: no services %s",
+                {
+                    "service_count": len(services) if isinstance(services, list) else None,
+                    "service_shapes": [
+                        sorted(str(key) for key in service)
+                        for service in services
+                        if isinstance(service, dict)
+                    ][:5],
+                },
+            )
+        else:
+            updated = await self._update_camera_ai_service_history(server_ids)
 
+        return await self._update_camera_event_history(cameras) or updated
+
+    async def _update_camera_ai_service_history(self, server_ids: list[str]) -> bool:
+        """Poll APK AI service history for camera events."""
         first_poll = not self._camera_ai_history_seen
         applied = 0
         skipped = 0
@@ -432,6 +445,51 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         return applied > 0
 
+    async def _update_camera_event_history(self, cameras: list[Any]) -> bool:
+        """Poll APK ADDX camera event history for regular motion events."""
+        serial_numbers = [
+            str(camera.sn) for camera in cameras if getattr(camera, "sn", None)
+        ]
+        if not serial_numbers:
+            return False
+
+        first_poll = not self._camera_ai_history_seen
+        applied = 0
+        skipped = 0
+        seen_now: set[str] = set()
+        now = int(datetime.now(timezone.utc).timestamp())
+        try:
+            history = await self.xsense.get_camera_event_history(
+                serial_numbers,
+                now - 3600,
+                now,
+            )
+        except APIFailure as ex:
+            LOGGER.debug("Could not update X-Sense camera event history: %s", ex)
+            return False
+
+        records = _camera_event_history_records(history)
+        for record in reversed(records):
+            event_key = _camera_event_history_event_key(record)
+            seen_now.add(event_key)
+            if event_key in self._camera_ai_history_seen and not first_poll:
+                skipped += 1
+                continue
+            if self._apply_camera_event_history_item(record):
+                applied += 1
+
+        self._camera_ai_history_seen.update(seen_now)
+        LOGGER.debug(
+            "X-Sense camera event history poll: cameras=%s records=%s seen=%s applied=%s skipped=%s first_poll=%s",
+            len(serial_numbers),
+            len(records),
+            len(self._camera_ai_history_seen),
+            applied,
+            skipped,
+            first_poll,
+        )
+        return applied > 0
+
     def _apply_camera_ai_history_item(
         self, server_id: str, alarm_item: dict[str, Any]
     ) -> bool:
@@ -458,6 +516,35 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         LOGGER.debug(
             "X-Sense camera AI history event routed: %s",
+            {
+                "station_type": station.type,
+                "station_data_keys": sorted(str(key) for key in station_data),
+                "has_ai_detection": "lastAiDetection" in station_data,
+                "has_motion": "isMoved" in station_data,
+            },
+        )
+        self.xsense.parse_get_state(station, station_data)
+        return True
+
+    def _apply_camera_event_history_item(self, record: dict[str, Any]) -> bool:
+        """Apply one APK ADDX camera event record to the matching camera entity."""
+        station_data = _camera_event_history_station_data(record)
+        if not station_data:
+            return False
+
+        station = _camera_station_for_event_data(self, station_data, record)
+        if station is None:
+            LOGGER.debug(
+                "No X-Sense camera found for event history record: %s",
+                {
+                    "payload_keys": sorted(str(key) for key in record),
+                    "station_data_keys": sorted(str(key) for key in station_data),
+                },
+            )
+            return False
+
+        LOGGER.debug(
+            "X-Sense camera event history record routed: %s",
             {
                 "station_type": station.type,
                 "station_data_keys": sorted(str(key) for key in station_data),
@@ -852,6 +939,81 @@ def _camera_ai_history_event_key(server_id: str, alarm_item: dict[str, Any]) -> 
         default=str,
     )
     return f"{server_id}:{payload}"
+
+
+def _camera_entities(coordinator: XSenseDataUpdateCoordinator) -> list[Any]:
+    """Return camera entities known to the coordinator."""
+    if not coordinator.xsense:
+        return []
+    return [
+        station
+        for house in coordinator.xsense.houses.values()
+        for station in house.stations.values()
+        if is_camera_entity(station)
+    ]
+
+
+def _camera_event_history_records(history: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return ADDX camera event records from the APK event-history response."""
+    data = history.get("data") if isinstance(history.get("data"), dict) else history
+    records = data.get("list") if isinstance(data, dict) else None
+    if not isinstance(records, list):
+        return []
+    return [record for record in records if isinstance(record, dict)]
+
+
+def _camera_event_history_event_key(record: dict[str, Any]) -> str:
+    """Return a stable key for one APK ADDX camera event record."""
+    serial = record.get("serialNumber") or record.get("deviceSn") or record.get("sn")
+    trace = record.get("traceId") or record.get("traceIds")
+    timestamp = record.get("timestamp") or record.get("startTime") or record.get("date")
+    if serial and (trace or timestamp):
+        return f"camera-event:{serial}:{trace or timestamp}"
+    payload = json.dumps(
+        record,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+    return f"camera-event:{payload}"
+
+
+def _camera_event_history_station_data(record: dict[str, Any]) -> dict[str, Any]:
+    """Return normal camera state keys from an APK ADDX event-history record."""
+    serial = record.get("serialNumber") or record.get("deviceSn") or record.get("sn")
+    if not serial:
+        return {}
+
+    timestamp = record.get("timestamp") or record.get("startTime")
+    event_time = _camera_event_history_time(timestamp)
+    data: dict[str, Any] = {
+        "serialNumber": serial,
+        "deviceSN": serial,
+        "eventType": record.get("videoEvent") or record.get("tags") or "motion",
+        "eventItems": record.get("eventInfoList"),
+        "eventObjectType": record.get("eventInfoList") or record.get("tags"),
+        "lastType": record.get("videoEvent") or record.get("tags"),
+    }
+    if event_time:
+        data["time"] = event_time
+        data["eventTime"] = event_time
+
+    _apply_apk_event_aliases(data)
+    return data
+
+
+def _camera_event_history_time(value: Any) -> str | None:
+    """Return an X-Sense compact timestamp from an ADDX epoch timestamp."""
+    if value in (None, ""):
+        return None
+    try:
+        timestamp = int(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if timestamp > 10_000_000_000:
+        timestamp //= 1000
+    return datetime.fromtimestamp(timestamp, timezone.utc).strftime("%Y%m%d%H%M%S")
 
 
 def _camera_station_for_event_data(

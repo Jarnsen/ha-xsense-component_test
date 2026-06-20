@@ -643,6 +643,9 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
                 ]
             }
 
+        async def get_camera_event_history(self, serial_numbers, start_timestamp, end_timestamp):
+            return {}
+
         def parse_get_state(self, station_arg, data):
             parsed.append((station_arg, data))
             station_arg.set_data(data)
@@ -663,6 +666,73 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
     assert parsed[0][1]["lastMotionTime"] == "20260614230500"
     assert len(parsed) == 1
     assert updates == []
+
+
+async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Camera:
+        sn = "camera-sn"
+        type = "SSC0A"
+        shadow_name = "SSC0Acamera-sn"
+
+        def __init__(self):
+            self.data = {}
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+        def set_data(self, data):
+            self.data.update(data)
+
+    class House:
+        stations = {"camera-id": Camera()}
+
+        def get_station_by_sn(self, identifier):
+            camera = self.stations["camera-id"]
+            return camera if identifier == camera.sn else None
+
+    parsed = []
+    house = House()
+
+    class Client:
+        houses = {"house-id": house}
+
+        async def get_ai_service_list(self):
+            return []
+
+        async def get_camera_event_history(
+            self, serial_numbers, start_timestamp, end_timestamp
+        ):
+            assert serial_numbers == ["camera-sn"]
+            assert end_timestamp > start_timestamp
+            return {
+                "list": [
+                        {
+                            "serialNumber": "camera-sn",
+                            "timestamp": 1781478300,
+                            "traceId": "trace-id",
+                            "tags": "motion",
+                        }
+                ]
+            }
+
+        def parse_get_state(self, station_arg, data):
+            parsed.append((station_arg, data))
+            station_arg.set_data(data)
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = Client()
+    coordinator._camera_ai_history_seen = set()
+    coordinator._camera_ai_history_lock = asyncio.Lock()
+
+    assert await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
+    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
+
+    assert parsed[0][0] is house.stations["camera-id"]
+    assert parsed[0][1]["isMoved"] == "1"
+    assert parsed[0][1]["lastMotionTime"] == "20260614230500"
+    assert len(parsed) == 1
 
 
 async def test_camera_ai_history_timer_notifies_only_when_history_changes():

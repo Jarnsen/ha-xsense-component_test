@@ -367,6 +367,10 @@ class AsyncXSense(XSenseBase):
         if not user_id:
             return []
         data = await self.ai_service_call("701001", userId=user_id)
+        LOGGER.debug(
+            "X-Sense AI service list response: %s",
+            _debug_data_shape(data),
+        )
         return data if isinstance(data, list) else []
 
     async def get_ai_service_history(
@@ -377,6 +381,33 @@ class AsyncXSense(XSenseBase):
         if next_token:
             payload["nextToken"] = next_token
         data = await self.ai_service_call("701008", **payload)
+        return data if isinstance(data, dict) else {}
+
+    async def get_camera_event_history(
+        self,
+        serial_numbers: list[str],
+        start_timestamp: int,
+        end_timestamp: int,
+        *,
+        start: int = 0,
+        limit: int = 20,
+    ) -> dict:
+        """Return ADDX camera library events using the APK event-history path."""
+        serials = [str(serial) for serial in serial_numbers if serial]
+        if not serials:
+            return {}
+        data = await self.addx_call(
+            "/library/newselectlibrary/event",
+            startTimestamp=start_timestamp,
+            endTimestamp=end_timestamp,
+            to=limit,
+            serialNumber=serials,
+            **{"from": start},
+        )
+        LOGGER.debug(
+            "X-Sense camera event history response: %s",
+            _debug_data_shape(data),
+        )
         return data if isinstance(data, dict) else {}
 
     async def ipc_call(self, code: str, **kwargs):

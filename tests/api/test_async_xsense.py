@@ -3478,6 +3478,38 @@ async def test_ai_service_history_uses_apk_701008_server_id():
 
 
 @pytest.mark.asyncio
+async def test_camera_event_history_uses_apk_addx_library_event_path():
+    client = async_xsense.AsyncXSense()
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        return {"list": [{"serialNumber": "camera-sn", "tags": "motion"}]}
+
+    client.addx_call = addx_call
+
+    data = await client.get_camera_event_history(
+        ["camera-sn"],
+        1781484300,
+        1781487900,
+    )
+
+    assert data["list"][0]["serialNumber"] == "camera-sn"
+    assert calls == [
+        (
+            "/library/newselectlibrary/event",
+            {
+                "startTimestamp": 1781484300,
+                "endTimestamp": 1781487900,
+                "from": 0,
+                "to": 20,
+                "serialNumber": ["camera-sn"],
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
 async def test_ipc_call_uses_same_apk_1360_client_metadata():
     session = CapturePostSession({"reCode": 200, "reData": {"token": "token"}})
     client = async_xsense.AsyncXSense(session)
