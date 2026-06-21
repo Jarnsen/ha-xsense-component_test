@@ -737,6 +737,62 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
     assert len(parsed) == 1
 
 
+async def test_camera_event_history_does_not_mark_unapplied_records_seen(caplog):
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Camera:
+        sn = "camera-sn"
+        type = "SSC0A"
+        shadow_name = "SSC0Acamera-sn"
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    class House:
+        stations = {"camera-id": Camera()}
+
+        def get_station_by_sn(self, identifier):
+            camera = self.stations["camera-id"]
+            return camera if identifier == camera.sn else None
+
+    class Client:
+        houses = {"house-id": House()}
+
+        async def get_ai_service_list(self):
+            return []
+
+        async def get_camera_event_history(
+            self, serial_numbers, start_timestamp, end_timestamp
+        ):
+            return {
+                "list": [
+                    {
+                        "serialNumber": "other-camera-sn",
+                        "timestamp": 1781478300,
+                        "traceId": "trace-id",
+                        "tags": "motion",
+                    }
+                ]
+            }
+
+        def parse_get_state(self, station_arg, data):
+            raise AssertionError("unmatched record should not update station state")
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = Client()
+    coordinator._camera_ai_history_seen = set()
+    coordinator._camera_ai_history_lock = asyncio.Lock()
+
+    caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
+
+    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
+    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
+
+    assert coordinator._camera_ai_history_seen == set()
+    assert "X-Sense camera record history item was not applied" in caplog.text
+    assert "X-Sense camera record history item skipped as duplicate" not in caplog.text
+
+
 async def test_camera_ai_history_timer_notifies_only_when_history_changes():
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 

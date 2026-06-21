@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 from typing import Any
 
@@ -443,12 +444,12 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if not isinstance(alarm_item, dict):
                     continue
                 event_key = _camera_ai_history_event_key(server_id, alarm_item)
-                seen_now.add(event_key)
                 if event_key in self._camera_ai_history_seen and not first_poll:
                     skipped += 1
                     continue
                 if self._apply_camera_ai_history_item(server_id, alarm_item):
                     applied += 1
+                    seen_now.add(event_key)
 
         self._camera_ai_history_seen.update(seen_now)
         LOGGER.debug(
@@ -490,12 +491,21 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         records = _camera_event_history_records(history)
         for record in reversed(records):
             event_key = _camera_event_history_event_key(record)
-            seen_now.add(event_key)
             if event_key in self._camera_ai_history_seen and not first_poll:
                 skipped += 1
+                LOGGER.debug(
+                    "X-Sense camera record history item skipped as duplicate: %s",
+                    _camera_record_history_debug_context(record, event_key),
+                )
                 continue
             if self._apply_camera_event_history_item(record):
                 applied += 1
+                seen_now.add(event_key)
+            else:
+                LOGGER.debug(
+                    "X-Sense camera record history item was not applied: %s",
+                    _camera_record_history_debug_context(record, event_key),
+                )
 
         self._camera_ai_history_seen.update(seen_now)
         LOGGER.debug(
@@ -996,6 +1006,27 @@ def _camera_event_history_event_key(record: dict[str, Any]) -> str:
         default=str,
     )
     return f"camera-event:{payload}"
+
+
+def _camera_record_history_debug_context(
+    record: dict[str, Any], event_key: str
+) -> dict[str, Any]:
+    """Return redacted debug context for one ADDX camera history record."""
+    timestamp = record.get("timestamp") or record.get("startTime") or record.get("date")
+    return {
+        "event_key_hash": hashlib.sha256(event_key.encode()).hexdigest()[:12],
+        "record_keys": sorted(str(key) for key in record),
+        "serial_present": bool(
+            record.get("serialNumber") or record.get("deviceSn") or record.get("sn")
+        ),
+        "trace_present": bool(record.get("traceId") or record.get("traceIds")),
+        "timestamp": timestamp,
+        "tags_present": "tags" in record,
+        "video_event_present": "videoEvent" in record,
+        "event_info_count": len(record.get("eventInfoList") or [])
+        if isinstance(record.get("eventInfoList"), list)
+        else None,
+    }
 
 
 def _camera_event_history_station_data(record: dict[str, Any]) -> dict[str, Any]:

@@ -949,6 +949,7 @@ class AsyncXSense(XSenseBase):
                     "cameraLiveStartedAt": None,
                     "cameraLiveUrl": None,
                     "cameraLiveProtocol": None,
+                    "cameraWebrtcTicket": None,
                 }
             )
 

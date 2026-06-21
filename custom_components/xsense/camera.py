@@ -310,7 +310,9 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         except Exception as err:  # noqa: BLE001 - HA frontend needs a clean error
             self._webrtc_sessions.pop(session_id, None)
             self._pending_webrtc_candidates.pop(session_id, None)
-            await session.close()
+            await self._async_close_webrtc_live_session(
+                entity, session_id, session, stop_live=True
+            )
             LOGGER.debug(
                 "X-Sense camera WebRTC signal relay failed: %s",
                 _camera_debug_context(
@@ -352,7 +354,9 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         )
         self._webrtc_sessions.clear()
         for session in sessions:
-            await session.close()
+            await self._async_close_webrtc_live_session(
+                self._current_entity(), None, session, stop_live=True
+            )
 
     async def _flush_pending_webrtc_candidates(
         self, entity, session_id: str, session
@@ -436,17 +440,42 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             },
         )
         if session is not None:
-            self.hass.async_create_task(session.close())
+            self.hass.async_create_task(
+                self._async_close_webrtc_live_session(
+                    entity, session_id, session, stop_live=True
+                )
+            )
         super().close_webrtc_session(session_id)
 
     async def async_will_remove_from_hass(self) -> None:
         """Stop any WebRTC live view session when Home Assistant removes the entity."""
+        entity = self._current_entity()
         sessions = list(self._webrtc_sessions.values())
         self._webrtc_sessions.clear()
         self._pending_webrtc_candidates.clear()
         for session in sessions:
-            await session.close()
+            await self._async_close_webrtc_live_session(
+                entity, None, session, stop_live=True
+            )
         await super().async_will_remove_from_hass()
+
+    async def _async_close_webrtc_live_session(
+        self, entity, session_id: str | None, session, *, stop_live: bool
+    ) -> None:
+        """Close the signal session and release the ADDX live session."""
+        with suppress(Exception):
+            await session.close()
+        if entity is None:
+            return
+        _set_camera_data(entity, {"cameraWebrtcTicket": None})
+        if not stop_live:
+            return
+        with suppress(Exception):
+            await self.coordinator.xsense.stop_camera_live(entity)
+        LOGGER.debug(
+            "X-Sense camera WebRTC live session released: %s",
+            _camera_debug_context(entity, session_id),
+        )
 
 
 def _camera_online(entity) -> bool:
@@ -483,6 +512,15 @@ def _is_webrtc_camera(entity) -> bool:
 def _camera_live_resolution(entity) -> str:
     """Return the live resolution string used by the ADDX player."""
     return camera_live_resolution(entity)
+
+
+def _set_camera_data(entity, data: dict[str, object]) -> None:
+    """Set camera data on real entities and lightweight test doubles."""
+    if hasattr(entity, "set_data"):
+        entity.set_data(data)
+        return
+    if isinstance(getattr(entity, "data", None), dict):
+        entity.data.update(data)
 
 
 def _short_id(value):

@@ -1301,9 +1301,17 @@ async def test_frontend_webrtc_close_closes_signal_session():
     camera_entity.sn = "SSC0ATEST"
     camera_entity.name = "Camera"
     camera_entity.online = True
+    camera_entity.data["cameraWebrtcTicket"] = {"id": "ticket-id"}
+
+    stop_calls = []
+
+    async def stop_camera_live(entity):
+        stop_calls.append(entity.sn)
+        entity.data["cameraWebrtcTicket"] = None
 
     class Coordinator:
         data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
+        xsense = SimpleNamespace(stop_camera_live=stop_camera_live)
 
         def async_add_listener(self, *args, **kwargs):
             return lambda: None
@@ -1333,6 +1341,8 @@ async def test_frontend_webrtc_close_closes_signal_session():
     await tasks[0]
 
     assert session.closed is True
+    assert stop_calls == ["SSC0ATEST"]
+    assert camera_entity.data["cameraWebrtcTicket"] is None
     assert camera._webrtc_sessions == {}
     assert camera._pending_webrtc_candidates == {}
 

@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import sys
 import time
 from types import SimpleNamespace
@@ -266,6 +267,28 @@ async def test_trickled_candidate_is_queued_until_offer_is_sent():
     assert session._pending_remote_candidates == []
     assert session._ws.messages[0]["messageType"] == "ICE_CANDIDATE"
     assert session._sent_candidate_count == 1
+
+
+async def test_ha_ice_candidate_debug_is_throttled(caplog):
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
+
+    for index in range(18):
+        await session.add_candidate(
+            SimpleNamespace(
+                candidate=f"candidate:{index} 1 udp 1 192.0.2.1 123 typ host",
+                sdp_mid=str(index % 3),
+                sdp_m_line_index=index % 3,
+            )
+        )
+
+    assert caplog.text.count("queued HA ICE candidate") == 3
 
 
 async def test_online_camera_waits_for_peer_in_before_sending_offer():

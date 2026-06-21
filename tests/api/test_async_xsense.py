@@ -2975,6 +2975,45 @@ async def test_start_camera_live_uses_apk_live_resolution(camera_data, expected)
     ]
 
 
+@pytest.mark.asyncio
+async def test_stop_camera_live_clears_live_and_webrtc_ticket_state():
+    client = async_xsense.AsyncXSense()
+    camera = device_module.Device(
+        None,
+        deviceId="cam-id",
+        deviceName="Camera",
+        deviceSn="cam-sn",
+        deviceType="SSC0A",
+    )
+    camera.set_data(
+        {
+            "cameraAudioUrl": "audio",
+            "cameraLiveId": "live-id",
+            "cameraLiveStartedAt": async_xsense.datetime.now(),
+            "cameraLiveUrl": "rtsp://example/live",
+            "cameraLiveProtocol": "rtsp",
+            "cameraWebrtcTicket": {"id": "ticket-id"},
+        }
+    )
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.stop_camera_live(camera)
+
+    assert calls == [("/device/stoplive", {"serialNumber": "cam-sn"})]
+    assert camera.data["cameraAudioUrl"] is None
+    assert camera.data["cameraLiveId"] is None
+    assert camera.data["cameraLiveStartedAt"] is None
+    assert camera.data["cameraLiveUrl"] is None
+    assert camera.data["cameraLiveProtocol"] is None
+    assert camera.data["cameraWebrtcTicket"] is None
+
+
 def test_camera_live_url_uses_apk_response_fields_without_scheme_rewrite():
     assert (
         async_xsense._camera_live_url({"liveUrl": "rtmp://example/live"})

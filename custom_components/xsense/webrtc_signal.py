@@ -233,18 +233,17 @@ class XSenseWebRTCSignalSession:
             self._ha_candidate_history.append(payload)
         if self._ws is None or self._ws.closed or not self._offer_sent:
             self._pending_remote_candidates.append(payload)
-            LOGGER.debug(
-                "X-Sense WebRTC signal relay queued HA ICE candidate: %s",
-                self._debug_context(
-                    queue_reason=_candidate_queue_reason(self),
-                    **_single_candidate_debug(payload),
-                ),
-            )
+            queued_count = len(self._pending_remote_candidates)
+            if _should_log_candidate_count(queued_count):
+                LOGGER.debug(
+                    "X-Sense WebRTC signal relay queued HA ICE candidate: %s",
+                    self._debug_context(
+                        queue_reason=_candidate_queue_reason(self),
+                        queued_candidate_count=queued_count,
+                        **_single_candidate_debug(payload),
+                    ),
+                )
             return
-        LOGGER.debug(
-            "X-Sense WebRTC signal relay sending HA ICE candidate immediately: %s",
-            self._debug_context(**_single_candidate_debug(payload)),
-        )
         await self._send_candidate(payload)
 
     async def _connect_signal(self) -> None:
@@ -500,6 +499,13 @@ class XSenseWebRTCSignalSession:
 
     async def _flush_pending_remote_candidates(self) -> None:
         """Send any HA candidates that arrived before the X-Sense offer was sent."""
+        if self._pending_remote_candidates:
+            LOGGER.debug(
+                "X-Sense WebRTC signal relay flushing queued HA ICE candidates: %s",
+                self._debug_context(
+                    **_candidate_debug_summary(self._pending_remote_candidates)
+                ),
+            )
         while self._pending_remote_candidates and not self._closed:
             await self._send_candidate(self._pending_remote_candidates.pop(0))
 
@@ -517,10 +523,11 @@ class XSenseWebRTCSignalSession:
             )
         )
         self._sent_candidate_count += 1
-        LOGGER.debug(
-            "X-Sense WebRTC signal relay sent HA ICE candidate to X-Sense: %s",
-            self._debug_context(**_single_candidate_debug(candidate)),
-        )
+        if _should_log_candidate_count(self._sent_candidate_count):
+            LOGGER.debug(
+                "X-Sense WebRTC signal relay sent HA ICE candidate to X-Sense: %s",
+                self._debug_context(**_single_candidate_debug(candidate)),
+            )
 
     def _reset_offer_attempt(self, reason: str) -> None:
         self._offer_sent = False
@@ -1074,6 +1081,11 @@ def _candidate_debug_summary(candidates: list[dict[str, Any]]) -> dict[str, Any]
 
 def _single_candidate_debug(candidate: dict[str, Any]) -> dict[str, Any]:
     return _candidate_debug_summary([candidate])
+
+
+def _should_log_candidate_count(count: int) -> bool:
+    """Return whether this candidate count should get an individual debug line."""
+    return count <= 1 or count in {5, 10, 25, 50, 100}
 
 
 def _candidate_queue_reason(session: XSenseWebRTCSignalSession) -> str:
