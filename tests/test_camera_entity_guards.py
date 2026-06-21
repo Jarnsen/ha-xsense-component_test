@@ -427,22 +427,21 @@ def test_read_only_camera_entities_require_camera_entity():
     assert sensor.has_camera_data("batteryLevel")(camera)
 
 
-def test_regular_motion_entities_precreate_for_motion_capable_cameras():
+def test_regular_motion_binary_entity_is_not_created_for_cameras():
     non_camera = entity("XS01-WX", {"needMotion": 1})
     camera = entity("SSC0A", {"needMotion": 1})
 
     motion = next(item for item in binary_sensor.SENSORS if item.key == "moved")
 
     assert not motion.exists_fn(non_camera)
-    assert motion.exists_fn(camera)
-    assert motion.value_fn(camera) is False
+    assert not motion.exists_fn(camera)
 
 
-def test_camera_motion_entity_uses_reported_motion_state():
+def test_regular_motion_binary_entity_uses_reported_non_camera_motion_state():
     motion = next(item for item in binary_sensor.SENSORS if item.key == "moved")
 
-    assert motion.value_fn(entity("SSC0A", {"isMoved": "1"})) is True
-    assert motion.value_fn(entity("SSC0A", {"isMoved": "0"})) is False
+    assert motion.value_fn(entity("SMS", {"isMoved": "1"})) is True
+    assert motion.value_fn(entity("SMS", {"isMoved": "0"})) is False
 
 
 def test_ai_detection_event_entity_precreates_for_camera_notifications():
@@ -546,6 +545,34 @@ def test_camera_entities_include_device_cameras():
     assert entities[1]._station_id == ""
     assert entities[1]._current_entity() is device_camera
     assert entities[1].available is True
+
+
+def test_camera_entity_description_has_icon():
+    assert camera.CAMERA_DESCRIPTION.icon == "mdi:video"
+
+
+def test_entity_descriptions_have_icon_or_device_class():
+    descriptions = [
+        *binary_sensor.SENSORS,
+        binary_sensor.MQTTSensor,
+        *button.BUTTONS,
+        camera.CAMERA_DESCRIPTION,
+        event.AI_DETECTION_DESCRIPTION,
+        event.MOTION_DESCRIPTION,
+        *number.NUMBERS,
+        *select.SELECTS,
+        *sensor.SENSORS,
+        *switch.SWITCHES,
+    ]
+
+    missing = [
+        description.key
+        for description in descriptions
+        if getattr(description, "icon", None) is None
+        and getattr(description, "device_class", None) is None
+    ]
+
+    assert missing == []
 
 
 def test_camera_entities_include_standalone_device_cameras():
@@ -669,23 +696,13 @@ def test_motion_event_data_uses_apk_history_record_time():
         {
             "eventType": "unknown",
             "eventItems": ["unknown"],
-            "lastMotionTime": "20260621134144",
+            "eventTime": "20260621134144",
             "traceId": "trace-id",
         }
     )
 
-    assert event_data == {
-        "time": "20260621134144",
-        "event_type": "unknown",
-        "trace_id": "trace-id",
-        "event_items": ["unknown"],
-    }
-    assert event.motion_fingerprint(event_data) == (
-        "20260621134144",
-        "trace-id",
-        "unknown",
-        ["unknown"],
-    )
+    assert event_data == {"time": "20260621134144"}
+    assert event.motion_fingerprint(event_data) == ("20260621134144",)
 
 
 def test_motion_event_entity_triggers_repeated_motion_with_new_time():

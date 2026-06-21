@@ -42,6 +42,7 @@ class XSenseCameraEntityDescription(CameraEntityDescription):
 
 CAMERA_DESCRIPTION = XSenseCameraEntityDescription(
     key="thumbnail",
+    icon="mdi:video",
     name=None,
 )
 

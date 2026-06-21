@@ -880,7 +880,7 @@ def test_mqtt_camera_ai_event_uses_last_ai_detection_with_event_time():
     assert data["lastMotionTime"] == "20260614230300"
 
 
-def test_camera_record_history_item_maps_to_motion_even_with_unknown_video_event():
+def test_camera_record_history_item_preserves_event_time_without_live_motion():
     from custom_components.xsense.coordinator import _camera_event_history_station_data
 
     data = _camera_event_history_station_data(
@@ -894,8 +894,9 @@ def test_camera_record_history_item_maps_to_motion_even_with_unknown_video_event
     )
 
     assert data["serialNumber"] == "camera-sn"
-    assert data["isMoved"] == "1"
-    assert data["lastMotionTime"] == "20260621134144"
+    assert data["eventTime"] == "20260621134144"
+    assert "isMoved" not in data
+    assert "lastMotionTime" not in data
 
 
 async def test_assure_subscriptions_includes_apk_ai_plan_topic():

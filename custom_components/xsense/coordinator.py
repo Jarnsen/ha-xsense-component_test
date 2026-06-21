@@ -1050,7 +1050,6 @@ def _camera_event_history_station_data(record: dict[str, Any]) -> dict[str, Any]
         data["eventTime"] = event_time
 
     _apply_apk_event_aliases(data)
-    _apply_apk_motion_detected_aliases(data)
     return data
 
 

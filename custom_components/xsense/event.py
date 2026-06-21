@@ -308,14 +308,7 @@ def motion_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
     if motion_time in (None, ""):
         return None
 
-    event_data: dict[str, Any] = {"time": motion_time}
-    if event_type := data.get("eventType"):
-        event_data["event_type"] = event_type
-    if trace_id := data.get("traceId"):
-        event_data["trace_id"] = trace_id
-    if event_items := data.get("eventItems"):
-        event_data["event_items"] = event_items
-    return event_data
+    return {"time": motion_time}
 
 
 def motion_fingerprint(
@@ -324,12 +317,7 @@ def motion_fingerprint(
     """Return a stable duplicate-detection fingerprint for motion events."""
     if event_data is None:
         return None
-    return (
-        event_data.get("time"),
-        event_data.get("trace_id"),
-        event_data.get("event_type"),
-        event_data.get("event_items"),
-    )
+    return (event_data.get("time"),)
 
 
 def ai_detection_event_data(data: dict[str, Any]) -> dict[str, Any] | None:

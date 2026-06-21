@@ -107,25 +107,14 @@ def has_camera_data(key: str) -> Callable[[Entity], bool]:
 
 def has_motion_detection(entity: Entity) -> bool:
     """Return if an entity can expose regular motion detection state."""
-    return "isMoved" in entity.data or (
-        is_camera_entity(entity)
-        and any(
-            key in entity.data
-            for key in (
-                "needMotion",
-                "motionSensitivity",
-                "motionSensitivityOptionList",
-            )
-        )
-    )
+    if is_camera_entity(entity):
+        return False
+    return "isMoved" in entity.data
 
 
 def motion_detection_value(entity: Entity) -> bool | None:
     """Return motion state, defaulting supported cameras to idle before events."""
-    value = boolean_state(entity.data.get("isMoved"))
-    if value is None and is_camera_entity(entity):
-        return False
-    return value
+    return boolean_state(entity.data.get("isMoved"))
 
 
 SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
@@ -139,18 +128,21 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="alarm_status",
         translation_key="alarm_status",
+        icon="mdi:alarm-light",
         exists_fn=has_alarm_status,
         value_fn=alarm_status,
     ),
     XSenseBinarySensorEntityDescription(
         key="mute_status",
         translation_key="mute_status",
+        icon="mdi:alarm-light-off",
         exists_fn=lambda entity: "muteStatus" in entity.data,
         value_fn=lambda entity: boolean_state(entity.data["muteStatus"]),
     ),
     XSenseBinarySensorEntityDescription(
         key="activate",
         translation_key="activate",
+        icon="mdi:bell-ring",
         exists_fn=lambda entity: "activate" in entity.data,
         value_fn=lambda entity: boolean_state(entity.data["activate"]),
     ),
@@ -321,6 +313,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="timezone_enabled",
         name="Time Zone Enabled",
         entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:map-clock-outline",
         exists_fn=has_data("timeZoneEnabled"),
         value_fn=data_bool("timeZoneEnabled"),
     ),
@@ -328,6 +321,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="timezone_valid",
         name="Time Zone Valid",
         entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:clock-check-outline",
         exists_fn=has_data("timeZoneValid"),
         value_fn=data_bool("timeZoneValid"),
     ),
@@ -345,6 +339,7 @@ MQTTSensor = XSenseBinarySensorEntityDescription(
     key="connected",
     translation_key="connected",
     entity_category=EntityCategory.DIAGNOSTIC,
+    icon="mdi:connection",
     exists_fn=lambda entity: isinstance(entity, Station),
     value_fn=lambda entity: False,
 )

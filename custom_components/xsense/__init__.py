@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -13,6 +15,7 @@ from homeassistant.helpers.device_registry import (
 )
 from homeassistant.util import slugify
 
+from .api.async_xsense import is_camera_entity
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
 
@@ -164,6 +167,11 @@ OBSOLETE_ENTITY_KEYS_BY_DOMAIN = {
     Platform.NUMBER: OBSOLETE_NUMBER_KEYS,
 }
 
+OBSOLETE_ENTITY_SUFFIXES_BY_DOMAIN = {
+    domain: tuple(f"-{key.replace('_', '-')}" for key in keys)
+    for domain, keys in OBSOLETE_ENTITY_KEYS_BY_DOMAIN.items()
+}
+
 OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
     "XS03-iWX": ("mute",),
 }
@@ -201,6 +209,21 @@ def _obsolete_action_unique_ids(data) -> set[str]:
     return unique_ids
 
 
+def _obsolete_camera_motion_unique_ids(data) -> set[str]:
+    """Return old camera binary motion unique IDs now replaced by event entities."""
+    unique_ids: set[str] = set()
+    for entity in (
+        *data.get("stations", {}).values(),
+        *data.get("devices", {}).values(),
+    ):
+        is_camera = False
+        with suppress(AttributeError):
+            is_camera = is_camera_entity(entity)
+        if is_camera:
+            unique_ids.add(_sensor_unique_id(entity.entity_id, "moved"))
+    return unique_ids
+
+
 def _obsolete_unique_id_suffixes(keys: tuple[str, ...]) -> set[str]:
     """Return old unique ID suffixes independent of the device prefix."""
     return {f"-{key.replace('_', '-')}" for key in keys}
@@ -227,7 +250,7 @@ def _is_obsolete_sensor_entry(registry_entry) -> bool:
         and getattr(registry_entry, "platform", None) == DOMAIN
         and any(
             unique_id.endswith(suffix)
-            for suffix in _obsolete_unique_id_suffixes(OBSOLETE_SENSOR_KEYS)
+            for suffix in OBSOLETE_ENTITY_SUFFIXES_BY_DOMAIN[Platform.SENSOR]
         )
     )
 
@@ -240,7 +263,7 @@ def _is_obsolete_binary_sensor_entry(registry_entry) -> bool:
         and getattr(registry_entry, "platform", None) == DOMAIN
         and any(
             unique_id.endswith(suffix)
-            for suffix in _obsolete_unique_id_suffixes(OBSOLETE_BINARY_SENSOR_KEYS)
+            for suffix in OBSOLETE_ENTITY_SUFFIXES_BY_DOMAIN[Platform.BINARY_SENSOR]
         )
     )
 
@@ -254,7 +277,10 @@ def _is_obsolete_entity_entry(registry_entry) -> bool:
     unique_id = _registry_entry_unique_id(registry_entry)
     return (
         getattr(registry_entry, "platform", None) == DOMAIN
-        and any(unique_id.endswith(suffix) for suffix in _obsolete_unique_id_suffixes(keys))
+        and any(
+            unique_id.endswith(suffix)
+            for suffix in OBSOLETE_ENTITY_SUFFIXES_BY_DOMAIN[domain]
+        )
     )
 
 
@@ -265,6 +291,7 @@ def _remove_obsolete_sensor_entities(
     entity_registry = er.async_get(hass)
     checked_unique_ids = set()
     obsolete_action_unique_ids = _obsolete_action_unique_ids(data)
+    obsolete_camera_motion_unique_ids = _obsolete_camera_motion_unique_ids(data)
 
     seen_entity_ids = set()
     registry_entries = list(
@@ -282,6 +309,11 @@ def _remove_obsolete_sensor_entities(
             and getattr(registry_entry, "platform", None) == DOMAIN
             and _registry_entry_unique_id(registry_entry)
             in obsolete_action_unique_ids
+        ) or (
+            _registry_entry_domain(registry_entry) == Platform.BINARY_SENSOR
+            and getattr(registry_entry, "platform", None) == DOMAIN
+            and _registry_entry_unique_id(registry_entry)
+            in obsolete_camera_motion_unique_ids
         ):
             entity_registry.async_remove(registry_entry.entity_id)
 
@@ -295,6 +327,13 @@ def _remove_obsolete_sensor_entities(
     for unique_id in obsolete_action_unique_ids - checked_unique_ids:
         entity_id = entity_registry.async_get_entity_id(
             Platform.BUTTON, DOMAIN, unique_id
+        )
+        if entity_id is not None:
+            entity_registry.async_remove(entity_id)
+
+    for unique_id in obsolete_camera_motion_unique_ids - checked_unique_ids:
+        entity_id = entity_registry.async_get_entity_id(
+            Platform.BINARY_SENSOR, DOMAIN, unique_id
         )
         if entity_id is not None:
             entity_registry.async_remove(entity_id)
