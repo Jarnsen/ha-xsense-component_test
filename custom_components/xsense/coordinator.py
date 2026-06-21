@@ -67,15 +67,6 @@ _APK_AI_DETECTION_DATA_KEYS = {
     "other": "other",
 }
 
-_APK_MOTION_DETECTION_NAMES = {
-    "motion",
-    "motion_detected",
-    "motion_detection",
-    "motion_detection_camera",
-    "pir_motion",
-    "camera_motion",
-}
-
 _MQTT_IDENTIFIER_KEYS = {
     "camerasn",
     "cxserialnumber",
@@ -852,6 +843,7 @@ def _mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any] | list[Any]:
         result = event_data.copy()
         if event_time := data.get("eventTime"):
             result.setdefault("time", event_time)
+            result.setdefault("eventTime", event_time)
         if event_type := data.get("eventType") or result.get("eventType"):
             result.setdefault("eventType", event_type)
         _apply_apk_dispatch_aliases(result)
@@ -872,6 +864,7 @@ def _mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any] | list[Any]:
         result = data.copy()
         if event_time := data.get("eventTime"):
             result.setdefault("time", event_time)
+            result.setdefault("eventTime", event_time)
         _apply_apk_dispatch_aliases(result)
         _apply_apk_event_aliases(result)
         return result
@@ -1108,28 +1101,6 @@ def _apply_apk_event_aliases(data: dict[str, Any]) -> None:
     """Apply APK event aliases that are not reported as shadow keys."""
     _apply_apk_ai_detection_aliases(data)
 
-    event_type = data.get("eventType")
-    try:
-        numeric_event_type = int(event_type)
-    except (TypeError, ValueError):
-        numeric_event_type = None
-
-    # APK history event 92 is Motion Detected. The device UI uses isMoved for
-    # the live motion state, so expose the event through that same key.
-    if (
-        numeric_event_type == 92
-        or _apk_motion_detection_names(data)
-        or data.get("lastAiDetection")
-    ):
-        _apply_apk_motion_detected_aliases(data)
-
-
-def _apply_apk_motion_detected_aliases(data: dict[str, Any]) -> None:
-    """Expose APK camera motion events through the live motion state key."""
-    data.setdefault("isMoved", "1")
-    if time_value := data.get("time") or data.get("eventTime"):
-        data.setdefault("lastMotionTime", time_value)
-
 
 def _apply_apk_ai_detection_aliases(data: dict[str, Any]) -> None:
     """Apply APK AI detection object names from camera event payloads."""
@@ -1251,44 +1222,6 @@ def _apk_ai_detection_name_times(value: Any, fallback_time: Any = None) -> dict[
                 )
         return objects
     return {}
-
-
-def _apk_motion_detection_names(value: Any) -> set[str]:
-    """Return APK camera motion names from scalar or nested event payloads."""
-    if value is None:
-        return set()
-    if isinstance(value, str):
-        text = value.strip()
-        if text.startswith(("{", "[")):
-            with suppress(json.JSONDecodeError):
-                return _apk_motion_detection_names(json.loads(text))
-        normalized = text.lower().replace("-", "_").replace(" ", "_")
-        return {normalized} if normalized in _APK_MOTION_DETECTION_NAMES else set()
-    if isinstance(value, dict):
-        names: set[str] = set()
-        for key, nested_value in value.items():
-            key_name = str(key).strip().lower()
-            if key_name in {
-                "eventtype",
-                "eventname",
-                "eventcode",
-                "eventsubtype",
-                "notificationtype",
-                "alarmtype",
-                "type",
-                "lasttype",
-            }:
-                names.update(_apk_motion_detection_names(nested_value))
-                continue
-            if key_name in {"eventitems", "eventdata", "events"}:
-                names.update(_apk_motion_detection_names(nested_value))
-        return names
-    if isinstance(value, (list, tuple, set)):
-        names: set[str] = set()
-        for item in value:
-            names.update(_apk_motion_detection_names(item))
-        return names
-    return set()
 
 
 def _latest_apk_detection_time(values) -> Any:

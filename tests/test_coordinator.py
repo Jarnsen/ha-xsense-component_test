@@ -246,7 +246,7 @@ async def test_cached_addx_cameras_remain_in_coordinator_data_when_camera_refres
     assert stations == {"camera-id": camera}
 
 
-def test_mqtt_camera_motion_event_maps_to_apk_is_moved_state():
+def test_mqtt_camera_motion_event_preserves_apk_event_time():
     from custom_components.xsense.coordinator import _mqtt_reported_data
 
     data = _mqtt_reported_data(
@@ -263,8 +263,9 @@ def test_mqtt_camera_motion_event_maps_to_apk_is_moved_state():
     assert data["serialNumber"] == "camera-sn"
     assert data["eventType"] == 92
     assert data["time"] == "20260614221512"
-    assert data["isMoved"] == "1"
-    assert data["lastMotionTime"] == "20260614221512"
+    assert data["eventTime"] == "20260614221512"
+    assert "isMoved" not in data
+    assert "lastMotionTime" not in data
 
 
 def test_mqtt_camera_motion_event_preserves_reported_is_moved_state():
@@ -295,7 +296,8 @@ def test_mqtt_camera_motion_event_accepts_json_string_event_data():
 
     assert data["serialNumber"] == "camera-sn"
     assert data["eventType"] == "92"
-    assert data["isMoved"] == "1"
+    assert data["eventType"] == "92"
+    assert "isMoved" not in data
 
 
 def test_mqtt_camera_motion_event_accepts_apk_motion_event_names():
@@ -314,8 +316,9 @@ def test_mqtt_camera_motion_event_accepts_apk_motion_event_names():
 
     assert data["serialNumber"] == "camera-sn"
     assert data["eventType"] == "motion_detection"
-    assert data["isMoved"] == "1"
-    assert data["lastMotionTime"] == "20260614221612"
+    assert data["eventTime"] == "20260614221612"
+    assert "isMoved" not in data
+    assert "lastMotionTime" not in data
 
 
 def test_mqtt_camera_motion_event_accepts_nested_apk_motion_event_items():
@@ -334,8 +337,9 @@ def test_mqtt_camera_motion_event_accepts_nested_apk_motion_event_items():
     )
 
     assert data["serialNumber"] == "camera-sn"
-    assert data["isMoved"] == "1"
-    assert data["lastMotionTime"] == "20260614221712"
+    assert data["eventTime"] == "20260614221712"
+    assert "isMoved" not in data
+    assert "lastMotionTime" not in data
 
 
 def test_mqtt_top_level_camera_motion_event_is_not_discarded():
@@ -351,8 +355,9 @@ def test_mqtt_top_level_camera_motion_event_is_not_discarded():
 
     assert data["serialNumber"] == "camera-sn"
     assert data["eventType"] == "camera_motion"
-    assert data["isMoved"] == "1"
-    assert data["lastMotionTime"] == "20260614221812"
+    assert data["eventTime"] == "20260614221812"
+    assert "isMoved" not in data
+    assert "lastMotionTime" not in data
 
 
 def test_mqtt_camera_ai_event_maps_apk_detection_objects():
@@ -369,8 +374,9 @@ def test_mqtt_camera_ai_event_maps_apk_detection_objects():
     )
 
     assert data["lastAiDetection"] == "person"
-    assert data["isMoved"] == "1"
-    assert data["lastMotionTime"] == "20260614231512"
+    assert data["eventTime"] == "20260614231512"
+    assert "isMoved" not in data
+    assert "lastMotionTime" not in data
     assert data["personDetected"] is True
     assert data["petDetected"] is False
     assert data["vehicleDetected"] is False
@@ -584,7 +590,9 @@ def test_mqtt_ai_plan_event_routes_by_nested_camera_identity():
     assert parsed[0][0] is house.stations["camera-id"]
     assert parsed[0][1]["lastAiDetection"] == "person"
     assert parsed[0][1]["lastPersonDetectionTime"] == "20260614230401"
-    assert parsed[0][1]["isMoved"] == "1"
+    assert parsed[0][1]["eventTime"] == "20260614230400"
+    assert "isMoved" not in parsed[0][1]
+    assert "lastMotionTime" not in parsed[0][1]
     assert updates == [True]
 
 
@@ -664,8 +672,9 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
     assert parsed[0][0] is house.stations["camera-id"]
     assert parsed[0][1]["lastAiDetection"] == "person"
     assert parsed[0][1]["lastPersonDetectionTime"] == "20260614230501"
-    assert parsed[0][1]["isMoved"] == "1"
-    assert parsed[0][1]["lastMotionTime"] == "20260614230500"
+    assert parsed[0][1]["eventTime"] == "20260614230500"
+    assert "isMoved" not in parsed[0][1]
+    assert "lastMotionTime" not in parsed[0][1]
     assert len(parsed) == 1
     assert updates == []
 
@@ -732,8 +741,9 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
     assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
 
     assert parsed[0][0] is house.stations["camera-id"]
-    assert parsed[0][1]["isMoved"] == "1"
-    assert parsed[0][1]["lastMotionTime"] == "20260614230500"
+    assert parsed[0][1]["eventTime"] == "20260614230500"
+    assert "isMoved" not in parsed[0][1]
+    assert "lastMotionTime" not in parsed[0][1]
     assert len(parsed) == 1
 
 
@@ -876,8 +886,9 @@ def test_mqtt_camera_ai_event_uses_last_ai_detection_with_event_time():
 
     assert data["lastAiDetection"] == "person"
     assert data["lastPersonDetectionTime"] == "20260614230300"
-    assert data["isMoved"] == "1"
-    assert data["lastMotionTime"] == "20260614230300"
+    assert data["eventTime"] == "20260614230300"
+    assert "isMoved" not in data
+    assert "lastMotionTime" not in data
 
 
 def test_camera_record_history_item_preserves_event_time_without_live_motion():

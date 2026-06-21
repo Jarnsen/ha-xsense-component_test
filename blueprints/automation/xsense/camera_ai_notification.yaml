@@ -1,26 +1,27 @@
 blueprint:
-  name: X-Sense Camera AI Detection
+  name: X-Sense Camera Event
   description: >
-    Send a notification or run actions when an X-Sense camera reports an AI
-    detection. Select the camera AI Detection event entity, then keep the
-    defaults or adjust the actions.
+    Send a notification or run actions when an X-Sense camera reports motion
+    or AI detection. Select the camera Motion or AI Detection event entity,
+    then keep the defaults or adjust the actions.
   domain: automation
   author: X-Sense Home Security
   homeassistant:
     min_version: 2025.3.0
   input:
     ai_detection_event:
-      name: Camera AI Detection
-      description: Select the AI Detection event entity for the camera.
+      name: Camera event
+      description: Select the Motion or AI Detection event entity for the camera.
       selector:
         entity:
           filter:
             - integration: xsense
               domain: event
     event_types:
-      name: Detection types
-      description: Leave all selected to notify for every AI detection, or choose only the types you want.
+      name: Event types
+      description: Leave all selected to notify for every camera event, or choose only the types you want.
       default:
+        - motion
         - person
         - pet
         - vehicle
@@ -37,6 +38,8 @@ blueprint:
         select:
           multiple: true
           options:
+            - label: Motion
+              value: motion
             - label: Person
               value: person
             - label: Pet
@@ -67,7 +70,7 @@ blueprint:
       default:
         - action: notify.notify
           data:
-            message: X-Sense camera detected AI activity.
+            message: X-Sense camera activity detected.
       selector:
         action:
 

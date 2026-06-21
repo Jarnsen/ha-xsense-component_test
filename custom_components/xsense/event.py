@@ -302,9 +302,7 @@ def _device_station_id(device: Device) -> str | None:
 
 def motion_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
     """Return event data for the latest APK camera motion history record."""
-    motion_time = data.get("lastMotionTime") or data.get("eventTime") or data.get(
-        "time"
-    )
+    motion_time = data.get("eventTime") or data.get("time")
     if motion_time in (None, ""):
         return None
 
@@ -339,9 +337,7 @@ def ai_detection_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
         for object_name, time_key in _AI_DETECTION_TIME_KEYS.items()
         if object_name in objects and time_key in data
     }
-    fallback_time = data.get("time") or data.get("eventTime") or data.get(
-        "lastMotionTime"
-    )
+    fallback_time = data.get("time") or data.get("eventTime")
     if fallback_time is not None:
         for object_name in objects:
             object_times.setdefault(object_name, fallback_time)

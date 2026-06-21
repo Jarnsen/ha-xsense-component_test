@@ -706,7 +706,7 @@ def test_motion_event_data_uses_apk_history_record_time():
 
 
 def test_motion_event_entity_triggers_repeated_motion_with_new_time():
-    camera_entity = entity("SSC0A", {"lastMotionTime": "20260621134144"})
+    camera_entity = entity("SSC0A", {"eventTime": "20260621134144"})
     event_entity = event.XSenseMotionEventEntity.__new__(
         event.XSenseMotionEventEntity
     )
@@ -722,7 +722,7 @@ def test_motion_event_entity_triggers_repeated_motion_with_new_time():
     event_entity.async_write_ha_state = lambda: None
 
     event_entity._handle_coordinator_update()
-    camera_entity.data["lastMotionTime"] = "20260621134200"
+    camera_entity.data["eventTime"] = "20260621134200"
     event_entity._handle_coordinator_update()
     event_entity._handle_coordinator_update()
 
@@ -761,7 +761,7 @@ def test_ai_detection_event_data_uses_fallback_event_time():
     event_data = event.ai_detection_event_data(
         {
             "lastAiDetection": "person",
-            "lastMotionTime": "20260614230300",
+            "eventTime": "20260614230300",
         }
     )
 

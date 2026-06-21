@@ -137,6 +137,24 @@ def test_ai_notification_blueprint_selector_lists_xsense_event_entities():
     assert entity_filter == {"integration": "xsense", "domain": "event"}
 
 
+def test_ai_notification_blueprint_supports_motion_events():
+    with open(
+        "blueprints/automation/xsense/camera_ai_notification.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    event_types = blueprint["blueprint"]["input"]["event_types"]
+    options = {
+        option["value"]
+        for option in event_types["selector"]["select"]["options"]
+    }
+
+    assert "motion" in event_types["default"]
+    assert "motion" in options
+    assert "AI activity" not in str(blueprint)
+
+
 def test_ai_notification_blueprint_default_action_does_not_template_trigger():
     with open(
         "blueprints/automation/xsense/camera_ai_notification.yaml",
