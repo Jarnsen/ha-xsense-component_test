@@ -66,6 +66,9 @@
         "event": {
             "ai_detection": {
                 "name": "AI Detection"
+            },
+            "motion": {
+                "name": "Motion"
             }
         },
         "sensor": {

@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 
 AI_DETECTION_EVENT_TYPE = "ai_detection"
+MOTION_EVENT_TYPE = "motion"
 AI_DETECTION_TYPES: tuple[str, ...] = (
     "person",
     "pet",
@@ -70,6 +71,14 @@ AI_DETECTION_DESCRIPTION = XSenseEventEntityDescription(
     exists_fn=is_camera_entity,
 )
 
+MOTION_DESCRIPTION = XSenseEventEntityDescription(
+    key=MOTION_EVENT_TYPE,
+    translation_key="motion",
+    device_class=EventDeviceClass.MOTION,
+    event_types=[MOTION_EVENT_TYPE],
+    exists_fn=is_camera_entity,
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -79,7 +88,12 @@ async def async_setup_entry(
     """Set up X-Sense event entities."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(_ai_detection_event_entities(coordinator))
+    async_add_entities(
+        [
+            *_ai_detection_event_entities(coordinator),
+            *_motion_event_entities(coordinator),
+        ]
+    )
 
 
 class XSenseEventEntity(XSenseEntity, EventEntity):
@@ -149,6 +163,71 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
         self.async_write_ha_state()
 
 
+class XSenseMotionEventEntity(XSenseEntity, EventEntity):
+    """Representation of an X-Sense camera motion history event entity."""
+
+    entity_description: XSenseEventEntityDescription
+
+    def __init__(
+        self,
+        coordinator: XSenseDataUpdateCoordinator,
+        entity: Entity,
+        entity_description: XSenseEventEntityDescription,
+        station_id: str | None = None,
+        device_entity: bool = False,
+    ) -> None:
+        """Set up the instance."""
+        self._station_id = station_id
+        self._device_entity = device_entity
+        self.entity_description = entity_description
+        self._last_motion_fingerprint: tuple[Any, ...] | None = None
+        self._motion_initialized = False
+        super().__init__(coordinator, entity, station_id)
+
+    def _current_entity(self) -> Entity | None:
+        """Return the current coordinator entity for this event entity."""
+        if self._device_entity:
+            return coordinator_devices(self.coordinator).get(self._dev_id)
+        return super()._current_entity()
+
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated coordinator data."""
+        entity = self._current_entity()
+        if entity is None:
+            return
+
+        event_data = motion_event_data(entity.data)
+        fingerprint = motion_fingerprint(event_data)
+        if fingerprint is None:
+            if not self._motion_initialized:
+                self._motion_initialized = True
+            self._write_state_if_added()
+            return
+
+        if not self._motion_initialized:
+            self._last_motion_fingerprint = fingerprint
+            self._motion_initialized = True
+            self._write_state_if_added()
+            return
+
+        if fingerprint == self._last_motion_fingerprint:
+            self._write_state_if_added()
+            return
+
+        self._last_motion_fingerprint = fingerprint
+        self._trigger_event(MOTION_EVENT_TYPE, event_data)
+        self._write_state_if_added()
+
+    def _write_state_if_added(self) -> None:
+        """Write HA state after the entity is registered."""
+        if (
+            getattr(self, "hass", None) is None
+            or getattr(self, "platform", None) is None
+        ):
+            return
+        self.async_write_ha_state()
+
+
 def _ai_detection_event_entities(
     coordinator: XSenseDataUpdateCoordinator,
 ) -> list[XSenseEventEntity]:
@@ -181,12 +260,76 @@ def _ai_detection_event_entities(
     return entities
 
 
+def _motion_event_entities(
+    coordinator: XSenseDataUpdateCoordinator,
+) -> list[XSenseMotionEventEntity]:
+    """Return X-Sense motion event entities for supported cameras."""
+    entities: list[XSenseMotionEventEntity] = []
+    data = coordinator.data or {}
+    stations = data.get("stations", {})
+    devices = data.get("devices", {})
+
+    for station in stations.values():
+        if MOTION_DESCRIPTION.exists_fn(station):
+            entities.append(
+                XSenseMotionEventEntity(coordinator, station, MOTION_DESCRIPTION)
+            )
+
+    for device in devices.values():
+        if not MOTION_DESCRIPTION.exists_fn(device):
+            continue
+
+        entities.append(
+            XSenseMotionEventEntity(
+                coordinator,
+                device,
+                MOTION_DESCRIPTION,
+                station_id=_device_station_id(device),
+                device_entity=True,
+            )
+        )
+
+    return entities
+
+
 def _device_station_id(device: Device) -> str | None:
     """Return the parent station ID for a device entity."""
     station = getattr(device, "station", None)
     if station is None:
         return None
     return getattr(station, "entity_id", None)
+
+
+def motion_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
+    """Return event data for the latest APK camera motion history record."""
+    motion_time = data.get("lastMotionTime") or data.get("eventTime") or data.get(
+        "time"
+    )
+    if motion_time in (None, ""):
+        return None
+
+    event_data: dict[str, Any] = {"time": motion_time}
+    if event_type := data.get("eventType"):
+        event_data["event_type"] = event_type
+    if trace_id := data.get("traceId"):
+        event_data["trace_id"] = trace_id
+    if event_items := data.get("eventItems"):
+        event_data["event_items"] = event_items
+    return event_data
+
+
+def motion_fingerprint(
+    event_data: dict[str, Any] | None,
+) -> tuple[Any, ...] | None:
+    """Return a stable duplicate-detection fingerprint for motion events."""
+    if event_data is None:
+        return None
+    return (
+        event_data.get("time"),
+        event_data.get("trace_id"),
+        event_data.get("event_type"),
+        event_data.get("event_items"),
+    )
 
 
 def ai_detection_event_data(data: dict[str, Any]) -> dict[str, Any] | None:

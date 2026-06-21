@@ -613,6 +613,105 @@ def test_ai_detection_event_entities_include_standalone_device_cameras():
     assert entities[0]._current_entity() is device_camera
 
 
+def test_motion_event_entities_include_all_camera_shapes():
+    station = entity("SBS50", {})
+    station.entity_id = "station-1"
+    station.name = "Station"
+    station.online = True
+
+    station_camera = entity("SSC0A", {})
+    station_camera.entity_id = "station-camera"
+    station_camera.name = "Station Camera"
+    station_camera.online = True
+
+    device_camera = entity("SSC0A", {})
+    device_camera.entity_id = "device-camera"
+    device_camera.name = "Device Camera"
+    device_camera.online = True
+    device_camera.station = station
+
+    standalone_camera = entity("SSC0A", {})
+    standalone_camera.entity_id = "standalone-camera"
+    standalone_camera.name = "Standalone Camera"
+    standalone_camera.online = True
+
+    class Coordinator:
+        data = {
+            "stations": {
+                station.entity_id: station,
+                station_camera.entity_id: station_camera,
+            },
+            "devices": {
+                device_camera.entity_id: device_camera,
+                standalone_camera.entity_id: standalone_camera,
+            },
+        }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    entities = event._motion_event_entities(Coordinator())
+
+    assert [entity._dev_id for entity in entities] == [
+        station_camera.entity_id,
+        device_camera.entity_id,
+        standalone_camera.entity_id,
+    ]
+    assert entities[0]._station_id is None
+    assert entities[1]._station_id == station.entity_id
+    assert entities[2]._station_id is None
+    assert entities[1]._current_entity() is device_camera
+    assert entities[2]._current_entity() is standalone_camera
+
+
+def test_motion_event_data_uses_apk_history_record_time():
+    event_data = event.motion_event_data(
+        {
+            "eventType": "unknown",
+            "eventItems": ["unknown"],
+            "lastMotionTime": "20260621134144",
+            "traceId": "trace-id",
+        }
+    )
+
+    assert event_data == {
+        "time": "20260621134144",
+        "event_type": "unknown",
+        "trace_id": "trace-id",
+        "event_items": ["unknown"],
+    }
+    assert event.motion_fingerprint(event_data) == (
+        "20260621134144",
+        "trace-id",
+        "unknown",
+        ["unknown"],
+    )
+
+
+def test_motion_event_entity_triggers_repeated_motion_with_new_time():
+    camera_entity = entity("SSC0A", {"lastMotionTime": "20260621134144"})
+    event_entity = event.XSenseMotionEventEntity.__new__(
+        event.XSenseMotionEventEntity
+    )
+    event_entity._motion_initialized = False
+    event_entity._last_motion_fingerprint = None
+    event_entity.hass = object()
+    event_entity.platform = object()
+    event_entity._current_entity = lambda: camera_entity
+    triggered = []
+    event_entity._trigger_event = lambda event_type, data: triggered.append(
+        (event_type, data["time"])
+    )
+    event_entity.async_write_ha_state = lambda: None
+
+    event_entity._handle_coordinator_update()
+    camera_entity.data["lastMotionTime"] = "20260621134200"
+    event_entity._handle_coordinator_update()
+    event_entity._handle_coordinator_update()
+
+    assert triggered == [("motion", "20260621134200")]
+
+
 def test_ai_detection_event_data_uses_apk_detection_payload():
     event_data = event.ai_detection_event_data(
         {
