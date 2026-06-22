@@ -18,6 +18,7 @@ from custom_components.xsense import (
     OBSOLETE_SWITCH_KEYS,
     _is_obsolete_binary_sensor_entry,
     _is_obsolete_sensor_entry,
+    _camera_ai_detection_unique_ids_by_service_state,
     _migrate_legacy_none_entity_ids,
     _obsolete_action_unique_ids,
     _obsolete_camera_motion_unique_ids,
@@ -575,6 +576,87 @@ def test_ai_detection_cleanup_disables_existing_entity_when_service_is_absent(
             {"disabled_by": xsense.er.RegistryEntryDisabler.INTEGRATION},
         )
     ]
+
+
+def test_ai_detection_cleanup_reenables_integration_disabled_entity_when_service_returns(
+    monkeypatch,
+):
+    updated = []
+
+    class FakeEntityRegistry:
+        def async_get_entity_id(self, platform, domain, unique_id):
+            return None
+
+        def async_remove(self, entity_id):
+            raise AssertionError("AI Detection should be re-enabled, not removed")
+
+        def async_update_entity(self, entity_id, **kwargs):
+            updated.append((entity_id, kwargs))
+
+    registry = FakeEntityRegistry()
+
+    import custom_components.xsense as xsense
+    from custom_components.xsense.const import CAMERA_AI_SERVICE_AVAILABLE
+
+    entries = [
+        SimpleNamespace(
+            domain="event",
+            platform="xsense",
+            unique_id="front-camera-ai-detection",
+            entity_id="event.front_camera_ai_detection",
+            disabled_by=xsense.er.RegistryEntryDisabler.INTEGRATION,
+        )
+    ]
+
+    monkeypatch.setattr(xsense.er, "async_get", lambda hass: registry)
+    monkeypatch.setattr(
+        xsense.er,
+        "async_entries_for_config_entry",
+        lambda entity_registry, entry_id: entries,
+    )
+
+    _remove_obsolete_sensor_entities(
+        SimpleNamespace(),
+        {
+            "stations": {
+                "front_camera": SimpleNamespace(
+                    entity_id="front_camera",
+                    type="SSC0A",
+                    data={CAMERA_AI_SERVICE_AVAILABLE: True},
+                )
+            },
+            "devices": {},
+        },
+        SimpleNamespace(entry_id="entry-id"),
+    )
+
+    assert updated == [("event.front_camera_ai_detection", {"disabled_by": None})]
+
+
+def test_ai_detection_cleanup_service_available_wins_over_stale_absent_record():
+    from custom_components.xsense.const import CAMERA_AI_SERVICE_AVAILABLE
+
+    disabled, enabled = _camera_ai_detection_unique_ids_by_service_state(
+        {
+            "stations": {
+                "front_camera": SimpleNamespace(
+                    entity_id="front_camera",
+                    type="SSC0A",
+                    data={CAMERA_AI_SERVICE_AVAILABLE: False},
+                )
+            },
+            "devices": {
+                "front_camera": SimpleNamespace(
+                    entity_id="front_camera",
+                    type="SSC0A",
+                    data={CAMERA_AI_SERVICE_AVAILABLE: True},
+                )
+            },
+        }
+    )
+
+    assert disabled == set()
+    assert enabled == {"front-camera-ai-detection"}
 
 
 def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):

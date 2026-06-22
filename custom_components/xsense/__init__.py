@@ -226,7 +226,16 @@ def _obsolete_camera_motion_unique_ids(data) -> set[str]:
 
 def _disabled_camera_ai_detection_unique_ids(data) -> set[str]:
     """Return AI Detection event unique IDs for cameras without APK AI services."""
-    unique_ids: set[str] = set()
+    disabled_unique_ids, _enabled_unique_ids = (
+        _camera_ai_detection_unique_ids_by_service_state(data)
+    )
+    return disabled_unique_ids
+
+
+def _camera_ai_detection_unique_ids_by_service_state(data) -> tuple[set[str], set[str]]:
+    """Return AI Detection unique IDs grouped by APK AI service availability."""
+    service_state_by_unique_id: dict[str, bool] = {}
+    unknown_unique_ids: set[str] = set()
     for entity in (
         *data.get("stations", {}).values(),
         *data.get("devices", {}).values(),
@@ -234,14 +243,28 @@ def _disabled_camera_ai_detection_unique_ids(data) -> set[str]:
         is_camera = False
         with suppress(AttributeError):
             is_camera = is_camera_entity(entity)
-        data = getattr(entity, "data", {})
-        if (
-            is_camera
-            and isinstance(data, dict)
-            and data.get(CAMERA_AI_SERVICE_AVAILABLE) is False
-        ):
-            unique_ids.add(_sensor_unique_id(entity.entity_id, "ai_detection"))
-    return unique_ids
+        entity_data = getattr(entity, "data", {})
+        if not is_camera or not isinstance(entity_data, dict):
+            continue
+        unique_id = _sensor_unique_id(entity.entity_id, "ai_detection")
+        available = entity_data.get(CAMERA_AI_SERVICE_AVAILABLE)
+        if available is True:
+            service_state_by_unique_id[unique_id] = True
+            unknown_unique_ids.discard(unique_id)
+        elif available is False and service_state_by_unique_id.get(unique_id) is not True:
+            service_state_by_unique_id[unique_id] = False
+            unknown_unique_ids.discard(unique_id)
+        elif available is None and unique_id not in service_state_by_unique_id:
+            unknown_unique_ids.add(unique_id)
+
+    unique_ids: set[str] = set()
+    enabled_unique_ids: set[str] = set()
+    for unique_id, available in service_state_by_unique_id.items():
+        if available:
+            enabled_unique_ids.add(unique_id)
+        elif unique_id not in unknown_unique_ids:
+            unique_ids.add(unique_id)
+    return unique_ids, enabled_unique_ids
 
 
 def _obsolete_unique_id_suffixes(keys: tuple[str, ...]) -> set[str]:
@@ -312,8 +335,11 @@ def _remove_obsolete_sensor_entities(
     checked_unique_ids = set()
     obsolete_action_unique_ids = _obsolete_action_unique_ids(data)
     obsolete_camera_motion_unique_ids = _obsolete_camera_motion_unique_ids(data)
-    disabled_camera_ai_detection_unique_ids = (
-        _disabled_camera_ai_detection_unique_ids(data)
+    (
+        disabled_camera_ai_detection_unique_ids,
+        enabled_camera_ai_detection_unique_ids,
+    ) = (
+        _camera_ai_detection_unique_ids_by_service_state(data)
     )
 
     seen_entity_ids = set()
@@ -350,6 +376,18 @@ def _remove_obsolete_sensor_entities(
                 registry_entry.entity_id,
                 disabled_by=er.RegistryEntryDisabler.INTEGRATION,
             )
+        elif (
+            _registry_entry_domain(registry_entry) == Platform.EVENT
+            and getattr(registry_entry, "platform", None) == DOMAIN
+            and _registry_entry_unique_id(registry_entry)
+            in enabled_camera_ai_detection_unique_ids
+            and getattr(registry_entry, "disabled_by", None)
+            == er.RegistryEntryDisabler.INTEGRATION
+        ):
+            entity_registry.async_update_entity(
+                registry_entry.entity_id,
+                disabled_by=None,
+            )
 
     for unique_id in _obsolete_sensor_unique_ids(data) - checked_unique_ids:
         entity_id = entity_registry.async_get_entity_id(
@@ -381,6 +419,19 @@ def _remove_obsolete_sensor_entities(
                 entity_id,
                 disabled_by=er.RegistryEntryDisabler.INTEGRATION,
             )
+
+    for unique_id in enabled_camera_ai_detection_unique_ids - checked_unique_ids:
+        entity_id = entity_registry.async_get_entity_id(
+            Platform.EVENT, DOMAIN, unique_id
+        )
+        if entity_id is not None:
+            registry_entry = entity_registry.async_get(entity_id)
+            if (
+                registry_entry is not None
+                and getattr(registry_entry, "disabled_by", None)
+                == er.RegistryEntryDisabler.INTEGRATION
+            ):
+                entity_registry.async_update_entity(entity_id, disabled_by=None)
 
 
 def _legacy_entity_key(registry_entry) -> str | None:

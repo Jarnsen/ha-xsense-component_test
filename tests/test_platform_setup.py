@@ -137,21 +137,19 @@ def test_ai_notification_blueprint_selector_lists_xsense_event_entities():
     assert entity_filter == {"integration": "xsense", "domain": "event"}
 
 
-def test_ai_notification_blueprint_supports_motion_events():
+def test_ai_notification_blueprint_filters_by_selected_event_entity():
     with open(
         "blueprints/automation/xsense/camera_ai_notification.yaml",
         encoding="utf-8",
     ) as file:
         blueprint = yaml.load(file, Loader=BlueprintLoader)
 
-    event_types = blueprint["blueprint"]["input"]["event_types"]
-    options = {
-        option["value"]
-        for option in event_types["selector"]["select"]["options"]
-    }
+    trigger = blueprint["triggers"][0]
 
-    assert "motion" in event_types["default"]
-    assert "motion" in options
+    assert "event_types" not in blueprint["blueprint"]["input"]
+    assert trigger["trigger"] == "event.received"
+    assert trigger["target"]["entity_id"] == "ai_detection_event"
+    assert "options" not in trigger
     assert "AI activity" not in str(blueprint)
 
 
