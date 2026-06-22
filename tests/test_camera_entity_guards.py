@@ -505,6 +505,33 @@ def test_ai_detection_event_entities_include_device_cameras():
     assert entities[1]._current_entity() is device_camera
 
 
+def test_ai_detection_event_entity_is_disabled_by_default_without_ai_service():
+    from custom_components.xsense.const import CAMERA_AI_SERVICE_AVAILABLE
+
+    camera_without_ai_service = entity(
+        "SSC0A", {CAMERA_AI_SERVICE_AVAILABLE: False}
+    )
+    camera_without_ai_service.entity_id = "camera-without-ai-service"
+    camera_without_ai_service.name = "Camera Without AI Service"
+    camera_without_ai_service.online = True
+
+    class Coordinator:
+        data = {
+            "stations": {camera_without_ai_service.entity_id: camera_without_ai_service},
+            "devices": {},
+        }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    entities = event._ai_detection_event_entities(Coordinator())
+
+    assert [entity._dev_id for entity in entities] == [
+        camera_without_ai_service.entity_id
+    ]
+    assert entities[0]._attr_entity_registry_enabled_default is False
+
+
 def test_camera_entities_include_device_cameras():
     station = entity("SBS50", {})
     station.entity_id = "station-1"

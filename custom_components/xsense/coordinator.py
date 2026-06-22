@@ -23,6 +23,7 @@ from .api.async_xsense import is_camera_entity
 from .api.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
 from .const import (
     CAMERA_AI_HISTORY_SCAN_INTERVAL,
+    CAMERA_AI_SERVICE_AVAILABLE,
     CAMERA_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -389,12 +390,17 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except APIFailure as ex:
             LOGGER.debug("Could not update X-Sense camera AI history: %s", ex)
             services = []
+            service_list_available = False
+        else:
+            service_list_available = True
 
         server_ids = [
             str(service.get("serverId"))
             for service in services
             if isinstance(service, dict) and service.get("serverId")
         ]
+        if service_list_available:
+            _set_camera_ai_service_available(cameras, bool(server_ids))
         if not server_ids:
             LOGGER.debug(
                 "X-Sense camera AI history poll skipped: no services %s",
@@ -536,7 +542,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "station_type": station.type,
                 "station_data_keys": sorted(str(key) for key in station_data),
                 "has_ai_detection": "lastAiDetection" in station_data,
-                "has_motion": "isMoved" in station_data,
+                "has_motion_event_time": "eventTime" in station_data,
             },
         )
         self.xsense.parse_get_state(station, station_data)
@@ -565,7 +571,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "station_type": station.type,
                 "station_data_keys": sorted(str(key) for key in station_data),
                 "has_ai_detection": "lastAiDetection" in station_data,
-                "has_motion": "isMoved" in station_data,
+                "has_motion_event_time": "eventTime" in station_data,
             },
         )
         self.xsense.parse_get_state(station, station_data)
@@ -969,6 +975,14 @@ def _camera_entities(coordinator: XSenseDataUpdateCoordinator) -> list[Any]:
         for station in house.stations.values()
         if is_camera_entity(station)
     ]
+
+
+def _set_camera_ai_service_available(cameras: list[Any], available: bool) -> None:
+    """Store whether the APK reports AI-notification service support."""
+    for camera in cameras:
+        data = getattr(camera, "data", None)
+        if isinstance(data, dict):
+            data[CAMERA_AI_SERVICE_AVAILABLE] = available
 
 
 def _camera_event_history_records(history: dict[str, Any]) -> list[dict[str, Any]]:

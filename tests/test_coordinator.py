@@ -597,6 +597,7 @@ def test_mqtt_ai_plan_event_routes_by_nested_camera_identity():
 
 
 async def test_camera_ai_history_poll_routes_apk_alarm_items():
+    from custom_components.xsense.const import CAMERA_AI_SERVICE_AVAILABLE
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     class Camera:
@@ -673,6 +674,7 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
     assert parsed[0][1]["lastAiDetection"] == "person"
     assert parsed[0][1]["lastPersonDetectionTime"] == "20260614230501"
     assert parsed[0][1]["eventTime"] == "20260614230500"
+    assert house.stations["camera-id"].data[CAMERA_AI_SERVICE_AVAILABLE] is True
     assert "isMoved" not in parsed[0][1]
     assert "lastMotionTime" not in parsed[0][1]
     assert len(parsed) == 1
@@ -680,6 +682,7 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
 
 
 async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty():
+    from custom_components.xsense.const import CAMERA_AI_SERVICE_AVAILABLE
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     class Camera:
@@ -742,6 +745,7 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
 
     assert parsed[0][0] is house.stations["camera-id"]
     assert parsed[0][1]["eventTime"] == "20260614230500"
+    assert house.stations["camera-id"].data[CAMERA_AI_SERVICE_AVAILABLE] is False
     assert "isMoved" not in parsed[0][1]
     assert "lastMotionTime" not in parsed[0][1]
     assert len(parsed) == 1

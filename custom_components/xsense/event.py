@@ -19,7 +19,7 @@ from homeassistant.components.event import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN
 from .entity import XSenseEntity, coordinator_devices
 
 if TYPE_CHECKING:
@@ -113,6 +113,11 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
         self._station_id = station_id
         self._device_entity = device_entity
         self.entity_description = entity_description
+        if (
+            entity_description.key == AI_DETECTION_EVENT_TYPE
+            and entity.data.get(CAMERA_AI_SERVICE_AVAILABLE) is False
+        ):
+            self._attr_entity_registry_enabled_default = False
         self._last_ai_detection_fingerprint: tuple[Any, ...] | None = None
         self._ai_detection_initialized = False
         super().__init__(coordinator, entity, station_id)
