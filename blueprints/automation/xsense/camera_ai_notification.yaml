@@ -3,7 +3,7 @@ blueprint:
   description: >
     Send a notification or run actions when an X-Sense camera reports motion
     or AI detection. Select the camera Motion or AI Detection event entity,
-    then keep the defaults or adjust the actions.
+    then keep the default notification action or replace it with your own.
   domain: automation
   author: X-Sense Home Security
   homeassistant:
@@ -66,7 +66,7 @@ blueprint:
               value: ai_detection
     actions:
       name: What should happen
-      description: The default sends a basic Home Assistant notification. Replace it with a mobile notification or any other actions you want.
+      description: The default sends a basic Home Assistant notification. Replace it with a working mobile notification target or any other actions you want.
       default:
         - action: notify.notify
           data:

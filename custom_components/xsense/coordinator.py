@@ -484,10 +484,6 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             event_key = _camera_event_history_event_key(record)
             if event_key in self._camera_ai_history_seen and not first_poll:
                 skipped += 1
-                LOGGER.debug(
-                    "X-Sense camera record history item skipped as duplicate: %s",
-                    _camera_record_history_debug_context(record, event_key),
-                )
                 continue
             if self._apply_camera_event_history_item(record):
                 applied += 1
