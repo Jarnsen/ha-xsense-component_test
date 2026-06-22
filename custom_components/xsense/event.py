@@ -28,12 +28,6 @@ if TYPE_CHECKING:
 
 AI_DETECTION_EVENT_TYPE = "ai_detection"
 MOTION_EVENT_TYPE = "motion"
-_MOTION_EVENT_NAMES = {
-    "camera_motion",
-    "motion",
-    "motion_detected",
-    "motion_detection",
-}
 AI_DETECTION_TYPES: tuple[str, ...] = (
     "person",
     "pet",
@@ -308,54 +302,11 @@ def _device_station_id(device: Device) -> str | None:
 
 def motion_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
     """Return event data for the latest APK camera motion history record."""
-    if not _has_motion_event(data):
-        return None
-
-    motion_time = data.get("lastMotionEventTime") or data.get("eventTime") or data.get("time")
+    motion_time = data.get("eventTime") or data.get("time")
     if motion_time in (None, ""):
         return None
 
-    return {"time": motion_time, "event": data.get("lastMotionEvent") or MOTION_EVENT_TYPE}
-
-
-def _has_motion_event(data: dict[str, Any]) -> bool:
-    """Return true when APK data explicitly describes camera motion."""
-    return bool(_motion_event_names(data))
-
-
-def _motion_event_names(data: dict[str, Any]) -> set[str]:
-    """Return normalized motion event names from camera event data."""
-    raw_values = (
-        data.get("lastMotionEvent"),
-        data.get("eventType"),
-        data.get("eventItems"),
-        data.get("eventObjectType"),
-        data.get("lastType"),
-    )
-    names: set[str] = set()
-    for raw_value in raw_values:
-        names.update(_motion_names(raw_value))
-    return names
-
-
-def _motion_names(value: Any) -> set[str]:
-    """Return normalized motion names from nested values."""
-    if value is None:
-        return set()
-    if isinstance(value, str):
-        name = value.strip().lower().replace("-", "_").replace(" ", "_")
-        return {name} if name in _MOTION_EVENT_NAMES else set()
-    if isinstance(value, dict):
-        names: set[str] = set()
-        for key in ("eventType", "type", "name", "tags", "videoEvent", "lastType"):
-            names.update(_motion_names(value.get(key)))
-        return names
-    if isinstance(value, (list, tuple, set)):
-        names: set[str] = set()
-        for item in value:
-            names.update(_motion_names(item))
-        return names
-    return set()
+    return {"time": motion_time}
 
 
 def motion_fingerprint(

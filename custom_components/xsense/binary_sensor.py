@@ -107,6 +107,8 @@ def has_camera_data(key: str) -> Callable[[Entity], bool]:
 
 def has_motion_detection(entity: Entity) -> bool:
     """Return if an entity can expose regular motion detection state."""
+    if is_camera_entity(entity):
+        return False
     return "isMoved" in entity.data
 
 
