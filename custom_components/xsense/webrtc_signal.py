@@ -295,7 +295,9 @@ class XSenseWebRTCSignalSession:
             )
             self._schedule_signal_reconnect(close_code)
 
-    def _schedule_signal_reconnect(self, close_code: int | None) -> None:
+    def _schedule_signal_reconnect(
+        self, close_code: int | None, reason: str = "signal_closed_before_answer"
+    ) -> None:
         if self._closed or self._answer.done():
             return
         if close_code in _SIGNAL_TERMINAL_CLOSE_CODES:
@@ -307,11 +309,12 @@ class XSenseWebRTCSignalSession:
             self._debug_context(
                 signal_close_code=close_code,
                 reconnect_delay_s=_SIGNAL_RECONNECT_DELAY,
+                reconnect_reason=reason,
             ),
         )
-        self._reconnect_task = asyncio.create_task(self._reconnect_signal())
+        self._reconnect_task = asyncio.create_task(self._reconnect_signal(reason))
 
-    async def _reconnect_signal(self) -> None:
+    async def _reconnect_signal(self, reason: str) -> None:
         await asyncio.sleep(_SIGNAL_RECONNECT_DELAY)
         if self._closed or self._answer.done():
             return
@@ -322,7 +325,7 @@ class XSenseWebRTCSignalSession:
         self._signal_reconnect_count += 1
         LOGGER.debug(
             "X-Sense WebRTC signal relay reconnecting signal socket: %s",
-            self._debug_context(reconnect_reason="signal_closed_before_answer"),
+            self._debug_context(reconnect_reason=reason),
         )
         try:
             await self._connect_signal()
@@ -379,6 +382,9 @@ class XSenseWebRTCSignalSession:
                 self._camera_peer_ready = False
                 if not _future_has_result(self._answer):
                     self._reset_offer_attempt("peer_out_before_answer")
+                    self._schedule_signal_reconnect(
+                        None, reason="peer_out_before_answer"
+                    )
                     LOGGER.debug(
                         "X-Sense WebRTC signal relay reset offer after peer out before answer: %s",
                         self._debug_context(

@@ -321,7 +321,20 @@ async def test_online_camera_waits_for_peer_in_before_sending_offer():
     assert session._debug_context()["offer_attempt_count"] == 1
 
 
-async def test_peer_out_before_answer_resets_offer_for_next_peer_in():
+async def test_peer_out_before_answer_resets_offer_for_next_peer_in(monkeypatch):
+    scheduled = []
+
+    class FakeTask:
+        def done(self):
+            return False
+
+    def create_task(coro):
+        scheduled.append(coro)
+        coro.close()
+        return FakeTask()
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "create_task", create_task)
+
     class FakeWs:
         closed = False
 
@@ -357,10 +370,62 @@ async def test_peer_out_before_answer_resets_offer_for_next_peer_in():
         "SDP_OFFER",
         "ICE_CANDIDATE",
     ]
+    assert len(scheduled) == 1
     assert session._offer_sent is True
     assert session._camera_peer_ready is True
     assert session._debug_context()["offer_attempt_count"] == 2
     assert session._debug_context()["sent_candidate_count"] == 1
+
+
+async def test_peer_out_before_answer_reconnects_signal_without_new_peer_in(
+    monkeypatch,
+):
+    reconnects = []
+    sleeps = []
+    closes = []
+
+    async def sleep(delay):
+        sleeps.append(delay)
+
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    peer_payload = {"id": "SSC0ATEST", "name": "SSC0ATEST", "role": "master"}
+
+    monkeypatch.setattr(webrtc_signal.asyncio, "sleep", sleep)
+
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+    async def close_signal_only():
+        closes.append(True)
+
+    async def connect_signal():
+        reconnects.append(True)
+
+    session._ws = FakeWs()
+    session.close_signal_only = close_signal_only
+    session._connect_signal = connect_signal
+
+    await session._handle_signal_event("PEER_IN", peer_payload)
+    await session._handle_signal_event("PEER_OUT", peer_payload)
+    await session._reconnect_task
+
+    assert sleeps == [webrtc_signal._SIGNAL_RECONNECT_DELAY]
+    assert closes == [True]
+    assert reconnects == [True]
+    assert session._camera_peer_ready is False
+    assert session._debug_context()["signal_reconnect_count"] == 1
 
 
 async def test_signal_close_schedules_reconnect_before_answer(monkeypatch):
