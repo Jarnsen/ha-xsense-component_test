@@ -67,6 +67,13 @@ _APK_AI_DETECTION_DATA_KEYS = {
     "other": "other",
 }
 
+_APK_CAMERA_MOTION_EVENTS = {
+    "camera_motion",
+    "motion",
+    "motion_detected",
+    "motion_detection",
+}
+
 _MQTT_IDENTIFIER_KEYS = {
     "camerasn",
     "cxserialnumber",
@@ -540,7 +547,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "station_type": station.type,
                 "station_data_keys": sorted(str(key) for key in station_data),
                 "has_ai_detection": "lastAiDetection" in station_data,
-                "has_motion": "isMoved" in station_data,
+                "has_motion": "lastMotionEvent" in station_data,
             },
         )
         self.xsense.parse_get_state(station, station_data)
@@ -569,7 +576,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 "station_type": station.type,
                 "station_data_keys": sorted(str(key) for key in station_data),
                 "has_ai_detection": "lastAiDetection" in station_data,
-                "has_motion": "isMoved" in station_data,
+                "has_motion": "lastMotionEvent" in station_data,
             },
         )
         self.xsense.parse_get_state(station, station_data)
@@ -1033,7 +1040,7 @@ def _camera_event_history_station_data(record: dict[str, Any]) -> dict[str, Any]
     data: dict[str, Any] = {
         "serialNumber": serial,
         "deviceSN": serial,
-        "eventType": record.get("videoEvent") or record.get("tags") or "motion",
+        "eventType": record.get("videoEvent") or record.get("tags"),
         "eventItems": record.get("eventInfoList"),
         "eventObjectType": record.get("eventInfoList") or record.get("tags"),
         "lastType": record.get("videoEvent") or record.get("tags"),
@@ -1042,6 +1049,7 @@ def _camera_event_history_station_data(record: dict[str, Any]) -> dict[str, Any]
         data["time"] = event_time
         data["eventTime"] = event_time
 
+    _apply_apk_motion_event_aliases(data)
     _apply_apk_event_aliases(data)
     return data
 
@@ -1099,7 +1107,59 @@ def _apply_apk_dispatch_aliases(data: dict[str, Any]) -> None:
 
 def _apply_apk_event_aliases(data: dict[str, Any]) -> None:
     """Apply APK event aliases that are not reported as shadow keys."""
+    _apply_apk_motion_event_aliases(data)
     _apply_apk_ai_detection_aliases(data)
+
+
+def _apply_apk_motion_event_aliases(data: dict[str, Any]) -> None:
+    """Apply APK camera motion event markers without creating binary state."""
+    motion_events = _apk_motion_event_names(data)
+    if not motion_events:
+        return
+
+    motion_event = sorted(motion_events)[0]
+    data["lastMotionEvent"] = motion_event
+    if motion_time := data.get("time") or data.get("eventTime"):
+        data["lastMotionEventTime"] = motion_time
+
+
+def _apk_motion_event_names(data: dict[str, Any]) -> set[str]:
+    """Return APK camera motion event names from a camera event payload."""
+    raw_values = [
+        data.get("eventType"),
+        data.get("eventItems"),
+        data.get("eventObjectType"),
+        data.get("lastType"),
+        data.get("lastMotionEvent"),
+    ]
+    names: set[str] = set()
+    for raw_value in raw_values:
+        names.update(_apk_motion_names(raw_value))
+    return names
+
+
+def _apk_motion_names(value: Any) -> set[str]:
+    """Return normalized motion event names from nested APK event values."""
+    if value is None:
+        return set()
+    if isinstance(value, str):
+        text = value.strip()
+        if text.startswith(("{", "[")):
+            with suppress(json.JSONDecodeError):
+                return _apk_motion_names(json.loads(text))
+        name = text.lower().replace("-", "_").replace(" ", "_")
+        return {name} if name in _APK_CAMERA_MOTION_EVENTS else set()
+    if isinstance(value, dict):
+        names: set[str] = set()
+        for key in ("eventType", "type", "name", "tags", "videoEvent", "lastType"):
+            names.update(_apk_motion_names(value.get(key)))
+        return names
+    if isinstance(value, (list, tuple, set)):
+        names: set[str] = set()
+        for item in value:
+            names.update(_apk_motion_names(item))
+        return names
+    return set()
 
 
 def _apply_apk_ai_detection_aliases(data: dict[str, Any]) -> None:

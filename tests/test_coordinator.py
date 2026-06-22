@@ -317,6 +317,8 @@ def test_mqtt_camera_motion_event_accepts_apk_motion_event_names():
     assert data["serialNumber"] == "camera-sn"
     assert data["eventType"] == "motion_detection"
     assert data["eventTime"] == "20260614221612"
+    assert data["lastMotionEvent"] == "motion_detection"
+    assert data["lastMotionEventTime"] == "20260614221612"
     assert "isMoved" not in data
     assert "lastMotionTime" not in data
 
@@ -338,6 +340,8 @@ def test_mqtt_camera_motion_event_accepts_nested_apk_motion_event_items():
 
     assert data["serialNumber"] == "camera-sn"
     assert data["eventTime"] == "20260614221712"
+    assert data["lastMotionEvent"] == "motion_detected"
+    assert data["lastMotionEventTime"] == "20260614221712"
     assert "isMoved" not in data
     assert "lastMotionTime" not in data
 
@@ -356,6 +360,8 @@ def test_mqtt_top_level_camera_motion_event_is_not_discarded():
     assert data["serialNumber"] == "camera-sn"
     assert data["eventType"] == "camera_motion"
     assert data["eventTime"] == "20260614221812"
+    assert data["lastMotionEvent"] == "camera_motion"
+    assert data["lastMotionEventTime"] == "20260614221812"
     assert "isMoved" not in data
     assert "lastMotionTime" not in data
 
@@ -742,6 +748,8 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
 
     assert parsed[0][0] is house.stations["camera-id"]
     assert parsed[0][1]["eventTime"] == "20260614230500"
+    assert parsed[0][1]["lastMotionEvent"] == "motion"
+    assert parsed[0][1]["lastMotionEventTime"] == "20260614230500"
     assert "isMoved" not in parsed[0][1]
     assert "lastMotionTime" not in parsed[0][1]
     assert len(parsed) == 1
@@ -906,8 +914,28 @@ def test_camera_record_history_item_preserves_event_time_without_live_motion():
 
     assert data["serialNumber"] == "camera-sn"
     assert data["eventTime"] == "20260621134144"
+    assert "lastMotionEvent" not in data
+    assert "lastMotionEventTime" not in data
     assert "isMoved" not in data
     assert "lastMotionTime" not in data
+
+
+def test_camera_record_history_item_does_not_default_to_motion():
+    from custom_components.xsense.coordinator import _camera_event_history_station_data
+
+    data = _camera_event_history_station_data(
+        {
+            "serialNumber": "camera-sn",
+            "timestamp": 1782049304,
+            "traceId": "trace-id",
+        }
+    )
+
+    assert data["serialNumber"] == "camera-sn"
+    assert data["eventTime"] == "20260621134144"
+    assert data["eventType"] is None
+    assert "lastMotionEvent" not in data
+    assert "lastMotionEventTime" not in data
 
 
 async def test_assure_subscriptions_includes_apk_ai_plan_topic():

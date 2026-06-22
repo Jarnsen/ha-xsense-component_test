@@ -64,15 +64,36 @@ blueprint:
               value: other
             - label: Multiple objects
               value: ai_detection
+    notification_url:
+      name: Open when tapped
+      description: Optional Home Assistant path or entity link to open from the mobile notification, such as /lovelace/cameras or entityId:camera.front_door.
+      default: ""
+      selector:
+        text:
     actions:
       name: What should happen
       description: The default sends a basic Home Assistant notification. Replace it with a mobile notification or any other actions you want.
       default:
-        - action: notify.notify
-          data:
-            message: X-Sense camera activity detected.
+        - choose:
+            - conditions:
+                - condition: template
+                  value_template: "{{ notification_url | trim != '' }}"
+              sequence:
+                - action: notify.notify
+                  data:
+                    message: X-Sense camera activity detected.
+                    data:
+                      url: "{{ notification_url }}"
+                      clickAction: "{{ notification_url }}"
+          default:
+            - action: notify.notify
+              data:
+                message: X-Sense camera activity detected.
       selector:
         action:
+
+variables:
+  notification_url: !input notification_url
 
 triggers:
   - trigger: event.received

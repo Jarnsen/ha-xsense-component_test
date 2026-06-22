@@ -165,3 +165,18 @@ def test_ai_notification_blueprint_default_action_does_not_template_trigger():
     default_actions = blueprint["blueprint"]["input"]["actions"]["default"]
 
     assert "trigger." not in str(default_actions)
+
+
+def test_ai_notification_blueprint_default_action_supports_tap_target():
+    with open(
+        "blueprints/automation/xsense/camera_ai_notification.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    inputs = blueprint["blueprint"]["input"]
+    default_actions = inputs["actions"]["default"]
+
+    assert "notification_url" in inputs
+    assert "url" in str(default_actions)
+    assert "clickAction" in str(default_actions)

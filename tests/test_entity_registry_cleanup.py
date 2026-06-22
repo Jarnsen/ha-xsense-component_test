@@ -20,7 +20,6 @@ from custom_components.xsense import (
     _is_obsolete_sensor_entry,
     _migrate_legacy_none_entity_ids,
     _obsolete_action_unique_ids,
-    _obsolete_camera_motion_unique_ids,
     _obsolete_sensor_unique_ids,
     _sensor_unique_id,
     _clear_visible_device_metadata,
@@ -61,20 +60,6 @@ def test_obsolete_action_unique_ids_target_removed_model_actions_only():
 
     assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["XS03-iWX"] == ("mute",)
     assert unique_ids == {"hall-smoke-mute"}
-
-
-def test_obsolete_camera_motion_unique_ids_target_cameras_only():
-    camera = SimpleNamespace(entity_id="garden_camera", type="SSC0A")
-    smoke = SimpleNamespace(entity_id="hall_motion", type="SMS")
-
-    unique_ids = _obsolete_camera_motion_unique_ids(
-        {
-            "stations": {"camera": camera},
-            "devices": {"smoke": smoke},
-        }
-    )
-
-    assert unique_ids == {"garden-camera-moved"}
 
 
 def test_software_version_is_device_info_not_sensor():
@@ -514,7 +499,6 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
     assert removed == [
         'sensor.missing_device_serial_number',
         'binary_sensor.kitchen_smoke_alarm_led_light',
-        'binary_sensor.garden_camera_motion',
         'button.hall_smoke_mute',
     ]
 

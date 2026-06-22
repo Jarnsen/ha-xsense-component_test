@@ -427,7 +427,7 @@ def test_read_only_camera_entities_require_camera_entity():
     assert sensor.has_camera_data("batteryLevel")(camera)
 
 
-def test_regular_motion_binary_entity_is_not_created_for_cameras():
+def test_regular_motion_binary_entity_requires_reported_motion_state():
     non_camera = entity("XS01-WX", {"needMotion": 1})
     camera = entity("SSC0A", {"needMotion": 1})
 
@@ -437,11 +437,14 @@ def test_regular_motion_binary_entity_is_not_created_for_cameras():
     assert not motion.exists_fn(camera)
 
 
-def test_regular_motion_binary_entity_uses_reported_non_camera_motion_state():
+def test_regular_motion_binary_entity_uses_reported_motion_state():
     motion = next(item for item in binary_sensor.SENSORS if item.key == "moved")
 
     assert motion.value_fn(entity("SMS", {"isMoved": "1"})) is True
     assert motion.value_fn(entity("SMS", {"isMoved": "0"})) is False
+    assert motion.exists_fn(entity("SSC0A", {"isMoved": "1"}))
+    assert motion.value_fn(entity("SSC0A", {"isMoved": "1"})) is True
+    assert motion.value_fn(entity("SSC0A", {"isMoved": "0"})) is False
 
 
 def test_ai_detection_event_entity_precreates_for_camera_notifications():
@@ -694,19 +697,35 @@ def test_motion_event_entities_include_all_camera_shapes():
 def test_motion_event_data_uses_apk_history_record_time():
     event_data = event.motion_event_data(
         {
-            "eventType": "unknown",
-            "eventItems": ["unknown"],
+            "lastMotionEvent": "motion",
             "eventTime": "20260621134144",
             "traceId": "trace-id",
         }
     )
 
-    assert event_data == {"time": "20260621134144"}
+    assert event_data == {"time": "20260621134144", "event": "motion"}
     assert event.motion_fingerprint(event_data) == ("20260621134144",)
 
 
+def test_motion_event_data_ignores_history_time_without_motion_marker():
+    assert (
+        event.motion_event_data(
+            {
+                "eventType": "unknown",
+                "eventItems": ["unknown"],
+                "eventTime": "20260621134144",
+                "traceId": "trace-id",
+            }
+        )
+        is None
+    )
+
+
 def test_motion_event_entity_triggers_repeated_motion_with_new_time():
-    camera_entity = entity("SSC0A", {"eventTime": "20260621134144"})
+    camera_entity = entity(
+        "SSC0A",
+        {"lastMotionEvent": "motion", "eventTime": "20260621134144"},
+    )
     event_entity = event.XSenseMotionEventEntity.__new__(
         event.XSenseMotionEventEntity
     )
