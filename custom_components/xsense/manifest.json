@@ -5,7 +5,9 @@
     "@theosnel"
   ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": [
+    "http"
+  ],
   "documentation": "https://github.com/Jarnsen/ha-xsense-component_test",
   "homekit": {},
   "integration_type": "hub",
