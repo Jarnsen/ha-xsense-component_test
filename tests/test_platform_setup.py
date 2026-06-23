@@ -149,7 +149,21 @@ def test_ai_notification_blueprint_filters_by_selected_event_entity():
     assert "event_types" not in blueprint["blueprint"]["input"]
     assert trigger["trigger"] == "event.received"
     assert trigger["target"]["entity_id"] == "ai_detection_event"
-    assert "options" not in trigger
+    assert trigger["options"]["event_type"] == [
+        "motion",
+        "ai_detection",
+        "person",
+        "pet",
+        "vehicle",
+        "vehicle_enter",
+        "vehicle_out",
+        "vehicle_held_up",
+        "package",
+        "package_drop_off",
+        "package_pick_up",
+        "package_exist",
+        "other",
+    ]
     assert "AI activity" not in str(blueprint)
 
 
