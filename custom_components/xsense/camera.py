@@ -198,13 +198,27 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             return source
 
         source = await self.coordinator.xsense.start_camera_live(entity)
+        source_protocol = _stream_source_protocol(source)
+        if not _home_assistant_stream_source_supported(source):
+            with suppress(Exception):
+                await self.coordinator.xsense.stop_camera_live(entity)
+            LOGGER.debug(
+                "X-Sense camera live source rejected by Home Assistant stream path: %s",
+                _camera_debug_context(
+                    entity,
+                    None,
+                    live_view_mode=_camera_live_view_mode(self.coordinator),
+                    source_protocol=source_protocol,
+                ),
+            )
+            return None
         LOGGER.debug(
             "X-Sense camera live source started: %s",
             _camera_debug_context(
                 entity,
                 None,
                 live_view_mode=_camera_live_view_mode(self.coordinator),
-                source_protocol=_stream_source_protocol(source),
+                source_protocol=source_protocol,
             ),
         )
         return source
@@ -816,6 +830,11 @@ def _stream_source_protocol(source: str | None) -> str | None:
     if not isinstance(source, str) or "://" not in source:
         return None
     return source.split("://", 1)[0].lower()
+
+
+def _home_assistant_stream_source_supported(source: str | None) -> bool:
+    """Return whether Home Assistant's stream worker can open this source URL."""
+    return _stream_source_protocol(source) in {"rtsp", "rtmp"}
 
 
 def _is_webrtc_camera(entity) -> bool:

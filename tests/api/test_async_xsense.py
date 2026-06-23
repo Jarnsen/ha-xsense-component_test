@@ -2928,27 +2928,7 @@ async def test_update_camera_data_creates_camera_from_addx_without_home_camera_e
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("camera_data", "expected"),
-    [
-        ({"liveResolution": "VIDEO_SIZE_1920x1080"}, "1920x1080"),
-        ({"liveResolution": "HD"}, "1920x1080"),
-        ({"liveResolution": "auto"}, "auto"),
-        ({"supportedRecordingResolutions": ["P1296", "P1080"]}, "2304x1296"),
-        (
-            {
-                "liveResolution": "auto",
-                "supportedRecordingResolutions": ["P1296", "P1080"],
-            },
-            "2304x1296",
-        ),
-        ({"supportedRecordingResolutions": []}, "auto"),
-        ({"supportedRecordingResolutions": ["P1296"]}, "2304x1296"),
-        ({"deviceSupportResolution": ["bad", "P720"]}, "1280x720"),
-        ({"liveResolution": "UNKNOWN_RESOLUTION"}, "auto"),
-    ],
-)
-async def test_start_camera_live_uses_apk_live_resolution(camera_data, expected):
+async def test_start_camera_live_uses_legacy_stream_source_endpoint():
     client = async_xsense.AsyncXSense()
     camera = device_module.Device(
         None,
@@ -2957,7 +2937,6 @@ async def test_start_camera_live_uses_apk_live_resolution(camera_data, expected)
         deviceSn="cam-sn",
         deviceType="SSC0A",
     )
-    camera.set_data(camera_data)
     calls = []
 
     async def addx_call(endpoint, **kwargs):
@@ -2969,8 +2948,8 @@ async def test_start_camera_live_uses_apk_live_resolution(camera_data, expected)
     assert await client.start_camera_live(camera) == "rtsp://example/live"
     assert calls == [
         (
-            "/device/newstartlive",
-            {"serialNumber": "cam-sn", "liveResolution": expected},
+            "/device/startlive",
+            {"serialNumber": "cam-sn"},
         )
     ]
 
