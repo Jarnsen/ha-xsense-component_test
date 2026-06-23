@@ -30,6 +30,7 @@ from homeassistant.helpers.network import get_url
 from webrtc_models import RTCIceCandidateInit
 
 from .api.async_xsense import camera_live_resolution, is_camera_entity
+from .api.exceptions import APIFailure
 from .const import (
     CAMERA_LIVE_VIEW_MODES,
     CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL,
@@ -150,6 +151,15 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         entity = self._current_entity()
         return entity is not None and bool(entity.data.get("cameraLiveUrl"))
 
+    async def _async_get_supported_webrtc_provider(self, fn):
+        """Skip HA WebRTC provider probing unless the experimental bridge is enabled."""
+        if (
+            _camera_live_view_mode(self.coordinator)
+            != CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL
+        ):
+            return None
+        return await super()._async_get_supported_webrtc_provider(fn)
+
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
     ) -> bytes | None:
@@ -197,7 +207,19 @@ class XSenseCameraEntity(XSenseEntity, Camera):
                 )
             return source
 
-        source = await self.coordinator.xsense.start_camera_live(entity)
+        try:
+            source = await self.coordinator.xsense.start_camera_live(entity)
+        except APIFailure as err:
+            LOGGER.debug(
+                "X-Sense camera live source unavailable from stream endpoint: %s",
+                _camera_debug_context(
+                    entity,
+                    None,
+                    live_view_mode=_camera_live_view_mode(self.coordinator),
+                    error=_error_debug_context(err),
+                ),
+            )
+            return None
         source_protocol = _stream_source_protocol(source)
         if not _home_assistant_stream_source_supported(source):
             with suppress(Exception):

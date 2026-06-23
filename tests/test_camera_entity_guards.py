@@ -1115,6 +1115,72 @@ def test_camera_live_view_mode_falls_back_to_stable_path_for_unknown_option():
     )
 
 
+async def test_default_stream_source_mode_skips_webrtc_provider_probe():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseCameraEntity,
+    )
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class Coordinator:
+        data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    async def provider_probe(hass, camera):
+        raise AssertionError("Default mode should not probe WebRTC providers")
+
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.entity_id = "camera.camera_test"
+
+    assert await camera._async_get_supported_webrtc_provider(provider_probe) is None
+
+
+async def test_experimental_bridge_mode_allows_webrtc_provider_probe():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseCameraEntity,
+    )
+    from custom_components.xsense.const import (
+        CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL,
+        CONF_CAMERA_LIVE_VIEW_MODE,
+    )
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class Coordinator:
+        data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
+        entry = SimpleNamespace(
+            options={
+                CONF_CAMERA_LIVE_VIEW_MODE: CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL
+            }
+        )
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    async def provider_probe(hass, camera):
+        return "provider"
+
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.entity_id = "camera.camera_test"
+
+    assert (
+        await camera._async_get_supported_webrtc_provider(provider_probe)
+        == "provider"
+    )
+
+
 async def test_webrtc_bridge_option_returns_bridge_stream_source(monkeypatch):
     camera_module = importlib.import_module("custom_components.xsense.camera")
     from custom_components.xsense.const import (
@@ -1328,6 +1394,43 @@ async def test_default_camera_rejects_webrtc_live_url_from_stream_source_endpoin
 
     assert await camera.stream_source() is None
     assert calls == ["start", "stop"]
+
+
+async def test_default_camera_returns_none_when_stream_endpoint_no_response():
+    from custom_components.xsense.api.exceptions import APIFailure
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseCameraEntity,
+    )
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class XSense:
+        async def start_camera_live(self, entity):
+            assert entity is camera_entity
+            raise APIFailure(
+                "ADDX request for /device/startlive failed with error -3021/DEVICE_NO_RESPONSE"
+            )
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+            self.xsense = XSense()
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.entity_id = "camera.camera_test"
+
+    assert await camera.stream_source() is None
 
 
 async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkeypatch):
