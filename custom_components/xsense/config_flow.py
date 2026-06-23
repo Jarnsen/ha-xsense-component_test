@@ -15,7 +15,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AsyncXSense
 from .api.exceptions import APIFailure, AuthFailed
-from .const import DOMAIN
+from .const import (
+    CAMERA_LIVE_VIEW_MODE_STREAM_SOURCE,
+    CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL,
+    CONF_CAMERA_LIVE_VIEW_MODE,
+    DEFAULT_CAMERA_LIVE_VIEW_MODE,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +39,26 @@ def credentials_schema(default_email: str | None = None) -> vol.Schema:
         {
             vol.Required(CONF_EMAIL, default=default_email): str,
             vol.Required(CONF_PASSWORD): str,
+        }
+    )
+
+
+def options_schema(options: dict[str, Any] | None = None) -> vol.Schema:
+    """Return the options schema."""
+    options = options or {}
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_CAMERA_LIVE_VIEW_MODE,
+                default=options.get(
+                    CONF_CAMERA_LIVE_VIEW_MODE, DEFAULT_CAMERA_LIVE_VIEW_MODE
+                ),
+            ): vol.In(
+                {
+                    CAMERA_LIVE_VIEW_MODE_STREAM_SOURCE: "Stream source",
+                    CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL: "Experimental X-Sense WebRTC bridge",
+                }
+            )
         }
     )
 
@@ -68,6 +94,13 @@ class XSenseConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for X-Sense Home Security."""
 
     VERSION = 1
+
+    @staticmethod
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> XSenseOptionsFlow:
+        """Return the options flow."""
+        return XSenseOptionsFlow(config_entry)
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -177,3 +210,23 @@ class CannotConnect(HomeAssistantError):
 
 class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""
+
+
+class XSenseOptionsFlow(config_entries.OptionsFlow):
+    """Handle X-Sense options."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Set up the options flow."""
+        self._options = dict(config_entry.options)
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage X-Sense options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=options_schema(self._options),
+        )

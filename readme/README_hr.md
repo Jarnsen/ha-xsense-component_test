@@ -50,16 +50,16 @@ Integracija ustvari samo entitete za podatke, ki jih naprava dejansko poroča. T
 
 Upravljanje naprav, deljenje, odstranjevanje, firmware, računi in plačila ostanejo v aplikaciji X-Sense. Za razprave uporabite Discord ali forum Home Assistant.
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## Prikaz kamere uživo i AI obavijesti
+Podržane kamere zadano koriste stabilni X-Sense stream source za Home Assistant prikaz uživo s videom i zvukom kada ga kamera/račun pruža. Eksperimentalni X-Sense WebRTC most može se uključiti u opcijama integracije za testiranje i uključuje debug zapisnike. Kamere stvaraju event entitete `Motion` i `AI Detection`.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+Najjednostavnije je uvesti uključeni blueprint donjim gumbom, odabrati `Motion` ili dostupni `AI Detection` i po potrebi prilagoditi akciju obavijesti.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Uvezi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion i AI Detection jednokratni su događaji, ne uključeno/isključeno stanja. Za ručne automatizacije koristite `event.received`; `event_type` treba samo za filtriranje tipova kao `person`, `pet`, `vehicle`, `package`, `other` ili `ai_detection`.
 
-Example automation:
+Primjer automatizacije:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"
@@ -125,7 +125,7 @@ Ovisno o modelu mogu se prikazati alarmi za dim, CO, vodu, temperaturu, pokret i
 
 ### Kamere
 
-Podržane kamere mogu pružiti entitet kamere, minijature, prijenos uživo, status veze i postavke usklađene s aplikacijom X-Sense. Ako je u Home Assistantu dostupna WebRTC putanja, integracija je može koristiti za prikladan prikaz uživo.
+Podržane kamere mogu pružiti entitet kamere, minijature, prijenos uživo, status veze i postavke usklađene s aplikacijom X-Sense. Prikaz kamere uživo zadano koristi stabilni X-Sense stream source; eksperimentalni X-Sense WebRTC most koristi se samo kada je odabran u opcijama integracije za testiranje.
 
 ### Rješavanje problema
 
@@ -165,7 +165,7 @@ Pri prijavi greške navedite model uređaja, verziju integracije, prikazuje li s
 
 ### Referenca za kamere
 - Podržane kamere mogu pružiti entitet kamere, sličicu, prijenos uživo i dijagnostiku.
-- WebRTC put koristi se samo ako je dostupan u Home Assistantu.
+- Prikaz kamere uživo zadano koristi stabilni X-Sense stream source; eksperimentalni X-Sense WebRTC most koristi se samo za testiranje u opcijama integracije.
 - SD kartica, plaćanja, firmware i upravljanje računom ostaju u aplikaciji X-Sense.
 
 ### Kontrolni popis za rješavanje problema

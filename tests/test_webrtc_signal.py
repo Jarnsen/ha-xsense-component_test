@@ -164,6 +164,30 @@ def test_candidate_init_payload_matches_home_assistant_model_shape():
     }
 
 
+def test_ice_candidate_payload_matches_apk_builder_shape():
+    payload = json.loads(
+        webrtc_signal.make_ice_candidate_payload(
+            candidate="candidate:1 1 udp 1 192.0.2.1 123 typ host",
+            sdp_mid="0",
+            sdp_m_line_index=0,
+            ticket=ticket(),
+            recipient_client_id="SSC0ATEST",
+            session_id="session123",
+        )
+    )
+    candidate = json.loads(base64.b64decode(payload["messagePayload"]).decode())
+
+    assert payload["messageType"] == "ICE_CANDIDATE"
+    assert "mode" not in payload
+    assert payload["senderClientId"] == "client123"
+    assert payload["recipientClientId"] == "SSC0ATEST"
+    assert candidate == {
+        "sdpMid": "0",
+        "sdpMLineIndex": 0,
+        "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+    }
+
+
 def test_answer_sdp_normalization_replaces_invalid_actpass_answer_setup():
     offer_sdp = (
         "v=0\r\n"
@@ -564,6 +588,21 @@ def test_parse_owned_sdp_answer_from_signal_envelope():
             "messageType": "SDP_ANSWER",
             "senderClientId": "SSC0ATEST",
             "recipientClientId": "client123",
+            "messagePayload": b64_json({"type": "answer", "sdp": answer_sdp}),
+        }
+    )
+
+    event, payload = webrtc_signal.parse_signal_message(raw)
+
+    assert event == "SDP_ANSWER"
+    assert webrtc_signal._owned_answer_sdp(payload, ticket()) == answer_sdp
+
+
+def test_parse_sdp_answer_accepts_apk_optional_client_ids():
+    answer_sdp = "v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 99\r\n"
+    raw = json.dumps(
+        {
+            "messageType": "SDP_ANSWER",
             "messagePayload": b64_json({"type": "answer", "sdp": answer_sdp}),
         }
     )

@@ -163,7 +163,7 @@ automation:
 - X-Sense-এ সঁচাকৈ জনোৱা ক্ষেত্ৰ থাকিলেহে এণ্টিটি সৃষ্টি হয়।
 - নিৰ্ণায়ক মানসমূহ Home Assistant-ত নিৰ্ণায়ক হিচাপে গোট কৰা হয়।
 - কেমেৰা সমৰ্থিত হ’লে কেমেৰা এণ্টিটি, সৰু পূৰ্বদৃশ্য, live stream, স্থিতি, আৰু সমৰ্থিত ছেটিং দেখুওৱা হয়।
-- WebRTC path থাকিলে live view-ৰ বাবে ব্যৱহাৰ কৰিব পাৰি।
+- কেমেৰা live view ডিফল্টভাৱে স্থিৰ X-Sense stream source ব্যৱহাৰ কৰে; experimental X-Sense WebRTC bridge কেৱল integration options ত test ৰ বাবে বাছিলে ব্যৱহাৰ হয়।
 - সমস্যা জনাওঁতে মডেল, একীকৰণৰ সংস্কৰণ, নিৰ্ণায়ক তথ্য, লগ, আৰু app-ত মান সলনি হয় নে নহয় উল্লেখ কৰক।
 
 ## ডিভাইচ আৰু এণ্টিটি পৰীক্ষা-তালিকা
@@ -196,16 +196,16 @@ automation:
 
 ____________________________________________________________
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## কেমেৰা লাইভ ভিউ আৰু AI জাননী
+সমৰ্থিত কেমেৰাই ডিফল্টভাৱে Home Assistant লাইভ ভিউৰ বাবে স্থিৰ X-Sense stream source ব্যৱহাৰ কৰে, য’ত কেমেৰা/একাউণ্টে দিলে video আৰু audio থাকে। পৰীক্ষাৰ বাবে experimental X-Sense WebRTC bridge integration options ৰ পৰা অন কৰিব পাৰি আৰু ই debug logs অন কৰে। কেমেৰাই `Motion` আৰু `AI Detection` event entities সৃষ্টি কৰে।
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+সৰ্বাধিক সহজ পদ্ধতি হ’ল তলৰ বুটামেৰে অন্তর্ভুক্ত blueprint import কৰা, `Motion` বা উপলব্ধ `AI Detection` বাছনি কৰা, আৰু প্ৰয়োজন হলে notification action সলনি কৰা।
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Blueprint import কৰক](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion আৰু AI Detection এককালীন events, on/off states নহয়। Manual automations ৰ বাবে `event.received` ব্যৱহাৰ কৰক; `event_type` কেৱল `person`, `pet`, `vehicle`, `package`, `other` বা `ai_detection` ধৰণৰ type filter কৰিবলৈ লাগে।
 
-Example automation:
+Automation উদাহৰণ:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"

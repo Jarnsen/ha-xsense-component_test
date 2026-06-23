@@ -98,7 +98,7 @@ Glede na model se lahko prikažejo alarmi za dim, CO, vodo, temperaturo, gibanje
 
 ### Kamere
 
-Podprte kamere lahko zagotovijo entiteto kamere, sličice, prenos v živo, stanje povezave in nastavitve, usklajene z aplikacijo X-Sense. Če je v Home Assistantu na voljo pot WebRTC, jo lahko integracija uporabi za ustrezen prikaz v živo.
+Podprte kamere lahko zagotovijo entiteto kamere, sličice, prenos v živo, stanje povezave in nastavitve, usklajene z aplikacijo X-Sense. Živi pogled kamere privzeto uporablja stabilni X-Sense stream source; eksperimentalni X-Sense WebRTC most se uporabi samo, ko je izbran v možnostih integracije za testiranje.
 
 ### Odpravljanje težav
 
@@ -138,7 +138,7 @@ Pri prijavi napake navedite model naprave, različico integracije, ali je pravil
 
 ### Referenca za kamere
 - Podprte kamere lahko zagotovijo entiteto kamere, sličico, prenos v živo in diagnostiko.
-- WebRTC pot se uporabi samo, če je na voljo v Home Assistant.
+- Živi pogled kamere privzeto uporablja stabilni X-Sense stream source; eksperimentalni X-Sense WebRTC most je namenjen samo testiranju v možnostih integracije.
 - Kartica SD, plačila, vdelana programska oprema in upravljanje računa ostanejo v aplikaciji X-Sense.
 
 ### Kontrolni seznam za odpravljanje težav
@@ -186,16 +186,16 @@ Pri prijavi napake navedite model naprave, različico integracije, ali je pravil
 
 ____________________________________________________________
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## Živi pogled kamere in obvestila AI
+Podprte kamere privzeto uporabljajo stabilni X-Sense stream source za živi pogled v Home Assistantu z videom in zvokom, ko ga kamera/račun zagotavlja. Eksperimentalni X-Sense WebRTC most lahko za testiranje vklopite v možnostih integracije in vklopi debug dnevnike. Kamere ustvarijo event entitete `Motion` in `AI Detection`.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+Najlažje je uvoziti priloženi blueprint s spodnjim gumbom, izbrati `Motion` ali razpoložljivi `AI Detection` in po potrebi prilagoditi dejanje obvestila.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Uvozi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion in AI Detection sta enkratna dogodka, ne stanja vklop/izklop. Za ročne avtomatizacije uporabite `event.received`; `event_type` je potreben samo za filtriranje tipov, kot so `person`, `pet`, `vehicle`, `package`, `other` ali `ai_detection`.
 
-Example automation:
+Primer avtomatizacije:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"

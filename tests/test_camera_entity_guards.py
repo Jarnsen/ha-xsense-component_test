@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 import sys
 from types import SimpleNamespace
 
@@ -1045,6 +1046,128 @@ def test_camera_capabilities_use_hls_stream_path_for_all_xsense_cameras():
         stream.value
         for stream in webrtc_camera.camera_capabilities.frontend_stream_types
     } == {"hls"}
+
+
+def test_camera_factory_uses_stream_source_path_by_default():
+    camera_module = importlib.import_module("custom_components.xsense.camera")
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class Coordinator:
+        data = {"stations": {}, "devices": {}}
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    created = camera_module._camera_entity(Coordinator(), camera_entity)
+
+    assert isinstance(created, camera_module.XSenseCameraEntity)
+    assert not isinstance(created, camera_module.XSenseWebRTCCameraEntity)
+
+
+def test_camera_factory_keeps_stream_source_entity_for_webrtc_signal_option():
+    camera_module = importlib.import_module("custom_components.xsense.camera")
+    from custom_components.xsense.const import (
+        CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL,
+        CONF_CAMERA_LIVE_VIEW_MODE,
+    )
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class Coordinator:
+        data = {"stations": {}, "devices": {}}
+        entry = SimpleNamespace(
+            options={
+                CONF_CAMERA_LIVE_VIEW_MODE: CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL
+            }
+        )
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    created = camera_module._camera_entity(Coordinator(), camera_entity)
+
+    assert isinstance(created, camera_module.XSenseCameraEntity)
+    assert not isinstance(created, camera_module.XSenseWebRTCCameraEntity)
+
+
+def test_camera_live_view_mode_falls_back_to_stable_path_for_unknown_option():
+    from custom_components.xsense.const import (
+        CAMERA_LIVE_VIEW_MODE_STREAM_SOURCE,
+        CONF_CAMERA_LIVE_VIEW_MODE,
+    )
+
+    coordinator = SimpleNamespace(
+        entry=SimpleNamespace(options={CONF_CAMERA_LIVE_VIEW_MODE: "bad-mode"})
+    )
+
+    assert (
+        camera._camera_live_view_mode(coordinator)
+        == CAMERA_LIVE_VIEW_MODE_STREAM_SOURCE
+    )
+
+
+async def test_webrtc_bridge_option_returns_bridge_stream_source(monkeypatch):
+    camera_module = importlib.import_module("custom_components.xsense.camera")
+    from custom_components.xsense.const import (
+        CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL,
+        CONF_CAMERA_LIVE_VIEW_MODE,
+    )
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseCameraEntity,
+    )
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class XSense:
+        async def start_camera_live(self, entity):
+            raise AssertionError("WebRTC bridge option should not start live URL")
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+            self.xsense = XSense()
+            self.entry = SimpleNamespace(
+                options={
+                    CONF_CAMERA_LIVE_VIEW_MODE: CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL
+                }
+            )
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    async def bridge_source(hass, coordinator, entity):
+        return "rtsp://127.0.0.1:39091/xsense/camera-test"
+
+    hass = SimpleNamespace()
+    monkeypatch.setattr(camera_module, "_webrtc_bridge_source", bridge_source)
+
+    camera_entity_instance = XSenseCameraEntity(
+        Coordinator(), camera_entity, CAMERA_DESCRIPTION
+    )
+    camera_entity_instance.hass = hass
+    camera_entity_instance.entity_id = "camera.camera_test"
+
+    assert (
+        await camera_entity_instance.stream_source()
+        == "rtsp://127.0.0.1:39091/xsense/camera-test"
+    )
 
 
 def test_camera_entity_webrtc_protocol_default_matches_apk():

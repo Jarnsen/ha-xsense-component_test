@@ -50,16 +50,16 @@ Integrationen opretter kun entiteter for data, som enheden faktisk rapporterer. 
 
 Enhedsadministration, deling, fjernelse, firmware, konti og betalinger forbliver i X-Sense-appen. Brug Discord eller Home Assistant-forummet til diskussioner.
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## Kamera-livevisning og AI-notifikationer
+Understøttede kameraer bruger som standard den stabile X-Sense stream source til Home Assistant-livevisning med video og lyd, når kameraet/kontoen leverer den. Den eksperimentelle X-Sense WebRTC-bro kan aktiveres i integrationsindstillingerne til test og slår debuglogning til. Kameraer opretter event-entiteterne `Motion` og `AI Detection`.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+Den nemmeste vej er at importere den inkluderede blueprint med knappen nedenfor, vælge `Motion` eller tilgængelig `AI Detection`, og justere notifikationshandlingen.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Importer blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion og AI Detection er engangshændelser, ikke til/fra-tilstande. Brug `event.received` til manuelle automatiseringer; brug kun `event_type` til at filtrere typer som `person`, `pet`, `vehicle`, `package`, `other` eller `ai_detection`.
 
-Example automation:
+Eksempelautomatisering:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"
@@ -125,7 +125,7 @@ Afhængigt af modellen kan der vises røg-, CO-, vand-, temperatur-, bevægelses
 
 ### Kameraer
 
-Understøttede kameraer kan levere kameraenhed, miniaturebilleder, livestream, forbindelsesstatus og indstillinger, der svarer til dem i X-Sense-appen. Hvis Home Assistant har en WebRTC-sti til rådighed, kan integrationen bruge den til egnet livevisning.
+Understøttede kameraer kan levere kameraenhed, miniaturebilleder, livestream, forbindelsesstatus og indstillinger, der svarer til dem i X-Sense-appen. Kamera-livevisning bruger som standard den stabile X-Sense stream source; den eksperimentelle X-Sense WebRTC-bro bruges kun, når den vælges i integrationsindstillingerne til test.
 
 ### Fejlfinding
 
@@ -165,7 +165,7 @@ Når du rapporterer en fejl, så angiv enhedsmodellen, integrationsversionen, om
 
 ### Kamerareference
 - Understøttede kameraer kan vise kameraentitet, miniaturebillede, live stream og diagnostik.
-- WebRTC bruges kun, når stien er tilgængelig i Home Assistant.
+- Kamera-livevisning bruger som standard den stabile X-Sense stream source; den eksperimentelle X-Sense WebRTC-bro er kun til test via integrationsindstillingerne.
 - SD-kort, betalinger, firmware og kontoadministration bliver i X-Sense-appen.
 
 ### Tjekliste til fejlfinding

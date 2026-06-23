@@ -50,16 +50,16 @@ Integratsioon loob olemid ainult nende andmete jaoks, mida seade tegelikult rapo
 
 Seadmehaldus, jagamine, eemaldamine, püsivara, kontod ja maksed jäävad X-Sense rakendusse. Aruteludeks kasutage Discordi või Home Assistanti foorumit.
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## Kaamera otsevaade ja AI-teavitused
+Toetatud kaamerad kasutavad vaikimisi stabiilset X-Sense stream source teed Home Assistanti otsevaateks video ja heliga, kui kaamera/konto seda pakub. Eksperimentaalse X-Sense WebRTC silla saab testimiseks sisse lülitada integratsiooni seadetes ning see lubab debug-logid. Kaamerad loovad `Motion` ja `AI Detection` sündmuse entiteedid.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+Lihtsaim viis on importida kaasas olev blueprint alloleva nupuga, valida `Motion` või saadaolev `AI Detection`, ja vajadusel muuta teavitustoimingut.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Impordi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion ja AI Detection on ühekordsed sündmused, mitte sisse/välja olekud. Käsitsi automaatikates kasuta `event.received`; `event_type` on vajalik ainult tüüpide filtreerimiseks nagu `person`, `pet`, `vehicle`, `package`, `other` või `ai_detection`.
 
-Example automation:
+Automatiseerimise näide:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"
@@ -125,7 +125,7 @@ Olenevalt mudelist võivad ilmuda suitsu-, CO-, vee-, temperatuuri-, liikumis- j
 
 ### Kaamerad
 
-Toetatud kaamerad võivad pakkuda kaamera olemit, pisipilte, otsevoogu, ühenduse olekut ja X-Sense'i rakendusega kooskõlas olevaid seadeid. Kui Home Assistantis on WebRTC tee olemas, saab integratsioon seda sobiva otsevaate jaoks kasutada.
+Toetatud kaamerad võivad pakkuda kaamera olemit, pisipilte, otsevoogu, ühenduse olekut ja X-Sense'i rakendusega kooskõlas olevaid seadeid. Kaamera otsevaade kasutab vaikimisi stabiilset X-Sense stream source teed; eksperimentaalset X-Sense WebRTC silda kasutatakse ainult siis, kui see valitakse integratsiooni seadetes testimiseks.
 
 ### Tõrkeotsing
 
@@ -165,7 +165,7 @@ Veateates lisage seadme mudel, integratsiooni versioon, kas õige väärtus on X
 
 ### Kaamerate ülevaade
 - Toetatud kaamerad võivad pakkuda kaamera olemit, eelvaadet, otsevoogu ja diagnostikat.
-- WebRTC teed kasutatakse ainult siis, kui Home Assistant seda pakub.
+- Kaamera otsevaade kasutab vaikimisi stabiilset X-Sense stream source teed; eksperimentaalne X-Sense WebRTC sild on ainult testimiseks integratsiooni seadetes.
 - SD-kaardi, maksete, püsivara ja konto haldus jääb X-Sense rakendusse.
 
 ### Tõrkeotsingu kontrollnimekiri

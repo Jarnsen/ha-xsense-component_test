@@ -108,16 +108,16 @@ ____________________________________________________________
 一部のエンティティは診断または設定関連であり、Home Assistant でもそのように分類されます。デバイスが特定のフィールドを報告しない場合、または X-Sense アプリがそのデバイス/アカウントで機能非対応と示す場合、対応するエンティティは作成されません。デバイスの追加、削除、共有、アカウント、支払い、ファームウェア 更新、SD カード初期化、その他の管理操作は X-Sense アプリ側に残ります。
 ____________________________________________________________
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## カメラのライブビューとAI通知
+対応カメラは、カメラ/アカウントが提供している場合、Home Assistant のライブビューで映像と音声を表示するために、既定で安定した X-Sense stream source パスを使用します。実験的な X-Sense WebRTC ブリッジは統合オプションからテスト用に有効化でき、有効中は debug ログが自動的に有効になります。カメラは `event.front_camera_motion` や `event.front_camera_ai_detection` のような `Motion` と `AI Detection` のイベントエンティティも作成します。
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+最も簡単な方法は同梱の blueprint を使うことです。下のボタンでインポートし、カメラの `Motion` イベントエンティティ、またはサブスクリプション付きカメラで利用できる場合は `AI Detection` を選び、必要に応じて通知アクションを調整してください。
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![blueprint をインポート](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion と AI Detection はオン/オフ状態ではなく、1回限りのイベントです。手動オートメーションでは、Home Assistant の `event.received` トリガーをカメラの `Motion` または `AI Detection` エンティティと一緒に使用します。サブスクリプション付き AI Detection を `person`、`pet`、`vehicle`、`package`、`other`、`ai_detection` などに絞る場合だけ `event_type` を使用してください。
 
-Example automation:
+オートメーション例:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"

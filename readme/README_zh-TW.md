@@ -109,16 +109,16 @@ ____________________________________________________________
 部分實體屬於診斷或設定類別，Home Assistant 會依此分組。如果裝置沒有回報特定欄位，或 X-Sense App 標示該裝置/帳號不支援該功能，就不會建立對應實體。裝置綁定、移除、分享、帳號、付款、韌體更新、SD 卡格式化與其他管理操作仍保留在 X-Sense App 中。
 ____________________________________________________________
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## 攝影機即時預覽與 AI 通知
+支援的攝影機預設使用穩定的 X-Sense stream source 路徑，在攝影機/帳號提供時為 Home Assistant 即時預覽提供影像與音訊。實驗性的 X-Sense WebRTC 橋接可在整合選項中開啟用於測試，並會自動啟用 debug 記錄。攝影機也會建立 `Motion` 和 `AI Detection` 事件實體，例如 `event.front_camera_motion` 和 `event.front_camera_ai_detection`。
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+最簡單的方式是使用隨附的 blueprint。使用下方按鈕匯入，選擇攝影機的 `Motion` 事件實體，或在訂閱攝影機可用時選擇 `AI Detection`，然後依需要調整通知動作。
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![匯入 blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion 和 AI Detection 是一次性事件，不是開/關狀態。手動自動化請使用 Home Assistant 的 `event.received` 觸發器並選擇攝影機 `Motion` 或 `AI Detection` 實體；只有在需要把訂閱 AI Detection 限制為 `person`、`pet`、`vehicle`、`package`、`other` 或 `ai_detection` 等物件類型時，才使用 `event_type`。
 
-Example automation:
+自動化範例:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"
@@ -192,7 +192,7 @@ automation:
 - 只有 X-Sense 實際回報的欄位才會建立實體。
 - 診斷值會在 Home Assistant 中歸類為診斷資訊。
 - 支援的相機可提供相機實體、縮圖、即時串流、狀態與支援的設定。
-- 如果 Home Assistant 有 WebRTC 路徑，整合可用於即時檢視。
+- 攝影機即時預覽預設使用穩定的 X-Sense stream source；實驗性的 X-Sense WebRTC 橋接只會在整合選項中選取用於測試時使用。
 - 回報問題時，請提供型號、整合版本、診斷資訊、記錄，以及 App 中數值是否會變化。
 
 ## 裝置與實體檢查清單

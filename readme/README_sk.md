@@ -50,16 +50,16 @@ Integrácia vytvára iba entity pre údaje, ktoré zariadenie skutočne hlási. 
 
 Správa zariadení, zdieľanie, odstránenie, firmvér, účty a platby zostávajú v aplikácii X-Sense. Na diskusiu použite Discord alebo fórum Home Assistant.
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## Živý náhľad kamery a oznámenia AI
+Podporované kamery predvolene používajú stabilný X-Sense stream source pre živý náhľad v Home Assistante s videom a zvukom, ak ho kamera/účet poskytuje. Experimentálny X-Sense WebRTC bridge možno zapnúť v možnostiach integrácie na testovanie a zapne debug logy. Kamery vytvárajú event entity `Motion` a `AI Detection`.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+Najjednoduchšie je importovať priložený blueprint tlačidlom nižšie, vybrať `Motion` alebo dostupné `AI Detection` a upraviť akciu oznámenia.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Importovať blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion a AI Detection sú jednorazové udalosti, nie stavy zapnuté/vypnuté. Pre manuálne automatizácie použite `event.received`; `event_type` používajte len na filtrovanie typov ako `person`, `pet`, `vehicle`, `package`, `other` alebo `ai_detection`.
 
-Example automation:
+Príklad automatizácie:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"
@@ -125,7 +125,7 @@ V závislosti od modelu sa môžu zobraziť alarmy dymu, CO, vody, teploty, pohy
 
 ### Kamery
 
-Podporované kamery môžu poskytovať entitu kamery, náhľady, živý stream, stav pripojenia a nastavenia zodpovedajúce aplikácii X-Sense. Ak je v Home Assistante dostupná cesta WebRTC, integrácia ju môže použiť na vhodné živé zobrazenie.
+Podporované kamery môžu poskytovať entitu kamery, náhľady, živý stream, stav pripojenia a nastavenia zodpovedajúce aplikácii X-Sense. Živý náhľad kamery predvolene používa stabilný X-Sense stream source; experimentálny X-Sense WebRTC bridge sa použije len pri výbere v možnostiach integrácie na testovanie.
 
 ### Riešenie problémov
 
@@ -165,7 +165,7 @@ Pri hlásení chyby uveďte model zariadenia, verziu integrácie, či sa správn
 
 ### Referencia pre kamery
 - Podporované kamery môžu poskytovať entitu kamery, náhľad, živý stream a diagnostiku.
-- WebRTC cesta sa použije iba vtedy, keď je dostupná v Home Assistant.
+- Živý náhľad kamery predvolene používa stabilný X-Sense stream source; experimentálny X-Sense WebRTC bridge je len na testovanie v možnostiach integrácie.
 - SD karta, platby, firmvér a správa účtu zostávajú v aplikácii X-Sense.
 
 ### Kontrolný zoznam riešenia problémov

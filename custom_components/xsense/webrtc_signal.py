@@ -705,9 +705,9 @@ def _owned_answer_sdp(payload: Any, ticket: XSenseWebRTCTicket) -> str | None:
         return None
     sender = payload.get("senderClientId")
     recipient = payload.get("recipientClientId")
-    if sender != ticket.serial_number:
+    if sender is not None and sender != ticket.serial_number:
         return None
-    if recipient != ticket.client_id:
+    if recipient is not None and recipient != ticket.client_id:
         return None
     return _answer_sdp(payload)
 
@@ -717,9 +717,9 @@ def _answer_reject_reason(payload: Any, ticket: XSenseWebRTCTicket) -> str:
         return "payload_not_dict"
     sender = payload.get("senderClientId")
     recipient = payload.get("recipientClientId")
-    if sender != ticket.serial_number:
+    if sender is not None and sender != ticket.serial_number:
         return "sender_mismatch"
-    if recipient != ticket.client_id:
+    if recipient is not None and recipient != ticket.client_id:
         return "recipient_mismatch"
     encoded = payload.get("messagePayload")
     if not isinstance(encoded, str):

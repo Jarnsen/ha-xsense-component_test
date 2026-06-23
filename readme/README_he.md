@@ -101,7 +101,7 @@ automation:
 
 ### מצלמות
 
-מצלמות נתמכות יכולות לספק ישות מצלמה, תמונות ממוזערות, זרם חי, מצב חיבור והגדרות התואמות לאפליקציית X-Sense. אם קיימת ב-Home Assistant דרך WebRTC זמינה, האינטגרציה יכולה להשתמש בה לתצוגה חיה מתאימה.
+מצלמות נתמכות יכולות לספק ישות מצלמה, תמונות ממוזערות, זרם חי, מצב חיבור והגדרות התואמות לאפליקציית X-Sense. תצוגה חיה של מצלמה משתמשת כברירת מחדל ב-X-Sense stream source היציב; גשר X-Sense WebRTC הניסיוני משמש רק כאשר הוא נבחר באפשרויות האינטגרציה לצורך בדיקה.
 
 ### פתרון תקלות
 
@@ -169,7 +169,7 @@ automation:
 
 ### מצלמות ו-WebRTC
 - מצלמות נתמכות יכולות לחשוף תמונה ממוזערת וכתובת stream.
-- אם Home Assistant מספק נתיב WebRTC מתאים, ניתן להשתמש בו לתצוגה חיה.
+- תצוגה חיה של מצלמה משתמשת כברירת מחדל ב-X-Sense stream source היציב; גשר X-Sense WebRTC הניסיוני מיועד רק לבדיקה דרך אפשרויות האינטגרציה.
 - זמינות ה-stream תלויה במכשיר, בחשבון ובתגובת שירות X-Sense.
 - הגדרות שאינן זמינות בחשבון לא יוצגו כפקדים.
 
@@ -189,16 +189,16 @@ automation:
 
 ____________________________________________________________
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## תצוגת מצלמה חיה והתראות AI
+מצלמות נתמכות משתמשות כברירת מחדל ב-X-Sense stream source היציב לתצוגה חיה ב-Home Assistant עם וידאו ושמע כאשר המצלמה/החשבון מספקים אותו. ניתן להפעיל את גשר X-Sense WebRTC הניסיוני באפשרויות האינטגרציה לצורך בדיקה, והוא מפעיל debug logs. המצלמות יוצרות ישויות אירוע `Motion` ו-`AI Detection`.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+הדרך הפשוטה ביותר היא לייבא את ה-blueprint המצורף בעזרת הכפתור למטה, לבחור `Motion` או `AI Detection` זמין, ולשנות את פעולת ההתראה לפי הצורך.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![ייבוא blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion ו-AI Detection הם אירועים חד-פעמיים, לא מצבי פועל/כבוי. לאוטומציות ידניות השתמשו ב-`event.received`; `event_type` נחוץ רק לסינון סוגים כמו `person`, `pet`, `vehicle`, `package`, `other` או `ai_detection`.
 
-Example automation:
+דוגמת אוטומציה:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"

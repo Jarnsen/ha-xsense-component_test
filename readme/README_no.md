@@ -50,16 +50,16 @@ Integrasjonen oppretter bare entiteter for data enheten faktisk rapporterer. Det
 
 Enhetsadministrasjon, deling, fjerning, firmware, kontoer og betalinger forblir i X-Sense-appen. Bruk Discord eller Home Assistant-forumet for diskusjoner.
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## Kamera-livevisning og AI-varsler
+Støttede kameraer bruker som standard den stabile X-Sense stream source for Home Assistant-livevisning med video og lyd når kameraet/kontoen leverer den. Den eksperimentelle X-Sense WebRTC-broen kan aktiveres i integrasjonsalternativene for test og slår på debuglogging. Kameraer oppretter event-enhetene `Motion` og `AI Detection`.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+Enklest er å importere den inkluderte blueprinten med knappen nedenfor, velge `Motion` eller tilgjengelig `AI Detection`, og justere varslingshandlingen.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Importer blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion og AI Detection er engangshendelser, ikke på/av-tilstander. Bruk `event.received` for manuelle automatiseringer; bruk bare `event_type` for å filtrere typer som `person`, `pet`, `vehicle`, `package`, `other` eller `ai_detection`.
 
-Example automation:
+Eksempelautomatisering:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"
@@ -125,7 +125,7 @@ Avhengig av modell kan det vises røyk-, CO-, vann-, temperatur-, bevegelses- og
 
 ### Kameraer
 
-Støttede kameraer kan gi kameraenhet, miniatyrbilder, direktestrøm, tilkoblingsstatus og innstillinger som samsvarer med X-Sense-appen. Hvis Home Assistant har en WebRTC-sti tilgjengelig, kan integrasjonen bruke den for egnet direktevisning.
+Støttede kameraer kan gi kameraenhet, miniatyrbilder, direktestrøm, tilkoblingsstatus og innstillinger som samsvarer med X-Sense-appen. Kamera-livevisning bruker som standard den stabile X-Sense stream source; den eksperimentelle X-Sense WebRTC-broen brukes bare når den er valgt i integrasjonsalternativene for testing.
 
 ### Feilsøking
 
@@ -165,7 +165,7 @@ Når du rapporterer en feil, oppgi enhetsmodell, integrasjonsversjon, om riktig 
 
 ### Kamerareferanse
 - Støttede kameraer kan gi kameraentitet, miniatyrbilde, direktestrøm og diagnostikk.
-- WebRTC-stien brukes bare hvis den er tilgjengelig i Home Assistant.
+- Kamera-livevisning bruker som standard den stabile X-Sense stream source; den eksperimentelle X-Sense WebRTC-broen er kun for testing via integrasjonsalternativene.
 - SD-kort, betalinger, fastvare og kontoadministrasjon håndteres i X-Sense-appen.
 
 ### Sjekkliste for feilsøking

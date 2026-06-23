@@ -180,7 +180,7 @@ Tartışmalar ve destek için Discord sunucumuza katılabilir veya Home Assistan
 ### Varlıklar, kameralar ve sorun giderme
 - Varlıklar yalnızca X-Sense gerçekten ilgili alanı bildirdiğinde oluşturulur.
 - Kamera varlıkları ve kamera kontrolleri yalnızca Android uygulamasıyla uyumlu API, ilgili hesap ve model için destek bildirdiğinde oluşturulur.
-- WebRTC yolu Home Assistant içinde kullanılabilir olduğunda, uygun kamera canlı görüntüsü için kullanılabilir.
+- Kamera canlı görüntüsü varsayılan olarak kararlı X-Sense stream source yolunu kullanır; deneysel X-Sense WebRTC köprüsü yalnızca entegrasyon seçeneklerinden test için etkinleştirilir.
 - Eksik bir değer varsa önce X-Sense uygulamasında aynı değerin görünüp değiştiğini kontrol edin, ardından tanılama çıktısını ve ilgili Home Assistant günlüklerini ekleyin.
 
 ## Cihaz ve Varlık Kontrol Listesi
@@ -197,16 +197,16 @@ Tartışmalar ve destek için Discord sunucumuza katılabilir veya Home Assistan
 
 ____________________________________________________________
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## Kamera canlı görüntüsü ve AI bildirimleri
+Desteklenen kameralar, kamera/hesap sağladığında Home Assistant canlı görüntüsü için video ve sesle birlikte varsayılan olarak kararlı X-Sense stream source kullanır. Deneysel X-Sense WebRTC köprüsü test için entegrasyon seçeneklerinden açılabilir ve debug günlüklerini etkinleştirir. Kameralar `Motion` ve `AI Detection` olay varlıkları da oluşturur.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+En kolay yol, aşağıdaki düğmeyle dahil edilen blueprint’i içe aktarmak, `Motion` veya kullanılabilir `AI Detection` seçmek ve gerekirse bildirim eylemini ayarlamaktır.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Blueprint’i içe aktar](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion ve AI Detection tek seferlik olaylardır, aç/kapat durumları değildir. Manuel otomasyonlar için `event.received` kullanın; `event_type` yalnızca `person`, `pet`, `vehicle`, `package`, `other` veya `ai_detection` gibi türleri filtrelemek için gerekir.
 
-Example automation:
+Örnek otomasyon:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"

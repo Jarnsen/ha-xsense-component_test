@@ -50,16 +50,16 @@ Integrarea creează entități numai pentru câmpurile raportate efectiv de disp
 
 Administrarea dispozitivelor, partajarea, eliminarea, firmware-ul, conturile și plățile rămân în aplicația X-Sense. Pentru discuții folosiți Discord sau forumul Home Assistant.
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## Vizualizare live cameră și notificări AI
+Camerele acceptate folosesc implicit calea stabilă X-Sense stream source pentru vizualizare live în Home Assistant cu video și audio, când camera/contul o oferă. Puntea experimentală X-Sense WebRTC poate fi activată în opțiunile integrării pentru testare și pornește logurile debug. Camerele creează entități de eveniment `Motion` și `AI Detection`.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+Cel mai simplu este să importați blueprint-ul inclus cu butonul de mai jos, să alegeți `Motion` sau `AI Detection` disponibil și să ajustați acțiunea de notificare.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Importă blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion și AI Detection sunt evenimente unice, nu stări pornit/oprit. Pentru automatizări manuale folosiți `event.received`; `event_type` este necesar doar pentru filtrarea tipurilor ca `person`, `pet`, `vehicle`, `package`, `other` sau `ai_detection`.
 
-Example automation:
+Exemplu de automatizare:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"
@@ -125,7 +125,7 @@ Integrarea folosește mesaje MQTT shadow pentru schimbări rapide de stare și i
 
 ### Camere
 
-Camerele acceptate pot oferi entitate cameră, miniaturi, flux live, stare conexiune și setări aliniate cu aplicația X-Sense. Dacă Home Assistant are disponibilă o cale WebRTC, integrarea o poate folosi pentru o vizualizare live adecvată.
+Camerele acceptate pot oferi entitate cameră, miniaturi, flux live, stare conexiune și setări aliniate cu aplicația X-Sense. Vizualizarea live a camerei folosește implicit calea stabilă X-Sense stream source; puntea experimentală X-Sense WebRTC este folosită doar când este selectată în opțiunile integrării pentru testare.
 
 ### Depanare
 
@@ -165,7 +165,7 @@ Când raportați o eroare, includeți modelul dispozitivului, versiunea integră
 
 ### Referință pentru camere
 - Camerele acceptate pot oferi entitate cameră, miniatură, flux live și diagnostic.
-- WebRTC este folosit doar dacă este disponibil în Home Assistant.
+- Vizualizarea live a camerei folosește implicit calea stabilă X-Sense stream source; puntea experimentală X-Sense WebRTC este doar pentru testare din opțiunile integrării.
 - Cardul SD, plățile, firmware-ul și administrarea contului rămân în aplicația X-Sense.
 
 ### Listă de verificare pentru depanare

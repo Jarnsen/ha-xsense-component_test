@@ -50,16 +50,16 @@ Integraatio luo entiteettejä vain tiedoille, jotka laite todella raportoi. Näi
 
 Laitteiden hallinta, jakaminen, poistaminen, laiteohjelmisto, tilit ja maksut pysyvät X-Sense-sovelluksessa. Keskusteluihin voi käyttää Discordia tai Home Assistant -foorumia.
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## Kameran live-näkymä ja AI-ilmoitukset
+Tuetut kamerat käyttävät oletuksena vakaata X-Sense stream source -polkua Home Assistantin live-näkymään videolla ja äänellä, kun kamera/tili tarjoaa sen. Kokeellisen X-Sense WebRTC -sillan voi ottaa käyttöön integraation asetuksissa testausta varten, ja se ottaa debug-lokit käyttöön. Kamerat luovat `Motion`- ja `AI Detection` -tapahtumaentiteetit.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+Helpoin tapa on tuoda mukana oleva blueprint alla olevalla painikkeella, valita `Motion` tai saatavilla oleva `AI Detection` ja muokata ilmoitustoimintoa.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Tuo blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion ja AI Detection ovat kertaluonteisia tapahtumia, eivät päälle/pois-tiloja. Käytä manuaalisissa automaatioissa `event.received`; käytä `event_type` vain suodattamaan tyyppejä kuten `person`, `pet`, `vehicle`, `package`, `other` tai `ai_detection`.
 
-Example automation:
+Esimerkkiautomaatio:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"
@@ -125,7 +125,7 @@ Mallista riippuen näkyviin voi tulla savu-, CO-, vesi-, lämpötila-, liike- ja
 
 ### Kamerat
 
-Tuetut kamerat voivat tarjota kameraentiteetin, pikkukuvat, live-lähetyksen, yhteyden tilan ja X-Sense-sovelluksen mukaiset asetukset. Jos Home Assistantissa on käytettävissä WebRTC-polku, integraatio voi käyttää sitä sopivaan live-katseluun.
+Tuetut kamerat voivat tarjota kameraentiteetin, pikkukuvat, live-lähetyksen, yhteyden tilan ja X-Sense-sovelluksen mukaiset asetukset. Kameran live-näkymä käyttää oletuksena vakaata X-Sense stream source -polkua; kokeellista X-Sense WebRTC -siltaa käytetään vain, kun se valitaan integraation asetuksista testausta varten.
 
 ### Vianmääritys
 
@@ -165,7 +165,7 @@ Kun ilmoitat viasta, kerro laitteen malli, integraation versio, näkyykö oikea 
 
 ### Kameraviite
 - Tuetut kamerat voivat tarjota kameraentiteetin, esikatselun, live-streamin ja diagnostiikkaa.
-- WebRTC-polku käytetään vain, jos se on Home Assistantissa saatavilla.
+- Kameran live-näkymä käyttää oletuksena vakaata X-Sense stream source -polkua; kokeellinen X-Sense WebRTC -silta on tarkoitettu vain testaukseen integraation asetuksissa.
 - SD-kortti, maksut, laiteohjelmisto ja tilinhallinta pysyvät X-Sense-sovelluksessa.
 
 ### Vianmäärityksen tarkistuslista

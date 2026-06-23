@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
+import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -16,7 +17,13 @@ from homeassistant.helpers.device_registry import (
 from homeassistant.util import slugify
 
 from .api.async_xsense import is_camera_entity
-from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN
+from .const import (
+    CAMERA_AI_SERVICE_AVAILABLE,
+    CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL,
+    CONF_CAMERA_LIVE_VIEW_MODE,
+    DOMAIN,
+    LOGGER,
+)
 from .coordinator import XSenseDataUpdateCoordinator
 
 PLATFORMS: list[Platform] = [
@@ -175,6 +182,9 @@ OBSOLETE_ENTITY_SUFFIXES_BY_DOMAIN = {
 OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
     "XS03-iWX": ("mute",),
 }
+
+_AUTO_DEBUG_PREVIOUS_LEVEL = "_auto_debug_previous_level"
+_AUTO_DEBUG_ENTRY_IDS = "_auto_debug_entry_ids"
 
 
 def _sensor_unique_id(entity_id: str, key: str) -> str:
@@ -577,6 +587,7 @@ def _remove_obsolete_device_metadata(
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up X-Sense Home Security from a config entry."""
+    _sync_experimental_debug_logging(hass, entry)
     coordinator = XSenseDataUpdateCoordinator(hass, entry)
 
     await coordinator.async_config_entry_first_refresh()
@@ -586,6 +597,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _migrate_legacy_none_entity_ids(hass, entry)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+    from .camera import register_webrtc_signal_view
+
+    register_webrtc_signal_view(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     coordinator.async_start_camera_ai_history_polling()
@@ -593,6 +608,38 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _remove_obsolete_sensor_entities(hass, coordinator.data, entry)
 
     return True
+
+
+def _sync_experimental_debug_logging(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Enable integration debug logging while the experimental bridge is selected."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    debug_entry_ids = domain_data.setdefault(_AUTO_DEBUG_ENTRY_IDS, set())
+    debug_enabled = (
+        entry.options.get(CONF_CAMERA_LIVE_VIEW_MODE)
+        == CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL
+    )
+    previous_level = domain_data.get(_AUTO_DEBUG_PREVIOUS_LEVEL)
+
+    if debug_enabled:
+        debug_entry_ids.add(entry.entry_id)
+        if previous_level is None:
+            domain_data[_AUTO_DEBUG_PREVIOUS_LEVEL] = LOGGER.level
+        if LOGGER.level != logging.DEBUG:
+            LOGGER.setLevel(logging.DEBUG)
+        LOGGER.debug(
+            "X-Sense experimental WebRTC bridge enabled integration debug logging"
+        )
+        return
+
+    debug_entry_ids.discard(entry.entry_id)
+    _restore_experimental_debug_logging(hass)
+
+
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload the integration after options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -605,8 +652,24 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         if coordinator is not None:
             await coordinator.async_shutdown()
+        _restore_experimental_debug_logging(hass, entry.entry_id)
 
     return unload_ok
+
+
+def _restore_experimental_debug_logging(
+    hass: HomeAssistant, entry_id: str | None = None
+) -> None:
+    """Restore the logger level set by the experimental bridge option."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    debug_entry_ids = domain_data.setdefault(_AUTO_DEBUG_ENTRY_IDS, set())
+    if entry_id is not None:
+        debug_entry_ids.discard(entry_id)
+    if debug_entry_ids:
+        return
+    previous_level = domain_data.pop(_AUTO_DEBUG_PREVIOUS_LEVEL, None)
+    if previous_level is not None:
+        LOGGER.setLevel(previous_level)
 
 
 async def async_remove_config_entry_device(

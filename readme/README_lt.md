@@ -50,16 +50,16 @@ Integracija kuria esybes tik tiems duomenims, kuriuos įrenginys iš tikrųjų p
 
 Įrenginių valdymas, bendrinimas, šalinimas, firmware, paskyros ir mokėjimai lieka X-Sense programėlėje. Diskusijoms naudokite Discord arba Home Assistant forumą.
 
-## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC for live video and audio. They also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+## Kameros tiesioginis vaizdas ir AI pranešimai
+Palaikomos kameros pagal numatymą naudoja stabilų X-Sense stream source kelią Home Assistant tiesioginiam vaizdui su vaizdu ir garsu, kai kamera/paskyra jį pateikia. Eksperimentinį X-Sense WebRTC tiltą galima įjungti integracijos parinktyse testavimui, jis įjungia debug žurnalus. Kameros sukuria `Motion` ir `AI Detection` įvykių esybes.
 
-The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
+Paprasčiausia importuoti įtrauktą blueprint žemiau esančiu mygtuku, pasirinkti `Motion` arba prieinamą `AI Detection` ir prireikus pakoreguoti pranešimo veiksmą.
 
-[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Importuoti blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion and AI Detection updates are one-time events, not on/off states. The blueprint listens to the selected event entity directly. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
+Motion ir AI Detection yra vienkartiniai įvykiai, o ne įjungta/išjungta būsenos. Rankinėse automatizacijose naudokite `event.received`; `event_type` reikalingas tik tipams filtruoti, pvz., `person`, `pet`, `vehicle`, `package`, `other` arba `ai_detection`.
 
-Example automation:
+Automatizacijos pavyzdys:
 
 ```yaml
 alias: "Notify when X-Sense detects a person"
@@ -125,7 +125,7 @@ Priklausomai nuo modelio gali būti rodomi dūmų, CO, vandens, temperatūros, j
 
 ### Kameros
 
-Palaikomos kameros gali pateikti kameros objektą, miniatiūras, tiesioginį srautą, ryšio būseną ir nustatymus, suderintus su X-Sense programėle. Jei Home Assistant yra WebRTC kelias, integracija gali jį naudoti tinkamai tiesioginei peržiūrai.
+Palaikomos kameros gali pateikti kameros objektą, miniatiūras, tiesioginį srautą, ryšio būseną ir nustatymus, suderintus su X-Sense programėle. Kameros tiesioginis vaizdas pagal numatymą naudoja stabilų X-Sense stream source kelią; eksperimentinis X-Sense WebRTC tiltas naudojamas tik pasirinkus jį integracijos parinktyse testavimui.
 
 ### Trikčių šalinimas
 
@@ -165,7 +165,7 @@ Pranešdami apie klaidą nurodykite įrenginio modelį, integracijos versiją, a
 
 ### Kamerų nuoroda
 - Palaikomos kameros gali pateikti kameros esybę, miniatiūrą, tiesioginę transliaciją ir diagnostiką.
-- WebRTC kelias naudojamas tik tada, kai jis prieinamas Home Assistant.
+- Kameros tiesioginis vaizdas pagal numatymą naudoja stabilų X-Sense stream source kelią; eksperimentinis X-Sense WebRTC tiltas skirtas tik testavimui integracijos parinktyse.
 - SD kortelės, mokėjimų, programinės aparatinės įrangos ir paskyros tvarkymas lieka X-Sense programėlėje.
 
 ### Trikčių šalinimo kontrolinis sąrašas

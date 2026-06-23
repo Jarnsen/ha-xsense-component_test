@@ -31,6 +31,18 @@
             }
         }
     },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "camera_live_view_mode": "Camera live view mode"
+                },
+                "data_description": {
+                    "camera_live_view_mode": "Choose the camera playback path. Keep stream source for the current stable live URL path; use the experimental X-Sense WebRTC bridge only for testing."
+                }
+            }
+        }
+    },
     "entity": {
         "binary_sensor": {
             "activate": {

@@ -5,7 +5,10 @@ from __future__ import annotations
 from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
+from secrets import token_urlsafe
+from types import SimpleNamespace
 
+from aiohttp import WSMsgType, web
 from homeassistant import config_entries
 from homeassistant.components.camera import (
     Camera,
@@ -19,13 +22,22 @@ from homeassistant.components.camera.webrtc import (
     WebRTCError,
     WebRTCSendMessage,
 )
+from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.network import get_url
 from webrtc_models import RTCIceCandidateInit
 
 from .api.async_xsense import camera_live_resolution, is_camera_entity
-from .const import DOMAIN, LOGGER
+from .const import (
+    CAMERA_LIVE_VIEW_MODES,
+    CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL,
+    CONF_CAMERA_LIVE_VIEW_MODE,
+    DEFAULT_CAMERA_LIVE_VIEW_MODE,
+    DOMAIN,
+    LOGGER,
+)
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
     DEVICE_ENTITY_WITHOUT_STATION,
@@ -161,7 +173,40 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         entity = self._current_entity()
         if entity is None:
             return None
+        if (
+            _camera_live_view_mode(self.coordinator)
+            == CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL
+            and _is_webrtc_camera(entity)
+        ):
+            source = await _webrtc_bridge_source(self.hass, self.coordinator, entity)
+            debug_context = _camera_debug_context(
+                entity,
+                None,
+                live_view_mode=_camera_live_view_mode(self.coordinator),
+                source_protocol=_stream_source_protocol(source),
+            )
+            if source is None:
+                LOGGER.debug(
+                    "X-Sense camera WebRTC bridge source unavailable: %s",
+                    debug_context,
+                )
+            else:
+                LOGGER.debug(
+                    "X-Sense camera WebRTC bridge source prepared for go2rtc: %s",
+                    debug_context,
+                )
+            return source
+
         source = await self.coordinator.xsense.start_camera_live(entity)
+        LOGGER.debug(
+            "X-Sense camera live source started: %s",
+            _camera_debug_context(
+                entity,
+                None,
+                live_view_mode=_camera_live_view_mode(self.coordinator),
+                source_protocol=_stream_source_protocol(source),
+            ),
+        )
         return source
 
     async def async_will_remove_from_hass(self) -> None:
@@ -174,7 +219,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
 
 
 class XSenseWebRTCCameraEntity(XSenseCameraEntity):
-    """X-Sense camera entity that supports native Home Assistant WebRTC."""
+    """X-Sense camera entity that relays the APK WebRTC signaling path."""
 
     def __init__(
         self,
@@ -193,7 +238,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
 
     @property
     def supported_features(self) -> CameraEntityFeature:
-        """Return native WebRTC stream support."""
+        """Return X-Sense WebRTC stream support."""
         entity = self._current_entity()
         if entity is not None and _is_webrtc_camera(entity):
             return CameraEntityFeature.STREAM
@@ -206,11 +251,11 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         return entity is not None and bool(self._webrtc_sessions)
 
     async def stream_source(self) -> str | None:
-        """Return no ffmpeg stream source for native WebRTC cameras."""
+        """Return no live URL because this mode uses X-Sense WebRTC signaling."""
         entity = self._current_entity()
         if entity is not None:
             LOGGER.debug(
-                "X-Sense camera WebRTC uses native Home Assistant signaling: %s",
+                "X-Sense camera WebRTC uses APK signaling relay: %s",
                 _camera_debug_context(entity, None),
             )
         return None
@@ -525,6 +570,252 @@ def _stream_protocol(entity) -> str | None:
     if protocol is None:
         return None
     return str(protocol).lower()
+
+
+def _camera_live_view_mode(coordinator) -> str:
+    """Return the configured camera live view mode."""
+    entry = getattr(coordinator, "entry", None)
+    options = getattr(entry, "options", {}) if entry is not None else {}
+    mode = options.get(CONF_CAMERA_LIVE_VIEW_MODE, DEFAULT_CAMERA_LIVE_VIEW_MODE)
+    if mode not in CAMERA_LIVE_VIEW_MODES:
+        return DEFAULT_CAMERA_LIVE_VIEW_MODE
+    return mode
+
+
+async def _webrtc_bridge_source(
+    hass: HomeAssistant,
+    coordinator: XSenseDataUpdateCoordinator,
+    entity,
+) -> str | None:
+    """Return a go2rtc-compatible source from the local X-Sense WebRTC bridge."""
+    webrtc_bridge = await hass.async_add_import_executor_job(
+        import_module, __package__ + ".webrtc_bridge"
+    )
+    return await webrtc_bridge.async_get_xsense_bridge_stream_source(
+        hass, coordinator, entity
+    )
+
+
+class XSenseWebRTCSignalView(HomeAssistantView):
+    """Handle go2rtc WebRTC offers through the X-Sense WebRTC signal path."""
+
+    url = "/api/xsense/webrtc/{token}"
+    name = "api:xsense:webrtc"
+    requires_auth = False
+
+    async def get(self, request: web.Request, token: str) -> web.WebSocketResponse:
+        """Handle go2rtc WebSocket WebRTC signaling."""
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        hass: HomeAssistant = request.app["hass"]
+        context = _pop_webrtc_signal_context(hass, token)
+        if context is None:
+            await ws.close()
+            return ws
+
+        coordinator = context["coordinator"]
+        entity = _webrtc_signal_entity(coordinator, context)
+        if entity is None:
+            await ws.close()
+            return ws
+
+        session = None
+        try:
+            async for msg in ws:
+                if msg.type is not WSMsgType.TEXT:
+                    continue
+                payload = msg.json()
+                message_type = payload.get("type")
+                if message_type == "webrtc/offer":
+                    offer_sdp = str(payload.get("value") or "")
+                    session, answer = await _async_xsense_webrtc_session(
+                        hass,
+                        coordinator,
+                        entity,
+                        offer_sdp,
+                        lambda candidate: hass.async_create_task(
+                            _async_send_go2rtc_candidate(ws, candidate)
+                        ),
+                    )
+                    if answer is None:
+                        await ws.send_json({"type": "error", "value": "signal failed"})
+                        await ws.close()
+                        break
+                    await ws.send_json({"type": "webrtc/answer", "value": answer})
+                    session.start_forwarding_remote_candidates()
+                elif message_type == "webrtc/candidate" and session is not None:
+                    candidate = _go2rtc_candidate(payload.get("value"))
+                    if candidate is not None:
+                        await session.add_candidate(candidate)
+        finally:
+            if session is not None:
+                with suppress(Exception):
+                    await session.close()
+        return ws
+
+    async def post(self, request: web.Request, token: str) -> web.Response:
+        """Return an SDP answer for a go2rtc WebRTC source offer."""
+        hass: HomeAssistant = request.app["hass"]
+        context = _pop_webrtc_signal_context(hass, token)
+        if context is None:
+            return web.Response(status=404)
+
+        coordinator = context["coordinator"]
+        entity = _webrtc_signal_entity(coordinator, context)
+        if entity is None:
+            return web.Response(status=404)
+
+        offer_sdp = await request.text()
+        answer = await _async_xsense_webrtc_answer(hass, coordinator, entity, offer_sdp)
+        if answer is None:
+            return web.Response(status=502)
+        return web.Response(text=answer, content_type="application/sdp")
+
+
+def register_webrtc_signal_view(hass: HomeAssistant) -> None:
+    """Register the X-Sense WebRTC signaling HTTP view once."""
+    data = hass.data.setdefault(DOMAIN, {})
+    if data.get("_webrtc_signal_view_registered"):
+        return
+    hass.http.register_view(XSenseWebRTCSignalView)
+    data["_webrtc_signal_view_registered"] = True
+
+
+def _webrtc_signal_source(
+    hass: HomeAssistant,
+    coordinator: XSenseDataUpdateCoordinator,
+    camera_entity: XSenseCameraEntity,
+    entity,
+) -> str:
+    """Return a go2rtc WebRTC source URL for the X-Sense signaling relay."""
+    token = token_urlsafe(24)
+    hass.data.setdefault(DOMAIN, {}).setdefault("_webrtc_signal_tokens", {})[token] = {
+        "coordinator": coordinator,
+        "dev_id": camera_entity._dev_id,
+        "station_id": camera_entity._station_id,
+    }
+    base_url = _websocket_base_url(get_url(hass, prefer_external=False))
+    return f"webrtc:{base_url}/api/xsense/webrtc/{token}"
+
+
+def _websocket_base_url(base_url: str) -> str:
+    """Return a websocket URL base for go2rtc signaling."""
+    if base_url.startswith("https://"):
+        return "wss://" + base_url.removeprefix("https://")
+    if base_url.startswith("http://"):
+        return "ws://" + base_url.removeprefix("http://")
+    return base_url
+
+
+def _pop_webrtc_signal_context(hass: HomeAssistant, token: str) -> dict | None:
+    """Pop a one-use WebRTC signal token context."""
+    tokens = hass.data.setdefault(DOMAIN, {}).setdefault("_webrtc_signal_tokens", {})
+    return tokens.pop(token, None)
+
+
+def _webrtc_signal_entity(coordinator, context: dict):
+    """Return the entity targeted by a WebRTC signal token."""
+    data = coordinator.data or {}
+    dev_id = context.get("dev_id")
+    if context.get("station_id") is not None:
+        return data.get("devices", {}).get(dev_id)
+    return data.get("stations", {}).get(dev_id)
+
+
+async def _async_xsense_webrtc_answer(
+    hass: HomeAssistant,
+    coordinator: XSenseDataUpdateCoordinator,
+    entity,
+    offer_sdp: str,
+) -> str | None:
+    """Relay a go2rtc SDP offer through the X-Sense WebRTC signal server."""
+    session, answer = await _async_xsense_webrtc_session(
+        hass, coordinator, entity, offer_sdp
+    )
+    if session is not None:
+        with suppress(Exception):
+            await session.close()
+    return answer
+
+
+async def _async_xsense_webrtc_session(
+    hass: HomeAssistant,
+    coordinator: XSenseDataUpdateCoordinator,
+    entity,
+    offer_sdp: str,
+    remote_candidate_callback=None,
+):
+    """Return an active X-Sense WebRTC signal session and SDP answer."""
+    ticket_data = await coordinator.xsense.get_camera_webrtc_ticket(
+        entity, force_refresh=True
+    )
+    LOGGER.debug(
+        "X-Sense camera WebRTC ticket response: %s",
+        _ticket_data_debug_context(ticket_data),
+    )
+    if not isinstance(ticket_data, dict):
+        return None, None
+
+    webrtc_signal = await hass.async_add_import_executor_job(
+        import_module, __package__ + ".webrtc_signal"
+    )
+    try:
+        ticket = webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, ticket_data)
+    except (KeyError, TypeError, ValueError) as err:
+        LOGGER.debug(
+            "X-Sense camera WebRTC ticket parse failed: %s",
+            _camera_debug_context(entity, None, error=type(err).__name__),
+        )
+        return None, None
+    if not ticket.is_valid:
+        LOGGER.debug(
+            "X-Sense camera WebRTC ticket expired or incomplete: %s",
+            _camera_debug_context(entity, None),
+        )
+        return None, None
+
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=async_get_clientsession(hass),
+        ticket=ticket,
+        offer_sdp=offer_sdp,
+        resolution=_camera_live_resolution(entity),
+        camera_online=_camera_online(entity),
+        remote_candidate_callback=remote_candidate_callback,
+    )
+    try:
+        return session, await session.start()
+    except Exception as err:  # noqa: BLE001 - go2rtc gets a clean HTTP failure
+        LOGGER.debug(
+            "X-Sense camera WebRTC signal relay failed: %s",
+            _camera_debug_context(entity, None, error=_error_debug_context(err)),
+        )
+        with suppress(Exception):
+            await session.close()
+        return None, None
+
+
+async def _async_send_go2rtc_candidate(
+    ws: web.WebSocketResponse, candidate: dict
+) -> None:
+    """Forward an X-Sense ICE candidate to go2rtc."""
+    value = candidate.get("candidate")
+    if isinstance(value, str) and value and not ws.closed:
+        await ws.send_json({"type": "webrtc/candidate", "value": value})
+
+
+def _go2rtc_candidate(value):
+    """Return a candidate object from go2rtc's candidate string."""
+    if not isinstance(value, str) or not value:
+        return None
+    return SimpleNamespace(candidate=value, sdp_mid="0", sdp_m_line_index=0)
+
+
+def _stream_source_protocol(source: str | None) -> str | None:
+    """Return a stream source protocol without exposing the source URL."""
+    if not isinstance(source, str) or "://" not in source:
+        return None
+    return source.split("://", 1)[0].lower()
 
 
 def _is_webrtc_camera(entity) -> bool:
