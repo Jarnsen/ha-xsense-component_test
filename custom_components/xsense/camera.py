@@ -87,11 +87,10 @@ def _camera_entity(
     entity,
     station_id: str | None = None,
 ) -> XSenseCameraEntity:
-    """Return the correct Home Assistant camera entity for an X-Sense camera."""
-    entity_cls = (
-        XSenseWebRTCCameraEntity if _is_webrtc_camera(entity) else XSenseCameraEntity
+    """Return the Home Assistant camera entity for an X-Sense camera."""
+    return XSenseCameraEntity(
+        coordinator, entity, CAMERA_DESCRIPTION, station_id=station_id
     )
-    return entity_cls(coordinator, entity, CAMERA_DESCRIPTION, station_id=station_id)
 
 
 class XSenseCameraEntity(XSenseEntity, Camera):
@@ -127,9 +126,9 @@ class XSenseCameraEntity(XSenseEntity, Camera):
 
     @property
     def supported_features(self) -> CameraEntityFeature:
-        """Return native stream support for direct camera streams."""
+        """Return stream support for X-Sense live URLs."""
         entity = self._current_entity()
-        if entity is not None and _is_native_stream_camera(entity):
+        if entity is not None and is_camera_entity(entity):
             return CameraEntityFeature.STREAM
         return CameraEntityFeature(0)
 
@@ -160,7 +159,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
     async def stream_source(self) -> str | None:
         """Return a live stream URL when the X-Sense camera service provides one."""
         entity = self._current_entity()
-        if entity is None or not _is_native_stream_camera(entity):
+        if entity is None:
             return None
         source = await self.coordinator.xsense.start_camera_live(entity)
         return source
@@ -526,14 +525,6 @@ def _stream_protocol(entity) -> str | None:
     if protocol is None:
         return None
     return str(protocol).lower()
-
-
-def _is_native_stream_camera(entity) -> bool:
-    """Return whether the camera has a Home Assistant native stream protocol."""
-    protocol = _stream_protocol(entity)
-    if protocol is None:
-        return False
-    return "rtsp" in protocol or "rtmp" in protocol
 
 
 def _is_webrtc_camera(entity) -> bool:

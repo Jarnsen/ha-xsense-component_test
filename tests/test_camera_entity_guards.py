@@ -1004,11 +1004,10 @@ def test_camera_platform_does_not_load_optional_media_bridge():
     assert "aiortc" not in sys.modules
 
 
-def test_camera_capabilities_follow_native_ha_webrtc_entity_class():
+def test_camera_capabilities_use_hls_stream_path_for_all_xsense_cameras():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseCameraEntity,
-        XSenseWebRTCCameraEntity,
     )
 
     rtsp_camera_entity = entity("SSC0A", {"streamProtocol": "rtsp"})
@@ -1035,7 +1034,7 @@ def test_camera_capabilities_follow_native_ha_webrtc_entity_class():
     rtsp_camera = XSenseCameraEntity(
         Coordinator(rtsp_camera_entity), rtsp_camera_entity, CAMERA_DESCRIPTION
     )
-    webrtc_camera = XSenseWebRTCCameraEntity(
+    webrtc_camera = XSenseCameraEntity(
         Coordinator(webrtc_camera_entity), webrtc_camera_entity, CAMERA_DESCRIPTION
     )
 
@@ -1045,12 +1044,7 @@ def test_camera_capabilities_follow_native_ha_webrtc_entity_class():
     assert {
         stream.value
         for stream in webrtc_camera.camera_capabilities.frontend_stream_types
-    } == {"web_rtc"}
-
-    assert (
-        webrtc_camera._async_get_webrtc_client_configuration().data_channel
-        == "data-channel-of-"
-    )
+    } == {"hls"}
 
 
 def test_camera_entity_webrtc_protocol_default_matches_apk():
@@ -1101,10 +1095,10 @@ def test_camera_live_resolution_defaults_to_apk_live_view_default():
     assert camera_live_resolution(camera_entity) == "1920x1080"
 
 
-async def test_webrtc_camera_uses_native_ha_signaling_without_stream_source():
+async def test_default_webrtc_camera_uses_apk_live_url_stream_source():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
-        XSenseWebRTCCameraEntity,
+        XSenseCameraEntity,
     )
 
     camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
@@ -1115,7 +1109,8 @@ async def test_webrtc_camera_uses_native_ha_signaling_without_stream_source():
 
     class XSense:
         async def start_camera_live(self, entity):
-            raise AssertionError("WebRTC cameras use getWebrtcTicket, not newstartlive")
+            assert entity is camera_entity
+            return "rtsp://example/live"
 
     class Coordinator:
         def __init__(self):
@@ -1128,14 +1123,10 @@ async def test_webrtc_camera_uses_native_ha_signaling_without_stream_source():
         def async_add_listener(self, *args, **kwargs):
             return lambda: None
 
-    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
     camera.entity_id = "camera.camera_test"
 
-    assert await camera.stream_source() is None
-    assert (
-        camera._async_get_webrtc_client_configuration().data_channel
-        == "data-channel-of-"
-    )
+    assert await camera.stream_source() == "rtsp://example/live"
 
 
 async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkeypatch):

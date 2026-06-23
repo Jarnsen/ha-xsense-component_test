@@ -26,6 +26,10 @@ _SIGNAL_RECONNECT_DELAY = 5
 _SIGNAL_TERMINAL_CLOSE_CODES = {3002, 3004}
 
 
+class XSenseWebRTCPeerOfflineError(RuntimeError):
+    """Raised when the camera leaves the signal session before answering."""
+
+
 @dataclass(slots=True)
 class XSenseWebRTCTicket:
     """ADDX WebRTC ticket data returned by the X-Sense camera API."""
@@ -276,7 +280,7 @@ class XSenseWebRTCSignalSession:
                     LOGGER.debug(
                         "X-Sense WebRTC signal relay event received: %s",
                         self._debug_context(
-                            event=event, payload=_payload_debug(payload)
+                            event=event, **_signal_event_debug(event, payload)
                         ),
                     )
                 await self._handle_signal_event(event, payload)
@@ -381,17 +385,19 @@ class XSenseWebRTCSignalSession:
             if _is_owned_peer_message(payload, self._ticket.serial_number):
                 self._camera_peer_ready = False
                 if not _future_has_result(self._answer):
-                    self._reset_offer_attempt("peer_out_before_answer")
-                    self._schedule_signal_reconnect(
-                        None, reason="peer_out_before_answer"
-                    )
                     LOGGER.debug(
-                        "X-Sense WebRTC signal relay reset offer after peer out before answer: %s",
+                        "X-Sense WebRTC signal relay camera peer left before answer: %s",
                         self._debug_context(
                             event=event,
                             **_peer_event_debug(payload, self._ticket.serial_number),
                         ),
                     )
+                    if not self._answer.done():
+                        self._answer.set_exception(
+                            XSenseWebRTCPeerOfflineError(
+                                "Camera left the WebRTC signal session before answering"
+                            )
+                        )
             else:
                 LOGGER.debug(
                     "X-Sense WebRTC signal relay ignored peer out for other client: %s",
@@ -441,6 +447,15 @@ class XSenseWebRTCSignalSession:
                     "X-Sense WebRTC signal relay queued remote ICE candidate for HA: %s",
                     self._debug_context(),
                 )
+            return
+        if event:
+            LOGGER.debug(
+                "X-Sense WebRTC signal relay ignored unsupported signal event: %s",
+                self._debug_context(
+                    event=event,
+                    **_signal_event_debug(event, payload),
+                ),
+            )
 
     def _forward_remote_candidate(self, candidate: dict[str, Any]) -> None:
         if self._remote_candidate_callback is None:
@@ -1128,6 +1143,60 @@ def _peer_event_debug(payload: Any, serial_number: str) -> dict[str, Any]:
             _short_id(value) for value in _peer_payload_candidates(payload)
         ],
     }
+
+
+def _signal_event_debug(event: str | None, payload: Any) -> dict[str, Any]:
+    context: dict[str, Any] = {"payload": _payload_debug(payload)}
+    if isinstance(payload, dict):
+        context["payload_fields"] = _debug_payload_fields(payload)
+        if event not in {"PEER_IN", "PEER_OUT"}:
+            context["payload_message"] = _signal_message_debug(payload)
+    elif isinstance(payload, str) and event not in {"PEER_IN", "PEER_OUT"}:
+        context["payload_text"] = _short_payload_text(payload)
+    return context
+
+
+def _signal_message_debug(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "keys": sorted(str(key) for key in payload.keys()),
+        "message_type": payload.get("messageType") or payload.get("type"),
+        "method": payload.get("method"),
+        "action": payload.get("action"),
+        "sender": _short_id(payload.get("senderClientId")),
+        "recipient": _short_id(payload.get("recipientClientId")),
+        "session": _short_id(payload.get("sessionId")),
+        "payload": _decoded_payload_debug(payload.get("messagePayload")),
+    }
+
+
+def _decoded_payload_debug(payload: Any) -> dict[str, Any] | str | None:
+    if not isinstance(payload, str):
+        return None
+    decoded = _decode_payload_object(payload)
+    if isinstance(decoded, dict):
+        return _signal_message_debug(decoded)
+    if isinstance(decoded, str):
+        return _short_payload_text(decoded)
+    return {"payload_len": len(payload)}
+
+
+def _decode_payload_object(payload: str) -> Any:
+    with suppress(Exception):
+        decoded = json.loads(payload)
+        if isinstance(decoded, (dict, str)):
+            return decoded
+    with suppress(Exception):
+        decoded = json.loads(_base64_decode_required_text(payload))
+        if isinstance(decoded, (dict, str)):
+            return decoded
+    decoded_text = _base64_decode_text(payload)
+    return decoded_text or None
+
+
+def _short_payload_text(value: str) -> str:
+    if len(value) <= 160:
+        return value
+    return f"{value[:160]}...({len(value)} chars)"
 
 
 def _debug_payload_fields(payload: Any) -> dict[str, str | None]:
