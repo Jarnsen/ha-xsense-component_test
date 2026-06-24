@@ -110,8 +110,6 @@ ____________________________________________________________
 ____________________________________________________________
 
 ## Ζωντανή προβολή κάμερας και ειδοποιήσεις AI
-Οι υποστηριζόμενες κάμερες χρησιμοποιούν από προεπιλογή το σταθερό X-Sense stream source για ζωντανή προβολή στο Home Assistant με βίντεο και ήχο, όταν το παρέχει η κάμερα/ο λογαριασμός. Η πειραματική γέφυρα X-Sense WebRTC μπορεί να ενεργοποιηθεί στις επιλογές της ενσωμάτωσης για δοκιμές και ενεργοποιεί debug logs. Οι κάμερες δημιουργούν event entities `Motion` και `AI Detection`.
-
 Ο πιο εύκολος τρόπος είναι να εισαγάγετε το συμπεριλαμβανόμενο blueprint με το κουμπί παρακάτω, να επιλέξετε `Motion` ή διαθέσιμο `AI Detection` και να προσαρμόσετε την ενέργεια ειδοποίησης.
 
 [![Εισαγωγή blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

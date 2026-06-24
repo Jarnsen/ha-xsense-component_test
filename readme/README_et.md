@@ -51,8 +51,6 @@ Integratsioon loob olemid ainult nende andmete jaoks, mida seade tegelikult rapo
 Seadmehaldus, jagamine, eemaldamine, püsivara, kontod ja maksed jäävad X-Sense rakendusse. Aruteludeks kasutage Discordi või Home Assistanti foorumit.
 
 ## Kaamera otsevaade ja AI-teavitused
-Toetatud kaamerad kasutavad vaikimisi stabiilset X-Sense stream source teed Home Assistanti otsevaateks video ja heliga, kui kaamera/konto seda pakub. Eksperimentaalse X-Sense WebRTC silla saab testimiseks sisse lülitada integratsiooni seadetes ning see lubab debug-logid. Kaamerad loovad `Motion` ja `AI Detection` sündmuse entiteedid.
-
 Lihtsaim viis on importida kaasas olev blueprint alloleva nupuga, valida `Motion` või saadaolev `AI Detection`, ja vajadusel muuta teavitustoimingut.
 
 [![Impordi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
@@ -125,8 +123,6 @@ Olenevalt mudelist võivad ilmuda suitsu-, CO-, vee-, temperatuuri-, liikumis- j
 
 ### Kaamerad
 
-Toetatud kaamerad võivad pakkuda kaamera olemit, pisipilte, otsevoogu, ühenduse olekut ja X-Sense'i rakendusega kooskõlas olevaid seadeid. Kaamera otsevaade kasutab vaikimisi stabiilset X-Sense stream source teed; eksperimentaalset X-Sense WebRTC silda kasutatakse ainult siis, kui see valitakse integratsiooni seadetes testimiseks.
-
 ### Tõrkeotsing
 
 Kui mõni olem puudub, kontrollige esmalt X-Sense'i rakenduses, kas seade seda väärtust tõesti kuvab. Kui olek jääb vanaks, laadige integratsioon ajutise testina uuesti ja lisage veateatele diagnostika ning asjakohased Home Assistanti logiread.
@@ -165,7 +161,6 @@ Veateates lisage seadme mudel, integratsiooni versioon, kas õige väärtus on X
 
 ### Kaamerate ülevaade
 - Toetatud kaamerad võivad pakkuda kaamera olemit, eelvaadet, otsevoogu ja diagnostikat.
-- Kaamera otsevaade kasutab vaikimisi stabiilset X-Sense stream source teed; eksperimentaalne X-Sense WebRTC sild on ainult testimiseks integratsiooni seadetes.
 - SD-kaardi, maksete, püsivara ja konto haldus jääb X-Sense rakendusse.
 
 ### Tõrkeotsingu kontrollnimekiri

@@ -180,7 +180,6 @@ Tartışmalar ve destek için Discord sunucumuza katılabilir veya Home Assistan
 ### Varlıklar, kameralar ve sorun giderme
 - Varlıklar yalnızca X-Sense gerçekten ilgili alanı bildirdiğinde oluşturulur.
 - Kamera varlıkları ve kamera kontrolleri yalnızca Android uygulamasıyla uyumlu API, ilgili hesap ve model için destek bildirdiğinde oluşturulur.
-- Kamera canlı görüntüsü varsayılan olarak kararlı X-Sense stream source yolunu kullanır; deneysel X-Sense WebRTC köprüsü yalnızca entegrasyon seçeneklerinden test için etkinleştirilir.
 - Eksik bir değer varsa önce X-Sense uygulamasında aynı değerin görünüp değiştiğini kontrol edin, ardından tanılama çıktısını ve ilgili Home Assistant günlüklerini ekleyin.
 
 ## Cihaz ve Varlık Kontrol Listesi
@@ -198,8 +197,6 @@ Tartışmalar ve destek için Discord sunucumuza katılabilir veya Home Assistan
 ____________________________________________________________
 
 ## Kamera canlı görüntüsü ve AI bildirimleri
-Desteklenen kameralar, kamera/hesap sağladığında Home Assistant canlı görüntüsü için video ve sesle birlikte varsayılan olarak kararlı X-Sense stream source kullanır. Deneysel X-Sense WebRTC köprüsü test için entegrasyon seçeneklerinden açılabilir ve debug günlüklerini etkinleştirir. Kameralar `Motion` ve `AI Detection` olay varlıkları da oluşturur.
-
 En kolay yol, aşağıdaki düğmeyle dahil edilen blueprint’i içe aktarmak, `Motion` veya kullanılabilir `AI Detection` seçmek ve gerekirse bildirim eylemini ayarlamaktır.
 
 [![Blueprint’i içe aktar](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

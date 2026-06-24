@@ -51,8 +51,6 @@ Integrationen opretter kun entiteter for data, som enheden faktisk rapporterer. 
 Enhedsadministration, deling, fjernelse, firmware, konti og betalinger forbliver i X-Sense-appen. Brug Discord eller Home Assistant-forummet til diskussioner.
 
 ## Kamera-livevisning og AI-notifikationer
-Understøttede kameraer bruger som standard den stabile X-Sense stream source til Home Assistant-livevisning med video og lyd, når kameraet/kontoen leverer den. Den eksperimentelle X-Sense WebRTC-bro kan aktiveres i integrationsindstillingerne til test og slår debuglogning til. Kameraer opretter event-entiteterne `Motion` og `AI Detection`.
-
 Den nemmeste vej er at importere den inkluderede blueprint med knappen nedenfor, vælge `Motion` eller tilgængelig `AI Detection`, og justere notifikationshandlingen.
 
 [![Importer blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
@@ -125,8 +123,6 @@ Afhængigt af modellen kan der vises røg-, CO-, vand-, temperatur-, bevægelses
 
 ### Kameraer
 
-Understøttede kameraer kan levere kameraenhed, miniaturebilleder, livestream, forbindelsesstatus og indstillinger, der svarer til dem i X-Sense-appen. Kamera-livevisning bruger som standard den stabile X-Sense stream source; den eksperimentelle X-Sense WebRTC-bro bruges kun, når den vælges i integrationsindstillingerne til test.
-
 ### Fejlfinding
 
 Hvis en enhed mangler, skal du først kontrollere i X-Sense-appen, at den pågældende værdi findes for enheden. Hvis status ikke opdateres, kan du genindlæse integrationen som en midlertidig test og vedhæfte diagnostik samt relevante Home Assistant-loglinjer til fejlrapporten.
@@ -165,7 +161,6 @@ Når du rapporterer en fejl, så angiv enhedsmodellen, integrationsversionen, om
 
 ### Kamerareference
 - Understøttede kameraer kan vise kameraentitet, miniaturebillede, live stream og diagnostik.
-- Kamera-livevisning bruger som standard den stabile X-Sense stream source; den eksperimentelle X-Sense WebRTC-bro er kun til test via integrationsindstillingerne.
 - SD-kort, betalinger, firmware og kontoadministration bliver i X-Sense-appen.
 
 ### Tjekliste til fejlfinding

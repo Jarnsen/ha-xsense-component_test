@@ -51,8 +51,6 @@ Integracija ustvari samo entitete za podatke, ki jih naprava dejansko poroča. T
 Upravljanje naprav, deljenje, odstranjevanje, firmware, računi in plačila ostanejo v aplikaciji X-Sense. Za razprave uporabite Discord ali forum Home Assistant.
 
 ## Prikaz kamere uživo i AI obavijesti
-Podržane kamere zadano koriste stabilni X-Sense stream source za Home Assistant prikaz uživo s videom i zvukom kada ga kamera/račun pruža. Eksperimentalni X-Sense WebRTC most može se uključiti u opcijama integracije za testiranje i uključuje debug zapisnike. Kamere stvaraju event entitete `Motion` i `AI Detection`.
-
 Najjednostavnije je uvesti uključeni blueprint donjim gumbom, odabrati `Motion` ili dostupni `AI Detection` i po potrebi prilagoditi akciju obavijesti.
 
 [![Uvezi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
@@ -125,8 +123,6 @@ Ovisno o modelu mogu se prikazati alarmi za dim, CO, vodu, temperaturu, pokret i
 
 ### Kamere
 
-Podržane kamere mogu pružiti entitet kamere, minijature, prijenos uživo, status veze i postavke usklađene s aplikacijom X-Sense. Prikaz kamere uživo zadano koristi stabilni X-Sense stream source; eksperimentalni X-Sense WebRTC most koristi se samo kada je odabran u opcijama integracije za testiranje.
-
 ### Rješavanje problema
 
 Ako neki entitet nedostaje, najprije provjerite u aplikaciji X-Sense prikazuje li uređaj doista tu vrijednost. Ako stanje ostaje zastarjelo, ponovno učitajte integraciju samo kao privremeni test i uz prijavu priložite dijagnostiku te relevantne zapise Home Assistanta.
@@ -165,7 +161,6 @@ Pri prijavi greške navedite model uređaja, verziju integracije, prikazuje li s
 
 ### Referenca za kamere
 - Podržane kamere mogu pružiti entitet kamere, sličicu, prijenos uživo i dijagnostiku.
-- Prikaz kamere uživo zadano koristi stabilni X-Sense stream source; eksperimentalni X-Sense WebRTC most koristi se samo za testiranje u opcijama integracije.
 - SD kartica, plaćanja, firmware i upravljanje računom ostaju u aplikaciji X-Sense.
 
 ### Kontrolni popis za rješavanje problema

@@ -164,7 +164,6 @@ Jika Anda memiliki perangkat X-Sense yang belum diuji, silakan kirim masukan mel
 - Entitas hanya dibuat jika X-Sense benar-benar melaporkan kolom tersebut.
 - Nilai diagnostik dikelompokkan sebagai diagnostik di Home Assistant.
 - Kamera yang didukung dapat menyediakan entitas kamera, gambar pratinjau, siaran langsung, status, dan pengaturan yang didukung.
-- Tampilan langsung kamera memakai X-Sense stream source yang stabil secara default; bridge eksperimental X-Sense WebRTC hanya digunakan jika dipilih di opsi integrasi untuk pengujian.
 - Saat melaporkan masalah, sertakan model, versi integrasi, diagnostik, log, dan apakah nilai berubah di aplikasi.
 
 ## Daftar perangkat dan entitas
@@ -198,8 +197,6 @@ Jika Anda memiliki perangkat X-Sense yang belum diuji, silakan kirim masukan mel
 ____________________________________________________________
 
 ## Tampilan langsung kamera dan notifikasi AI
-Kamera yang didukung secara default memakai X-Sense stream source yang stabil untuk tampilan langsung Home Assistant dengan video dan audio jika kamera/akun menyediakannya. Bridge eksperimental X-Sense WebRTC dapat diaktifkan dari opsi integrasi untuk pengujian dan akan mengaktifkan debug logs. Kamera juga membuat entitas event `Motion` dan `AI Detection`.
-
 Cara termudah adalah mengimpor blueprint yang disertakan dengan tombol di bawah, memilih `Motion` atau `AI Detection` yang tersedia, lalu menyesuaikan aksi notifikasi jika perlu.
 
 [![Impor blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

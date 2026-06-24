@@ -194,8 +194,6 @@ ____________________________________________________________
 ____________________________________________________________
 
 ## कैमरा लाइव व्यू और AI सूचनाएं
-समर्थित कैमरे डिफ़ॉल्ट रूप से Home Assistant लाइव व्यू के लिए स्थिर X-Sense stream source का उपयोग करते हैं, जिसमें वीडियो और ऑडियो तब मिलता है जब कैमरा/खाता इसे देता है। परीक्षण के लिए experimental X-Sense WebRTC bridge को integration options से चालू किया जा सकता है और यह debug logs चालू करता है। कैमरे `Motion` और `AI Detection` event entities भी बनाते हैं।
-
 सबसे आसान तरीका नीचे दिए बटन से शामिल blueprint import करना, `Motion` या उपलब्ध `AI Detection` चुनना, और ज़रूरत हो तो notification action बदलना है।
 
 [![Blueprint import करें](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

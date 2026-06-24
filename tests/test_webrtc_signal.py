@@ -345,7 +345,7 @@ async def test_online_camera_waits_for_peer_in_before_sending_offer():
     assert session._debug_context()["offer_attempt_count"] == 1
 
 
-async def test_peer_out_before_answer_fails_without_same_ticket_retry(monkeypatch):
+async def test_peer_out_before_answer_resets_offer_and_retries_same_ticket(monkeypatch):
     scheduled = []
 
     class FakeTask:
@@ -391,19 +391,24 @@ async def test_peer_out_before_answer_fails_without_same_ticket_retry(monkeypatc
     assert [message["messageType"] for message in session._ws.messages] == [
         "SDP_OFFER",
         "ICE_CANDIDATE",
+        "SDP_OFFER",
+        "ICE_CANDIDATE",
     ]
     assert scheduled == []
-    assert session._answer.done() is True
-    assert isinstance(
-        session._answer.exception(), webrtc_signal.XSenseWebRTCPeerOfflineError
-    )
+    assert session._answer.done() is False
     assert session._offer_sent is True
     assert session._camera_peer_ready is True
-    assert session._debug_context()["offer_attempt_count"] == 1
-    assert session._debug_context()["sent_candidate_count"] == 1
+    assert session._debug_context()["offer_attempt_count"] == 2
+    assert len(
+        [
+            message
+            for message in session._ws.messages
+            if message["messageType"] == "ICE_CANDIDATE"
+        ]
+    ) == 2
 
 
-async def test_peer_out_before_answer_sets_terminal_error_without_reconnect():
+async def test_peer_out_before_answer_waits_for_next_peer_in_without_reconnect():
     session = webrtc_signal.XSenseWebRTCSignalSession(
         session=object(),
         ticket=ticket(),
@@ -428,10 +433,8 @@ async def test_peer_out_before_answer_sets_terminal_error_without_reconnect():
     await session._handle_signal_event("PEER_OUT", peer_payload)
 
     assert session._reconnect_task is None
-    assert session._answer.done() is True
-    assert isinstance(
-        session._answer.exception(), webrtc_signal.XSenseWebRTCPeerOfflineError
-    )
+    assert session._answer.done() is False
+    assert session._offer_sent is False
     assert session._camera_peer_ready is False
     assert session._debug_context()["signal_reconnect_count"] == 0
 

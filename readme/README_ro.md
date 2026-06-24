@@ -51,8 +51,6 @@ Integrarea creează entități numai pentru câmpurile raportate efectiv de disp
 Administrarea dispozitivelor, partajarea, eliminarea, firmware-ul, conturile și plățile rămân în aplicația X-Sense. Pentru discuții folosiți Discord sau forumul Home Assistant.
 
 ## Vizualizare live cameră și notificări AI
-Camerele acceptate folosesc implicit calea stabilă X-Sense stream source pentru vizualizare live în Home Assistant cu video și audio, când camera/contul o oferă. Puntea experimentală X-Sense WebRTC poate fi activată în opțiunile integrării pentru testare și pornește logurile debug. Camerele creează entități de eveniment `Motion` și `AI Detection`.
-
 Cel mai simplu este să importați blueprint-ul inclus cu butonul de mai jos, să alegeți `Motion` sau `AI Detection` disponibil și să ajustați acțiunea de notificare.
 
 [![Importă blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
@@ -125,8 +123,6 @@ Integrarea folosește mesaje MQTT shadow pentru schimbări rapide de stare și i
 
 ### Camere
 
-Camerele acceptate pot oferi entitate cameră, miniaturi, flux live, stare conexiune și setări aliniate cu aplicația X-Sense. Vizualizarea live a camerei folosește implicit calea stabilă X-Sense stream source; puntea experimentală X-Sense WebRTC este folosită doar când este selectată în opțiunile integrării pentru testare.
-
 ### Depanare
 
 Dacă lipsește o entitate, verificați mai întâi în aplicația X-Sense că dispozitivul raportează într-adevăr acea valoare. Dacă starea rămâne învechită, reîncărcați integrarea doar ca test temporar și atașați diagnosticul, împreună cu liniile relevante din jurnalul Home Assistant.
@@ -165,7 +161,6 @@ Când raportați o eroare, includeți modelul dispozitivului, versiunea integră
 
 ### Referință pentru camere
 - Camerele acceptate pot oferi entitate cameră, miniatură, flux live și diagnostic.
-- Vizualizarea live a camerei folosește implicit calea stabilă X-Sense stream source; puntea experimentală X-Sense WebRTC este doar pentru testare din opțiunile integrării.
 - Cardul SD, plățile, firmware-ul și administrarea contului rămân în aplicația X-Sense.
 
 ### Listă de verificare pentru depanare

@@ -110,8 +110,6 @@ ____________________________________________________________
 ____________________________________________________________
 
 ## 攝影機即時預覽與 AI 通知
-支援的攝影機預設使用穩定的 X-Sense stream source 路徑，在攝影機/帳號提供時為 Home Assistant 即時預覽提供影像與音訊。實驗性的 X-Sense WebRTC 橋接可在整合選項中開啟用於測試，並會自動啟用 debug 記錄。攝影機也會建立 `Motion` 和 `AI Detection` 事件實體，例如 `event.front_camera_motion` 和 `event.front_camera_ai_detection`。
-
 最簡單的方式是使用隨附的 blueprint。使用下方按鈕匯入，選擇攝影機的 `Motion` 事件實體，或在訂閱攝影機可用時選擇 `AI Detection`，然後依需要調整通知動作。
 
 [![匯入 blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
@@ -192,7 +190,6 @@ automation:
 - 只有 X-Sense 實際回報的欄位才會建立實體。
 - 診斷值會在 Home Assistant 中歸類為診斷資訊。
 - 支援的相機可提供相機實體、縮圖、即時串流、狀態與支援的設定。
-- 攝影機即時預覽預設使用穩定的 X-Sense stream source；實驗性的 X-Sense WebRTC 橋接只會在整合選項中選取用於測試時使用。
 - 回報問題時，請提供型號、整合版本、診斷資訊、記錄，以及 App 中數值是否會變化。
 
 ## 裝置與實體檢查清單

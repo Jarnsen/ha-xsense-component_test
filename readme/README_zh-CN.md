@@ -111,8 +111,6 @@ ____________________________________________________________
 ____________________________________________________________
 
 ## 摄像机实时预览和 AI 通知
-受支持的摄像机默认使用稳定的 X-Sense stream source 路径，在摄像机/账号提供时为 Home Assistant 实时预览提供视频和音频。实验性的 X-Sense WebRTC 桥接可在集成选项中开启用于测试，并会自动启用 debug 日志。摄像机还会创建 `Motion` 和 `AI Detection` 事件实体，例如 `event.front_camera_motion` 和 `event.front_camera_ai_detection`。
-
 最简单的方式是使用随附的 blueprint。点击下方按钮导入，选择摄像机的 `Motion` 事件实体，或在订阅摄像机可用时选择 `AI Detection`，然后按需调整通知动作。
 
 [![导入 blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

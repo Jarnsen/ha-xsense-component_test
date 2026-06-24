@@ -51,8 +51,6 @@ Integrácia vytvára iba entity pre údaje, ktoré zariadenie skutočne hlási. 
 Správa zariadení, zdieľanie, odstránenie, firmvér, účty a platby zostávajú v aplikácii X-Sense. Na diskusiu použite Discord alebo fórum Home Assistant.
 
 ## Živý náhľad kamery a oznámenia AI
-Podporované kamery predvolene používajú stabilný X-Sense stream source pre živý náhľad v Home Assistante s videom a zvukom, ak ho kamera/účet poskytuje. Experimentálny X-Sense WebRTC bridge možno zapnúť v možnostiach integrácie na testovanie a zapne debug logy. Kamery vytvárajú event entity `Motion` a `AI Detection`.
-
 Najjednoduchšie je importovať priložený blueprint tlačidlom nižšie, vybrať `Motion` alebo dostupné `AI Detection` a upraviť akciu oznámenia.
 
 [![Importovať blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
@@ -125,8 +123,6 @@ V závislosti od modelu sa môžu zobraziť alarmy dymu, CO, vody, teploty, pohy
 
 ### Kamery
 
-Podporované kamery môžu poskytovať entitu kamery, náhľady, živý stream, stav pripojenia a nastavenia zodpovedajúce aplikácii X-Sense. Živý náhľad kamery predvolene používa stabilný X-Sense stream source; experimentálny X-Sense WebRTC bridge sa použije len pri výbere v možnostiach integrácie na testovanie.
-
 ### Riešenie problémov
 
 Ak niektorá entita chýba, najprv v aplikácii X-Sense overte, že zariadenie túto hodnotu naozaj zobrazuje. Ak stav zostáva zastaraný, znova načítajte integráciu iba ako dočasný test a k hláseniu priložte diagnostiku aj príslušné riadky denníka Home Assistantu.
@@ -165,7 +161,6 @@ Pri hlásení chyby uveďte model zariadenia, verziu integrácie, či sa správn
 
 ### Referencia pre kamery
 - Podporované kamery môžu poskytovať entitu kamery, náhľad, živý stream a diagnostiku.
-- Živý náhľad kamery predvolene používa stabilný X-Sense stream source; experimentálny X-Sense WebRTC bridge je len na testovanie v možnostiach integrácie.
 - SD karta, platby, firmvér a správa účtu zostávajú v aplikácii X-Sense.
 
 ### Kontrolný zoznam riešenia problémov

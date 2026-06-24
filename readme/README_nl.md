@@ -109,8 +109,6 @@ Sommige entiteiten zijn diagnostisch of configuratiegerelateerd en worden zo geg
 ____________________________________________________________
 
 ## Camera-livebeeld en AI-meldingen
-Ondersteunde camera’s gebruiken standaard het stabiele X-Sense-streambronpad voor Home Assistant-livebeeld met video en audio wanneer de camera/het account dit levert. De experimentele X-Sense WebRTC-bridge kan in de integratieopties voor tests worden ingeschakeld en zet daarbij automatisch debuglogging aan. Camera’s maken ook `Motion`- en `AI Detection`-evententiteiten aan, zoals `event.front_camera_motion` en `event.front_camera_ai_detection`.
-
 De eenvoudigste manier is de meegeleverde blueprint. Importeer die met de knop hieronder, kies de camera-evententiteit `Motion` of `AI Detection` voor een camera met abonnement, en pas de meldingsactie zo nodig aan.
 
 [![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

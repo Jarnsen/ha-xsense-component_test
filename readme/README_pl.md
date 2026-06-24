@@ -111,8 +111,6 @@ Część encji jest diagnostyczna lub konfiguracyjna i tak jest grupowana w Home
 ____________________________________________________________
 
 ## Podgląd kamery na żywo i powiadomienia AI
-Obsługiwane kamery domyślnie używają stabilnej ścieżki źródła strumienia X-Sense do podglądu na żywo w Home Assistant z wideo i audio, gdy kamera/konto ją udostępnia. Eksperymentalny most X-Sense WebRTC można włączyć w opcjach integracji do testów; włącza on automatycznie logowanie debugowania. Kamery tworzą też encje zdarzeń `Motion` i `AI Detection`, takie jak `event.front_camera_motion` oraz `event.front_camera_ai_detection`.
-
 Najprościej użyć dołączonego blueprintu. Zaimportuj go przyciskiem poniżej, wybierz encję zdarzenia kamery `Motion` albo `AI Detection` dla kamery z subskrypcją, a następnie w razie potrzeby zmień akcję powiadomienia.
 
 [![Importuj blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

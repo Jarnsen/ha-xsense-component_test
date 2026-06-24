@@ -110,8 +110,6 @@ ____________________________________________________________
 ____________________________________________________________
 
 ## มุมมองสดของกล้องและการแจ้งเตือน AI
-กล้องที่รองรับจะใช้ X-Sense stream source แบบเสถียรเป็นค่าเริ่มต้นสำหรับมุมมองสดใน Home Assistant พร้อมวิดีโอและเสียงเมื่อกล้อง/บัญชีให้ข้อมูลนี้ สามารถเปิดสะพาน X-Sense WebRTC แบบทดลองได้จากตัวเลือกการผสานรวมเพื่อทดสอบ และจะเปิด debug logs กล้องยังสร้าง event entities `Motion` และ `AI Detection` ด้วย
-
 วิธีที่ง่ายที่สุดคือ import blueprint ที่ให้มาด้วยปุ่มด้านล่าง เลือก `Motion` หรือ `AI Detection` ที่มี และปรับ action การแจ้งเตือนตามต้องการ
 
 [![นำเข้า blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
@@ -192,7 +190,6 @@ automation:
 - เอนทิตีจะถูกสร้างเฉพาะเมื่อ X-Sense รายงาน ฟิลด์นั้นจริง
 - ค่าการวินิจฉัยถูกจัดกลุ่มเป็น ข้อมูลวินิจฉัยใน Home Assistant
 - กล้องที่รองรับอาจมี เอนทิตีกล้อง ภาพตัวอย่าง สตรีมสด สถานะ และการตั้งค่าที่รองรับ
-- มุมมองสดของกล้องใช้ X-Sense stream source แบบเสถียรเป็นค่าเริ่มต้น สะพาน X-Sense WebRTC แบบทดลองจะใช้เฉพาะเมื่อเลือกในตัวเลือกการผสานรวมเพื่อทดสอบเท่านั้น
 - เมื่อรายงานปัญหา ให้ระบุรุ่น เวอร์ชันอินทิเกรชัน ข้อมูลวินิจฉัย บันทึก และค่ามีการเปลี่ยนในแอปหรือไม่
 
 ## รายการตรวจสอบอุปกรณ์และเอนทิตี

@@ -21,7 +21,7 @@ This HACS integration is actively maintained for users who want broader X-Sense 
 - Support for automations based on X-Sense sensor data.
 - Support for the following device types: base stations, smoke detectors, carbon monoxide detectors, heat alarms, water leak detectors, hygrometers, door sensors, motion sensors, lights, keypads, mailbox sensors, audio monitoring devices, and supported cameras when they are available in the X-Sense account.
 - Real-time updates through X-Sense MQTT shadows, with periodic cloud polling as a fallback.
-- Supported cameras use the stable X-Sense stream source path by default for Home Assistant live view. An experimental X-Sense WebRTC bridge option is available only for testing the APK-style signaling path.
+- Supported cameras use native Home Assistant WebRTC signaling for WebRTC cameras and direct stream URLs for cameras that report RTSP/RTMP support.
 - Supported cameras expose AI notification detections as Home Assistant event entities for use with the included automation blueprint. Supported camera setup and tuning controls are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - Easy setup through HACS (Home Assistant Community Store).
 
@@ -117,7 +117,7 @@ Some entities are diagnostic or configuration-related and are grouped that way i
 ____________________________________________________________
 
 ## Camera Live View and AI Notifications
-Supported cameras use the stable X-Sense stream source path by default for Home Assistant live view with video and audio when the camera/account provides it. An experimental X-Sense WebRTC bridge can be selected from the integration options for testing, and it automatically enables integration debug logging while selected. Cameras also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+Supported cameras use native Home Assistant WebRTC signaling for WebRTC cameras and direct stream URLs for cameras that report RTSP/RTMP support. Cameras also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
 
 The easiest UI path is the included blueprint. Use the button below to import it, select the camera `Motion` event entity, or `AI Detection` when it is available for a subscribed camera, then keep or replace the default notification action. If a mobile notification action fails because a phone is not connected to local push notifications, edit the blueprint automation action and choose a working notification target.
 

@@ -51,8 +51,6 @@ Integraatio luo entiteettejä vain tiedoille, jotka laite todella raportoi. Näi
 Laitteiden hallinta, jakaminen, poistaminen, laiteohjelmisto, tilit ja maksut pysyvät X-Sense-sovelluksessa. Keskusteluihin voi käyttää Discordia tai Home Assistant -foorumia.
 
 ## Kameran live-näkymä ja AI-ilmoitukset
-Tuetut kamerat käyttävät oletuksena vakaata X-Sense stream source -polkua Home Assistantin live-näkymään videolla ja äänellä, kun kamera/tili tarjoaa sen. Kokeellisen X-Sense WebRTC -sillan voi ottaa käyttöön integraation asetuksissa testausta varten, ja se ottaa debug-lokit käyttöön. Kamerat luovat `Motion`- ja `AI Detection` -tapahtumaentiteetit.
-
 Helpoin tapa on tuoda mukana oleva blueprint alla olevalla painikkeella, valita `Motion` tai saatavilla oleva `AI Detection` ja muokata ilmoitustoimintoa.
 
 [![Tuo blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
@@ -125,8 +123,6 @@ Mallista riippuen näkyviin voi tulla savu-, CO-, vesi-, lämpötila-, liike- ja
 
 ### Kamerat
 
-Tuetut kamerat voivat tarjota kameraentiteetin, pikkukuvat, live-lähetyksen, yhteyden tilan ja X-Sense-sovelluksen mukaiset asetukset. Kameran live-näkymä käyttää oletuksena vakaata X-Sense stream source -polkua; kokeellista X-Sense WebRTC -siltaa käytetään vain, kun se valitaan integraation asetuksista testausta varten.
-
 ### Vianmääritys
 
 Jos jokin entiteetti puuttuu, tarkista ensin X-Sense-sovelluksesta, että kyseinen arvo on oikeasti laitteen tarjoama. Jos tila jää vanhaksi, lataa integraatio uudelleen vain väliaikaisena testinä ja liitä virheilmoitukseen diagnostiikka sekä asiaankuuluvat Home Assistant -lokirivit.
@@ -165,7 +161,6 @@ Kun ilmoitat viasta, kerro laitteen malli, integraation versio, näkyykö oikea 
 
 ### Kameraviite
 - Tuetut kamerat voivat tarjota kameraentiteetin, esikatselun, live-streamin ja diagnostiikkaa.
-- Kameran live-näkymä käyttää oletuksena vakaata X-Sense stream source -polkua; kokeellinen X-Sense WebRTC -silta on tarkoitettu vain testaukseen integraation asetuksissa.
 - SD-kortti, maksut, laiteohjelmisto ja tilinhallinta pysyvät X-Sense-sovelluksessa.
 
 ### Vianmäärityksen tarkistuslista

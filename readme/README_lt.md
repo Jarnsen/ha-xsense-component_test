@@ -51,8 +51,6 @@ Integracija kuria esybes tik tiems duomenims, kuriuos įrenginys iš tikrųjų p
 Įrenginių valdymas, bendrinimas, šalinimas, firmware, paskyros ir mokėjimai lieka X-Sense programėlėje. Diskusijoms naudokite Discord arba Home Assistant forumą.
 
 ## Kameros tiesioginis vaizdas ir AI pranešimai
-Palaikomos kameros pagal numatymą naudoja stabilų X-Sense stream source kelią Home Assistant tiesioginiam vaizdui su vaizdu ir garsu, kai kamera/paskyra jį pateikia. Eksperimentinį X-Sense WebRTC tiltą galima įjungti integracijos parinktyse testavimui, jis įjungia debug žurnalus. Kameros sukuria `Motion` ir `AI Detection` įvykių esybes.
-
 Paprasčiausia importuoti įtrauktą blueprint žemiau esančiu mygtuku, pasirinkti `Motion` arba prieinamą `AI Detection` ir prireikus pakoreguoti pranešimo veiksmą.
 
 [![Importuoti blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
@@ -125,8 +123,6 @@ Priklausomai nuo modelio gali būti rodomi dūmų, CO, vandens, temperatūros, j
 
 ### Kameros
 
-Palaikomos kameros gali pateikti kameros objektą, miniatiūras, tiesioginį srautą, ryšio būseną ir nustatymus, suderintus su X-Sense programėle. Kameros tiesioginis vaizdas pagal numatymą naudoja stabilų X-Sense stream source kelią; eksperimentinis X-Sense WebRTC tiltas naudojamas tik pasirinkus jį integracijos parinktyse testavimui.
-
 ### Trikčių šalinimas
 
 Jei objektas nerodomas, pirmiausia X-Sense programėlėje patikrinkite, ar įrenginys iš tiesų pateikia tą reikšmę. Jei būsena lieka pasenusi, perkraukite integraciją tik kaip laikiną bandymą ir prie pranešimo pridėkite diagnostiką bei susijusias Home Assistant žurnalo eilutes.
@@ -165,7 +161,6 @@ Pranešdami apie klaidą nurodykite įrenginio modelį, integracijos versiją, a
 
 ### Kamerų nuoroda
 - Palaikomos kameros gali pateikti kameros esybę, miniatiūrą, tiesioginę transliaciją ir diagnostiką.
-- Kameros tiesioginis vaizdas pagal numatymą naudoja stabilų X-Sense stream source kelią; eksperimentinis X-Sense WebRTC tiltas skirtas tik testavimui integracijos parinktyse.
 - SD kortelės, mokėjimų, programinės aparatinės įrangos ir paskyros tvarkymas lieka X-Sense programėlėje.
 
 ### Trikčių šalinimo kontrolinis sąrašas

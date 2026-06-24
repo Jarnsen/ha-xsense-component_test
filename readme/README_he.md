@@ -101,8 +101,6 @@ automation:
 
 ### מצלמות
 
-מצלמות נתמכות יכולות לספק ישות מצלמה, תמונות ממוזערות, זרם חי, מצב חיבור והגדרות התואמות לאפליקציית X-Sense. תצוגה חיה של מצלמה משתמשת כברירת מחדל ב-X-Sense stream source היציב; גשר X-Sense WebRTC הניסיוני משמש רק כאשר הוא נבחר באפשרויות האינטגרציה לצורך בדיקה.
-
 ### פתרון תקלות
 
 אם ישות מסוימת חסרה, יש לבדוק קודם באפליקציית X-Sense שהמכשיר באמת מציג את הערך הזה. אם מצב נשאר מיושן, אפשר לטעון מחדש את האינטגרציה כבדיקה זמנית בלבד ולצרף לדיווח אבחון ושורות יומן רלוונטיות מ-Home Assistant.
@@ -169,7 +167,6 @@ automation:
 
 ### מצלמות ו-WebRTC
 - מצלמות נתמכות יכולות לחשוף תמונה ממוזערת וכתובת stream.
-- תצוגה חיה של מצלמה משתמשת כברירת מחדל ב-X-Sense stream source היציב; גשר X-Sense WebRTC הניסיוני מיועד רק לבדיקה דרך אפשרויות האינטגרציה.
 - זמינות ה-stream תלויה במכשיר, בחשבון ובתגובת שירות X-Sense.
 - הגדרות שאינן זמינות בחשבון לא יוצגו כפקדים.
 
@@ -190,8 +187,6 @@ automation:
 ____________________________________________________________
 
 ## תצוגת מצלמה חיה והתראות AI
-מצלמות נתמכות משתמשות כברירת מחדל ב-X-Sense stream source היציב לתצוגה חיה ב-Home Assistant עם וידאו ושמע כאשר המצלמה/החשבון מספקים אותו. ניתן להפעיל את גשר X-Sense WebRTC הניסיוני באפשרויות האינטגרציה לצורך בדיקה, והוא מפעיל debug logs. המצלמות יוצרות ישויות אירוע `Motion` ו-`AI Detection`.
-
 הדרך הפשוטה ביותר היא לייבא את ה-blueprint המצורף בעזרת הכפתור למטה, לבחור `Motion` או `AI Detection` זמין, ולשנות את פעולת ההתראה לפי הצורך.
 
 [![ייבוא blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

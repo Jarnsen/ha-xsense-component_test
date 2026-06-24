@@ -15,13 +15,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AsyncXSense
 from .api.exceptions import APIFailure, AuthFailed
-from .const import (
-    CAMERA_LIVE_VIEW_MODE_STREAM_SOURCE,
-    CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL,
-    CONF_CAMERA_LIVE_VIEW_MODE,
-    DEFAULT_CAMERA_LIVE_VIEW_MODE,
-    DOMAIN,
-)
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -45,22 +39,7 @@ def credentials_schema(default_email: str | None = None) -> vol.Schema:
 
 def options_schema(options: dict[str, Any] | None = None) -> vol.Schema:
     """Return the options schema."""
-    options = options or {}
-    return vol.Schema(
-        {
-            vol.Required(
-                CONF_CAMERA_LIVE_VIEW_MODE,
-                default=options.get(
-                    CONF_CAMERA_LIVE_VIEW_MODE, DEFAULT_CAMERA_LIVE_VIEW_MODE
-                ),
-            ): vol.In(
-                {
-                    CAMERA_LIVE_VIEW_MODE_STREAM_SOURCE: "Stream source",
-                    CAMERA_LIVE_VIEW_MODE_WEBRTC_SIGNAL: "Experimental X-Sense WebRTC bridge",
-                }
-            )
-        }
-    )
+    return vol.Schema({})
 
 
 async def _async_init_and_login(session: AsyncXSense, email, password) -> None:

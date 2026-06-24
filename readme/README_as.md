@@ -163,7 +163,6 @@ automation:
 - X-Sense-এ সঁচাকৈ জনোৱা ক্ষেত্ৰ থাকিলেহে এণ্টিটি সৃষ্টি হয়।
 - নিৰ্ণায়ক মানসমূহ Home Assistant-ত নিৰ্ণায়ক হিচাপে গোট কৰা হয়।
 - কেমেৰা সমৰ্থিত হ’লে কেমেৰা এণ্টিটি, সৰু পূৰ্বদৃশ্য, live stream, স্থিতি, আৰু সমৰ্থিত ছেটিং দেখুওৱা হয়।
-- কেমেৰা live view ডিফল্টভাৱে স্থিৰ X-Sense stream source ব্যৱহাৰ কৰে; experimental X-Sense WebRTC bridge কেৱল integration options ত test ৰ বাবে বাছিলে ব্যৱহাৰ হয়।
 - সমস্যা জনাওঁতে মডেল, একীকৰণৰ সংস্কৰণ, নিৰ্ণায়ক তথ্য, লগ, আৰু app-ত মান সলনি হয় নে নহয় উল্লেখ কৰক।
 
 ## ডিভাইচ আৰু এণ্টিটি পৰীক্ষা-তালিকা
@@ -197,8 +196,6 @@ automation:
 ____________________________________________________________
 
 ## কেমেৰা লাইভ ভিউ আৰু AI জাননী
-সমৰ্থিত কেমেৰাই ডিফল্টভাৱে Home Assistant লাইভ ভিউৰ বাবে স্থিৰ X-Sense stream source ব্যৱহাৰ কৰে, য’ত কেমেৰা/একাউণ্টে দিলে video আৰু audio থাকে। পৰীক্ষাৰ বাবে experimental X-Sense WebRTC bridge integration options ৰ পৰা অন কৰিব পাৰি আৰু ই debug logs অন কৰে। কেমেৰাই `Motion` আৰু `AI Detection` event entities সৃষ্টি কৰে।
-
 সৰ্বাধিক সহজ পদ্ধতি হ’ল তলৰ বুটামেৰে অন্তর্ভুক্ত blueprint import কৰা, `Motion` বা উপলব্ধ `AI Detection` বাছনি কৰা, আৰু প্ৰয়োজন হলে notification action সলনি কৰা।
 
 [![Blueprint import কৰক](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

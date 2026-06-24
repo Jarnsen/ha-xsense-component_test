@@ -116,8 +116,6 @@ Einige Entitäten sind Diagnose- oder Konfigurationseinheiten und werden in Home
 ____________________________________________________________
 
 ## Kamera-Liveansicht und KI-Benachrichtigungen
-Unterstützte Kameras nutzen standardmäßig den stabilen X-Sense-Stream-Source-Pfad für Home Assistant Liveansicht mit Video und Audio, wenn Kamera und Konto ihn bereitstellen. Die experimentelle X-Sense-WebRTC-Bridge kann in den Integrationsoptionen zum Testen aktiviert werden und schaltet dabei automatisch Debug-Logging ein. Kameras erstellen außerdem `Motion`- und `AI Detection`-Event-Entitäten wie `event.front_camera_motion` und `event.front_camera_ai_detection`.
-
 Der einfachste Weg ist der enthaltene Blueprint. Importiere ihn mit der Schaltfläche unten, wähle die Kamera-Event-Entität `Motion` oder bei abonnierter Kamera `AI Detection`, und passe die Benachrichtigungsaktion bei Bedarf an.
 
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

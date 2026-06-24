@@ -163,7 +163,6 @@ automation:
 - موجودیت فقط زمانی ساخته می‌شود که X-Sense آن فیلد را گزارش کند.
 - مقدارهای diagnostic در Home Assistant به عنوان diagnostic گروه‌بندی می‌شوند.
 - دوربین‌های پشتیبانی‌شده می‌توانند موجودیت دوربین، تصویر بندانگشتی، پخش زنده، وضعیت و تنظیمات پشتیبانی‌شده داشته باشند.
-- نمای زنده دوربین به‌صورت پیش‌فرض از X-Sense stream source پایدار استفاده می‌کند؛ پل آزمایشی X-Sense WebRTC فقط وقتی در گزینه‌های ادغام برای تست انتخاب شود استفاده می‌شود.
 - هنگام گزارش مشکل، مدل، نسخه یکپارچه‌سازی، داده‌های عیب‌یابی، گزارش‌ها و تغییر کردن یا نکردن مقدار در برنامه را ذکر کنید.
 
 ## فهرست دستگاه‌ها و موجودیت‌ها
@@ -197,8 +196,6 @@ automation:
 ____________________________________________________________
 
 ## نمای زنده دوربین و اعلان‌های AI
-دوربین‌های پشتیبانی‌شده به‌صورت پیش‌فرض از X-Sense stream source پایدار برای نمای زنده Home Assistant با ویدئو و صدا استفاده می‌کنند، اگر دوربین/حساب آن را ارائه دهد. پل آزمایشی X-Sense WebRTC را می‌توان برای تست در گزینه‌های ادغام فعال کرد و debug logs را روشن می‌کند. دوربین‌ها موجودیت‌های رویداد `Motion` و `AI Detection` نیز می‌سازند.
-
 ساده‌ترین راه، وارد کردن blueprint همراه با دکمه زیر، انتخاب `Motion` یا `AI Detection` موجود و تنظیم اقدام اعلان در صورت نیاز است.
 
 [![وارد کردن blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

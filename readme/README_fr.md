@@ -112,8 +112,6 @@ Certaines entités sont de diagnostic ou de configuration et sont regroupées ai
 ____________________________________________________________
 
 ## Vue en direct caméra et notifications IA
-Les caméras compatibles utilisent par défaut le chemin stable de source de flux X-Sense pour la vue en direct Home Assistant avec vidéo et audio lorsque la caméra/le compte le fournit. La passerelle expérimentale X-Sense WebRTC peut être activée dans les options de l’intégration pour les tests et active alors automatiquement les journaux de débogage. Les caméras créent aussi les entités d’événement `Motion` et `AI Detection`, comme `event.front_camera_motion` et `event.front_camera_ai_detection`.
-
 Le plus simple est d’utiliser le blueprint inclus. Importez-le avec le bouton ci-dessous, choisissez l’entité d’événement caméra `Motion` ou `AI Detection` pour une caméra avec abonnement, puis adaptez l’action de notification si nécessaire.
 
 [![Importer le blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

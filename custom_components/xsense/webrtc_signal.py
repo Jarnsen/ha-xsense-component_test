@@ -26,10 +26,6 @@ _SIGNAL_RECONNECT_DELAY = 5
 _SIGNAL_TERMINAL_CLOSE_CODES = {3002, 3004}
 
 
-class XSenseWebRTCPeerOfflineError(RuntimeError):
-    """Raised when the camera leaves the signal session before answering."""
-
-
 @dataclass(slots=True)
 class XSenseWebRTCTicket:
     """ADDX WebRTC ticket data returned by the X-Sense camera API."""
@@ -385,19 +381,14 @@ class XSenseWebRTCSignalSession:
             if _is_owned_peer_message(payload, self._ticket.serial_number):
                 self._camera_peer_ready = False
                 if not _future_has_result(self._answer):
+                    self._reset_offer_attempt("peer_out_before_answer")
                     LOGGER.debug(
-                        "X-Sense WebRTC signal relay camera peer left before answer: %s",
+                        "X-Sense WebRTC signal relay reset offer after peer out before answer: %s",
                         self._debug_context(
                             event=event,
                             **_peer_event_debug(payload, self._ticket.serial_number),
                         ),
                     )
-                    if not self._answer.done():
-                        self._answer.set_exception(
-                            XSenseWebRTCPeerOfflineError(
-                                "Camera left the WebRTC signal session before answering"
-                            )
-                        )
             else:
                 LOGGER.debug(
                     "X-Sense WebRTC signal relay ignored peer out for other client: %s",

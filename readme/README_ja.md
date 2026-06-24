@@ -109,8 +109,6 @@ ____________________________________________________________
 ____________________________________________________________
 
 ## カメラのライブビューとAI通知
-対応カメラは、カメラ/アカウントが提供している場合、Home Assistant のライブビューで映像と音声を表示するために、既定で安定した X-Sense stream source パスを使用します。実験的な X-Sense WebRTC ブリッジは統合オプションからテスト用に有効化でき、有効中は debug ログが自動的に有効になります。カメラは `event.front_camera_motion` や `event.front_camera_ai_detection` のような `Motion` と `AI Detection` のイベントエンティティも作成します。
-
 最も簡単な方法は同梱の blueprint を使うことです。下のボタンでインポートし、カメラの `Motion` イベントエンティティ、またはサブスクリプション付きカメラで利用できる場合は `AI Detection` を選び、必要に応じて通知アクションを調整してください。
 
 [![blueprint をインポート](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

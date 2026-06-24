@@ -115,8 +115,6 @@ Algumas entidades são de diagnóstico ou configuração e são agrupadas dessa 
 ____________________________________________________________
 
 ## Visualização ao vivo da câmera e notificações de IA
-As câmeras compatíveis usam por padrão o caminho estável de fonte de stream X-Sense para a visualização ao vivo no Home Assistant com vídeo e áudio quando a câmera/conta fornece esse recurso. A ponte experimental X-Sense WebRTC pode ser ativada nas opções da integração para testes e ativa automaticamente o log de depuração. As câmeras também criam entidades de evento `Motion` e `AI Detection`, como `event.front_camera_motion` e `event.front_camera_ai_detection`.
-
 O caminho mais simples é o blueprint incluído. Importe-o com o botão abaixo, escolha a entidade de evento da câmera `Motion` ou `AI Detection` para uma câmera com assinatura, e ajuste a ação de notificação se necessário.
 
 [![Importar blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)

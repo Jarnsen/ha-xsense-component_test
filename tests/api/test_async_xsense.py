@@ -2928,7 +2928,7 @@ async def test_update_camera_data_creates_camera_from_addx_without_home_camera_e
 
 
 @pytest.mark.asyncio
-async def test_start_camera_live_uses_default_stream_source_endpoint():
+async def test_start_camera_live_uses_direct_stream_source_endpoint():
     client = async_xsense.AsyncXSense()
     camera = device_module.Device(
         None,
@@ -2948,8 +2948,8 @@ async def test_start_camera_live_uses_default_stream_source_endpoint():
     assert await client.start_camera_live(camera) == "rtsp://example/live"
     assert calls == [
         (
-            "/device/startlive",
-            {"serialNumber": "cam-sn"},
+            "/device/newstartlive",
+            {"serialNumber": "cam-sn", "liveResolution": "auto"},
         )
     ]
 
