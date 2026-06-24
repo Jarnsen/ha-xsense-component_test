@@ -902,7 +902,7 @@ class AsyncXSense(XSenseBase):
         return None
 
     async def start_camera_live(self, camera: Entity) -> str | None:
-        """Return the direct live URL from the ADDX start-live endpoint."""
+        """Return the non-WebRTC live URL for Home Assistant's stream path."""
         live_started_at = camera.data.get("cameraLiveStartedAt")
         if (
             (camera_live_url := camera.data.get("cameraLiveUrl"))
@@ -913,9 +913,8 @@ class AsyncXSense(XSenseBase):
             return camera_live_url
 
         data = await self.addx_call(
-            "/device/newstartlive",
+            "/device/startlive",
             serialNumber=camera.sn,
-            liveResolution=camera_live_resolution(camera),
         )
         if isinstance(data, dict):
             live_url = _camera_live_url(data)

@@ -1355,13 +1355,13 @@ async def test_default_webrtc_camera_uses_legacy_rtsp_stream_source():
     assert await camera.stream_source() == "rtsp://example/live"
 
 
-async def test_default_camera_returns_apk_stream_source_url():
+async def test_default_camera_does_not_pass_webrtc_url_to_stream_worker():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseCameraEntity,
     )
 
-    camera_entity = entity("SSC0A", {"streamProtocol": "rtsp"})
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
     camera_entity.entity_id = "camera-test"
     camera_entity.sn = "SSC0ATEST"
     camera_entity.name = "Camera"
@@ -1372,10 +1372,11 @@ async def test_default_camera_returns_apk_stream_source_url():
         async def start_camera_live(self, entity):
             assert entity is camera_entity
             calls.append("start")
-            return "rtsp://example/live"
+            return "webrtc://3.65.49.157/live/camera_live"
 
         async def stop_camera_live(self, entity):
-            raise AssertionError("Default stream source should not be stopped")
+            assert entity is camera_entity
+            calls.append("stop")
 
     class Coordinator:
         def __init__(self):
@@ -1391,8 +1392,8 @@ async def test_default_camera_returns_apk_stream_source_url():
     camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
     camera.entity_id = "camera.camera_test"
 
-    assert await camera.stream_source() == "rtsp://example/live"
-    assert calls == ["start"]
+    assert await camera.stream_source() is None
+    assert calls == ["start", "stop"]
 
 
 async def test_default_camera_returns_none_when_stream_endpoint_no_response():
@@ -1412,7 +1413,7 @@ async def test_default_camera_returns_none_when_stream_endpoint_no_response():
         async def start_camera_live(self, entity):
             assert entity is camera_entity
             raise APIFailure(
-                "ADDX request for /device/newstartlive failed with error -3021/DEVICE_NO_RESPONSE"
+                "ADDX request for /device/startlive failed with error -3021/DEVICE_NO_RESPONSE"
             )
 
     class Coordinator:

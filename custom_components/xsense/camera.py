@@ -221,6 +221,19 @@ class XSenseCameraEntity(XSenseEntity, Camera):
             )
             return None
         source_protocol = _stream_source_protocol(source)
+        if source_protocol == "webrtc":
+            with suppress(Exception):
+                await self.coordinator.xsense.stop_camera_live(entity)
+            LOGGER.debug(
+                "X-Sense camera live source ignored on default stream path: %s",
+                _camera_debug_context(
+                    entity,
+                    None,
+                    live_view_mode=_camera_live_view_mode(self.coordinator),
+                    source_protocol=source_protocol,
+                ),
+            )
+            return None
         LOGGER.debug(
             "X-Sense camera live source started: %s",
             _camera_debug_context(
