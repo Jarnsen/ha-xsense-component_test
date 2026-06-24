@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import sys
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -1125,6 +1126,95 @@ async def test_default_native_webrtc_camera_allows_webrtc_provider_probe():
     )
 
 
+def test_webrtc_client_config_uses_cached_ticket_ice_servers():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseWebRTCCameraEntity,
+    )
+
+    camera_entity = entity(
+        "SSC0A",
+        {
+            "streamProtocol": "webrtc",
+            "supportWebrtc": True,
+            "cameraWebrtcTicket": {
+                "expirationTime": int(time.time() * 1000) + 300000,
+                "iceServer": [
+                    {
+                        "url": "turn:turn.example.com:3478",
+                        "username": "user",
+                        "credential": "secret",
+                    }
+                ],
+            },
+        },
+    )
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class Coordinator:
+        data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+
+    config = camera._async_get_webrtc_client_configuration().to_frontend_dict()
+
+    assert config["dataChannel"] == "data-channel-of-"
+    assert config["configuration"]["iceServers"] == [
+        {
+            "urls": "turn:turn.example.com:3478",
+            "username": "user",
+            "credential": "secret",
+        }
+    ]
+
+
+def test_webrtc_client_config_ignores_expired_ticket_ice_servers():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseWebRTCCameraEntity,
+    )
+
+    camera_entity = entity(
+        "SSC0A",
+        {
+            "streamProtocol": "webrtc",
+            "supportWebrtc": True,
+            "cameraWebrtcTicket": {
+                "expirationTime": int(time.time() * 1000) - 1000,
+                "iceServer": [{"url": "turn:expired.example.com"}],
+            },
+        },
+    )
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class Coordinator:
+        data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    class FakeHass:
+        def async_create_task(self, coro):
+            coro.close()
+            return SimpleNamespace(done=lambda: True)
+
+    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.hass = FakeHass()
+
+    config = camera._async_get_webrtc_client_configuration().to_frontend_dict()
+
+    assert "iceServers" not in config["configuration"]
+
+
 def test_camera_entity_webrtc_protocol_default_matches_apk():
     from custom_components.xsense import camera
 
@@ -1640,15 +1730,8 @@ async def test_frontend_webrtc_close_closes_signal_session():
     camera_entity.online = True
     camera_entity.data["cameraWebrtcTicket"] = {"id": "ticket-id"}
 
-    stop_calls = []
-
-    async def stop_camera_live(entity):
-        stop_calls.append(entity.sn)
-        entity.data["cameraWebrtcTicket"] = None
-
     class Coordinator:
         data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
-        xsense = SimpleNamespace(stop_camera_live=stop_camera_live)
 
         def async_add_listener(self, *args, **kwargs):
             return lambda: None
@@ -1678,8 +1761,7 @@ async def test_frontend_webrtc_close_closes_signal_session():
     await tasks[0]
 
     assert session.closed is True
-    assert stop_calls == ["SSC0ATEST"]
-    assert camera_entity.data["cameraWebrtcTicket"] is None
+    assert camera_entity.data["cameraWebrtcTicket"] == {"id": "ticket-id"}
     assert camera._webrtc_sessions == {}
     assert camera._pending_webrtc_candidates == {}
 
@@ -1697,15 +1779,8 @@ async def test_frontend_webrtc_close_keeps_live_when_other_session_exists():
     camera_entity.online = True
     camera_entity.data["cameraWebrtcTicket"] = {"id": "ticket-id"}
 
-    stop_calls = []
-
-    async def stop_camera_live(entity):
-        stop_calls.append(entity.sn)
-        entity.data["cameraWebrtcTicket"] = None
-
     class Coordinator:
         data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
-        xsense = SimpleNamespace(stop_camera_live=stop_camera_live)
 
         def async_add_listener(self, *args, **kwargs):
             return lambda: None
@@ -1737,7 +1812,6 @@ async def test_frontend_webrtc_close_keeps_live_when_other_session_exists():
 
     assert old_session.closed is True
     assert active_session.closed is False
-    assert stop_calls == []
     assert camera_entity.data["cameraWebrtcTicket"] == {"id": "ticket-id"}
     assert list(camera._webrtc_sessions) == ["active-session"]
 
