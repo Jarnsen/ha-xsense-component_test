@@ -1,7 +1,6 @@
 import asyncio
 import importlib
 import sys
-import time
 from types import SimpleNamespace
 
 import pytest
@@ -1126,29 +1125,13 @@ async def test_default_native_webrtc_camera_allows_webrtc_provider_probe():
     )
 
 
-def test_webrtc_client_config_uses_cached_ticket_ice_servers():
+def test_webrtc_client_config_uses_data_channel_only():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseWebRTCCameraEntity,
     )
 
-    camera_entity = entity(
-        "SSC0A",
-        {
-            "streamProtocol": "webrtc",
-            "supportWebrtc": True,
-            "cameraWebrtcTicket": {
-                "expirationTime": int(time.time() * 1000) + 300000,
-                "iceServer": [
-                    {
-                        "url": "turn:turn.example.com:3478",
-                        "username": "user",
-                        "credential": "secret",
-                    }
-                ],
-            },
-        },
-    )
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
     camera_entity.entity_id = "camera-test"
     camera_entity.sn = "SSC0ATEST"
     camera_entity.name = "Camera"
@@ -1165,16 +1148,10 @@ def test_webrtc_client_config_uses_cached_ticket_ice_servers():
     config = camera._async_get_webrtc_client_configuration().to_frontend_dict()
 
     assert config["dataChannel"] == "data-channel-of-"
-    assert config["configuration"]["iceServers"] == [
-        {
-            "urls": "turn:turn.example.com:3478",
-            "username": "user",
-            "credential": "secret",
-        }
-    ]
+    assert "iceServers" not in config["configuration"]
 
 
-def test_webrtc_client_config_ignores_expired_ticket_ice_servers():
+def test_webrtc_client_config_ignores_cached_ticket_ice_servers():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseWebRTCCameraEntity,
@@ -1186,8 +1163,8 @@ def test_webrtc_client_config_ignores_expired_ticket_ice_servers():
             "streamProtocol": "webrtc",
             "supportWebrtc": True,
             "cameraWebrtcTicket": {
-                "expirationTime": int(time.time() * 1000) - 1000,
-                "iceServer": [{"url": "turn:expired.example.com"}],
+                "expirationTime": 9999999999999,
+                "iceServer": [{"url": "turn:turn.example.com"}],
             },
         },
     )

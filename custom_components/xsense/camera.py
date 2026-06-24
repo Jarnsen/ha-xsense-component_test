@@ -5,7 +5,6 @@ from __future__ import annotations
 from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
-import time
 
 from homeassistant import config_entries
 from homeassistant.components.camera import (
@@ -23,7 +22,7 @@ from homeassistant.components.camera.webrtc import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
+from webrtc_models import RTCIceCandidateInit
 
 from .api.async_xsense import camera_live_resolution, is_camera_entity
 from .api.exceptions import APIFailure
@@ -232,12 +231,6 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         self._webrtc_sessions: dict[str, object] = {}
         self._pending_webrtc_candidates: dict[str, list[object]] = {}
         self._webrtc_candidate_counts: dict[str, int] = {}
-        self._webrtc_ticket_prefetch_task = None
-
-    async def async_added_to_hass(self) -> None:
-        """Start a background WebRTC ticket prefetch for browser ICE config."""
-        await super().async_added_to_hass()
-        self._schedule_webrtc_ticket_prefetch("entity_added")
 
     @property
     def supported_features(self) -> CameraEntityFeature:
@@ -270,26 +263,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
     @callback
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         """Return the Home Assistant browser WebRTC client configuration."""
-        entity = self._current_entity()
-        ice_servers = _ticket_ice_servers(entity) if entity is not None else []
-        if entity is not None:
-            LOGGER.debug(
-                "X-Sense camera WebRTC client config prepared: %s",
-                _camera_debug_context(
-                    entity,
-                    None,
-                    ticket_ice_servers=len(ice_servers),
-                    has_cached_ticket=bool(
-                        isinstance(entity.data.get("cameraWebrtcTicket"), dict)
-                    ),
-                ),
-            )
-            if not ice_servers:
-                self._schedule_webrtc_ticket_prefetch("client_config_missing_ticket")
-        return WebRTCClientConfiguration(
-            configuration=RTCConfiguration(ice_servers=ice_servers),
-            data_channel="data-channel-of-",
-        )
+        return WebRTCClientConfiguration(data_channel="data-channel-of-")
 
     async def async_handle_async_webrtc_offer(
         self, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage
@@ -333,7 +307,6 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             )
             self._pending_webrtc_candidates.pop(session_id, None)
             return
-        self._webrtc_ticket_prefetch_task = None
 
         webrtc_signal = await self.hass.async_add_import_executor_job(
             import_module, __package__ + ".webrtc_signal"
@@ -408,49 +381,6 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         )
         send_message(WebRTCAnswer(answer))
         session.start_forwarding_remote_candidates()
-
-    def _schedule_webrtc_ticket_prefetch(self, reason: str) -> None:
-        """Prefetch the WebRTC ticket used for browser ICE server config."""
-        if self._webrtc_ticket_prefetch_task is not None:
-            if not self._webrtc_ticket_prefetch_task.done():
-                return
-            self._webrtc_ticket_prefetch_task = None
-        entity = self._current_entity()
-        if entity is None or not _is_webrtc_camera(entity):
-            return
-        if _ticket_ice_servers(entity):
-            return
-        self._webrtc_ticket_prefetch_task = self.hass.async_create_task(
-            self._async_prefetch_webrtc_ticket(reason)
-        )
-
-    async def _async_prefetch_webrtc_ticket(self, reason: str) -> None:
-        """Fetch a WebRTC ticket before the browser requests client config."""
-        entity = self._current_entity()
-        if entity is None or not _is_webrtc_camera(entity):
-            return
-        try:
-            ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(
-                entity
-            )
-        except Exception as err:  # noqa: BLE001 - debug-only prefetch path
-            LOGGER.debug(
-                "X-Sense camera WebRTC ticket prefetch failed: %s",
-                _camera_debug_context(
-                    entity, None, prefetch_reason=reason, error=_error_debug_context(err)
-                ),
-            )
-            return
-        LOGGER.debug(
-            "X-Sense camera WebRTC ticket prefetched for client config: %s",
-            _camera_debug_context(
-                entity,
-                None,
-                prefetch_reason=reason,
-                ticket=_ticket_data_debug_context(ticket_data),
-                ticket_ice_servers=len(_ticket_ice_servers(entity)),
-            ),
-        )
 
     async def _close_existing_webrtc_sessions(
         self, preserve_pending_session_id: str | None = None
@@ -665,38 +595,6 @@ def _is_webrtc_camera(entity) -> bool:
 def _camera_live_resolution(entity) -> str:
     """Return the live resolution string used by the ADDX player."""
     return camera_live_resolution(entity)
-
-
-def _ticket_ice_servers(entity) -> list[RTCIceServer]:
-    """Return valid X-Sense ticket ICE servers for the browser peer connection."""
-    ticket = entity.data.get("cameraWebrtcTicket")
-    if not isinstance(ticket, dict) or not _ticket_has_lifetime(ticket):
-        return []
-    ice_servers = []
-    for server in ticket.get("iceServer") or []:
-        if not isinstance(server, dict):
-            continue
-        urls = server.get("urls") or server.get("url")
-        if not urls:
-            continue
-        ice_servers.append(
-            RTCIceServer(
-                urls=urls,
-                username=server.get("username"),
-                credential=server.get("credential"),
-            )
-        )
-    return ice_servers
-
-
-def _ticket_has_lifetime(ticket: dict[str, object]) -> bool:
-    """Return whether a cached WebRTC ticket can still be used."""
-    expiration_time = ticket.get("expirationTime")
-    if expiration_time is None:
-        return False
-    with suppress(TypeError, ValueError):
-        return int(expiration_time) > int(time.time() * 1000)
-    return False
 
 
 def _set_camera_data(entity, data: dict[str, object]) -> None:

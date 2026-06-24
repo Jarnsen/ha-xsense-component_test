@@ -1,6 +1,5 @@
 import base64
 import json
-import logging
 import sys
 import time
 from types import SimpleNamespace
@@ -164,30 +163,6 @@ def test_candidate_init_payload_matches_home_assistant_model_shape():
     }
 
 
-def test_ice_candidate_payload_matches_apk_builder_shape():
-    payload = json.loads(
-        webrtc_signal.make_ice_candidate_payload(
-            candidate="candidate:1 1 udp 1 192.0.2.1 123 typ host",
-            sdp_mid="0",
-            sdp_m_line_index=0,
-            ticket=ticket(),
-            recipient_client_id="SSC0ATEST",
-            session_id="session123",
-        )
-    )
-    candidate = json.loads(base64.b64decode(payload["messagePayload"]).decode())
-
-    assert payload["messageType"] == "ICE_CANDIDATE"
-    assert "mode" not in payload
-    assert payload["senderClientId"] == "client123"
-    assert payload["recipientClientId"] == "SSC0ATEST"
-    assert candidate == {
-        "sdpMid": "0",
-        "sdpMLineIndex": 0,
-        "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
-    }
-
-
 def test_answer_sdp_normalization_replaces_invalid_actpass_answer_setup():
     offer_sdp = (
         "v=0\r\n"
@@ -293,28 +268,6 @@ async def test_trickled_candidate_is_queued_until_offer_is_sent():
     assert session._sent_candidate_count == 1
 
 
-async def test_ha_ice_candidate_debug_is_throttled(caplog):
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-    caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
-
-    for index in range(18):
-        await session.add_candidate(
-            SimpleNamespace(
-                candidate=f"candidate:{index} 1 udp 1 192.0.2.1 123 typ host",
-                sdp_mid=str(index % 3),
-                sdp_m_line_index=index % 3,
-            )
-        )
-
-    assert caplog.text.count("queued HA ICE candidate") == 3
-
-
 async def test_online_camera_waits_for_peer_in_before_sending_offer():
     class FakeWs:
         closed = False
@@ -345,20 +298,7 @@ async def test_online_camera_waits_for_peer_in_before_sending_offer():
     assert session._debug_context()["offer_attempt_count"] == 1
 
 
-async def test_peer_out_before_answer_resets_offer_and_retries_same_ticket(monkeypatch):
-    scheduled = []
-
-    class FakeTask:
-        def done(self):
-            return False
-
-    def create_task(coro):
-        scheduled.append(coro)
-        coro.close()
-        return FakeTask()
-
-    monkeypatch.setattr(webrtc_signal.asyncio, "create_task", create_task)
-
+async def test_peer_out_before_answer_resets_offer_for_next_peer_in():
     class FakeWs:
         closed = False
 
@@ -377,66 +317,18 @@ async def test_peer_out_before_answer_resets_offer_and_retries_same_ticket(monke
     )
     session._ws = FakeWs()
     peer_payload = {"id": "SSC0ATEST", "name": "SSC0ATEST", "role": "master"}
-    candidate = SimpleNamespace(
-        candidate="candidate:1 1 udp 1 192.0.2.1 123 typ host",
-        sdp_mid="0",
-        sdp_m_line_index=0,
-    )
 
-    await session.add_candidate(candidate)
     await session._handle_signal_event("PEER_IN", peer_payload)
     await session._handle_signal_event("PEER_OUT", peer_payload)
     await session._handle_signal_event("PEER_IN", peer_payload)
 
     assert [message["messageType"] for message in session._ws.messages] == [
         "SDP_OFFER",
-        "ICE_CANDIDATE",
         "SDP_OFFER",
-        "ICE_CANDIDATE",
     ]
-    assert scheduled == []
-    assert session._answer.done() is False
     assert session._offer_sent is True
     assert session._camera_peer_ready is True
     assert session._debug_context()["offer_attempt_count"] == 2
-    assert len(
-        [
-            message
-            for message in session._ws.messages
-            if message["messageType"] == "ICE_CANDIDATE"
-        ]
-    ) == 2
-
-
-async def test_peer_out_before_answer_waits_for_next_peer_in_without_reconnect():
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-    peer_payload = {"id": "SSC0ATEST", "name": "SSC0ATEST", "role": "master"}
-
-    class FakeWs:
-        closed = False
-
-        def __init__(self):
-            self.messages = []
-
-        async def send_str(self, message):
-            self.messages.append(json.loads(message))
-
-    session._ws = FakeWs()
-
-    await session._handle_signal_event("PEER_IN", peer_payload)
-    await session._handle_signal_event("PEER_OUT", peer_payload)
-
-    assert session._reconnect_task is None
-    assert session._answer.done() is False
-    assert session._offer_sent is False
-    assert session._camera_peer_ready is False
-    assert session._debug_context()["signal_reconnect_count"] == 0
 
 
 async def test_signal_close_schedules_reconnect_before_answer(monkeypatch):
@@ -591,21 +483,6 @@ def test_parse_owned_sdp_answer_from_signal_envelope():
             "messageType": "SDP_ANSWER",
             "senderClientId": "SSC0ATEST",
             "recipientClientId": "client123",
-            "messagePayload": b64_json({"type": "answer", "sdp": answer_sdp}),
-        }
-    )
-
-    event, payload = webrtc_signal.parse_signal_message(raw)
-
-    assert event == "SDP_ANSWER"
-    assert webrtc_signal._owned_answer_sdp(payload, ticket()) == answer_sdp
-
-
-def test_parse_sdp_answer_accepts_apk_optional_client_ids():
-    answer_sdp = "v=0\r\nm=video 9 UDP/TLS/RTP/SAVPF 99\r\n"
-    raw = json.dumps(
-        {
-            "messageType": "SDP_ANSWER",
             "messagePayload": b64_json({"type": "answer", "sdp": answer_sdp}),
         }
     )

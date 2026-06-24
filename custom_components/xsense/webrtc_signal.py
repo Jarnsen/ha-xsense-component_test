@@ -142,7 +142,6 @@ class XSenseWebRTCSignalSession:
         self._offer_attempt_count = 0
         self._signal_reconnect_count = 0
         self._pending_remote_candidates: list[Any] = []
-        self._ha_candidate_history: list[dict[str, Any]] = []
         self._pending_client_candidates: list[dict[str, Any]] = []
         self._remote_candidate_callback = remote_candidate_callback
         self._forward_client_candidates = False
@@ -229,21 +228,20 @@ class XSenseWebRTCSignalSession:
                 self._debug_context(candidate_type=type(candidate).__name__),
             )
             return
-        if payload not in self._ha_candidate_history:
-            self._ha_candidate_history.append(payload)
         if self._ws is None or self._ws.closed or not self._offer_sent:
             self._pending_remote_candidates.append(payload)
-            queued_count = len(self._pending_remote_candidates)
-            if _should_log_candidate_count(queued_count):
-                LOGGER.debug(
-                    "X-Sense WebRTC signal relay queued HA ICE candidate: %s",
-                    self._debug_context(
-                        queue_reason=_candidate_queue_reason(self),
-                        queued_candidate_count=queued_count,
-                        **_single_candidate_debug(payload),
-                    ),
-                )
+            LOGGER.debug(
+                "X-Sense WebRTC signal relay queued HA ICE candidate: %s",
+                self._debug_context(
+                    queue_reason=_candidate_queue_reason(self),
+                    **_single_candidate_debug(payload),
+                ),
+            )
             return
+        LOGGER.debug(
+            "X-Sense WebRTC signal relay sending HA ICE candidate immediately: %s",
+            self._debug_context(**_single_candidate_debug(payload)),
+        )
         await self._send_candidate(payload)
 
     async def _connect_signal(self) -> None:
@@ -276,7 +274,7 @@ class XSenseWebRTCSignalSession:
                     LOGGER.debug(
                         "X-Sense WebRTC signal relay event received: %s",
                         self._debug_context(
-                            event=event, **_signal_event_debug(event, payload)
+                            event=event, payload=_payload_debug(payload)
                         ),
                     )
                 await self._handle_signal_event(event, payload)
@@ -295,9 +293,7 @@ class XSenseWebRTCSignalSession:
             )
             self._schedule_signal_reconnect(close_code)
 
-    def _schedule_signal_reconnect(
-        self, close_code: int | None, reason: str = "signal_closed_before_answer"
-    ) -> None:
+    def _schedule_signal_reconnect(self, close_code: int | None) -> None:
         if self._closed or self._answer.done():
             return
         if close_code in _SIGNAL_TERMINAL_CLOSE_CODES:
@@ -309,12 +305,11 @@ class XSenseWebRTCSignalSession:
             self._debug_context(
                 signal_close_code=close_code,
                 reconnect_delay_s=_SIGNAL_RECONNECT_DELAY,
-                reconnect_reason=reason,
             ),
         )
-        self._reconnect_task = asyncio.create_task(self._reconnect_signal(reason))
+        self._reconnect_task = asyncio.create_task(self._reconnect_signal())
 
-    async def _reconnect_signal(self, reason: str) -> None:
+    async def _reconnect_signal(self) -> None:
         await asyncio.sleep(_SIGNAL_RECONNECT_DELAY)
         if self._closed or self._answer.done():
             return
@@ -325,7 +320,7 @@ class XSenseWebRTCSignalSession:
         self._signal_reconnect_count += 1
         LOGGER.debug(
             "X-Sense WebRTC signal relay reconnecting signal socket: %s",
-            self._debug_context(reconnect_reason=reason),
+            self._debug_context(reconnect_reason="signal_closed_before_answer"),
         )
         try:
             await self._connect_signal()
@@ -438,15 +433,6 @@ class XSenseWebRTCSignalSession:
                     "X-Sense WebRTC signal relay queued remote ICE candidate for HA: %s",
                     self._debug_context(),
                 )
-            return
-        if event:
-            LOGGER.debug(
-                "X-Sense WebRTC signal relay ignored unsupported signal event: %s",
-                self._debug_context(
-                    event=event,
-                    **_signal_event_debug(event, payload),
-                ),
-            )
 
     def _forward_remote_candidate(self, candidate: dict[str, Any]) -> None:
         if self._remote_candidate_callback is None:
@@ -497,27 +483,10 @@ class XSenseWebRTCSignalSession:
         )
         for candidate in candidates:
             await self._send_candidate(candidate)
-        if self._offer_attempt_count > 1 and self._ha_candidate_history:
-            LOGGER.debug(
-                "X-Sense WebRTC signal relay replaying HA ICE candidates after offer retry: %s",
-                self._debug_context(
-                    replay_candidate_count=len(self._ha_candidate_history)
-                ),
-            )
-            self._pending_remote_candidates.clear()
-            for candidate in self._ha_candidate_history:
-                await self._send_candidate(candidate)
         await self._flush_pending_remote_candidates()
 
     async def _flush_pending_remote_candidates(self) -> None:
         """Send any HA candidates that arrived before the X-Sense offer was sent."""
-        if self._pending_remote_candidates:
-            LOGGER.debug(
-                "X-Sense WebRTC signal relay flushing queued HA ICE candidates: %s",
-                self._debug_context(
-                    **_candidate_debug_summary(self._pending_remote_candidates)
-                ),
-            )
         while self._pending_remote_candidates and not self._closed:
             await self._send_candidate(self._pending_remote_candidates.pop(0))
 
@@ -535,11 +504,10 @@ class XSenseWebRTCSignalSession:
             )
         )
         self._sent_candidate_count += 1
-        if _should_log_candidate_count(self._sent_candidate_count):
-            LOGGER.debug(
-                "X-Sense WebRTC signal relay sent HA ICE candidate to X-Sense: %s",
-                self._debug_context(**_single_candidate_debug(candidate)),
-            )
+        LOGGER.debug(
+            "X-Sense WebRTC signal relay sent HA ICE candidate to X-Sense: %s",
+            self._debug_context(**_single_candidate_debug(candidate)),
+        )
 
     def _reset_offer_attempt(self, reason: str) -> None:
         self._offer_sent = False
@@ -696,9 +664,9 @@ def _owned_answer_sdp(payload: Any, ticket: XSenseWebRTCTicket) -> str | None:
         return None
     sender = payload.get("senderClientId")
     recipient = payload.get("recipientClientId")
-    if sender is not None and sender != ticket.serial_number:
+    if sender != ticket.serial_number:
         return None
-    if recipient is not None and recipient != ticket.client_id:
+    if recipient != ticket.client_id:
         return None
     return _answer_sdp(payload)
 
@@ -708,9 +676,9 @@ def _answer_reject_reason(payload: Any, ticket: XSenseWebRTCTicket) -> str:
         return "payload_not_dict"
     sender = payload.get("senderClientId")
     recipient = payload.get("recipientClientId")
-    if sender is not None and sender != ticket.serial_number:
+    if sender != ticket.serial_number:
         return "sender_mismatch"
-    if recipient is not None and recipient != ticket.client_id:
+    if recipient != ticket.client_id:
         return "recipient_mismatch"
     encoded = payload.get("messagePayload")
     if not isinstance(encoded, str):
@@ -1095,11 +1063,6 @@ def _single_candidate_debug(candidate: dict[str, Any]) -> dict[str, Any]:
     return _candidate_debug_summary([candidate])
 
 
-def _should_log_candidate_count(count: int) -> bool:
-    """Return whether this candidate count should get an individual debug line."""
-    return count <= 1 or count in {5, 10, 25, 50, 100}
-
-
 def _candidate_queue_reason(session: XSenseWebRTCSignalSession) -> str:
     if session._ws is None:
         return "signal_not_connected"
@@ -1134,60 +1097,6 @@ def _peer_event_debug(payload: Any, serial_number: str) -> dict[str, Any]:
             _short_id(value) for value in _peer_payload_candidates(payload)
         ],
     }
-
-
-def _signal_event_debug(event: str | None, payload: Any) -> dict[str, Any]:
-    context: dict[str, Any] = {"payload": _payload_debug(payload)}
-    if isinstance(payload, dict):
-        context["payload_fields"] = _debug_payload_fields(payload)
-        if event not in {"PEER_IN", "PEER_OUT"}:
-            context["payload_message"] = _signal_message_debug(payload)
-    elif isinstance(payload, str) and event not in {"PEER_IN", "PEER_OUT"}:
-        context["payload_text"] = _short_payload_text(payload)
-    return context
-
-
-def _signal_message_debug(payload: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "keys": sorted(str(key) for key in payload.keys()),
-        "message_type": payload.get("messageType") or payload.get("type"),
-        "method": payload.get("method"),
-        "action": payload.get("action"),
-        "sender": _short_id(payload.get("senderClientId")),
-        "recipient": _short_id(payload.get("recipientClientId")),
-        "session": _short_id(payload.get("sessionId")),
-        "payload": _decoded_payload_debug(payload.get("messagePayload")),
-    }
-
-
-def _decoded_payload_debug(payload: Any) -> dict[str, Any] | str | None:
-    if not isinstance(payload, str):
-        return None
-    decoded = _decode_payload_object(payload)
-    if isinstance(decoded, dict):
-        return _signal_message_debug(decoded)
-    if isinstance(decoded, str):
-        return _short_payload_text(decoded)
-    return {"payload_len": len(payload)}
-
-
-def _decode_payload_object(payload: str) -> Any:
-    with suppress(Exception):
-        decoded = json.loads(payload)
-        if isinstance(decoded, (dict, str)):
-            return decoded
-    with suppress(Exception):
-        decoded = json.loads(_base64_decode_required_text(payload))
-        if isinstance(decoded, (dict, str)):
-            return decoded
-    decoded_text = _base64_decode_text(payload)
-    return decoded_text or None
-
-
-def _short_payload_text(value: str) -> str:
-    if len(value) <= 160:
-        return value
-    return f"{value[:160]}...({len(value)} chars)"
 
 
 def _debug_payload_fields(payload: Any) -> dict[str, str | None]:
