@@ -53,7 +53,7 @@ Seadmehaldus, jagamine, eemaldamine, püsivara, kontod ja maksed jäävad X-Sens
 ## Kaamera otsevaade ja AI-teavitused
 Lihtsaim viis on importida kaasas olev blueprint alloleva nupuga, valida `Motion` või saadaolev `AI Detection`, ja vajadusel muuta teavitustoimingut.
 
-[![Impordi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Impordi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion ja AI Detection on ühekordsed sündmused, mitte sisse/välja olekud. Käsitsi automaatikates kasuta `event.received`; `event_type` on vajalik ainult tüüpide filtreerimiseks nagu `person`, `pet`, `vehicle`, `package`, `other` või `ai_detection`.
 

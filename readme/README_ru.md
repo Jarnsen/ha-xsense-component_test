@@ -112,7 +112,7 @@ ____________________________________________________________
 ## Живой просмотр камеры и AI-уведомления
 Проще всего импортировать включенный blueprint кнопкой ниже, выбрать `Motion` или доступный `AI Detection` и при необходимости изменить действие уведомления.
 
-[![Импортировать blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Импортировать blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion и AI Detection — разовые события, а не состояния включено/выключено. Для ручных автоматизаций используйте `event.received`; `event_type` нужен только для фильтрации типов вроде `person`, `pet`, `vehicle`, `package`, `other` или `ai_detection`.
 

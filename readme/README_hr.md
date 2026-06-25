@@ -53,7 +53,7 @@ Upravljanje naprav, deljenje, odstranjevanje, firmware, računi in plačila osta
 ## Prikaz kamere uživo i AI obavijesti
 Najjednostavnije je uvesti uključeni blueprint donjim gumbom, odabrati `Motion` ili dostupni `AI Detection` i po potrebi prilagoditi akciju obavijesti.
 
-[![Uvezi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Uvezi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion i AI Detection jednokratni su događaji, ne uključeno/isključeno stanja. Za ručne automatizacije koristite `event.received`; `event_type` treba samo za filtriranje tipova kao `person`, `pet`, `vehicle`, `package`, `other` ili `ai_detection`.
 

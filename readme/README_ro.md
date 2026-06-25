@@ -53,7 +53,7 @@ Administrarea dispozitivelor, partajarea, eliminarea, firmware-ul, conturile și
 ## Vizualizare live cameră și notificări AI
 Cel mai simplu este să importați blueprint-ul inclus cu butonul de mai jos, să alegeți `Motion` sau `AI Detection` disponibil și să ajustați acțiunea de notificare.
 
-[![Importă blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Importă blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion și AI Detection sunt evenimente unice, nu stări pornit/oprit. Pentru automatizări manuale folosiți `event.received`; `event_type` este necesar doar pentru filtrarea tipurilor ca `person`, `pet`, `vehicle`, `package`, `other` sau `ai_detection`.
 

@@ -112,7 +112,7 @@ ____________________________________________________________
 ## Ζωντανή προβολή κάμερας και ειδοποιήσεις AI
 Ο πιο εύκολος τρόπος είναι να εισαγάγετε το συμπεριλαμβανόμενο blueprint με το κουμπί παρακάτω, να επιλέξετε `Motion` ή διαθέσιμο `AI Detection` και να προσαρμόσετε την ενέργεια ειδοποίησης.
 
-[![Εισαγωγή blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Εισαγωγή blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Το Motion και το AI Detection είναι μεμονωμένα συμβάντα, όχι καταστάσεις ενεργό/ανενεργό. Για χειροκίνητους αυτοματισμούς χρησιμοποιήστε `event.received`; το `event_type` χρειάζεται μόνο για φιλτράρισμα τύπων όπως `person`, `pet`, `vehicle`, `package`, `other` ή `ai_detection`.
 

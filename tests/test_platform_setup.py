@@ -136,6 +136,33 @@ def test_ai_notification_blueprint_selector_lists_xsense_event_entities():
     assert entity_filter == {"integration": "xsense", "domain": "event"}
 
 
+def test_ai_notification_blueprint_has_import_source_metadata():
+    with open(
+        "blueprints/automation/xsense/camera_ai_notification.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    source_url = blueprint["blueprint"]["source_url"]
+
+    assert source_url == (
+        "https://github.com/Jarnsen/ha-xsense-component_test/blob/main/"
+        "blueprints/automation/xsense/camera_ai_notification.yaml"
+    )
+
+
+def test_ai_notification_blueprint_docs_use_github_file_import_url():
+    with open("readme/README_en.md", encoding="utf-8") as file:
+        readme = file.read()
+
+    assert "raw.githubusercontent.com" not in readme
+    assert (
+        "blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2F"
+        "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
+        "automation%2Fxsense%2Fcamera_ai_notification.yaml"
+    ) in readme
+
+
 def test_ai_notification_blueprint_filters_by_selected_event_entity():
     with open(
         "blueprints/automation/xsense/camera_ai_notification.yaml",

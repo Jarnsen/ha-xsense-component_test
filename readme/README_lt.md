@@ -53,7 +53,7 @@ Integracija kuria esybes tik tiems duomenims, kuriuos įrenginys iš tikrųjų p
 ## Kameros tiesioginis vaizdas ir AI pranešimai
 Paprasčiausia importuoti įtrauktą blueprint žemiau esančiu mygtuku, pasirinkti `Motion` arba prieinamą `AI Detection` ir prireikus pakoreguoti pranešimo veiksmą.
 
-[![Importuoti blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Importuoti blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion ir AI Detection yra vienkartiniai įvykiai, o ne įjungta/išjungta būsenos. Rankinėse automatizacijose naudokite `event.received`; `event_type` reikalingas tik tipams filtruoti, pvz., `person`, `pet`, `vehicle`, `package`, `other` arba `ai_detection`.
 

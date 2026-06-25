@@ -53,7 +53,7 @@ Enhetsadministrasjon, deling, fjerning, firmware, kontoer og betalinger forblir 
 ## Kamera-livevisning og AI-varsler
 Enklest er å importere den inkluderte blueprinten med knappen nedenfor, velge `Motion` eller tilgjengelig `AI Detection`, og justere varslingshandlingen.
 
-[![Importer blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fraw.githubusercontent.com%2FJarnsen%2Fha-xsense-component_test%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
+[![Importer blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion og AI Detection er engangshendelser, ikke på/av-tilstander. Bruk `event.received` for manuelle automatiseringer; bruk bare `event_type` for å filtrere typer som `person`, `pet`, `vehicle`, `package`, `other` eller `ai_detection`.
 

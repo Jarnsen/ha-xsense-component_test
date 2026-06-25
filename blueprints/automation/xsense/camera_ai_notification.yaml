@@ -8,6 +8,7 @@ blueprint:
     provides a direct playback URL for the recording.
   domain: automation
   author: X-Sense Home Security
+  source_url: https://github.com/Jarnsen/ha-xsense-component_test/blob/main/blueprints/automation/xsense/camera_ai_notification.yaml
   homeassistant:
     min_version: 2025.3.0
   input:
