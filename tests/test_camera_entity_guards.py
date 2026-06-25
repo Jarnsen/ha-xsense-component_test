@@ -730,7 +730,32 @@ def test_motion_event_data_uses_apk_history_record_time():
     )
 
     assert event_data == {"time": "20260621134144"}
-    assert event.motion_fingerprint(event_data) == ("20260621134144",)
+    assert event.motion_fingerprint(event_data) == ("20260621134144", None)
+
+
+def test_motion_event_data_includes_apk_playback_metadata():
+    event_data = event.motion_event_data(
+        {
+            "eventTime": "20260621134144",
+            "playback": {
+                "source": "sd_playback",
+                "trace_id": "trace-id",
+                "start_time": 1782049304,
+                "end_time": 1782049314,
+            },
+        }
+    )
+
+    assert event_data == {
+        "time": "20260621134144",
+        "playback": {
+            "source": "sd_playback",
+            "trace_id": "trace-id",
+            "start_time": 1782049304,
+            "end_time": 1782049314,
+        },
+    }
+    assert event.motion_fingerprint(event_data) == ("20260621134144", "trace-id")
 
 
 def test_motion_event_entity_triggers_repeated_motion_with_new_time():
@@ -1068,7 +1093,7 @@ def test_camera_factory_uses_native_webrtc_path_by_default():
     assert isinstance(created, camera_module.XSenseWebRTCCameraEntity)
 
 
-async def test_default_stream_source_mode_skips_webrtc_provider_probe():
+async def test_default_stream_source_mode_keeps_ha_provider_probe_behavior():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseCameraEntity,
@@ -1087,12 +1112,12 @@ async def test_default_stream_source_mode_skips_webrtc_provider_probe():
             return lambda: None
 
     async def provider_probe(hass, camera):
-        raise AssertionError("Default mode should not probe WebRTC providers")
+        return "provider"
 
     camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
     camera.entity_id = "camera.camera_test"
 
-    assert await camera._async_get_supported_webrtc_provider(provider_probe) is None
+    assert await camera._async_get_supported_webrtc_provider(provider_probe) == "provider"
 
 
 async def test_default_native_webrtc_camera_allows_webrtc_provider_probe():
@@ -1314,7 +1339,7 @@ async def test_plain_stream_source_entity_does_not_start_webrtc_camera_live_url(
     assert calls == []
 
 
-async def test_default_camera_does_not_pass_webrtc_url_to_stream_worker():
+async def test_default_camera_returns_live_url_from_stream_endpoint():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseCameraEntity,
@@ -1351,11 +1376,11 @@ async def test_default_camera_does_not_pass_webrtc_url_to_stream_worker():
     camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
     camera.entity_id = "camera.camera_test"
 
-    assert await camera.stream_source() is None
-    assert calls == ["start", "stop"]
+    assert await camera.stream_source() == "webrtc://3.65.49.157/live/camera_live"
+    assert calls == ["start"]
 
 
-async def test_default_camera_returns_none_when_stream_endpoint_no_response():
+async def test_default_camera_raises_when_stream_endpoint_no_response():
     from custom_components.xsense.api.exceptions import APIFailure
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
@@ -1389,7 +1414,8 @@ async def test_default_camera_returns_none_when_stream_endpoint_no_response():
     camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
     camera.entity_id = "camera.camera_test"
 
-    assert await camera.stream_source() is None
+    with pytest.raises(APIFailure):
+        await camera.stream_source()
 
 
 async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkeypatch):

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import random
 import time
 from collections import Counter
 from collections.abc import Callable
@@ -24,6 +25,7 @@ _DEFAULT_RESOLUTION = "1280x720"
 _ANSWER_TIMEOUT = 40
 _SIGNAL_RECONNECT_DELAY = 5
 _SIGNAL_TERMINAL_CLOSE_CODES = {3002, 3004}
+_DATA_CHANNEL_CONNECTION_ID = "7893feb"
 
 
 @dataclass(slots=True)
@@ -578,6 +580,75 @@ def make_ice_candidate_payload(
         "sessionId": session_id,
     }
     return json.dumps(envelope, separators=(",", ":"))
+
+
+def make_data_channel_command_payload(
+    action: str,
+    parameters: dict[str, Any] | None = None,
+    *,
+    request_id: str | None = None,
+    timestamp: int | None = None,
+) -> str:
+    """Return an APK-compatible player data-channel command payload."""
+    timestamp = int(timestamp if timestamp is not None else time.time())
+    payload: dict[str, Any] = {
+        "requestID": request_id or _make_data_channel_request_id(),
+        "connectionID": _DATA_CHANNEL_CONNECTION_ID,
+        "timeStamp": timestamp,
+        "action": action,
+    }
+    if parameters:
+        payload["parameters"] = parameters
+    return json.dumps(payload, separators=(",", ":"))
+
+
+def make_sd_video_list_command_payload(
+    start_time: int,
+    stop_time: int,
+    *,
+    request_id: str | None = None,
+    timestamp: int | None = None,
+) -> str:
+    """Return the APK getSdVideoList data-channel command."""
+    return make_data_channel_command_payload(
+        "getSdVideoList",
+        {"startTime": int(start_time), "stopTime": int(stop_time)},
+        request_id=request_id,
+        timestamp=timestamp,
+    )
+
+
+def make_start_sd_playback_command_payload(
+    start_time: int,
+    *,
+    request_id: str | None = None,
+    timestamp: int | None = None,
+) -> str:
+    """Return the APK startPlaySdVideo data-channel command."""
+    return make_data_channel_command_payload(
+        "startPlaySdVideo",
+        {"startTime": int(start_time)},
+        request_id=request_id,
+        timestamp=timestamp,
+    )
+
+
+def make_stop_sd_playback_command_payload(
+    *,
+    request_id: str | None = None,
+    timestamp: int | None = None,
+) -> str:
+    """Return the APK stopPlaySdVideo data-channel command."""
+    return make_data_channel_command_payload(
+        "stopPlaySdVideo",
+        request_id=request_id,
+        timestamp=timestamp,
+    )
+
+
+def _make_data_channel_request_id() -> str:
+    """Return the APK PlayControl request id shape."""
+    return f"{int(time.time() * 1000)}-{random.randint(0, 999)}"
 
 
 def parse_signal_message(raw: str | bytes) -> tuple[str | None, Any]:

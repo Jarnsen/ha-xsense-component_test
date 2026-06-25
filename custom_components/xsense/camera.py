@@ -25,7 +25,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from webrtc_models import RTCIceCandidateInit
 
 from .api.async_xsense import camera_live_resolution, is_camera_entity
-from .api.exceptions import APIFailure
 from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
@@ -128,7 +127,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
 
     @property
     def supported_features(self) -> CameraEntityFeature:
-        """Return stream support for direct X-Sense live URLs."""
+        """Return native stream support for direct camera streams."""
         entity = self._current_entity()
         if entity is not None and _is_native_stream_camera(entity):
             return CameraEntityFeature.STREAM
@@ -139,10 +138,6 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         """Return whether the camera has an active live stream session."""
         entity = self._current_entity()
         return entity is not None and bool(entity.data.get("cameraLiveUrl"))
-
-    async def _async_get_supported_webrtc_provider(self, fn):
-        """Skip HA WebRTC provider probing for direct stream cameras."""
-        return None
 
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
@@ -165,44 +160,9 @@ class XSenseCameraEntity(XSenseEntity, Camera):
     async def stream_source(self) -> str | None:
         """Return a live stream URL when the X-Sense camera service provides one."""
         entity = self._current_entity()
-        if entity is None:
+        if entity is None or not _is_native_stream_camera(entity):
             return None
-
-        try:
-            if not _is_native_stream_camera(entity):
-                return None
-            source = await self.coordinator.xsense.start_camera_live(entity)
-        except APIFailure as err:
-            LOGGER.debug(
-                "X-Sense camera live source unavailable from stream endpoint: %s",
-                _camera_debug_context(
-                    entity,
-                    None,
-                    error=_error_debug_context(err),
-                ),
-            )
-            return None
-        source_protocol = _stream_source_protocol(source)
-        if source_protocol == "webrtc":
-            with suppress(Exception):
-                await self.coordinator.xsense.stop_camera_live(entity)
-            LOGGER.debug(
-                "X-Sense camera live source ignored on default stream path: %s",
-                _camera_debug_context(
-                    entity,
-                    None,
-                    source_protocol=source_protocol,
-                ),
-            )
-            return None
-        LOGGER.debug(
-            "X-Sense camera live source started: %s",
-            _camera_debug_context(
-                entity,
-                None,
-                source_protocol=source_protocol,
-            ),
-        )
+        source = await self.coordinator.xsense.start_camera_live(entity)
         return source
 
     async def async_will_remove_from_hass(self) -> None:
@@ -215,7 +175,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
 
 
 class XSenseWebRTCCameraEntity(XSenseCameraEntity):
-    """X-Sense camera entity that relays the APK WebRTC signaling path."""
+    """X-Sense camera entity that supports native Home Assistant WebRTC."""
 
     def __init__(
         self,
@@ -230,11 +190,10 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         )
         self._webrtc_sessions: dict[str, object] = {}
         self._pending_webrtc_candidates: dict[str, list[object]] = {}
-        self._webrtc_candidate_counts: dict[str, int] = {}
 
     @property
     def supported_features(self) -> CameraEntityFeature:
-        """Return X-Sense WebRTC stream support."""
+        """Return native WebRTC stream support."""
         entity = self._current_entity()
         if entity is not None and _is_webrtc_camera(entity):
             return CameraEntityFeature.STREAM
@@ -247,18 +206,14 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         return entity is not None and bool(self._webrtc_sessions)
 
     async def stream_source(self) -> str | None:
-        """Return no live URL because this mode uses X-Sense WebRTC signaling."""
+        """Return no ffmpeg stream source for native WebRTC cameras."""
         entity = self._current_entity()
         if entity is not None:
             LOGGER.debug(
-                "X-Sense camera WebRTC uses APK signaling relay: %s",
+                "X-Sense camera WebRTC uses native Home Assistant signaling: %s",
                 _camera_debug_context(entity, None),
             )
         return None
-
-    async def _async_get_supported_webrtc_provider(self, fn):
-        """Allow Home Assistant native WebRTC probing for X-Sense WebRTC cameras."""
-        return await Camera._async_get_supported_webrtc_provider(self, fn)
 
     @callback
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
@@ -286,7 +241,6 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             ),
         )
         self._pending_webrtc_candidates[session_id] = []
-        self._webrtc_candidate_counts[session_id] = 0
         await self._close_existing_webrtc_sessions(
             preserve_pending_session_id=session_id
         )
@@ -357,13 +311,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         except Exception as err:  # noqa: BLE001 - HA frontend needs a clean error
             self._webrtc_sessions.pop(session_id, None)
             self._pending_webrtc_candidates.pop(session_id, None)
-            self._webrtc_candidate_counts.pop(session_id, None)
-            await self._async_close_webrtc_live_session(
-                entity,
-                session_id,
-                session,
-                stop_live=not self._webrtc_sessions,
-            )
+            await session.close()
             LOGGER.debug(
                 "X-Sense camera WebRTC signal relay failed: %s",
                 _camera_debug_context(
@@ -392,23 +340,10 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             if preserve_pending_session_id is not None
             else None
         )
-        preserved_candidate_count = (
-            self._webrtc_candidate_counts.get(preserve_pending_session_id)
-            if preserve_pending_session_id is not None
-            else None
-        )
         self._pending_webrtc_candidates.clear()
-        self._webrtc_candidate_counts.clear()
         if preserve_pending_session_id is not None and preserved_pending is not None:
             self._pending_webrtc_candidates[preserve_pending_session_id] = (
                 preserved_pending
-            )
-        if (
-            preserve_pending_session_id is not None
-            and preserved_candidate_count is not None
-        ):
-            self._webrtc_candidate_counts[preserve_pending_session_id] = (
-                preserved_candidate_count
             )
         if not sessions:
             return
@@ -418,9 +353,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         )
         self._webrtc_sessions.clear()
         for session in sessions:
-            await self._async_close_webrtc_live_session(
-                self._current_entity(), None, session, stop_live=False
-            )
+            await session.close()
 
     async def _flush_pending_webrtc_candidates(
         self, entity, session_id: str, session
@@ -444,46 +377,36 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         """Forward a Home Assistant WebRTC candidate to X-Sense signaling."""
         entity = self._current_entity()
         candidate_context = _webrtc_candidate_debug_context(candidate)
-        candidate_count = self._webrtc_candidate_counts.get(session_id, 0) + 1
-        self._webrtc_candidate_counts[session_id] = candidate_count
         if session := self._webrtc_sessions.get(session_id):
-            if _should_log_webrtc_candidate_count(candidate_count):
-                LOGGER.debug(
-                    "X-Sense camera WebRTC HA ICE candidate received: %s",
-                    _camera_debug_context(
-                        entity,
-                        session_id,
-                        candidate_receive_count=candidate_count,
-                        **candidate_context,
-                    )
-                    if entity is not None
-                    else {
-                        "session": _short_id(session_id),
-                        "candidate_receive_count": candidate_count,
-                        **candidate_context,
-                    },
-                )
+            LOGGER.debug(
+                "X-Sense camera WebRTC HA ICE candidate received: %s",
+                _camera_debug_context(entity, session_id, **candidate_context)
+                if entity is not None
+                else {"session": _short_id(session_id), **candidate_context},
+            )
             await session.add_candidate(candidate)
             return
         if session_id in self._pending_webrtc_candidates:
             self._pending_webrtc_candidates[session_id].append(candidate)
-            queued_candidate_count = len(self._pending_webrtc_candidates[session_id])
-            if _should_log_webrtc_candidate_count(queued_candidate_count):
-                LOGGER.debug(
-                    "X-Sense camera WebRTC HA ICE candidate queued before signal session: %s",
-                    _camera_debug_context(
-                        entity,
-                        session_id,
-                        queued_candidate_count=queued_candidate_count,
-                        **candidate_context,
-                    )
-                    if entity is not None
-                    else {
-                        "session": _short_id(session_id),
-                        "queued_candidate_count": queued_candidate_count,
-                        **candidate_context,
-                    },
+            LOGGER.debug(
+                "X-Sense camera WebRTC HA ICE candidate queued before signal session: %s",
+                _camera_debug_context(
+                    entity,
+                    session_id,
+                    queued_candidate_count=len(
+                        self._pending_webrtc_candidates[session_id]
+                    ),
+                    **candidate_context,
                 )
+                if entity is not None
+                else {
+                    "session": _short_id(session_id),
+                    "queued_candidate_count": len(
+                        self._pending_webrtc_candidates[session_id]
+                    ),
+                    **candidate_context,
+                },
+            )
             return
         LOGGER.debug(
             "X-Sense camera WebRTC HA ICE candidate ignored for missing session: %s",
@@ -498,7 +421,6 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         entity = self._current_entity()
         session = self._webrtc_sessions.pop(session_id, None)
         self._pending_webrtc_candidates.pop(session_id, None)
-        self._webrtc_candidate_counts.pop(session_id, None)
         LOGGER.debug(
             "X-Sense camera WebRTC session close requested: %s",
             _camera_debug_context(
@@ -515,43 +437,17 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             },
         )
         if session is not None:
-            self.hass.async_create_task(
-                self._async_close_webrtc_live_session(
-                    entity,
-                    session_id,
-                    session,
-                    stop_live=not self._webrtc_sessions,
-                )
-            )
+            self.hass.async_create_task(session.close())
         super().close_webrtc_session(session_id)
 
     async def async_will_remove_from_hass(self) -> None:
         """Stop any WebRTC live view session when Home Assistant removes the entity."""
-        entity = self._current_entity()
         sessions = list(self._webrtc_sessions.values())
         self._webrtc_sessions.clear()
         self._pending_webrtc_candidates.clear()
-        self._webrtc_candidate_counts.clear()
         for session in sessions:
-            await self._async_close_webrtc_live_session(
-                entity, None, session, stop_live=True
-            )
-        await super().async_will_remove_from_hass()
-
-    async def _async_close_webrtc_live_session(
-        self, entity, session_id: str | None, session, *, stop_live: bool
-    ) -> None:
-        """Close the signal session and release the ADDX live session."""
-        with suppress(Exception):
             await session.close()
-        if entity is None:
-            return
-        if not stop_live:
-            return
-        LOGGER.debug(
-            "X-Sense camera WebRTC signal session released: %s",
-            _camera_debug_context(entity, session_id),
-        )
+        await super().async_will_remove_from_hass()
 
 
 def _camera_online(entity) -> bool:
@@ -567,13 +463,6 @@ def _stream_protocol(entity) -> str | None:
     if protocol is None:
         return None
     return str(protocol).lower()
-
-
-def _stream_source_protocol(source: str | None) -> str | None:
-    """Return a stream source protocol without exposing the source URL."""
-    if not isinstance(source, str) or "://" not in source:
-        return None
-    return source.split("://", 1)[0].lower()
 
 
 def _is_native_stream_camera(entity) -> bool:
@@ -665,11 +554,6 @@ def _send_remote_candidate(send_message, entity, session_id, candidate) -> None:
             "X-Sense camera WebRTC remote ICE candidate forward failed: %s",
             _camera_debug_context(entity, session_id, error=type(err).__name__),
         )
-
-
-def _should_log_webrtc_candidate_count(count: int) -> bool:
-    """Return whether a candidate count should emit a per-candidate camera log."""
-    return count <= 1 or count in {5, 10, 25, 50, 100}
 
 
 def _sdp_debug_context(sdp: str | None) -> dict:

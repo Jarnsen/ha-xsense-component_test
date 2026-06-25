@@ -28,7 +28,6 @@ ENTITY_PLATFORMS = (
     switch,
 )
 
-
 class BlueprintLoader(SafeLoader):
     """YAML loader that tolerates Home Assistant blueprint tags."""
 

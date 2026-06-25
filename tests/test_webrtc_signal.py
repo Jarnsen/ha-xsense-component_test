@@ -428,6 +428,59 @@ def test_payload_debug_handles_mixed_key_types():
     assert webrtc_signal._payload_debug({1: "a", "b": "c"}) == "dict_keys=['1', 'b']"
 
 
+def test_sd_video_list_command_payload_matches_apk_data_channel_shape():
+    payload = json.loads(
+        webrtc_signal.make_sd_video_list_command_payload(
+            1782049304,
+            1782049314,
+            request_id="request-id",
+            timestamp=1782049300,
+        )
+    )
+
+    assert payload == {
+        "requestID": "request-id",
+        "connectionID": "7893feb",
+        "timeStamp": 1782049300,
+        "action": "getSdVideoList",
+        "parameters": {"startTime": 1782049304, "stopTime": 1782049314},
+    }
+
+
+def test_start_sd_playback_command_payload_matches_apk_data_channel_shape():
+    payload = json.loads(
+        webrtc_signal.make_start_sd_playback_command_payload(
+            1782049304,
+            request_id="request-id",
+            timestamp=1782049300,
+        )
+    )
+
+    assert payload == {
+        "requestID": "request-id",
+        "connectionID": "7893feb",
+        "timeStamp": 1782049300,
+        "action": "startPlaySdVideo",
+        "parameters": {"startTime": 1782049304},
+    }
+
+
+def test_stop_sd_playback_command_payload_matches_apk_data_channel_shape():
+    payload = json.loads(
+        webrtc_signal.make_stop_sd_playback_command_payload(
+            request_id="request-id",
+            timestamp=1782049300,
+        )
+    )
+
+    assert payload == {
+        "requestID": "request-id",
+        "connectionID": "7893feb",
+        "timeStamp": 1782049300,
+        "action": "stopPlaySdVideo",
+    }
+
+
 async def test_signal_event_debug_throttles_repeated_peer_events():
     session = webrtc_signal.XSenseWebRTCSignalSession(
         session=object(),

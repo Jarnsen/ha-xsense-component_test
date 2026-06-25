@@ -722,12 +722,14 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
             assert end_timestamp > start_timestamp
             return {
                 "list": [
-                        {
-                            "serialNumber": "camera-sn",
-                            "timestamp": 1781478300,
-                            "traceId": "trace-id",
-                            "tags": "motion",
-                        }
+                    {
+                        "serialNumber": "camera-sn",
+                        "timestamp": 1781478300,
+                        "startTime": 1781478300,
+                        "endTime": 1781478310,
+                        "traceId": "trace-id",
+                        "tags": "motion",
+                    }
                 ]
             }
 
@@ -745,10 +747,72 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
 
     assert parsed[0][0] is house.stations["camera-id"]
     assert parsed[0][1]["eventTime"] == "20260614230500"
+    assert parsed[0][1]["playback"] == {
+        "trace_id": "trace-id",
+        "start_time": 1781478300,
+        "start_time_s": 1781478300,
+        "end_time": 1781478310,
+        "end_time_s": 1781478310,
+        "timestamp": 1781478300,
+        "timestamp_s": 1781478300,
+        "tags": "motion",
+        "source": "sd_playback",
+    }
     assert house.stations["camera-id"].data[CAMERA_AI_SERVICE_AVAILABLE] is False
     assert "isMoved" not in parsed[0][1]
     assert "lastMotionTime" not in parsed[0][1]
     assert len(parsed) == 1
+
+
+def test_camera_event_history_station_data_preserves_direct_video_url():
+    from custom_components.xsense.coordinator import (
+        _camera_event_history_station_data,
+    )
+
+    data = _camera_event_history_station_data(
+        {
+            "serialNumber": "camera-sn",
+            "timestamp": 1781478300,
+            "traceId": "trace-id",
+            "videoUrl": "https://example.invalid/clip.mp4",
+            "imageUrl": "https://example.invalid/still.jpg",
+            "videoEvent": "motion",
+        }
+    )
+
+    assert data["playback"] == {
+        "trace_id": "trace-id",
+        "video_url": "https://example.invalid/clip.mp4",
+        "image_url": "https://example.invalid/still.jpg",
+        "timestamp": 1781478300,
+        "timestamp_s": 1781478300,
+        "video_event": "motion",
+        "source": "video_url",
+    }
+
+
+def test_camera_event_history_station_data_normalizes_ms_playback_times():
+    from custom_components.xsense.coordinator import (
+        _camera_event_history_station_data,
+    )
+
+    data = _camera_event_history_station_data(
+        {
+            "serialNumber": "camera-sn",
+            "timestamp": 1781478300000,
+            "startTime": 1781478300000,
+            "endTime": 1781478310000,
+            "traceId": "trace-id",
+            "tags": "motion",
+        }
+    )
+
+    assert data["playback"]["start_time"] == 1781478300000
+    assert data["playback"]["start_time_s"] == 1781478300
+    assert data["playback"]["end_time"] == 1781478310000
+    assert data["playback"]["end_time_s"] == 1781478310
+    assert data["playback"]["timestamp"] == 1781478300000
+    assert data["playback"]["timestamp_s"] == 1781478300
 
 
 async def test_camera_event_history_does_not_mark_unapplied_records_seen(caplog):

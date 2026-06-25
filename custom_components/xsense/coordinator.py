@@ -1026,6 +1026,9 @@ def _camera_record_history_debug_context(
         "timestamp": timestamp,
         "tags_present": "tags" in record,
         "video_event_present": "videoEvent" in record,
+        "video_url_present": bool(record.get("videoUrl")),
+        "start_time_present": record.get("startTime") not in (None, ""),
+        "end_time_present": record.get("endTime") not in (None, ""),
         "event_info_count": len(record.get("eventInfoList") or [])
         if isinstance(record.get("eventInfoList"), list)
         else None,
@@ -1052,8 +1055,72 @@ def _camera_event_history_station_data(record: dict[str, Any]) -> dict[str, Any]
         data["time"] = event_time
         data["eventTime"] = event_time
 
+    if playback := _camera_event_history_playback_data(record):
+        data["playback"] = playback
+
     _apply_apk_event_aliases(data)
     return data
+
+
+def _camera_event_history_playback_data(record: dict[str, Any]) -> dict[str, Any]:
+    """Return APK recording playback metadata from an ADDX history record."""
+    playback: dict[str, Any] = {}
+    for source_key, target_key in (
+        ("traceId", "trace_id"),
+        ("traceIds", "trace_ids"),
+        ("videoUrl", "video_url"),
+        ("imageUrl", "image_url"),
+        ("packageImageUrl", "package_image_url"),
+        ("startTime", "start_time"),
+        ("endTime", "end_time"),
+        ("timestamp", "timestamp"),
+        ("period", "period"),
+        ("fileSize", "file_size"),
+        ("videoEvent", "video_event"),
+        ("tags", "tags"),
+    ):
+        value = record.get(source_key)
+        if value not in (None, ""):
+            playback[target_key] = value
+
+    for raw_key, seconds_key in (
+        ("start_time", "start_time_s"),
+        ("end_time", "end_time_s"),
+        ("timestamp", "timestamp_s"),
+    ):
+        seconds = _camera_playback_epoch_seconds(playback.get(raw_key))
+        if seconds is not None:
+            playback[seconds_key] = seconds
+
+    playback_source = _camera_event_history_playback_source(record)
+    if playback_source:
+        playback["source"] = playback_source
+    return playback
+
+
+def _camera_playback_epoch_seconds(value: Any) -> int | None:
+    """Return epoch seconds for APK playback values that may be ms or seconds."""
+    if value in (None, ""):
+        return None
+    try:
+        timestamp = int(value)
+    except (TypeError, ValueError):
+        return None
+    if timestamp > 10_000_000_000:
+        timestamp //= 1000
+    return timestamp
+
+
+def _camera_event_history_playback_source(record: dict[str, Any]) -> str | None:
+    """Return how the APK can play a camera history record."""
+    if record.get("videoUrl"):
+        return "video_url"
+    if record.get("startTime") not in (None, "") or record.get("timestamp") not in (
+        None,
+        "",
+    ):
+        return "sd_playback"
+    return None
 
 
 def _camera_event_history_time(value: Any) -> str | None:
