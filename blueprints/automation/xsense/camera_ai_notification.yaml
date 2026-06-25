@@ -4,6 +4,8 @@ blueprint:
     Send a notification or run actions when an X-Sense camera reports motion
     or AI detection. Select the camera Motion or AI Detection event entity,
     then keep the default notification action or replace it with your own.
+    Motion events include trigger.event.data.recording_url when X-Sense
+    provides a direct playback URL for the recording.
   domain: automation
   author: X-Sense Home Security
   homeassistant:
@@ -17,13 +19,28 @@ blueprint:
           filter:
             - integration: xsense
               domain: event
+    include_recording_link:
+      name: Include recording link
+      description: Add the recording URL to the default notification when a Motion event includes one.
+      default: true
+      selector:
+        boolean:
+    include_snapshot_link:
+      name: Include snapshot link
+      description: Add the snapshot URL to the default notification when a Motion event includes one.
+      default: false
+      selector:
+        boolean:
     actions:
       name: What should happen
-      description: The default sends a basic Home Assistant notification. Replace it with a working mobile notification target or any other actions you want.
+      description: The default sends a Home Assistant notification and can include Motion recording links. Custom actions can use xsense_event_type, xsense_recording_url, and xsense_snapshot_url.
       default:
         - action: notify.notify
           data:
-            message: X-Sense camera activity detected.
+            message: >-
+              X-Sense camera activity detected.{% if xsense_include_recording_link and xsense_recording_url %}
+              Recording: {{ xsense_recording_url }}{% endif %}{% if xsense_include_snapshot_link and xsense_snapshot_url %}
+              Snapshot: {{ xsense_snapshot_url }}{% endif %}
       selector:
         action:
 
@@ -46,6 +63,14 @@ triggers:
         - package_pick_up
         - package_exist
         - other
+
+variables:
+  xsense_include_recording_link: !input include_recording_link
+  xsense_include_snapshot_link: !input include_snapshot_link
+  xsense_event_data: "{{ trigger.event.data if trigger is defined and trigger.event is defined and trigger.event.data is mapping else {} }}"
+  xsense_event_type: "{{ trigger.event.event_type if trigger is defined and trigger.event is defined else '' }}"
+  xsense_recording_url: "{{ xsense_event_data.get('recording_url', '') }}"
+  xsense_snapshot_url: "{{ xsense_event_data.get('snapshot_url', '') }}"
 
 actions: !input actions
 

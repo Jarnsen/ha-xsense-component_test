@@ -315,6 +315,20 @@ def motion_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
     playback = data.get("playback")
     if isinstance(playback, dict) and playback:
         event_data["playback"] = playback
+        event_data.update(_recording_event_data(playback))
+    return event_data
+
+
+def _recording_event_data(playback: dict[str, Any]) -> dict[str, Any]:
+    """Return flat recording fields for automation templates."""
+    event_data: dict[str, Any] = {}
+    if recording_url := playback.get("video_url"):
+        event_data["recording_url"] = recording_url
+        if recording_source := playback.get("source"):
+            event_data["recording_source"] = recording_source
+    if snapshot_url := playback.get("image_url") or playback.get("package_image_url"):
+        if recording_url:
+            event_data["snapshot_url"] = snapshot_url
     return event_data
 
 

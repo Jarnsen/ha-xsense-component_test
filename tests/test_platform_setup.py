@@ -176,3 +176,24 @@ def test_ai_notification_blueprint_default_action_does_not_template_trigger():
     default_actions = blueprint["blueprint"]["input"]["actions"]["default"]
 
     assert "trigger." not in str(default_actions)
+
+
+def test_ai_notification_blueprint_exposes_safe_event_variables():
+    with open(
+        "blueprints/automation/xsense/camera_ai_notification.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    variables = blueprint["variables"]
+    default_actions = blueprint["blueprint"]["input"]["actions"]["default"]
+    message = default_actions[0]["data"]["message"]
+
+    assert variables["xsense_include_recording_link"] == "include_recording_link"
+    assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
+    assert "trigger.event.data" in variables["xsense_event_data"]
+    assert "recording_url" in variables["xsense_recording_url"]
+    assert "snapshot_url" in variables["xsense_snapshot_url"]
+    assert "xsense_recording_url" in message
+    assert "xsense_snapshot_url" in message
+    assert "trigger." not in message

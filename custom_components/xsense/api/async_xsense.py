@@ -78,6 +78,7 @@ _CAMERA_AI_NOTIFICATION_PAYLOAD_KEYS = {
     "vehicle": "vehicle",
     "other": "other",
 }
+_SBS50_CHILD_INFO_DEVICE_TYPES = {"SWS51"}
 
 # The Android app reads these standalone Wi-Fi device categories from the
 # house-level mainpage/2nd_mainpage shadows, not from station-level mainpage
@@ -157,6 +158,12 @@ def _station_info_shadow_names(station: Station) -> tuple[str, ...]:
     if station.type == "SBS50" or station.type in _SECOND_INFO_DEVICE_TYPES:
         return (f"2nd_info_{station.sn}",)
     return (f"info_{station.sn}",)
+
+
+class _ThingShadowTarget:
+    def __init__(self, station: Station, shadow_name: str) -> None:
+        self.house = station.house
+        self.shadow_name = shadow_name
 
 
 def is_camera_entity(entity: Entity) -> bool:
@@ -1094,11 +1101,31 @@ class AsyncXSense(XSenseBase):
 
             if "reported" in res.get("state", {}):
                 self.parse_get_state(station, res["state"]["reported"])
+                await self._get_sbs50_child_info_state(station)
                 return
 
             text = await self._lastres.text()
             raise APIFailure(
                 f"Unable to retrieve station data: {self._lastres.status}/{text}"
+            )
+
+    async def _get_sbs50_child_info_state(self, station: Station) -> None:
+        """Merge APK per-device info shadows for SBS50 children that use them."""
+        if station.type != "SBS50":
+            return
+        for device in getattr(station, "devices", {}).values():
+            if device.type not in _SBS50_CHILD_INFO_DEVICE_TYPES:
+                continue
+            target = _ThingShadowTarget(station, f"SBS50{station.sn}")
+            res = await self.get_thing(target, f"2nd_info_{device.sn}")
+            if self._lastres.status == 404:
+                continue
+            if "reported" in res.get("state", {}):
+                device.set_data(res["state"]["reported"])
+                continue
+            text = await self._lastres.text()
+            raise APIFailure(
+                f"Unable to retrieve device data: {self._lastres.status}/{text}"
             )
 
     async def set_state(

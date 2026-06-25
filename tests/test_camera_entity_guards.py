@@ -786,6 +786,36 @@ def test_motion_event_data_includes_apk_playback_metadata():
     assert event.motion_fingerprint(event_data) == ("20260621134144", "trace-id")
 
 
+def test_motion_event_data_exposes_direct_recording_url_aliases():
+    event_data = event.motion_event_data(
+        {
+            "eventTime": "20260621134144",
+            "playback": {
+                "source": "video_url",
+                "trace_id": "trace-id",
+                "video_url": "https://example.invalid/clip.mp4",
+                "image_url": "https://example.invalid/still.jpg",
+                "package_image_url": "https://example.invalid/package.jpg",
+            },
+        }
+    )
+
+    assert event_data == {
+        "time": "20260621134144",
+        "playback": {
+            "source": "video_url",
+            "trace_id": "trace-id",
+            "video_url": "https://example.invalid/clip.mp4",
+            "image_url": "https://example.invalid/still.jpg",
+            "package_image_url": "https://example.invalid/package.jpg",
+        },
+        "recording_url": "https://example.invalid/clip.mp4",
+        "snapshot_url": "https://example.invalid/still.jpg",
+        "recording_source": "video_url",
+    }
+    assert event.motion_fingerprint(event_data) == ("20260621134144", "trace-id")
+
+
 def test_motion_event_entity_triggers_repeated_motion_with_new_time():
     camera_entity = entity("SSC0A", {"eventTime": "20260621134144"})
     event_entity = event.XSenseMotionEventEntity.__new__(
