@@ -230,7 +230,12 @@ class XSenseWebRTCSignalSession:
                 self._debug_context(candidate_type=type(candidate).__name__),
             )
             return
-        if self._ws is None or self._ws.closed or not self._offer_sent:
+        if (
+            self._ws is None
+            or self._ws.closed
+            or not self._offer_sent
+            or not _future_has_result(self._answer)
+        ):
             self._pending_remote_candidates.append(payload)
             LOGGER.debug(
                 "X-Sense WebRTC signal relay queued HA ICE candidate: %s",
@@ -410,6 +415,7 @@ class XSenseWebRTCSignalSession:
                 )
                 if not self._answer.done():
                     self._answer.set_result(answer)
+                await self._flush_pending_remote_candidates()
             else:
                 LOGGER.debug(
                     "X-Sense WebRTC signal relay ignored SDP answer: %s",
@@ -485,10 +491,9 @@ class XSenseWebRTCSignalSession:
         )
         for candidate in candidates:
             await self._send_candidate(candidate)
-        await self._flush_pending_remote_candidates()
 
     async def _flush_pending_remote_candidates(self) -> None:
-        """Send any HA candidates that arrived before the X-Sense offer was sent."""
+        """Send any HA candidates that arrived before the X-Sense answer."""
         while self._pending_remote_candidates and not self._closed:
             await self._send_candidate(self._pending_remote_candidates.pop(0))
 
@@ -1141,6 +1146,8 @@ def _candidate_queue_reason(session: XSenseWebRTCSignalSession) -> str:
         return "signal_closed"
     if not session._offer_sent:
         return "waiting_for_peer_offer"
+    if not _future_has_result(session._answer):
+        return "waiting_for_sdp_answer"
     return "unknown"
 
 

@@ -232,7 +232,7 @@ def test_sdp_debug_includes_browser_rejection_shape_without_raw_values():
     assert "secret" not in str(context)
 
 
-async def test_trickled_candidate_is_queued_until_offer_is_sent():
+async def test_trickled_candidate_is_queued_until_answer_is_received():
     class FakeWs:
         closed = False
 
@@ -261,11 +261,21 @@ async def test_trickled_candidate_is_queued_until_offer_is_sent():
 
     session._ws = FakeWs()
     session._offer_sent = True
+
+    await session.add_candidate(candidate)
+
+    assert len(session._pending_remote_candidates) == 2
+    assert session._ws.messages == []
+
+    session._answer.set_result("v=0\r\n")
     await session._flush_pending_remote_candidates()
 
     assert session._pending_remote_candidates == []
-    assert session._ws.messages[0]["messageType"] == "ICE_CANDIDATE"
-    assert session._sent_candidate_count == 1
+    assert [message["messageType"] for message in session._ws.messages] == [
+        "ICE_CANDIDATE",
+        "ICE_CANDIDATE",
+    ]
+    assert session._sent_candidate_count == 2
 
 
 async def test_online_camera_waits_for_peer_in_before_sending_offer():
