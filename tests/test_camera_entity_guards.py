@@ -646,6 +646,34 @@ def test_camera_entities_do_not_duplicate_station_backed_cameras():
     assert entities[0]._station_id is None
 
 
+def test_camera_entities_do_not_duplicate_station_backed_camera_serials():
+    station_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
+    station_camera.entity_id = "station-camera-id"
+    station_camera.sn = "cam-sn"
+    station_camera.name = "Station Camera"
+    station_camera.online = True
+
+    device_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
+    device_camera.entity_id = "device-camera-id"
+    device_camera.sn = "CAM-SN"
+    device_camera.name = "Device Camera"
+    device_camera.online = True
+
+    class Coordinator:
+        data = {
+            "stations": {station_camera.entity_id: station_camera},
+            "devices": {device_camera.entity_id: device_camera},
+        }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    entities = camera._camera_entities(Coordinator())
+
+    assert [entity._dev_id for entity in entities] == [station_camera.entity_id]
+    assert entities[0]._station_id is None
+
+
 def test_ai_detection_event_entities_include_standalone_device_cameras():
     device_camera = entity("SSC0A", {"supportPersonDetect": True})
     device_camera.entity_id = "standalone-camera"

@@ -64,14 +64,22 @@ def _camera_entities(
     """Return X-Sense camera entities from station and device records."""
     entities: list[XSenseCameraEntity] = []
     seen_entity_ids: set[str] = set()
+    seen_camera_serials: set[str] = set()
 
     for station in coordinator_stations(coordinator).values():
         if is_camera_entity(station):
             entities.append(_camera_entity(coordinator, station))
             seen_entity_ids.add(station.entity_id)
+            if serial := _camera_serial(station):
+                seen_camera_serials.add(serial)
 
     for device in coordinator_devices(coordinator).values():
-        if not is_camera_entity(device) or device.entity_id in seen_entity_ids:
+        serial = _camera_serial(device)
+        if (
+            not is_camera_entity(device)
+            or device.entity_id in seen_entity_ids
+            or (serial is not None and serial in seen_camera_serials)
+        ):
             continue
         entities.append(
             _camera_entity(
@@ -92,6 +100,15 @@ def _camera_entity(
         XSenseWebRTCCameraEntity if _is_webrtc_camera(entity) else XSenseCameraEntity
     )
     return entity_cls(coordinator, entity, CAMERA_DESCRIPTION, station_id=station_id)
+
+
+def _camera_serial(entity) -> str | None:
+    """Return a normalized camera serial for station/device de-duplication."""
+    serial = getattr(entity, "sn", None)
+    if serial is None:
+        serial = entity.data.get("serialNumber") if isinstance(entity.data, dict) else None
+    normalized = str(serial or "").strip().upper()
+    return normalized or None
 
 
 class XSenseCameraEntity(XSenseEntity, Camera):
