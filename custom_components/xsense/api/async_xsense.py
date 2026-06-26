@@ -246,6 +246,7 @@ class AsyncXSense(XSenseBase):
         self.session = session
         self._owns_session = session is None
         self.language = _ipc_language(language)
+        self._sbs50_child_info_loaded: set[tuple[str, str]] = set()
 
     async def _get_session(self):
         if self.session is None or self.session.closed:
@@ -1110,23 +1111,47 @@ class AsyncXSense(XSenseBase):
             )
 
     async def _get_sbs50_child_info_state(self, station: Station) -> None:
-        """Merge APK per-device info shadows for SBS50 children that use them."""
+        """Merge optional APK per-device info shadows for SBS50 children."""
         if station.type != "SBS50":
             return
         for device in getattr(station, "devices", {}).values():
             if device.type not in _SBS50_CHILD_INFO_DEVICE_TYPES:
                 continue
+            info_key = (station.sn, device.sn)
+            if info_key in self._sbs50_child_info_loaded:
+                continue
             target = _ThingShadowTarget(station, f"SBS50{station.sn}")
-            res = await self.get_thing(target, f"2nd_info_{device.sn}")
-            if self._lastres.status == 404:
-                continue
-            if "reported" in res.get("state", {}):
-                device.set_data(res["state"]["reported"])
-                continue
-            text = await self._lastres.text()
-            raise APIFailure(
-                f"Unable to retrieve device data: {self._lastres.status}/{text}"
-            )
+            page = f"2nd_info_{device.sn}"
+            try:
+                res = await self.get_thing(target, page)
+                if self._lastres.status == 404:
+                    self._sbs50_child_info_loaded.add(info_key)
+                    continue
+                if "reported" in res.get("state", {}):
+                    device.set_data(res["state"]["reported"])
+                    self._sbs50_child_info_loaded.add(info_key)
+                    continue
+                text = await self._lastres.text()
+                LOGGER.debug(
+                    "X-Sense SBS50 child info shadow ignored: %s",
+                    {
+                        "station": station.type,
+                        "device": device.type,
+                        "page": page,
+                        "status": self._lastres.status,
+                        "response": text,
+                    },
+                )
+            except Exception as ex:  # noqa: BLE001
+                LOGGER.debug(
+                    "X-Sense SBS50 child info shadow failed: %s",
+                    {
+                        "station": station.type,
+                        "device": device.type,
+                        "page": page,
+                        "error": str(ex),
+                    },
+                )
 
     async def set_state(
         self, entity: Entity, shadow: str, topic: str, definition: Dict

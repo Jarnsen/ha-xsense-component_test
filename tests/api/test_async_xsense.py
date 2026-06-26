@@ -1078,15 +1078,61 @@ async def test_get_state_reads_sws51_sbs50_child_info_like_apk():
     client.get_thing = get_thing
 
     await client.get_state(station_obj)
+    await client.get_state(station_obj)
 
     device = station_obj.get_device_by_sn("device-sn")
     assert calls == [
         ("SBS50station-sn", "2nd_mainpage"),
         ("SBS50station-sn", "2nd_info_device-sn"),
+        ("SBS50station-sn", "2nd_mainpage"),
     ]
     assert device.data["batInfo"] == 3
     assert device.data["waterAlarmStatus"] is False
     assert device.data["waterMuteStatus"] is True
+
+
+@pytest.mark.asyncio
+async def test_get_state_ignores_sws51_sbs50_child_info_failure():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    station_obj = station.Station(
+        test_house,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_devices(
+        {
+            "deviceSort": ["device-id"],
+            "devices": [
+                {
+                    "deviceId": "device-id",
+                    "deviceName": "Leak",
+                    "deviceSn": "device-sn",
+                    "deviceType": "SWS51",
+                }
+            ],
+        }
+    )
+    calls = []
+
+    async def get_thing(station_arg, page):
+        calls.append((station_arg.shadow_name, page))
+        if page == "2nd_mainpage":
+            client._lastres = FakeResponse(200)
+            return {"state": {"reported": {"devs": {}}}}
+        client._lastres = FakeResponse(500, "bad")
+        return {"message": "bad"}
+
+    client.get_thing = get_thing
+
+    await client.get_state(station_obj)
+
+    assert calls == [
+        ("SBS50station-sn", "2nd_mainpage"),
+        ("SBS50station-sn", "2nd_info_device-sn"),
+    ]
 
 
 @pytest.mark.asyncio
