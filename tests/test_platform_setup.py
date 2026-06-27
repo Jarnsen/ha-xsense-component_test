@@ -215,12 +215,18 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     variables = blueprint["variables"]
     default_actions = blueprint["blueprint"]["input"]["actions"]["default"]
     message = default_actions[0]["data"]["message"]
+    notification_data = default_actions[0]["data"]["data"]
 
     assert variables["xsense_include_recording_link"] == "include_recording_link"
     assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
     assert "trigger.event.data" in variables["xsense_event_data"]
     assert "recording_url" in variables["xsense_recording_url"]
     assert "snapshot_url" in variables["xsense_snapshot_url"]
+    assert "xsense_recording_url" in variables["xsense_notification_url"]
+    assert "noAction" in variables["xsense_notification_url"]
     assert "xsense_recording_url" in message
     assert "xsense_snapshot_url" in message
     assert "trigger." not in message
+    assert notification_data["url"] == "{{ xsense_notification_url }}"
+    assert notification_data["clickAction"] == "{{ xsense_notification_url }}"
+    assert "trigger." not in str(notification_data)

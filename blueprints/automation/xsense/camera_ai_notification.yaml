@@ -5,7 +5,8 @@ blueprint:
     or AI detection. Select the camera Motion or AI Detection event entity,
     then keep the default notification action or replace it with your own.
     Motion events include trigger.event.data.recording_url when X-Sense
-    provides a direct playback URL for the recording.
+    provides a direct playback URL for the recording. When a recording URL is
+    available, tapping the default mobile notification opens that recording.
   domain: automation
   author: X-Sense Home Security
   source_url: https://github.com/Jarnsen/ha-xsense-component_test/blob/main/blueprints/automation/xsense/camera_ai_notification.yaml
@@ -34,7 +35,7 @@ blueprint:
         boolean:
     actions:
       name: What should happen
-      description: The default sends a Home Assistant notification and can include Motion recording links. Custom actions can use xsense_event_type, xsense_recording_url, and xsense_snapshot_url.
+      description: The default sends a Home Assistant notification and can open the Motion recording when the notification is tapped. Custom actions can use xsense_event_type, xsense_recording_url, xsense_snapshot_url, and xsense_notification_url.
       default:
         - action: notify.notify
           data:
@@ -42,6 +43,9 @@ blueprint:
               X-Sense camera activity detected.{% if xsense_include_recording_link and xsense_recording_url %}
               Recording: {{ xsense_recording_url }}{% endif %}{% if xsense_include_snapshot_link and xsense_snapshot_url %}
               Snapshot: {{ xsense_snapshot_url }}{% endif %}
+            data:
+              url: "{{ xsense_notification_url }}"
+              clickAction: "{{ xsense_notification_url }}"
       selector:
         action:
 
@@ -72,6 +76,7 @@ variables:
   xsense_event_type: "{{ trigger.event.event_type if trigger is defined and trigger.event is defined else '' }}"
   xsense_recording_url: "{{ xsense_event_data.get('recording_url', '') }}"
   xsense_snapshot_url: "{{ xsense_event_data.get('snapshot_url', '') }}"
+  xsense_notification_url: "{{ xsense_recording_url if xsense_include_recording_link and xsense_recording_url else 'noAction' }}"
 
 actions: !input actions
 
