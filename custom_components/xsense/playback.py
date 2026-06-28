@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from urllib.parse import quote
 
 from aiohttp import web
+from homeassistant.components import frontend
 from homeassistant.components.http import HomeAssistantView
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN, LOGGER
@@ -16,14 +19,47 @@ from .webrtc_signal import (
 
 PLAYBACK_VIEW_NAME = "api:xsense:playback"
 PLAYBACK_VIEW_URL = "/xsense/playback/{entry_id}/{serial}/{start_time}"
+PLAYBACK_PANEL_PATH = "xsense-playback"
+PLAYBACK_STATIC_PATH = "/xsense_static"
+PLAYBACK_PANEL_MODULE = f"{PLAYBACK_STATIC_PATH}/xsense-playback-panel.js"
 
 
-def async_register_playback_view(hass: HomeAssistant) -> None:
-    """Register the X-Sense playback view once."""
-    if hass.data.setdefault(DOMAIN, {}).get("_playback_view_registered"):
-        return
-    hass.http.register_view(XSensePlaybackView())
-    hass.data[DOMAIN]["_playback_view_registered"] = True
+async def async_register_playback_view(hass: HomeAssistant) -> None:
+    """Register the X-Sense playback routes once."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not domain_data.get("_playback_static_registered"):
+        await hass.http.async_register_static_paths(
+            [
+                StaticPathConfig(
+                    PLAYBACK_STATIC_PATH,
+                    str(Path(__file__).parent / "frontend"),
+                    cache_headers=False,
+                )
+            ]
+        )
+        domain_data["_playback_static_registered"] = True
+
+    if not domain_data.get("_playback_panel_registered"):
+        frontend.async_register_built_in_panel(
+            hass,
+            component_name="custom",
+            frontend_url_path=PLAYBACK_PANEL_PATH,
+            config={
+                "_panel_custom": {
+                    "name": "xsense-playback-panel",
+                    "embed_iframe": False,
+                    "trust_external": False,
+                    "module_url": PLAYBACK_PANEL_MODULE,
+                }
+            },
+            require_admin=False,
+            show_in_sidebar=False,
+        )
+        domain_data["_playback_panel_registered"] = True
+
+    if not domain_data.get("_playback_view_registered"):
+        hass.http.register_view(XSensePlaybackView())
+        domain_data["_playback_view_registered"] = True
 
 
 def playback_url(
@@ -35,9 +71,11 @@ def playback_url(
 ) -> str:
     """Return a Home Assistant URL for an X-Sense SD playback event."""
     path = (
-        f"/xsense/playback/{quote(str(entry_id), safe='')}/"
-        f"{quote(str(serial), safe='')}/{int(start_time)}"
-        f"?camera_entity_id={quote(camera_entity_id, safe='')}"
+        f"/{PLAYBACK_PANEL_PATH}"
+        f"?entry_id={quote(str(entry_id), safe='')}"
+        f"&serial={quote(str(serial), safe='')}"
+        f"&start_time={int(start_time)}"
+        f"&camera_entity_id={quote(camera_entity_id, safe='')}"
     )
     if not base_url:
         return path

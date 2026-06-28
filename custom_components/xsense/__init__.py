@@ -589,7 +589,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _migrate_legacy_none_entity_ids(hass, entry)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-    async_register_playback_view(hass)
+    await async_register_playback_view(hass)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

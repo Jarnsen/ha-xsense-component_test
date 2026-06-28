@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import sys
+import asyncio
 from types import SimpleNamespace
 
 import pytest
@@ -822,8 +823,8 @@ def test_motion_event_entity_adds_ha_sd_playback_url(monkeypatch):
     assert event_data["camera_name"] == "Garden Camera"
     assert event_data["camera_entity_id"] == "camera.garden"
     assert event_data["recording_url"] == (
-        "/xsense/playback/entry-id/CAMERA-SN/1782049304"
-        "?camera_entity_id=camera.garden"
+        "/xsense-playback?entry_id=entry-id&serial=CAMERA-SN"
+        "&start_time=1782049304&camera_entity_id=camera.garden"
     )
     assert event_data["recording_source"] == "sd_playback"
 
@@ -870,6 +871,57 @@ def test_playback_page_uses_ha_webrtc_answer_and_sd_command():
     assert "pendingCandidates" in html
     assert "startPlaySdVideo" in html
     assert "stopPlaySdVideo" in html
+
+
+def test_playback_url_uses_frontend_panel_route():
+    from custom_components.xsense import playback
+
+    url = playback.playback_url("entry-id", "CAMERA/SN", 1782049304, "camera.garden")
+
+    assert url == (
+        "/xsense-playback?entry_id=entry-id&serial=CAMERA%2FSN"
+        "&start_time=1782049304&camera_entity_id=camera.garden"
+    )
+
+
+def test_register_playback_routes_adds_hidden_frontend_panel(monkeypatch):
+    from custom_components.xsense import playback
+
+    static_paths = []
+    registered_views = []
+    panels = []
+
+    class Http:
+        async def async_register_static_paths(self, configs):
+            static_paths.extend(configs)
+
+        def register_view(self, view):
+            registered_views.append(view)
+
+    hass = SimpleNamespace(data={}, http=Http())
+    monkeypatch.setattr(
+        playback.frontend,
+        "async_register_built_in_panel",
+        lambda *args, **kwargs: panels.append((args, kwargs)),
+    )
+
+    asyncio.run(playback.async_register_playback_view(hass))
+    asyncio.run(playback.async_register_playback_view(hass))
+
+    assert len(static_paths) == 1
+    assert static_paths[0].url_path == "/xsense_static"
+    assert len(registered_views) == 1
+    assert isinstance(registered_views[0], playback.XSensePlaybackView)
+    assert len(panels) == 1
+    panel_args, panel_kwargs = panels[0]
+    assert panel_args == (hass,)
+    assert panel_kwargs["component_name"] == "custom"
+    assert panel_kwargs["frontend_url_path"] == "xsense-playback"
+    assert panel_kwargs["show_in_sidebar"] is False
+    assert panel_kwargs["config"]["_panel_custom"]["name"] == "xsense-playback-panel"
+    assert panel_kwargs["config"]["_panel_custom"]["module_url"] == (
+        "/xsense_static/xsense-playback-panel.js"
+    )
 
 
 def test_motion_event_data_exposes_direct_recording_url_aliases():
