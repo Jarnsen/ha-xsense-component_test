@@ -789,13 +789,12 @@ def test_motion_event_data_includes_apk_playback_metadata():
 def test_motion_event_entity_adds_ha_sd_playback_url(monkeypatch):
     camera_entity = entity("SSC0A", {})
     camera_entity.entity_id = "camera-id"
+    camera_entity.name = "Garden Camera"
     camera_entity.sn = "CAMERA-SN"
     event_entity = event.XSenseMotionEventEntity.__new__(
         event.XSenseMotionEventEntity
     )
-    event_entity.hass = SimpleNamespace(
-        config=SimpleNamespace(api=SimpleNamespace(base_url="https://ha.example"))
-    )
+    event_entity.hass = object()
     event_entity.coordinator = SimpleNamespace(
         entry=SimpleNamespace(entry_id="entry-id")
     )
@@ -817,10 +816,13 @@ def test_motion_event_entity_adds_ha_sd_playback_url(monkeypatch):
         },
     }
 
+    event_entity._add_camera_event_context(camera_entity, event_data)
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
+    assert event_data["camera_name"] == "Garden Camera"
+    assert event_data["camera_entity_id"] == "camera.garden"
     assert event_data["recording_url"] == (
-        "https://ha.example/api/xsense/playback/entry-id/CAMERA-SN/1782049304"
+        "/xsense/playback/entry-id/CAMERA-SN/1782049304"
         "?camera_entity_id=camera.garden"
     )
     assert event_data["recording_source"] == "sd_playback"

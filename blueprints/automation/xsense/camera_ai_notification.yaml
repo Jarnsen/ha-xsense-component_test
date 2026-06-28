@@ -63,6 +63,7 @@ variables:
   xsense_include_snapshot_link: !input include_snapshot_link
   xsense_event_data: "{{ trigger.event.data if trigger is defined and trigger.event is defined and trigger.event.data is mapping else {} }}"
   xsense_event_type: "{{ trigger.event.event_type if trigger is defined and trigger.event is defined else '' }}"
+  xsense_camera_name: "{{ xsense_event_data.get('camera_name') or (trigger.to_state.name if trigger is defined and trigger.to_state is defined else 'X-Sense camera') }}"
   xsense_recording_url: "{{ xsense_event_data.get('recording_url', '') }}"
   xsense_snapshot_url: "{{ xsense_event_data.get('snapshot_url', '') }}"
 
@@ -75,9 +76,9 @@ actions:
           - domain: mobile_app
             type: notify
             device_id: !input notify_device
-            title: X-Sense camera
+            title: "{{ xsense_camera_name }}"
             message: >-
-              X-Sense camera activity detected.
+              Motion detected by {{ xsense_camera_name }}.
               Recording: {{ xsense_recording_url }}{% if xsense_include_snapshot_link and xsense_snapshot_url %}
               Snapshot: {{ xsense_snapshot_url }}{% endif %}
             data:
@@ -87,9 +88,9 @@ actions:
       - domain: mobile_app
         type: notify
         device_id: !input notify_device
-        title: X-Sense camera
+        title: "{{ xsense_camera_name }}"
         message: >-
-          X-Sense camera activity detected.{% if xsense_include_snapshot_link and xsense_snapshot_url %}
+          Motion detected by {{ xsense_camera_name }}.{% if xsense_include_snapshot_link and xsense_snapshot_url %}
           Snapshot: {{ xsense_snapshot_url }}{% endif %}{% if xsense_include_recording_link %}
           No playback URL was included with this X-Sense event.{% endif %}
 

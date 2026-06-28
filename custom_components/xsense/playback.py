@@ -15,7 +15,7 @@ from .webrtc_signal import (
 )
 
 PLAYBACK_VIEW_NAME = "api:xsense:playback"
-PLAYBACK_VIEW_URL = "/api/xsense/playback/{entry_id}/{serial}/{start_time}"
+PLAYBACK_VIEW_URL = "/xsense/playback/{entry_id}/{serial}/{start_time}"
 
 
 def async_register_playback_view(hass: HomeAssistant) -> None:
@@ -35,7 +35,7 @@ def playback_url(
 ) -> str:
     """Return a Home Assistant URL for an X-Sense SD playback event."""
     path = (
-        f"/api/xsense/playback/{quote(str(entry_id), safe='')}/"
+        f"/xsense/playback/{quote(str(entry_id), safe='')}/"
         f"{quote(str(serial), safe='')}/{int(start_time)}"
         f"?camera_entity_id={quote(camera_entity_id, safe='')}"
     )

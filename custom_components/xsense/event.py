@@ -207,6 +207,7 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
             return
 
         event_data = motion_event_data(entity.data)
+        self._add_camera_event_context(entity, event_data)
         self._add_motion_playback_url(entity, event_data)
         fingerprint = motion_fingerprint(event_data)
         if fingerprint is None:
@@ -229,6 +230,17 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
         self._trigger_event(MOTION_EVENT_TYPE, event_data)
         self._write_state_if_added()
 
+    def _add_camera_event_context(
+        self, entity: Entity, event_data: dict[str, Any] | None
+    ) -> None:
+        """Add camera context fields for automation templates."""
+        if event_data is None:
+            return
+        if camera_name := getattr(entity, "name", None):
+            event_data["camera_name"] = str(camera_name)
+        if camera_entity_id := _camera_entity_id_for_event(self.hass, entity):
+            event_data["camera_entity_id"] = camera_entity_id
+
     def _add_motion_playback_url(
         self, entity: Entity, event_data: dict[str, Any] | None
     ) -> None:
@@ -241,7 +253,12 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
         start_time = playback.get("start_time_s") or playback.get("start_time")
         if start_time in (None, "") or not getattr(entity, "sn", None):
             return
-        camera_entity_id = _camera_entity_id_for_event(self.hass, entity)
+        camera_entity_id = event_data.get(
+            "camera_entity_id"
+        ) or _camera_entity_id_for_event(
+            self.hass,
+            entity,
+        )
         if camera_entity_id is None:
             return
         event_data["recording_url"] = playback_url(
@@ -249,7 +266,6 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
             str(entity.sn),
             int(start_time),
             camera_entity_id,
-            _hass_base_url(self.hass),
         )
         event_data["recording_source"] = "sd_playback"
 
@@ -344,13 +360,6 @@ def _camera_entity_id_for_event(hass: HomeAssistant, entity: Entity) -> str | No
     )
     registry = er.async_get(hass)
     return registry.async_get_entity_id(Platform.CAMERA, DOMAIN, unique_id)
-
-
-def _hass_base_url(hass: HomeAssistant) -> str | None:
-    """Return Home Assistant's configured base URL when available."""
-    config = getattr(hass, "config", None)
-    api = getattr(config, "api", None)
-    return getattr(api, "base_url", None)
 
 
 def motion_event_data(data: dict[str, Any]) -> dict[str, Any] | None:

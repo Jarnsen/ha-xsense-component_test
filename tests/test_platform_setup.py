@@ -235,7 +235,9 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert variables["xsense_include_recording_link"] == "include_recording_link"
     assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
     assert "trigger.event.data" in variables["xsense_event_data"]
+    assert "camera_name" in variables["xsense_camera_name"]
     assert "recording_url" in variables["xsense_recording_url"]
+    assert "xsense_recording_target" not in variables
     assert "snapshot_url" in variables["xsense_snapshot_url"]
     assert "xsense_notification_url" not in variables
     assert "noAction" not in str(blueprint)
@@ -246,9 +248,13 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert fallback_action["domain"] == "mobile_app"
     assert fallback_action["type"] == "notify"
     assert fallback_action["device_id"] == "notify_device"
+    assert direct_url_action["title"] == "{{ xsense_camera_name }}"
+    assert fallback_action["title"] == "{{ xsense_camera_name }}"
     assert len(blueprint["actions"]) == 1
     assert "actions" not in blueprint["blueprint"]["input"]
     assert "Home Assistant playback URL" in blueprint["blueprint"]["description"]
+    assert "xsense_camera_name" in direct_message
+    assert "xsense_camera_name" in fallback_message
     assert "xsense_recording_url" in direct_message
     assert "xsense_snapshot_url" in direct_message
     assert "xsense_recording_url" not in fallback_message
