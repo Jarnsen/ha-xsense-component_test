@@ -16,11 +16,14 @@ from homeassistant.components.event import (
     EventEntity,
     EventEntityDescription,
 )
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import entity_registry as er
 
 from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN
 from .entity import XSenseEntity, coordinator_devices
+from .playback import playback_url
 
 if TYPE_CHECKING:
     from .coordinator import XSenseDataUpdateCoordinator
@@ -55,6 +58,8 @@ _AI_DETECTION_TIME_KEYS: dict[str, str] = {
     "package_exist": "lastPackageExistDetectionTime",
     "other": "lastOtherDetectionTime",
 }
+
+_CAMERA_ENTITY_DESCRIPTION_KEY = "thumbnail"
 
 @dataclass(kw_only=True, frozen=True)
 class XSenseEventEntityDescription(EventEntityDescription):
@@ -202,6 +207,7 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
             return
 
         event_data = motion_event_data(entity.data)
+        self._add_motion_playback_url(entity, event_data)
         fingerprint = motion_fingerprint(event_data)
         if fingerprint is None:
             if not self._motion_initialized:
@@ -222,6 +228,30 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
         self._last_motion_fingerprint = fingerprint
         self._trigger_event(MOTION_EVENT_TYPE, event_data)
         self._write_state_if_added()
+
+    def _add_motion_playback_url(
+        self, entity: Entity, event_data: dict[str, Any] | None
+    ) -> None:
+        """Add a Home Assistant playback URL for X-Sense SD recording events."""
+        if event_data is None or event_data.get("recording_url"):
+            return
+        playback = event_data.get("playback")
+        if not isinstance(playback, dict) or playback.get("source") != "sd_playback":
+            return
+        start_time = playback.get("start_time_s") or playback.get("start_time")
+        if start_time in (None, "") or not getattr(entity, "sn", None):
+            return
+        camera_entity_id = _camera_entity_id_for_event(self.hass, entity)
+        if camera_entity_id is None:
+            return
+        event_data["recording_url"] = playback_url(
+            self.coordinator.entry.entry_id,
+            str(entity.sn),
+            int(start_time),
+            camera_entity_id,
+            _hass_base_url(self.hass),
+        )
+        event_data["recording_source"] = "sd_playback"
 
     def _write_state_if_added(self) -> None:
         """Write HA state after the entity is registered."""
@@ -303,6 +333,24 @@ def _device_station_id(device: Device) -> str | None:
     if station is None:
         return None
     return getattr(station, "entity_id", None)
+
+
+def _camera_entity_id_for_event(hass: HomeAssistant, entity: Entity) -> str | None:
+    """Return the HA camera entity id for an X-Sense camera record."""
+    unique_id = (
+        f"{entity.entity_id}-{_CAMERA_ENTITY_DESCRIPTION_KEY}".replace(
+            "_", "-"
+        ).lower()
+    )
+    registry = er.async_get(hass)
+    return registry.async_get_entity_id(Platform.CAMERA, DOMAIN, unique_id)
+
+
+def _hass_base_url(hass: HomeAssistant) -> str | None:
+    """Return Home Assistant's configured base URL when available."""
+    config = getattr(hass, "config", None)
+    api = getattr(config, "api", None)
+    return getattr(api, "base_url", None)
 
 
 def motion_event_data(data: dict[str, Any]) -> dict[str, Any] | None:

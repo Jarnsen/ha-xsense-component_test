@@ -205,16 +205,16 @@ def test_ai_notification_blueprint_filters_by_selected_event_entity():
     assert "AI activity" not in str(blueprint)
 
 
-def test_ai_notification_blueprint_default_action_does_not_template_trigger():
+def test_ai_notification_blueprint_does_not_expose_custom_camera_actions():
     with open(
         "blueprints/automation/xsense/camera_ai_notification.yaml",
         encoding="utf-8",
     ) as file:
         blueprint = yaml.load(file, Loader=BlueprintLoader)
 
-    default_actions = blueprint["blueprint"]["input"]["actions"]["default"]
-
-    assert "trigger." not in str(default_actions)
+    assert "actions" not in blueprint["blueprint"]["input"]
+    assert "camera.play_stream" not in str(blueprint)
+    assert "camera.record" not in str(blueprint)
 
 
 def test_ai_notification_blueprint_exposes_safe_event_variables():
@@ -225,28 +225,39 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
         blueprint = yaml.load(file, Loader=BlueprintLoader)
 
     variables = blueprint["variables"]
-    default_action = blueprint["actions"][0]
-    extra_action = blueprint["actions"][1]
-    message = default_action["message"]
-    notification_data = default_action["data"]
+    choose_action = blueprint["actions"][0]
+    direct_url_action = choose_action["choose"][0]["sequence"][0]
+    fallback_action = choose_action["default"][0]
+    direct_message = direct_url_action["message"]
+    fallback_message = fallback_action["message"]
+    notification_data = direct_url_action["data"]
 
     assert variables["xsense_include_recording_link"] == "include_recording_link"
     assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
     assert "trigger.event.data" in variables["xsense_event_data"]
     assert "recording_url" in variables["xsense_recording_url"]
     assert "snapshot_url" in variables["xsense_snapshot_url"]
-    assert "xsense_recording_url" in variables["xsense_notification_url"]
-    assert "noAction" in variables["xsense_notification_url"]
-    assert default_action["domain"] == "mobile_app"
-    assert default_action["type"] == "notify"
-    assert default_action["device_id"] == "notify_device"
-    assert extra_action == {"choose": [], "default": "actions"}
-    assert "camera.play_stream" in blueprint["blueprint"]["input"]["actions"]["description"]
-    assert "xsense_recording_url" in message
-    assert "xsense_snapshot_url" in message
-    assert "No direct recording URL" in message
-    assert "trigger." not in message
-    assert notification_data["url"] == "{{ xsense_notification_url }}"
-    assert notification_data["clickAction"] == "{{ xsense_notification_url }}"
+    assert "xsense_notification_url" not in variables
+    assert "noAction" not in str(blueprint)
+    assert "app://com.xsense.security" not in str(blueprint)
+    assert direct_url_action["domain"] == "mobile_app"
+    assert direct_url_action["type"] == "notify"
+    assert direct_url_action["device_id"] == "notify_device"
+    assert fallback_action["domain"] == "mobile_app"
+    assert fallback_action["type"] == "notify"
+    assert fallback_action["device_id"] == "notify_device"
+    assert len(blueprint["actions"]) == 1
+    assert "actions" not in blueprint["blueprint"]["input"]
+    assert "Home Assistant playback URL" in blueprint["blueprint"]["description"]
+    assert "xsense_recording_url" in direct_message
+    assert "xsense_snapshot_url" in direct_message
+    assert "xsense_recording_url" not in fallback_message
+    assert "xsense_snapshot_url" in fallback_message
+    assert "No playback URL" in fallback_message
+    assert "trigger." not in direct_message
+    assert "trigger." not in fallback_message
+    assert notification_data["url"] == "{{ xsense_recording_url }}"
+    assert notification_data["clickAction"] == "{{ xsense_recording_url }}"
+    assert "data" not in fallback_action
     assert "actions" not in notification_data
-    assert "trigger." not in str(notification_data)
+    assert "trigger." not in str(choose_action)

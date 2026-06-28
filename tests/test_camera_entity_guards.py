@@ -786,6 +786,90 @@ def test_motion_event_data_includes_apk_playback_metadata():
     assert event.motion_fingerprint(event_data) == ("20260621134144", "trace-id")
 
 
+def test_motion_event_entity_adds_ha_sd_playback_url(monkeypatch):
+    camera_entity = entity("SSC0A", {})
+    camera_entity.entity_id = "camera-id"
+    camera_entity.sn = "CAMERA-SN"
+    event_entity = event.XSenseMotionEventEntity.__new__(
+        event.XSenseMotionEventEntity
+    )
+    event_entity.hass = SimpleNamespace(
+        config=SimpleNamespace(api=SimpleNamespace(base_url="https://ha.example"))
+    )
+    event_entity.coordinator = SimpleNamespace(
+        entry=SimpleNamespace(entry_id="entry-id")
+    )
+
+    monkeypatch.setattr(
+        event.er,
+        "async_get",
+        lambda hass: SimpleNamespace(
+            async_get_entity_id=lambda platform, domain, unique_id: "camera.garden"
+            if unique_id == "camera-id-thumbnail"
+            else None
+        ),
+    )
+    event_data = {
+        "time": "20260621134144",
+        "playback": {
+            "source": "sd_playback",
+            "start_time_s": 1782049304,
+        },
+    }
+
+    event_entity._add_motion_playback_url(camera_entity, event_data)
+
+    assert event_data["recording_url"] == (
+        "https://ha.example/api/xsense/playback/entry-id/CAMERA-SN/1782049304"
+        "?camera_entity_id=camera.garden"
+    )
+    assert event_data["recording_source"] == "sd_playback"
+
+
+def test_motion_event_entity_does_not_replace_direct_recording_url(monkeypatch):
+    camera_entity = entity("SSC0A", {})
+    camera_entity.entity_id = "camera-id"
+    camera_entity.sn = "CAMERA-SN"
+    event_entity = event.XSenseMotionEventEntity.__new__(
+        event.XSenseMotionEventEntity
+    )
+    event_entity.hass = object()
+    event_entity.coordinator = SimpleNamespace(
+        entry=SimpleNamespace(entry_id="entry-id")
+    )
+
+    event_data = {
+        "time": "20260621134144",
+        "recording_url": "https://example.invalid/clip.mp4",
+        "playback": {
+            "source": "sd_playback",
+            "start_time_s": 1782049304,
+        },
+    }
+
+    event_entity._add_motion_playback_url(camera_entity, event_data)
+
+    assert event_data["recording_url"] == "https://example.invalid/clip.mp4"
+
+
+def test_playback_page_uses_ha_webrtc_answer_and_sd_command():
+    from custom_components.xsense import playback
+
+    html = playback._playback_html(
+        "camera.garden",
+        '{"action":"startPlaySdVideo"}',
+        '{"action":"stopPlaySdVideo"}',
+    )
+
+    assert 'type: "camera/webrtc/offer"' in html
+    assert 'type: "camera/webrtc/candidate", entity_id: cameraEntityId' in html
+    assert "payload.answer" in html
+    assert "payload.sdp" not in html
+    assert "pendingCandidates" in html
+    assert "startPlaySdVideo" in html
+    assert "stopPlaySdVideo" in html
+
+
 def test_motion_event_data_exposes_direct_recording_url_aliases():
     event_data = event.motion_event_data(
         {
