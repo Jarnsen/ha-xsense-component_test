@@ -241,8 +241,10 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert default_action["type"] == "notify"
     assert default_action["device_id"] == "notify_device"
     assert extra_action == {"choose": [], "default": "actions"}
+    assert "camera.play_stream" in blueprint["blueprint"]["input"]["actions"]["description"]
     assert "xsense_recording_url" in message
     assert "xsense_snapshot_url" in message
+    assert "No direct recording URL" in message
     assert "trigger." not in message
     assert notification_data["url"] == "{{ xsense_notification_url }}"
     assert notification_data["clickAction"] == "{{ xsense_notification_url }}"

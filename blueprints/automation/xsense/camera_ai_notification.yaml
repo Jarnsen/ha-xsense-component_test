@@ -40,8 +40,8 @@ blueprint:
         device:
           integration: mobile_app
     actions:
-      name: Extra actions
-      description: Optional actions to run after the default mobile app notification. These actions can use xsense_event_type, xsense_recording_url, xsense_snapshot_url, and xsense_notification_url.
+      name: Optional follow-up actions
+      description: Optional actions to run after the default mobile app notification. Do not use camera.play_stream here for recordings; the recording link is handled by the default notification using xsense_notification_url. Custom actions can use xsense_event_type, xsense_recording_url, xsense_snapshot_url, and xsense_notification_url.
       default: []
       selector:
         action:
@@ -83,7 +83,8 @@ actions:
     message: >-
       X-Sense camera activity detected.{% if xsense_include_recording_link and xsense_recording_url %}
       Recording: {{ xsense_recording_url }}{% endif %}{% if xsense_include_snapshot_link and xsense_snapshot_url %}
-      Snapshot: {{ xsense_snapshot_url }}{% endif %}
+      Snapshot: {{ xsense_snapshot_url }}{% endif %}{% if xsense_include_recording_link and not xsense_recording_url %}
+      No direct recording URL was included with this X-Sense event.{% endif %}
     data:
       url: "{{ xsense_notification_url }}"
       clickAction: "{{ xsense_notification_url }}"
