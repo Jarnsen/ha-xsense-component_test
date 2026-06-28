@@ -33,19 +33,16 @@ blueprint:
       default: false
       selector:
         boolean:
+    notify_device:
+      name: Mobile device
+      description: Select the Home Assistant Companion app device that should receive the default notification.
+      selector:
+        device:
+          integration: mobile_app
     actions:
-      name: What should happen
-      description: The default sends a Home Assistant notification and can open the Motion recording when the notification is tapped. Custom actions can use xsense_event_type, xsense_recording_url, xsense_snapshot_url, and xsense_notification_url.
-      default:
-        - action: notify.notify
-          data:
-            message: >-
-              X-Sense camera activity detected.{% if xsense_include_recording_link and xsense_recording_url %}
-              Recording: {{ xsense_recording_url }}{% endif %}{% if xsense_include_snapshot_link and xsense_snapshot_url %}
-              Snapshot: {{ xsense_snapshot_url }}{% endif %}
-            data:
-              url: "{{ xsense_notification_url }}"
-              clickAction: "{{ xsense_notification_url }}"
+      name: Extra actions
+      description: Optional actions to run after the default mobile app notification. These actions can use xsense_event_type, xsense_recording_url, xsense_snapshot_url, and xsense_notification_url.
+      default: []
       selector:
         action:
 
@@ -78,7 +75,24 @@ variables:
   xsense_snapshot_url: "{{ xsense_event_data.get('snapshot_url', '') }}"
   xsense_notification_url: "{{ xsense_recording_url if xsense_include_recording_link and xsense_recording_url else 'noAction' }}"
 
-actions: !input actions
+actions:
+  - domain: mobile_app
+    type: notify
+    device_id: !input notify_device
+    title: X-Sense camera
+    message: >-
+      X-Sense camera activity detected.{% if xsense_include_recording_link and xsense_recording_url %}
+      Recording: {{ xsense_recording_url }}{% endif %}{% if xsense_include_snapshot_link and xsense_snapshot_url %}
+      Snapshot: {{ xsense_snapshot_url }}{% endif %}
+    data:
+      url: "{{ xsense_notification_url }}"
+      clickAction: "{{ xsense_notification_url }}"
+      actions:
+        - action: URI
+          title: View recording
+          uri: "{{ xsense_notification_url }}"
+  - choose: []
+    default: !input actions
 
 mode: queued
 max: 10

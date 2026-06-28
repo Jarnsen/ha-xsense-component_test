@@ -136,6 +136,18 @@ def test_ai_notification_blueprint_selector_lists_xsense_event_entities():
     assert entity_filter == {"integration": "xsense", "domain": "event"}
 
 
+def test_ai_notification_blueprint_selects_mobile_app_device():
+    with open(
+        "blueprints/automation/xsense/camera_ai_notification.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    selector = blueprint["blueprint"]["input"]["notify_device"]["selector"]
+
+    assert selector == {"device": {"integration": "mobile_app"}}
+
+
 def test_ai_notification_blueprint_has_import_source_metadata():
     with open(
         "blueprints/automation/xsense/camera_ai_notification.yaml",
@@ -213,9 +225,10 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
         blueprint = yaml.load(file, Loader=BlueprintLoader)
 
     variables = blueprint["variables"]
-    default_actions = blueprint["blueprint"]["input"]["actions"]["default"]
-    message = default_actions[0]["data"]["message"]
-    notification_data = default_actions[0]["data"]["data"]
+    default_action = blueprint["actions"][0]
+    extra_action = blueprint["actions"][1]
+    message = default_action["message"]
+    notification_data = default_action["data"]
 
     assert variables["xsense_include_recording_link"] == "include_recording_link"
     assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
@@ -224,9 +237,18 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "snapshot_url" in variables["xsense_snapshot_url"]
     assert "xsense_recording_url" in variables["xsense_notification_url"]
     assert "noAction" in variables["xsense_notification_url"]
+    assert default_action["domain"] == "mobile_app"
+    assert default_action["type"] == "notify"
+    assert default_action["device_id"] == "notify_device"
+    assert extra_action == {"choose": [], "default": "actions"}
     assert "xsense_recording_url" in message
     assert "xsense_snapshot_url" in message
     assert "trigger." not in message
     assert notification_data["url"] == "{{ xsense_notification_url }}"
     assert notification_data["clickAction"] == "{{ xsense_notification_url }}"
+    assert notification_data["actions"][0] == {
+        "action": "URI",
+        "title": "View recording",
+        "uri": "{{ xsense_notification_url }}",
+    }
     assert "trigger." not in str(notification_data)
