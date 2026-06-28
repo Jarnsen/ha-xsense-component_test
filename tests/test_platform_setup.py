@@ -234,6 +234,7 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
 
     assert variables["xsense_include_recording_link"] == "include_recording_link"
     assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
+    assert "trigger.to_state.attributes" in variables["xsense_event_data"]
     assert "trigger.event.data" in variables["xsense_event_data"]
     assert "camera_name" in variables["xsense_camera_name"]
     assert "recording_url" in variables["xsense_recording_url"]
@@ -259,7 +260,8 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "xsense_snapshot_url" in direct_message
     assert "xsense_recording_url" not in fallback_message
     assert "xsense_snapshot_url" in fallback_message
-    assert "No playback URL" in fallback_message
+    assert "No playback URL" not in fallback_message
+    assert "No playback URL" not in str(blueprint)
     assert "trigger." not in direct_message
     assert "trigger." not in fallback_message
     assert notification_data["url"] == "{{ xsense_recording_url }}"
