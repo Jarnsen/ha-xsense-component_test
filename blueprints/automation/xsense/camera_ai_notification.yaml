@@ -41,7 +41,7 @@ blueprint:
           integration: mobile_app
     actions:
       name: Optional follow-up actions
-      description: Optional actions to run after the default mobile app notification. Do not use camera.play_stream here for recordings; the recording link is handled by the default notification using xsense_notification_url. Custom actions can use xsense_event_type, xsense_recording_url, xsense_snapshot_url, and xsense_notification_url.
+      description: Optional actions to run after the default mobile app notification. Do not use camera.play_stream here for recordings; the default notification opens xsense_notification_url when X-Sense provides one. Custom actions can use xsense_event_type, xsense_recording_url, xsense_snapshot_url, and xsense_notification_url.
       default: []
       selector:
         action:
@@ -88,10 +88,6 @@ actions:
     data:
       url: "{{ xsense_notification_url }}"
       clickAction: "{{ xsense_notification_url }}"
-      actions:
-        - action: URI
-          title: View recording
-          uri: "{{ xsense_notification_url }}"
   - choose: []
     default: !input actions
 

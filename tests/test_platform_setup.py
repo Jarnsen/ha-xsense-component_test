@@ -248,9 +248,5 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "trigger." not in message
     assert notification_data["url"] == "{{ xsense_notification_url }}"
     assert notification_data["clickAction"] == "{{ xsense_notification_url }}"
-    assert notification_data["actions"][0] == {
-        "action": "URI",
-        "title": "View recording",
-        "uri": "{{ xsense_notification_url }}",
-    }
+    assert "actions" not in notification_data
     assert "trigger." not in str(notification_data)
