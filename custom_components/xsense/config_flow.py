@@ -56,20 +56,6 @@ def options_schema(options: dict[str, Any] | None = None) -> vol.Schema:
     return vol.Schema(
         {
             vol.Optional(
-                CONF_RECORDING_MEDIA_DAYS_ORDER,
-                default=options.get(
-                    CONF_RECORDING_MEDIA_DAYS_ORDER,
-                    DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
-                ),
-            ): vol.In(RECORDING_MEDIA_ORDER_OPTIONS),
-            vol.Optional(
-                CONF_RECORDING_MEDIA_CLIPS_ORDER,
-                default=options.get(
-                    CONF_RECORDING_MEDIA_CLIPS_ORDER,
-                    DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
-                ),
-            ): vol.In(RECORDING_MEDIA_ORDER_OPTIONS),
-            vol.Optional(
                 CONF_RECORDING_MEDIA_SYNC_ENABLED,
                 default=options.get(
                     CONF_RECORDING_MEDIA_SYNC_ENABLED,
@@ -90,6 +76,20 @@ def options_schema(options: dict[str, Any] | None = None) -> vol.Schema:
                     DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
                 ),
             ): vol.All(str, vol.Match(r"^/media(/.*)?$")),
+            vol.Optional(
+                CONF_RECORDING_MEDIA_DAYS_ORDER,
+                default=options.get(
+                    CONF_RECORDING_MEDIA_DAYS_ORDER,
+                    DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
+                ),
+            ): vol.In(RECORDING_MEDIA_ORDER_OPTIONS),
+            vol.Optional(
+                CONF_RECORDING_MEDIA_CLIPS_ORDER,
+                default=options.get(
+                    CONF_RECORDING_MEDIA_CLIPS_ORDER,
+                    DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
+                ),
+            ): vol.In(RECORDING_MEDIA_ORDER_OPTIONS),
         }
     )
 

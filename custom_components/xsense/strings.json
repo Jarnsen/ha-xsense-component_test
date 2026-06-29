@@ -2,18 +2,21 @@
   "config": {
     "step": {
       "reauth_confirm": {
+        "description": "Sign in again with your X-Sense account.",
         "data": {
           "email": "[%key:common::config_flow::data::email%]",
           "password": "[%key:common::config_flow::data::password%]"
         }
       },
       "reconfigure": {
+        "description": "Update the X-Sense account used by this integration.",
         "data": {
           "email": "[%key:common::config_flow::data::email%]",
           "password": "[%key:common::config_flow::data::password%]"
         }
       },
       "user": {
+        "description": "Sign in with your X-Sense account.",
         "data": {
           "email": "[%key:common::config_flow::data::email%]",
           "password": "[%key:common::config_flow::data::password%]"
@@ -34,20 +37,24 @@
   "options": {
     "step": {
       "init": {
-        "description": "Recording media sync caches direct X-Sense video URLs and attempts SD-card recording capture through the bundled no-transcode Pion adapter. Recent clips are checked every couple minutes, event recordings are prepared before notification events when playback metadata is available, and older clips continue catching up in the normal background sync. If you change the recording cache folder, move the existing xsense_recordings contents to the new folder first; this option changes where new cache files are stored and does not move existing videos.",
+        "description": "Recording media sync caches camera clips under Home Assistant media so Media Browser and mobile notifications can open recordings quickly. Leave it off to cache recordings only when they are opened. Enable it to keep recent recordings ready in the background.",
         "data": {
-          "recording_media_days_order": "Recording day order",
-          "recording_media_clips_order": "Recording clip order",
-          "recording_media_sync_enabled": "Pre-cache recording videos",
-          "recording_media_sync_hours": "Pre-cache interval in hours",
-          "recording_media_storage_path": "Recording cache folder"
+          "recording_media_sync_enabled": "Recording media sync",
+          "recording_media_sync_hours": "Background sync interval",
+          "recording_media_storage_path": "Recording cache folder",
+          "recording_media_days_order": "Media Browser day order",
+          "recording_media_clips_order": "Media Browser clip order"
         },
         "data_description": {
-          "recording_media_storage_path": "Use a folder under /media. Before changing this path, move the existing cached videos and thumbnails to the new location if you want to keep them available."
+          "recording_media_sync_enabled": "Cache recent recordings automatically. This uses storage space and may wake cameras more often.",
+          "recording_media_sync_hours": "How often the normal background catch-up sync should run. Recent recordings are checked every couple minutes when sync is enabled.",
+          "recording_media_storage_path": "Use a folder under /media. New cached videos and thumbnails are stored here.",
+          "recording_media_days_order": "Choose whether newer or older days appear first in Media Browser.",
+          "recording_media_clips_order": "Choose whether newer or older clips appear first within each day."
         }
       },
       "confirm_recording_media_storage_path": {
-        "description": "The recording cache folder will change from `{old_path}` to `{new_path}`. Home Assistant will use the new folder for future cached recordings, but existing cached videos and thumbnails are not moved automatically. Move the existing `videos` and `thumbs` contents to the new folder before continuing if you want old cached recordings to remain available."
+        "description": "The recording cache folder will change from `{old_path}` to `{new_path}`. Existing cached videos and thumbnails are not moved automatically. Move the existing `videos` and `thumbs` folders first if you want old cached recordings to remain available."
       }
     }
   },

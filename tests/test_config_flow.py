@@ -27,12 +27,24 @@ def test_options_schema_has_recording_sync_defaults_without_camera_path_option()
     schema = options_schema({})
 
     assert schema({}) == {
-        CONF_RECORDING_MEDIA_DAYS_ORDER: DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
-        CONF_RECORDING_MEDIA_CLIPS_ORDER: DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
         CONF_RECORDING_MEDIA_SYNC_ENABLED: False,
         CONF_RECORDING_MEDIA_SYNC_HOURS: DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
         CONF_RECORDING_MEDIA_STORAGE_PATH: DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_MEDIA_DAYS_ORDER: DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
+        CONF_RECORDING_MEDIA_CLIPS_ORDER: DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
     }
+
+
+def test_options_schema_orders_recording_options_for_the_ui():
+    schema = options_schema({})
+
+    assert [field.schema for field in schema.schema] == [
+        CONF_RECORDING_MEDIA_SYNC_ENABLED,
+        CONF_RECORDING_MEDIA_SYNC_HOURS,
+        CONF_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_MEDIA_DAYS_ORDER,
+        CONF_RECORDING_MEDIA_CLIPS_ORDER,
+    ]
 
 
 def test_options_schema_rejects_removed_camera_path_option():
