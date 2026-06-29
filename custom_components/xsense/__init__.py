@@ -21,6 +21,11 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import XSenseDataUpdateCoordinator
+from .media_source import (
+    async_register_recording_services,
+    async_remove_recording_index,
+    async_start_recording_media_sync,
+)
 from .playback import async_register_playback_view
 
 PLATFORMS: list[Platform] = [
@@ -590,6 +595,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await async_register_playback_view(hass)
+    await async_register_recording_services(hass)
+    async_start_recording_media_sync(hass, entry)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -613,6 +620,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator: XSenseDataUpdateCoordinator | None = hass.data[DOMAIN].pop(
             entry.entry_id, None
         )
+        async_remove_recording_index(hass, entry.entry_id)
         if coordinator is not None:
             await coordinator.async_shutdown()
 

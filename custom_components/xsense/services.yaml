@@ -1,3 +1,27 @@
+refresh_recordings:
+  name: Refresh recordings
+  description: Refresh the cached X-Sense camera recording index used by Home Assistant Media Browser.
+  fields:
+    entry_id:
+      selector:
+        text:
+
+cache_recordings:
+  name: Cache recordings
+  description: Pre-cache X-Sense camera recording videos for faster Media Browser playback.
+  fields:
+    entry_id:
+      selector:
+        text:
+
+clear_recordings_cache:
+  name: Clear recordings cache
+  description: Clear cached X-Sense camera recording indexes and cached video files.
+  fields:
+    entry_id:
+      selector:
+        text:
+
 query_light_schedules:
   target:
     entity:

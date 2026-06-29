@@ -21,7 +21,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_registry as er
 
-from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN
+from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN, LOGGER
 from .entity import XSenseEntity, coordinator_devices
 from .playback import playback_url
 
@@ -133,6 +133,68 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
             return coordinator_devices(self.coordinator).get(self._dev_id)
         return super()._current_entity()
 
+    def _add_camera_event_context(
+        self, entity: Entity, event_data: dict[str, Any] | None
+    ) -> None:
+        """Add camera context fields for automation templates."""
+        if event_data is None:
+            return
+        if camera_name := getattr(entity, "name", None):
+            event_data["camera_name"] = str(camera_name)
+        if camera_entity_id := _camera_entity_id_for_event(self.hass, entity):
+            event_data["camera_entity_id"] = camera_entity_id
+
+    def _add_recording_playback_url(
+        self, entity: Entity, event_data: dict[str, Any] | None
+    ) -> None:
+        """Add a Home Assistant playback URL for X-Sense SD recording events."""
+        if event_data is None or event_data.get("recording_url"):
+            return
+        playback = event_data.get("playback")
+        if not isinstance(playback, dict) or playback.get("source") != "sd_playback":
+            return
+        start_time = _recording_epoch_seconds(
+            _first_present(
+                playback,
+                "start_time_s",
+                "start_time",
+                "timestamp_s",
+                "timestamp",
+            )
+        )
+        if start_time in (None, "") or not getattr(entity, "sn", None):
+            return
+        camera_entity_id = event_data.get(
+            "camera_entity_id"
+        ) or _camera_entity_id_for_event(
+            self.hass,
+            entity,
+        )
+        if camera_entity_id is None:
+            return
+        end_time = _recording_epoch_seconds(
+            _first_present(playback, "end_time_s", "end_time")
+        )
+        if end_time in (None, ""):
+            end_time = _recording_end_from_period(start_time, playback.get("period"))
+        event_data["recording_url"] = playback_url(
+            self.coordinator.entry.entry_id,
+            str(entity.sn),
+            int(start_time),
+            camera_entity_id,
+            end_time=end_time,
+        )
+        event_data["recording_source"] = "sd_playback"
+
+    def _trigger_event_after_recording_cache(
+        self,
+        event_type: str,
+        entity: Entity,
+        event_data: dict[str, Any] | None,
+    ) -> bool:
+        """Cache recording metadata before firing a notification-capable event."""
+        return _trigger_event_after_recording_cache(self, event_type, entity, event_data)
+
     def _handle_coordinator_update(self) -> None:
         """Handle updated coordinator data."""
         entity = self._current_entity()
@@ -140,6 +202,8 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
             return
 
         event_data = ai_detection_event_data(entity.data)
+        self._add_camera_event_context(entity, event_data)
+        self._add_recording_playback_url(entity, event_data)
         fingerprint = ai_detection_fingerprint(event_data)
         if fingerprint is None:
             if not self._ai_detection_initialized:
@@ -160,7 +224,8 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
         self._last_ai_detection_fingerprint = fingerprint
         objects = event_data["objects"]
         event_type = objects[0] if len(objects) == 1 else AI_DETECTION_EVENT_TYPE
-        self._trigger_event(event_type, event_data)
+        if not self._trigger_event_after_recording_cache(event_type, entity, event_data):
+            self._trigger_event(event_type, event_data)
         self._write_state_if_added()
 
     def _write_state_if_added(self) -> None:
@@ -200,6 +265,15 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
             return coordinator_devices(self.coordinator).get(self._dev_id)
         return super()._current_entity()
 
+    def _trigger_event_after_recording_cache(
+        self,
+        event_type: str,
+        entity: Entity,
+        event_data: dict[str, Any] | None,
+    ) -> bool:
+        """Cache recording metadata before firing a notification-capable event."""
+        return _trigger_event_after_recording_cache(self, event_type, entity, event_data)
+
     def _handle_coordinator_update(self) -> None:
         """Handle updated coordinator data."""
         entity = self._current_entity()
@@ -227,7 +301,12 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
             return
 
         self._last_motion_fingerprint = fingerprint
-        self._trigger_event(MOTION_EVENT_TYPE, event_data)
+        if not self._trigger_event_after_recording_cache(
+            MOTION_EVENT_TYPE,
+            entity,
+            event_data,
+        ):
+            self._trigger_event(MOTION_EVENT_TYPE, event_data)
         self._write_state_if_added()
 
     def _add_camera_event_context(
@@ -250,7 +329,15 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
         playback = event_data.get("playback")
         if not isinstance(playback, dict) or playback.get("source") != "sd_playback":
             return
-        start_time = playback.get("start_time_s") or playback.get("start_time")
+        start_time = _recording_epoch_seconds(
+            _first_present(
+                playback,
+                "start_time_s",
+                "start_time",
+                "timestamp_s",
+                "timestamp",
+            )
+        )
         if start_time in (None, "") or not getattr(entity, "sn", None):
             return
         camera_entity_id = event_data.get(
@@ -261,11 +348,17 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
         )
         if camera_entity_id is None:
             return
+        end_time = _recording_epoch_seconds(
+            _first_present(playback, "end_time_s", "end_time")
+        )
+        if end_time in (None, ""):
+            end_time = _recording_end_from_period(start_time, playback.get("period"))
         event_data["recording_url"] = playback_url(
             self.coordinator.entry.entry_id,
             str(entity.sn),
             int(start_time),
             camera_entity_id,
+            end_time=end_time,
         )
         event_data["recording_source"] = "sd_playback"
 
@@ -353,8 +446,11 @@ def _device_station_id(device: Device) -> str | None:
 
 def _camera_entity_id_for_event(hass: HomeAssistant, entity: Entity) -> str | None:
     """Return the HA camera entity id for an X-Sense camera record."""
+    entity_id = getattr(entity, "entity_id", None)
+    if not entity_id:
+        return None
     unique_id = (
-        f"{entity.entity_id}-{_CAMERA_ENTITY_DESCRIPTION_KEY}".replace(
+        f"{entity_id}-{_CAMERA_ENTITY_DESCRIPTION_KEY}".replace(
             "_", "-"
         ).lower()
     )
@@ -384,8 +480,7 @@ def _recording_event_data(playback: dict[str, Any]) -> dict[str, Any]:
         if recording_source := playback.get("source"):
             event_data["recording_source"] = recording_source
     if snapshot_url := playback.get("image_url") or playback.get("package_image_url"):
-        if recording_url:
-            event_data["snapshot_url"] = snapshot_url
+        event_data["snapshot_url"] = snapshot_url
     return event_data
 
 
@@ -398,6 +493,92 @@ def motion_fingerprint(
     playback = event_data.get("playback")
     trace = playback.get("trace_id") if isinstance(playback, dict) else None
     return (event_data.get("time"), trace)
+
+
+def _trigger_event_after_recording_cache(
+    event_entity: EventEntity,
+    event_type: str,
+    entity: Entity,
+    event_data: dict[str, Any] | None,
+) -> bool:
+    """Cache recording metadata before firing a notification-capable event."""
+    if event_data is None:
+        return False
+    playback = event_data.get("playback")
+    if not isinstance(playback, dict):
+        return False
+    hass = getattr(event_entity, "hass", None)
+    if not hasattr(hass, "async_create_task"):
+        return False
+
+    async def _async_cache_then_trigger() -> None:
+        from .media_source import async_cache_recording_playback
+
+        cached_url = ""
+        try:
+            cached_url = await async_cache_recording_playback(
+                hass,
+                entry_id=event_entity.coordinator.entry.entry_id,
+                entity=entity,
+                playback=playback,
+                camera_entity_id=str(event_data.get("camera_entity_id") or ""),
+            )
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.debug("X-Sense event recording cache failed: %s", exc)
+        if cached_url:
+            event_data["recording_url"] = cached_url
+            event_data["recording_source"] = "cached_media"
+        LOGGER.debug(
+            "X-Sense event recording cache finished before trigger: %s",
+            {
+                "camera": _masked_serial(getattr(entity, "sn", "")),
+                "cached": bool(cached_url),
+                "event_type": event_type,
+                "source": playback.get("source"),
+            },
+        )
+        event_entity._trigger_event(event_type, event_data)
+
+    hass.async_create_task(_async_cache_then_trigger())
+    return True
+
+
+def _masked_serial(value: Any) -> str:
+    """Return a short masked serial for debug logs."""
+    text = str(value or "")
+    if len(text) <= 6:
+        return "..."
+    return f"...{text[-6:]}"
+
+
+def _recording_end_from_period(start_time: Any, period: Any) -> int:
+    """Return an SD recording end timestamp from APK period metadata."""
+    try:
+        return int(start_time) + max(0, int(period))
+    except (TypeError, ValueError):
+        return int(start_time)
+
+
+def _first_present(data: dict[str, Any], *keys: str) -> Any:
+    """Return the first non-empty value from data."""
+    for key in keys:
+        value = data.get(key)
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def _recording_epoch_seconds(value: Any) -> int | None:
+    """Return epoch seconds for APK playback values that may be ms or seconds."""
+    if value in (None, ""):
+        return None
+    try:
+        timestamp = int(value)
+    except (TypeError, ValueError):
+        return None
+    if timestamp > 10_000_000_000:
+        timestamp //= 1000
+    return timestamp
 
 
 def ai_detection_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
@@ -428,6 +609,10 @@ def ai_detection_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
         "objects": list(objects),
         "last_ai_detection": ",".join(objects),
     }
+    playback = data.get("playback")
+    if isinstance(playback, dict) and playback:
+        event_data["playback"] = playback
+        event_data.update(_recording_event_data(playback))
     if object_times:
         event_data["object_times"] = object_times
         event_data["time"] = max(str(value) for value in object_times.values())

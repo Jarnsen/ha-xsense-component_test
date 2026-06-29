@@ -253,7 +253,7 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert fallback_action["title"] == "{{ xsense_camera_name }}"
     assert len(blueprint["actions"]) == 1
     assert "actions" not in blueprint["blueprint"]["input"]
-    assert "Home Assistant playback route" in blueprint["blueprint"]["description"]
+    assert "Home Assistant recording route" in blueprint["blueprint"]["description"]
     assert "xsense_camera_name" in direct_message
     assert "xsense_camera_name" in fallback_message
     assert "xsense_recording_url" in direct_message
