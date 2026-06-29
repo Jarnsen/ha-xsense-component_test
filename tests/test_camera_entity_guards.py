@@ -827,8 +827,8 @@ def test_motion_event_entity_adds_ha_sd_playback_url(monkeypatch):
     assert event_data["camera_name"] == "Garden Camera"
     assert event_data["camera_entity_id"] == "camera.garden"
     assert event_data["recording_url"] == (
-        "/xsense/recording/entry-id/1782049304"
-        "?serial=CAMERA-SN&end_time=1782049334"
+        "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA-SN"
+        "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334"
     )
     assert event_data["recording_source"] == "sd_playback"
 
@@ -867,8 +867,8 @@ def test_motion_event_entity_derives_recording_url_end_from_period(monkeypatch):
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
     assert event_data["recording_url"] == (
-        "/xsense/recording/entry-id/1782049304"
-        "?serial=CAMERA-SN&end_time=1782049334"
+        "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA-SN"
+        "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334"
     )
 
 
@@ -906,8 +906,8 @@ def test_motion_event_entity_normalizes_ms_recording_times(monkeypatch):
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
     assert event_data["recording_url"] == (
-        "/xsense/recording/entry-id/1782049304"
-        "?serial=CAMERA-SN&end_time=1782049334"
+        "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA-SN"
+        "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334"
     )
 
 
@@ -970,7 +970,13 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch):
     )
     event_entity._current_entity = lambda: camera_entity
     event_entity._trigger_event = lambda event_type, data: order.append(
-        ("trigger", event_type, data["recording_url"])
+        (
+            "trigger",
+            event_type,
+            data["recording_url"],
+            data.get("recording_media_url"),
+            data.get("recording_source"),
+        )
     )
     event_entity.async_write_ha_state = lambda: None
     monkeypatch.setattr(
@@ -1001,7 +1007,10 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch):
         (
             "trigger",
             "motion",
+            "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA-SN"
+            "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334",
             "/media/local/xsense_recordings/videos/CAMERA-SN_1782049304_1782049334.mp4",
+            "cached_media",
         ),
     ]
 
@@ -1061,8 +1070,8 @@ def test_motion_event_entity_keeps_recording_route_when_cache_not_ready(monkeypa
     asyncio.run(scheduled[0])
 
     assert triggered[0]["recording_url"] == (
-        "/xsense/recording/entry-id/1782049304"
-        "?serial=CAMERA-SN&end_time=1782049334"
+        "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA-SN"
+        "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334"
     )
     assert triggered[0]["recording_source"] == "sd_playback"
 
@@ -1085,7 +1094,7 @@ def test_playback_page_uses_ha_webrtc_answer_and_sd_command():
     assert "stopPlaySdVideo" in html
 
 
-def test_playback_url_uses_recording_media_route():
+def test_playback_url_uses_frontend_recording_panel():
     from custom_components.xsense import playback
 
     url = playback.playback_url(
@@ -1097,9 +1106,39 @@ def test_playback_url_uses_recording_media_route():
     )
 
     assert url == (
+        "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA%2FSN"
+        "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334"
+    )
+
+
+def test_recording_media_url_uses_backend_recording_route():
+    from custom_components.xsense import playback
+
+    url = playback.recording_media_url(
+        "entry-id",
+        "CAMERA/SN",
+        1782049304,
+        end_time=1782049334,
+    )
+
+    assert url == (
         "/xsense/recording/entry-id/1782049304"
         "?serial=CAMERA%2FSN&end_time=1782049334"
     )
+
+
+def test_frontend_playback_panel_has_recording_mode():
+    from pathlib import Path
+
+    panel = Path(
+        "custom_components/xsense/frontend/xsense-playback-panel.js"
+    ).read_text(encoding="utf-8")
+
+    assert 'params.get("mode") || "webrtc"' in panel
+    assert 'mode === "recording"' in panel
+    assert "renderRecordingPlayer" in panel
+    assert "<video" in panel
+    assert "/xsense/recording/" in panel
 
 
 def test_recording_media_view_redirects_cached_clip(monkeypatch, tmp_path):

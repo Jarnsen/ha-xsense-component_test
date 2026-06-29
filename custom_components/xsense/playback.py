@@ -86,6 +86,25 @@ def playback_url(
     end_time: int | None = None,
 ) -> str:
     """Return a Home Assistant URL for an X-Sense SD playback event."""
+    return playback_panel_url(
+        entry_id,
+        serial,
+        start_time,
+        camera_entity_id,
+        base_url=base_url,
+        mode="recording",
+        end_time=end_time,
+    )
+
+
+def recording_media_url(
+    entry_id: str,
+    serial: str,
+    start_time: int,
+    base_url: str | None = None,
+    end_time: int | None = None,
+) -> str:
+    """Return the backend media route for one X-Sense SD recording."""
     path = (
         f"/xsense/recording"
         f"/{quote(str(entry_id), safe='')}"
@@ -105,15 +124,20 @@ def playback_panel_url(
     start_time: int,
     camera_entity_id: str,
     base_url: str | None = None,
+    mode: str = "webrtc",
+    end_time: int | None = None,
 ) -> str:
     """Return the legacy HA-hosted WebRTC playback panel URL."""
     path = (
         f"/{PLAYBACK_PANEL_PATH}"
-        f"?entry_id={quote(str(entry_id), safe='')}"
+        f"?mode={quote(str(mode), safe='')}"
+        f"&entry_id={quote(str(entry_id), safe='')}"
         f"&serial={quote(str(serial), safe='')}"
         f"&start_time={int(start_time)}"
         f"&camera_entity_id={quote(camera_entity_id, safe='')}"
     )
+    if end_time is not None:
+        path = f"{path}&end_time={int(end_time)}"
     if not base_url:
         return path
     return f"{base_url.rstrip('/')}{path}"

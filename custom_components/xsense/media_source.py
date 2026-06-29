@@ -41,7 +41,7 @@ from .coordinator import (
     _camera_event_history_playback_data,
     _camera_event_history_records,
 )
-from .playback import playback_url
+from .playback import recording_media_url
 from .pion_adapter import async_capture_sd_recording
 
 MIME_TYPE = "video/mp4"
@@ -1048,11 +1048,10 @@ def _recording_clip_from_playback(
     ) or _clip_end_from_period(start, playback.get("period"))
     source = playback.get("source") or "sd_playback"
     direct_url = playback.get("video_url")
-    resolved_url = direct_url or playback_url(
+    resolved_url = direct_url or recording_media_url(
         entry_id,
         serial,
         int(start),
-        camera_entity_id,
         end_time=int(end or start),
     )
     thumbnail_url = playback.get("image_url") or playback.get("package_image_url") or ""

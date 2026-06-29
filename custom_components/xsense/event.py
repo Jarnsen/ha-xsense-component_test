@@ -23,7 +23,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN, LOGGER
 from .entity import XSenseEntity, coordinator_devices
-from .playback import playback_url
+from .playback import PLAYBACK_PANEL_PATH, playback_url
 
 if TYPE_CHECKING:
     from .coordinator import XSenseDataUpdateCoordinator
@@ -526,7 +526,11 @@ def _trigger_event_after_recording_cache(
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug("X-Sense event recording cache failed: %s", exc)
         if cached_url:
-            event_data["recording_url"] = cached_url
+            event_data["recording_media_url"] = cached_url
+            if not str(event_data.get("recording_url") or "").startswith(
+                f"/{PLAYBACK_PANEL_PATH}"
+            ):
+                event_data["recording_url"] = cached_url
             event_data["recording_source"] = "cached_media"
         LOGGER.debug(
             "X-Sense event recording cache finished before trigger: %s",
