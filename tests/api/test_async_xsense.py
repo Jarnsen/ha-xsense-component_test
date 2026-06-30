@@ -862,6 +862,65 @@ def test_parse_get_state_uses_current_activate_without_alarm_status():
     client.parse_get_state(station_obj, {"activate": "1"})
 
     assert station_obj.has_alarm is True
+    assert station_obj.data["alarmStatus"] is True
+
+
+def test_parse_get_state_maps_inactive_activate_to_alarm_status():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+
+    client.parse_get_state(station_obj, {"activate": "1"})
+    client.parse_get_state(station_obj, {"activate": "0"})
+
+    assert station_obj.has_alarm is False
+    assert station_obj.data["alarmStatus"] is False
+
+
+def test_parse_get_state_maps_child_activate_to_alarm_status():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS10",
+    )
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "device-id",
+                    "deviceName": "Smoke",
+                    "deviceSn": "child-sn",
+                    "deviceType": "XS03-iWX",
+                }
+            ]
+        }
+    )
+
+    client.parse_get_state(
+        station_obj,
+        {
+            "stationSN": "station-sn",
+            "devs": [
+                {
+                    "deviceSn": "child-sn",
+                    "deviceType": "XS03-iWX",
+                    "isActivate": "1",
+                    "onLine": "1",
+                }
+            ],
+        },
+    )
+
+    child = station_obj.devices["device-id"]
+    assert child.data["alarmStatus"] is True
 
 
 def test_parse_get_state_applies_apk_group_light_result_to_group_device():
