@@ -21,6 +21,8 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import XSenseDataUpdateCoordinator
+from .frontend import async_register_recordings_panel
+from .http import async_register_recordings_http_views
 from .media_source import (
     async_register_recording_services,
     async_remove_recording_index,
@@ -594,6 +596,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _migrate_legacy_none_entity_ids(hass, entry)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    await async_register_recordings_panel(hass)
+    await async_register_recordings_http_views(hass)
     await async_register_playback_view(hass)
     await async_register_recording_services(hass)
     async_start_recording_media_sync(hass, entry)

@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import logging
 import sys
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -827,8 +828,8 @@ def test_motion_event_entity_adds_ha_sd_playback_url(monkeypatch):
     assert event_data["camera_name"] == "Garden Camera"
     assert event_data["camera_entity_id"] == "camera.garden"
     assert event_data["recording_url"] == (
-        "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA-SN"
-        "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334"
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "&start=1782049304&end=1782049334"
     )
     assert event_data["recording_source"] == "sd_playback"
 
@@ -867,8 +868,8 @@ def test_motion_event_entity_derives_recording_url_end_from_period(monkeypatch):
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
     assert event_data["recording_url"] == (
-        "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA-SN"
-        "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334"
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "&start=1782049304&end=1782049334"
     )
 
 
@@ -906,8 +907,8 @@ def test_motion_event_entity_normalizes_ms_recording_times(monkeypatch):
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
     assert event_data["recording_url"] == (
-        "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA-SN"
-        "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334"
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "&start=1782049304&end=1782049334"
     )
 
 
@@ -937,7 +938,7 @@ def test_motion_event_entity_does_not_replace_direct_recording_url(monkeypatch):
     assert event_data["recording_url"] == "https://example.invalid/clip.mp4"
 
 
-def test_motion_event_entity_caches_recording_before_trigger(monkeypatch):
+def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog):
     from custom_components.xsense import media_source
 
     camera_entity = entity(
@@ -996,6 +997,9 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch):
         "async_cache_recording_playback",
         fake_cache_recording_playback,
     )
+    ticks = iter([10.0, 10.05, 10.3])
+    monkeypatch.setattr(event, "monotonic", lambda: next(ticks))
+    caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
 
     event_entity._handle_coordinator_update()
 
@@ -1007,15 +1011,21 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch):
         (
             "trigger",
             "motion",
-            "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA-SN"
-            "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334",
+            "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+            "&start=1782049304&end=1782049334",
             "/media/local/xsense_recordings/videos/CAMERA-SN_1782049304_1782049334.mp4",
             "cached_media",
         ),
     ]
+    log_text = caplog.text
+    assert "X-Sense event recording cache started before trigger" in log_text
+    assert "X-Sense event recording cache finished before trigger" in log_text
+    assert "'queue_elapsed_ms': 50" in log_text
+    assert "'cache_elapsed_ms': 250" in log_text
+    assert "'total_elapsed_ms': 300" in log_text
 
 
-def test_motion_event_entity_keeps_recording_route_when_cache_not_ready(monkeypatch):
+def test_motion_event_entity_does_not_fire_until_recording_is_cached(monkeypatch):
     from custom_components.xsense import media_source
 
     camera_entity = entity(
@@ -1069,11 +1079,57 @@ def test_motion_event_entity_keeps_recording_route_when_cache_not_ready(monkeypa
     event_entity._handle_coordinator_update()
     asyncio.run(scheduled[0])
 
-    assert triggered[0]["recording_url"] == (
-        "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA-SN"
-        "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334"
+    assert triggered == []
+
+
+def test_motion_event_cache_preserves_absolute_recordings_panel_url(monkeypatch):
+    from custom_components.xsense import event as event_module
+
+    scheduled = []
+    triggered = []
+
+    class Hass:
+        def async_create_task(self, coro):
+            scheduled.append(coro)
+
+    event_entity = SimpleNamespace(
+        hass=Hass(),
+        coordinator=SimpleNamespace(entry=SimpleNamespace(entry_id="entry-id")),
+        _trigger_event=lambda event_type, data: triggered.append(dict(data)),
     )
-    assert triggered[0]["recording_source"] == "sd_playback"
+    entity_obj = SimpleNamespace(sn="CAMERA-SN")
+    event_data = {
+        "camera_entity_id": "camera.garden",
+        "recording_url": (
+            "https://ha.example.invalid/xsense-recordings#entry_id=entry-id"
+            "&serial=CAMERA-SN&start=1782049304&end=1782049334"
+        ),
+        "playback": {"source": "sd_playback"},
+    }
+
+    async def cache_recording(*args, **kwargs):
+        return "/media/local/xsense_recordings/videos/clip.mp4"
+
+    monkeypatch.setattr(
+        "custom_components.xsense.media_source.async_cache_recording_playback",
+        cache_recording,
+    )
+
+    assert event_module._trigger_event_after_recording_cache(
+        event_entity,
+        "motion",
+        entity_obj,
+        event_data,
+    )
+    asyncio.run(scheduled[0])
+
+    assert triggered[0]["recording_url"].startswith(
+        "https://ha.example.invalid/xsense-recordings#"
+    )
+    assert (
+        triggered[0]["recording_media_url"]
+        == "/media/local/xsense_recordings/videos/clip.mp4"
+    )
 
 
 def test_playback_page_uses_ha_webrtc_answer_and_sd_command():
@@ -1094,7 +1150,7 @@ def test_playback_page_uses_ha_webrtc_answer_and_sd_command():
     assert "stopPlaySdVideo" in html
 
 
-def test_playback_url_uses_frontend_recording_panel():
+def test_playback_url_uses_recordings_sidebar_panel():
     from custom_components.xsense import playback
 
     url = playback.playback_url(
@@ -1106,8 +1162,8 @@ def test_playback_url_uses_frontend_recording_panel():
     )
 
     assert url == (
-        "/xsense-playback?mode=recording&entry_id=entry-id&serial=CAMERA%2FSN"
-        "&start_time=1782049304&camera_entity_id=camera.garden&end_time=1782049334"
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA%2FSN"
+        "&start=1782049304&end=1782049334"
     )
 
 
@@ -2225,6 +2281,62 @@ def test_cache_recent_recording_media_force_refreshes_and_skips_old_clips(monkey
     assert calls == [("entry-id", True)]
     assert cached == [now - 60]
     assert summary == {"downloaded": 1, "thumbnails": 0, "skipped": 1, "failed": 0}
+
+
+def test_event_recording_clip_merges_into_recording_index():
+    from custom_components.xsense import media_source
+
+    hass = SimpleNamespace(data={media_source.DOMAIN: {}})
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "date": "2026-06-30",
+        "start": 1782049304,
+        "end": 1782049334,
+        "playback_url": "/xsense-recordings#entry_id=entry-id",
+    }
+
+    media_source._remember_event_recording_clip(hass, clip)
+    merged = media_source._merge_event_recording_clips(
+        hass,
+        [
+            {
+                "entry_id": "entry-id",
+                "serial": "CAMERA-SN",
+                "name": "Garden",
+                "clips": [],
+            }
+        ],
+    )
+
+    assert merged[0]["name"] == "Garden"
+    assert merged[0]["clips"] == [clip]
+
+
+def test_event_recording_clip_memory_is_bounded():
+    from custom_components.xsense import media_source
+
+    hass = SimpleNamespace(data={media_source.DOMAIN: {}})
+    for start in range(100, 160):
+        media_source._remember_event_recording_clip(
+            hass,
+            {
+                "entry_id": "entry-id",
+                "serial": "CAMERA-SN",
+                "date": "2026-06-30",
+                "start": start,
+                "end": start + 30,
+                "playback_url": "/xsense-recordings#entry_id=entry-id",
+            },
+        )
+
+    clips = hass.data[media_source.DOMAIN]["_recording_event_clips"]["entry-id"][
+        "CAMERA-SN"
+    ]
+
+    assert len(clips) == media_source.EVENT_RECORDING_CLIP_LIMIT
+    assert min(clips) == 110
+    assert max(clips) == 159
 
 
 def test_recording_thumbnail_warmup_schedules_missing_thumbnails(monkeypatch):

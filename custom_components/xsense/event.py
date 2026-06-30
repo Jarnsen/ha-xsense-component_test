@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from time import monotonic
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 from .api.async_xsense import is_camera_entity
 from .api.device import Device
@@ -23,6 +25,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN, LOGGER
 from .entity import XSenseEntity, coordinator_devices
+from .frontend import FRONTEND_URL_PATH as RECORDINGS_PANEL_PATH
 from .playback import PLAYBACK_PANEL_PATH, playback_url
 
 if TYPE_CHECKING:
@@ -510,11 +513,26 @@ def _trigger_event_after_recording_cache(
     hass = getattr(event_entity, "hass", None)
     if not hasattr(hass, "async_create_task"):
         return False
+    event_received_at = monotonic()
 
     async def _async_cache_then_trigger() -> None:
         from .media_source import async_cache_recording_playback
 
-        cached_url = ""
+        cache_started_at = monotonic()
+        LOGGER.debug(
+            "X-Sense event recording cache started before trigger: %s",
+            {
+                "camera": _masked_serial(getattr(entity, "sn", "")),
+                "event_type": event_type,
+                "source": playback.get("source"),
+                "queue_elapsed_ms": int((cache_started_at - event_received_at) * 1000),
+                "start_time": playback.get("start_time_s")
+                or playback.get("start_time")
+                or playback.get("timestamp_s")
+                or playback.get("timestamp"),
+                "end_time": playback.get("end_time_s") or playback.get("end_time"),
+            },
+        )
         try:
             cached_url = await async_cache_recording_playback(
                 hass,
@@ -525,20 +543,36 @@ def _trigger_event_after_recording_cache(
             )
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug("X-Sense event recording cache failed: %s", exc)
-        if cached_url:
-            event_data["recording_media_url"] = cached_url
-            if not str(event_data.get("recording_url") or "").startswith(
-                f"/{PLAYBACK_PANEL_PATH}"
-            ):
-                event_data["recording_url"] = cached_url
-            event_data["recording_source"] = "cached_media"
+            cached_url = ""
+        cache_finished_at = monotonic()
+        cache_elapsed_ms = int((cache_finished_at - cache_started_at) * 1000)
+        total_elapsed_ms = int((cache_finished_at - event_received_at) * 1000)
+        if not cached_url:
+            LOGGER.debug(
+                "X-Sense event recording cache did not produce media; event not fired: %s",
+                {
+                    "camera": _masked_serial(getattr(entity, "sn", "")),
+                    "event_type": event_type,
+                    "source": playback.get("source"),
+                    "cache_elapsed_ms": cache_elapsed_ms,
+                    "total_elapsed_ms": total_elapsed_ms,
+                },
+            )
+            return
+        event_data["recording_media_url"] = cached_url
+        recording_url = str(event_data.get("recording_url") or "")
+        if not _is_ha_recording_panel_url(recording_url):
+            event_data["recording_url"] = cached_url
+        event_data["recording_source"] = "cached_media"
         LOGGER.debug(
             "X-Sense event recording cache finished before trigger: %s",
             {
                 "camera": _masked_serial(getattr(entity, "sn", "")),
-                "cached": bool(cached_url),
+                "cached": True,
                 "event_type": event_type,
                 "source": playback.get("source"),
+                "cache_elapsed_ms": cache_elapsed_ms,
+                "total_elapsed_ms": total_elapsed_ms,
             },
         )
         event_entity._trigger_event(event_type, event_data)
@@ -553,6 +587,16 @@ def _masked_serial(value: Any) -> str:
     if len(text) <= 6:
         return "..."
     return f"...{text[-6:]}"
+
+
+def _is_ha_recording_panel_url(value: str) -> bool:
+    """Return whether a URL targets an X-Sense HA recording panel."""
+    if not value:
+        return False
+    if value.startswith((f"/{PLAYBACK_PANEL_PATH}", f"/{RECORDINGS_PANEL_PATH}")):
+        return True
+    parsed = urlparse(value)
+    return parsed.path in {f"/{PLAYBACK_PANEL_PATH}", f"/{RECORDINGS_PANEL_PATH}"}
 
 
 def _recording_end_from_period(start_time: Any, period: Any) -> int:

@@ -227,9 +227,7 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     variables = blueprint["variables"]
     choose_action = blueprint["actions"][0]
     direct_url_action = choose_action["choose"][0]["sequence"][0]
-    fallback_action = choose_action["default"][0]
     direct_message = direct_url_action["message"]
-    fallback_message = fallback_action["message"]
     notification_data = direct_url_action["data"]
 
     assert variables["xsense_include_recording_link"] == "include_recording_link"
@@ -238,6 +236,8 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "trigger.event.data" in variables["xsense_event_data"]
     assert "camera_name" in variables["xsense_camera_name"]
     assert "recording_url" in variables["xsense_recording_url"]
+    assert "recording_media_url" in variables["xsense_recording_media_url"]
+    assert "xsense_recording_url or xsense_recording_media_url" in variables["xsense_recording_tap_url"]
     assert "xsense_recording_target" not in variables
     assert "snapshot_url" in variables["xsense_snapshot_url"]
     assert "xsense_notification_url" not in variables
@@ -246,27 +246,317 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert direct_url_action["domain"] == "mobile_app"
     assert direct_url_action["type"] == "notify"
     assert direct_url_action["device_id"] == "notify_device"
-    assert fallback_action["domain"] == "mobile_app"
-    assert fallback_action["type"] == "notify"
-    assert fallback_action["device_id"] == "notify_device"
     assert direct_url_action["title"] == "{{ xsense_camera_name }}"
-    assert fallback_action["title"] == "{{ xsense_camera_name }}"
     assert len(blueprint["actions"]) == 1
+    assert len(choose_action["choose"]) == 1
+    assert "default" not in choose_action
     assert "actions" not in blueprint["blueprint"]["input"]
-    assert "Home Assistant playback page" in blueprint["blueprint"]["description"]
+    assert "Companion app video playback target" in blueprint["blueprint"]["description"]
     assert "recording_media_url" in blueprint["blueprint"]["description"]
     assert "xsense_camera_name" in direct_message
-    assert "xsense_camera_name" in fallback_message
-    assert "xsense_recording_url" in direct_message
+    assert "xsense_recording_url" not in direct_message
     assert "xsense_snapshot_url" in direct_message
-    assert "xsense_recording_url" not in fallback_message
-    assert "xsense_snapshot_url" in fallback_message
-    assert "No playback URL" not in fallback_message
     assert "No playback URL" not in str(blueprint)
     assert "trigger." not in direct_message
-    assert "trigger." not in fallback_message
-    assert notification_data["url"] == "{{ xsense_recording_url }}"
-    assert notification_data["clickAction"] == "{{ xsense_recording_url }}"
+    assert notification_data["url"] == "{{ xsense_recording_tap_url }}"
+    assert notification_data["clickAction"] == "{{ xsense_recording_tap_url }}"
+    assert notification_data["video"] == "{{ xsense_recording_media_url }}"
+    assert notification_data["attachment"] == {
+        "url": "{{ xsense_recording_media_url }}",
+        "content-type": "video/mp4",
+        "hide-thumbnail": False,
+    }
     assert "actions" not in notification_data
-    assert "data" not in fallback_action
     assert "trigger." not in str(choose_action)
+
+
+def test_recordings_panel_registration_adds_sidebar_panel(monkeypatch):
+    from custom_components.xsense import frontend
+
+    static_paths = []
+    panels = []
+
+    class Http:
+        async def async_register_static_paths(self, paths):
+            static_paths.extend(paths)
+
+    async def register_panel(**kwargs):
+        panels.append(kwargs)
+
+    monkeypatch.setattr(frontend.panel_custom, "async_register_panel", register_panel)
+    hass = SimpleNamespace(data={}, http=Http())
+
+    import asyncio
+
+    asyncio.run(frontend.async_register_recordings_panel(hass))
+    asyncio.run(frontend.async_register_recordings_panel(hass))
+
+    assert len(static_paths) == 1
+    assert static_paths[0].url_path == "/xsense_recordings_static"
+    assert len(panels) == 1
+    assert panels[0]["frontend_url_path"] == "xsense-recordings"
+    assert panels[0]["webcomponent_name"] == "xsense-recordings-panel"
+    assert panels[0]["sidebar_title"] == "X-Sense Recordings"
+    assert panels[0]["sidebar_icon"] == "mdi:video-box"
+    assert panels[0]["module_url"] == "/xsense_recordings_static/recordings-panel.js"
+
+
+def test_recordings_panel_url_deep_links_to_clip():
+    from custom_components.xsense.frontend import recordings_panel_url
+
+    assert recordings_panel_url(
+        "entry-id",
+        "CAMERA/SN",
+        1782049304,
+        end_time=1782049334,
+    ) == (
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA%2FSN"
+        "&start=1782049304&end=1782049334"
+    )
+
+
+def test_recordings_http_registration_adds_panel_views():
+    from custom_components.xsense import http
+
+    views = []
+    hass = SimpleNamespace(
+        data={},
+        http=SimpleNamespace(register_view=views.append),
+    )
+
+    import asyncio
+
+    asyncio.run(http.async_register_recordings_http_views(hass))
+    asyncio.run(http.async_register_recordings_http_views(hass))
+
+    assert len(views) == 3
+    assert isinstance(views[0], http.XSenseRecordingsPanelDataView)
+    assert isinstance(views[1], http.XSenseRecordingsPanelPlaybackView)
+    assert isinstance(views[2], http.XSenseRecordingsPanelThumbnailView)
+
+
+def test_recordings_panel_data_exposes_cache_backed_clips(monkeypatch):
+    from custom_components.xsense import http
+
+    ready_paths = set()
+
+    monkeypatch.setattr(
+        http,
+        "_path_ready",
+        lambda path: str(path) in ready_paths,
+    )
+    monkeypatch.setattr(
+        http,
+        "_file_size",
+        lambda path: 123 if str(path).endswith(".mp4") else 45,
+    )
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+        )
+    )
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "date": "2026-06-30",
+        "start": 1782049304,
+        "end": 1782049334,
+        "title": "Motion",
+        "source": "sd_playback",
+        "playback_url": "/xsense-recordings#entry_id=entry-id",
+        "thumbnail_url": "https://example.invalid/thumb.jpg",
+        "media_root": "/media/xsense_recordings",
+    }
+    ready_paths.update(
+        {
+            str(http._clip_cache_path(clip)),
+            str(http._clip_thumbnail_cache_path(clip)),
+        }
+    )
+
+    data = http.build_panel_data(
+        hass,
+        {
+            "generated_at": "2026-06-30T00:00:00+00:00",
+            "cameras": [
+                {
+                    "entry_id": "entry-id",
+                    "serial": "CAMERA-SN",
+                    "name": "Garden",
+                    "online": True,
+                    "clips": [clip],
+                }
+            ],
+        },
+    )
+
+    assert data["title"] == "X-Sense Recordings"
+    assert data["stats"]["ready_clips"] == 1
+    assert data["stats"]["visible_clips"] == 1
+    assert data["stats"]["latest_clip"]["camera_name"] == "Garden"
+    assert data["stats"]["media_roots"] == ["/media/xsense_recordings"]
+    camera = data["cameras"][0]
+    assert camera["dates"] == ["2026-06-30"]
+    assert camera["clips"][0]["playback_url"].startswith(
+        "/media/local/xsense_recordings/videos/"
+    )
+    assert camera["clips"][0]["thumbnail_url"].startswith(
+        "/media/local/xsense_recordings/thumbs/"
+    )
+
+
+def test_recordings_panel_data_omits_missing_thumbnail_url(monkeypatch):
+    from custom_components.xsense import http
+
+    monkeypatch.setattr(http, "_path_ready", lambda path: False)
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+        )
+    )
+
+    data = http.build_panel_data(
+        hass,
+        {
+            "cameras": [
+                {
+                    "entry_id": "entry-id",
+                    "serial": "CAMERA-SN",
+                    "name": "Garden",
+                    "clips": [
+                        {
+                            "entry_id": "entry-id",
+                            "serial": "CAMERA-SN",
+                            "date": "2026-06-30",
+                            "start": 1782049304,
+                            "end": 1782049334,
+                            "source": "sd_playback",
+                            "playback_url": "/xsense-recordings#entry_id=entry-id",
+                            "media_root": "/media/xsense_recordings",
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+
+    assert data["cameras"][0]["clips"][0]["thumbnail_url"] == ""
+
+
+def test_recordings_panel_data_hides_invalid_test_fixture_clips(monkeypatch):
+    from custom_components.xsense import http
+
+    monkeypatch.setattr(http, "_path_ready", lambda path: False)
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+        )
+    )
+
+    data = http.build_panel_data(
+        hass,
+        {
+            "cameras": [
+                {
+                    "entry_id": "entry-id",
+                    "serial": "CAMERA-SN",
+                    "name": "Garden",
+                    "clips": [
+                        {
+                            "entry_id": "entry-id",
+                            "serial": "CAMERA-SN",
+                            "date": "2026-06-30",
+                            "start": 1782049304,
+                            "end": 1782049334,
+                            "media_root": "/media/xsense_recordings",
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+
+    assert data["stats"]["indexed_clips"] == 1
+    assert data["stats"]["visible_clips"] == 0
+    assert data["stats"]["pending_clips"] == 0
+    assert data["cameras"][0]["clips"] == []
+
+
+def test_recordings_panel_playback_serves_cached_file(monkeypatch, tmp_path):
+    from aiohttp import web
+
+    from custom_components.xsense import http
+    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
+
+    clip_path = tmp_path / "clip.mp4"
+    clip_path.write_bytes(b"mp4")
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+    }
+
+    async def load_index(self):
+        return {
+            "cameras": [
+                {
+                    "entry_id": "entry-id",
+                    "serial": "CAMERA-SN",
+                    "clips": [clip],
+                }
+            ]
+        }
+
+    async def cached_url(self, current_clip):
+        return "/media/local/xsense_recordings/videos/clip.mp4"
+
+    monkeypatch.setattr(XSenseRecordingsMediaSource, "_async_load_index", load_index)
+    monkeypatch.setattr(
+        XSenseRecordingsMediaSource,
+        "_async_cached_playback_url",
+        cached_url,
+    )
+    monkeypatch.setattr(http, "_clip_cache_path", lambda current_clip: clip_path)
+    monkeypatch.setattr(http, "_path_ready", lambda path: path == clip_path)
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+        )
+    )
+
+    import asyncio
+
+    response = asyncio.run(
+        http.XSenseRecordingsPanelPlaybackView(hass).get(
+            SimpleNamespace(query={"serial": "CAMERA-SN"}),
+            "entry-id",
+            "1782049304",
+            "1782049334",
+        )
+    )
+
+    assert isinstance(response, web.FileResponse)
+
+
+def test_recordings_panel_api_urls_keep_serial_in_query():
+    from custom_components.xsense import http
+
+    assert http._playback_api_url(
+        "entry-id",
+        "CAMERA/SN",
+        1782049304,
+        1782049334,
+    ) == (
+        "/api/xsense/recordings/play/entry-id/1782049304/1782049334"
+        "?serial=CAMERA%2FSN"
+    )
+    assert http._thumbnail_api_url(
+        "entry-id",
+        "CAMERA/SN",
+        1782049304,
+        1782049334,
+    ) == (
+        "/api/xsense/recordings/thumb/entry-id/1782049304/1782049334"
+        "?serial=CAMERA%2FSN"
+    )

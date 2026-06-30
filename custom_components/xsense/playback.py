@@ -18,6 +18,7 @@ from .const import (
     LOGGER,
 )
 from .api.async_xsense import is_camera_entity
+from .frontend import recordings_panel_url
 from .pion_adapter import async_capture_sd_recording
 from .webrtc_signal import (
     make_start_sd_playback_command_payload,
@@ -86,13 +87,11 @@ def playback_url(
     end_time: int | None = None,
 ) -> str:
     """Return a Home Assistant URL for an X-Sense SD playback event."""
-    return playback_panel_url(
+    return recordings_panel_url(
         entry_id,
         serial,
         start_time,
-        camera_entity_id,
         base_url=base_url,
-        mode="recording",
         end_time=end_time,
     )
 

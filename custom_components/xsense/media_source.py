@@ -53,6 +53,7 @@ RECORDING_MEDIA_SYNC_STARTUP_DELAY = 30
 RECORDING_MEDIA_RECENT_SYNC_INTERVAL = timedelta(minutes=2)
 RECORDING_MEDIA_RECENT_LOOKBACK = timedelta(minutes=10)
 THUMBNAIL_WARMUP_LIMIT = 10
+EVENT_RECORDING_CLIP_LIMIT = 50
 SERVICE_REFRESH_RECORDINGS = "refresh_recordings"
 SERVICE_CACHE_RECORDINGS = "cache_recordings"
 SERVICE_CLEAR_RECORDINGS_CACHE = "clear_recordings_cache"
@@ -229,6 +230,7 @@ async def async_cache_recording_playback(
     )
     if clip is None or not _clip_media_playable(clip):
         return ""
+    _remember_event_recording_clip(hass, clip)
 
     output_path = _clip_cache_path(clip)
     if _path_ready(output_path):
@@ -717,7 +719,7 @@ class XSenseRecordingsMediaSource(MediaSource):
         return {
             "generated_at": generated_at,
             "warning": "; ".join(warnings) if warnings else None,
-            "cameras": cameras,
+            "cameras": _merge_event_recording_clips(self.hass, cameras),
         }
 
     @staticmethod
@@ -1094,6 +1096,72 @@ def _recording_cache_candidates(index: dict[str, Any]) -> list[dict[str, Any]]:
     ]
     clips.sort(key=_clip_start_for_sort, reverse=True)
     return clips
+
+
+def _remember_event_recording_clip(hass: HomeAssistant, clip: dict[str, Any]) -> None:
+    """Keep fresh motion-event clips visible before the history index catches up."""
+    entry_id = str(clip.get("entry_id") or "")
+    serial = str(clip.get("serial") or "")
+    start = _clip_start_for_sort(clip)
+    if not entry_id or not serial or not start:
+        return
+    event_clips = hass.data.setdefault(DOMAIN, {}).setdefault(
+        "_recording_event_clips",
+        {},
+    )
+    entry_clips = event_clips.setdefault(entry_id, {})
+    camera_clips = entry_clips.setdefault(serial, {})
+    camera_clips[start] = dict(clip)
+    while len(camera_clips) > EVENT_RECORDING_CLIP_LIMIT:
+        oldest_start = min(camera_clips)
+        camera_clips.pop(oldest_start, None)
+
+
+def _merge_event_recording_clips(
+    hass: HomeAssistant,
+    cameras: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Return cameras with fresh event clips merged into the recording index."""
+    event_clips = hass.data.get(DOMAIN, {}).get("_recording_event_clips")
+    if not isinstance(event_clips, dict) or not event_clips:
+        return cameras
+    merged = [dict(camera) for camera in cameras]
+    camera_by_key = {
+        (str(camera.get("entry_id") or ""), str(camera.get("serial") or "")): camera
+        for camera in merged
+    }
+    for entry_id, entry_clips in event_clips.items():
+        if not isinstance(entry_clips, dict):
+            continue
+        for serial, clips_by_start in entry_clips.items():
+            if not isinstance(clips_by_start, dict):
+                continue
+            key = (str(entry_id), str(serial))
+            camera = camera_by_key.get(key)
+            if camera is None:
+                camera = {
+                    "entry_id": str(entry_id),
+                    "serial": str(serial),
+                    "name": str(serial),
+                    "online": True,
+                    "clips": [],
+                }
+                camera_by_key[key] = camera
+                merged.append(camera)
+            clips = [dict(clip) for clip in camera.get("clips", [])]
+            existing_starts = {_clip_start_for_sort(clip) for clip in clips}
+            for start, clip in clips_by_start.items():
+                try:
+                    start_int = int(start)
+                except (TypeError, ValueError):
+                    start_int = _clip_start_for_sort(clip)
+                if start_int in existing_starts or not isinstance(clip, dict):
+                    continue
+                clips.append(dict(clip))
+                existing_starts.add(start_int)
+            clips.sort(key=_clip_start_for_sort, reverse=True)
+            camera["clips"] = clips
+    return merged
 
 
 def _clip_start_for_sort(clip: dict[str, Any]) -> int:

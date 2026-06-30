@@ -37,19 +37,19 @@
   "options": {
     "step": {
       "init": {
-        "description": "Recording media sync caches camera clips under Home Assistant media so Media Browser and mobile notifications can open recordings quickly. Leave it off to cache recordings only when they are opened. Enable it to keep recent recordings ready in the background.",
+        "description": "Recording media sync caches camera clips under Home Assistant media so the X-Sense Recordings sidebar, Media Browser, and mobile notifications can open recordings quickly. Leave it off to cache recordings only when they are opened. Enable it to keep recent recordings ready in the background.",
         "data": {
           "recording_media_sync_enabled": "Recording media sync",
           "recording_media_sync_hours": "Background sync interval",
           "recording_media_storage_path": "Recording cache folder",
-          "recording_media_days_order": "Media Browser day order",
-          "recording_media_clips_order": "Media Browser clip order"
+          "recording_media_days_order": "Recording day order",
+          "recording_media_clips_order": "Recording clip order"
         },
         "data_description": {
           "recording_media_sync_enabled": "Cache recent recordings automatically. This uses storage space and may wake cameras more often.",
           "recording_media_sync_hours": "How often the normal background catch-up sync should run. Recent recordings are checked every couple minutes when sync is enabled.",
           "recording_media_storage_path": "Use a folder under /media. New cached videos and thumbnails are stored here.",
-          "recording_media_days_order": "Choose whether newer or older days appear first in Media Browser.",
+          "recording_media_days_order": "Choose whether newer or older days appear first in the recordings viewer.",
           "recording_media_clips_order": "Choose whether newer or older clips appear first within each day."
         }
       },

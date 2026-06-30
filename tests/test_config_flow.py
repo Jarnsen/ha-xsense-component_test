@@ -74,6 +74,26 @@ def test_options_schema_accepts_recording_sync_options():
     }
 
 
+def test_options_schema_normalizes_stale_prerelease_options():
+    schema = options_schema(
+        {
+            CONF_RECORDING_MEDIA_SYNC_ENABLED: "yes",
+            CONF_RECORDING_MEDIA_SYNC_HOURS: "999",
+            CONF_RECORDING_MEDIA_STORAGE_PATH: "/tmp/xsense",
+            CONF_RECORDING_MEDIA_DAYS_ORDER: "newest_first",
+            CONF_RECORDING_MEDIA_CLIPS_ORDER: "oldest-first",
+        }
+    )
+
+    assert schema({}) == {
+        CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
+        CONF_RECORDING_MEDIA_SYNC_HOURS: DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
+        CONF_RECORDING_MEDIA_STORAGE_PATH: DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_MEDIA_DAYS_ORDER: "Descending",
+        CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
+    }
+
+
 def test_options_schema_rejects_storage_path_outside_media():
     schema = options_schema({})
 
