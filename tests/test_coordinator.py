@@ -191,6 +191,53 @@ def test_mqtt_child_devs_payload_is_routed_to_apk_state_parser():
     ]
 
 
+def test_mqtt_target_device_payload_is_routed_to_apk_state_parser():
+    from types import SimpleNamespace
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Station:
+        sn = "station-sn"
+        shadow_name = "station-sn"
+
+        def get_device_by_sn(self, identifier):
+            return object() if identifier == "child-sn" else None
+
+    station = Station()
+    parsed = []
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/station-sn/shadow/name/2nd_alarm/update",
+        (
+            '{"state":{"reported":{"stationSN":"station-sn",'
+            '"deviceSN":"child-sn","type":"XS03-iWX","isAlarm":"1",'
+            '"time":"20260701075100"}}}'
+        ).encode(),
+    )
+
+    assert parsed == [
+        (
+            station,
+            {
+                "devs": {
+                    "child-sn": {
+                        "stationSN": "station-sn",
+                        "deviceSN": "child-sn",
+                        "type": "XS03-iWX",
+                        "isAlarm": "1",
+                        "time": "20260701075100",
+                    },
+                },
+            },
+        )
+    ]
+
+
 def test_presence_topic_updates_station_online_like_apk():
     from types import SimpleNamespace
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator

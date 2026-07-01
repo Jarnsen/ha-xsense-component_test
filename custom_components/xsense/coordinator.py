@@ -726,9 +726,16 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if (
             target_device_sn
             and target_device_sn != station.sn
-            and (dev := station.get_device_by_sn(target_device_sn))
+            and station.get_device_by_sn(target_device_sn)
         ):
-            dev.set_data(station_data)
+            self.xsense.parse_get_state(
+                station,
+                {
+                    "devs": {
+                        target_device_sn: station_data,
+                    },
+                },
+            )
         else:
             if isinstance(children, (dict, list)):
                 station_data["devs"] = children

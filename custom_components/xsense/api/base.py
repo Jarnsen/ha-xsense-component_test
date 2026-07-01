@@ -323,7 +323,7 @@ class XSenseBase:
         if _apply_group_light_state(station, station_data, children):
             return
 
-        _normalize_alarm_status_from_activate(station_data)
+        _normalize_apk_alarm_status(station_data)
         has_alarm_status = "alarmStatus" in station_data or "a" in station_data
         if station_data:
             station.set_data(station_data)
@@ -333,7 +333,7 @@ class XSenseBase:
         )
         for child_key, child_state in _child_state_items(children):
             if dev := _state_child_device(station, child_key, child_state):
-                _normalize_alarm_status_from_activate(child_state)
+                _normalize_apk_alarm_status(child_state)
                 dev.set_data(child_state)
 
     def _parse_get_house_state(self, house: House, data: Dict):
@@ -458,14 +458,12 @@ def _is_active_state(value) -> bool:
     return False
 
 
-def _normalize_alarm_status_from_activate(data: Dict) -> None:
-    """Mirror APK live alarm activation into alarmStatus when status is absent."""
+def _normalize_apk_alarm_status(data: Dict) -> None:
+    """Mirror APK alarm topic state into the canonical alarmStatus key."""
     if "alarmStatus" in data or "a" in data:
         return
-    for key in ("activate", "isActivate"):
-        if key in data:
-            data["alarmStatus"] = data[key]
-            return
+    if "isAlarm" in data:
+        data["alarmStatus"] = data["isAlarm"]
 
 
 def _thing_name(station: Station) -> str:

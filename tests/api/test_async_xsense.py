@@ -849,7 +849,7 @@ def test_parse_get_state_does_not_use_stale_alarm_status_when_missing():
     assert station_obj.has_alarm is False
 
 
-def test_parse_get_state_uses_current_activate_without_alarm_status():
+def test_parse_get_state_maps_apk_alarm_topic_is_alarm_to_status():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(
         None,
@@ -859,13 +859,13 @@ def test_parse_get_state_uses_current_activate_without_alarm_status():
         category="SBS50",
     )
 
-    client.parse_get_state(station_obj, {"activate": "1"})
+    client.parse_get_state(station_obj, {"isAlarm": "1"})
 
     assert station_obj.has_alarm is True
     assert station_obj.data["alarmStatus"] is True
 
 
-def test_parse_get_state_maps_inactive_activate_to_alarm_status():
+def test_parse_get_state_maps_inactive_apk_alarm_topic_is_alarm_to_status():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(
         None,
@@ -875,14 +875,14 @@ def test_parse_get_state_maps_inactive_activate_to_alarm_status():
         category="SBS50",
     )
 
-    client.parse_get_state(station_obj, {"activate": "1"})
-    client.parse_get_state(station_obj, {"activate": "0"})
+    client.parse_get_state(station_obj, {"isAlarm": "1"})
+    client.parse_get_state(station_obj, {"isAlarm": "0"})
 
     assert station_obj.has_alarm is False
     assert station_obj.data["alarmStatus"] is False
 
 
-def test_parse_get_state_maps_child_activate_to_alarm_status():
+def test_parse_get_state_maps_child_apk_alarm_topic_is_alarm_to_status():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(
         None,
@@ -912,7 +912,7 @@ def test_parse_get_state_maps_child_activate_to_alarm_status():
                 {
                     "deviceSn": "child-sn",
                     "deviceType": "XS03-iWX",
-                    "isActivate": "1",
+                    "isAlarm": "1",
                     "onLine": "1",
                 }
             ],
