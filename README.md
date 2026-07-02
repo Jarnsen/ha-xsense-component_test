@@ -19,6 +19,12 @@ This repository contains the Home Assistant integration for X-Sense devices. Thi
 
 Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. Dieses Repository ist in mehreren Sprachen verfügbar, damit Nutzer weltweit die Integration einfach verstehen und nutzen können.
 
+### Compatibility Note / Kompatibilitätshinweis
+
+If you are still using an old `v1.2.6.x` build, update to `v1.3.13` or newer before upgrading Home Assistant Core to 2026.7 or newer. The old `v1.2.6.x` builds required `aiortc`, which is not compatible with Home Assistant's Python 3.14 runtime. Current `v1.3.x` builds no longer require `aiortc`.
+
+Wenn Sie noch eine alte `v1.2.6.x`-Version verwenden, aktualisieren Sie auf `v1.3.13` oder neuer, bevor Sie Home Assistant Core auf 2026.7 oder neuer aktualisieren. Die alten `v1.2.6.x`-Versionen benötigten `aiortc`, das nicht mit der Python-3.14-Laufzeit von Home Assistant kompatibel ist. Aktuelle `v1.3.x`-Versionen benötigen `aiortc` nicht mehr.
+
 ### Recent Improvements / Aktuelle Verbesserungen
 
 - The integration now includes its X-Sense API client directly, removing the external `python-xsense` dependency.
