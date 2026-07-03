@@ -116,7 +116,7 @@ ____________________________________________________________
 ## カメラのライブビューとAI通知
 最も簡単な方法は同梱の blueprint を使うことです。下のボタンでインポートし、カメラの `Motion` イベントエンティティ、またはサブスクリプション付きカメラで利用できる場合は `AI Detection` を選び、必要に応じて通知アクションを調整してください。
 
-Motion イベントに X-Sense の再生メタデータが含まれる場合、統合はすぐにクリップのキャッシュを試みます。キャッシュ済みファイルが準備できると通知は動画再生に `recording_media_url` を使い、準備できていない場合は `recording_url` で Home Assistant の X-Sense Recordings ビューアを開きます。Recording media sync は最近のクリップをバックグラウンドで準備できます。
+Motion イベントに X-Sense の再生メタデータが含まれる場合、統合はすぐにクリップのキャッシュを試みます。キャッシュ済みファイルが準備できると通知は動画再生に `recording_media_url` を使い、準備できていない場合は `recording_url` で Home Assistant の X-Sense Recordings ビューアを開きます。手動でオートメーションを実行した場合は、選択したイベントエンティティの最新の録画データを使用するため、そのエンティティが実際の録画リンクを受け取った後にだけ録画通知を送信します。Recording media sync は最近のクリップをバックグラウンドで準備できます。
 
 [![blueprint をインポート](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

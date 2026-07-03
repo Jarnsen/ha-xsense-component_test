@@ -191,7 +191,7 @@ ____________________________________________________________
 ## Живий перегляд камери та AI-сповіщення
 Найпростіше імпортувати включений blueprint кнопкою нижче, вибрати `Motion` або доступний `AI Detection` і за потреби змінити дію сповіщення.
 
-Коли подія Motion містить метадані відтворення X-Sense, інтеграція одразу намагається кешувати кліп. Коли файл готовий, сповіщення використовує `recording_media_url` для відтворення відео; інакше `recording_url` відкриває переглядач X-Sense Recordings у Home Assistant. Recording media sync може готувати нові кліпи у фоні.
+Коли подія Motion містить метадані відтворення X-Sense, інтеграція одразу намагається кешувати кліп. Коли файл готовий, сповіщення використовує `recording_media_url` для відтворення відео; інакше `recording_url` відкриває переглядач X-Sense Recordings у Home Assistant. Ручний запуск автоматизації використовує найновіші дані запису з вибраної сутності події, тому сповіщення із записом надсилається лише після того, як ця сутність отримала справжнє посилання на запис. Recording media sync може готувати нові кліпи у фоні.
 
 [![Імпортувати blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

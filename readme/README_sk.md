@@ -58,7 +58,7 @@ Správa zariadení, zdieľanie, odstránenie, firmvér, účty a platby zostáva
 ## Živý náhľad kamery a oznámenia AI
 Najjednoduchšie je importovať priložený blueprint tlačidlom nižšie, vybrať `Motion` alebo dostupné `AI Detection` a upraviť akciu oznámenia.
 
-Keď udalosť Motion obsahuje metadáta prehrávania X-Sense, integrácia sa hneď pokúsi uložiť klip do cache. Keď je súbor pripravený, oznámenie použije `recording_media_url` na prehranie videa; inak `recording_url` otvorí prehliadač X-Sense Recordings v Home Assistante. Recording media sync môže pripravovať novšie klipy na pozadí.
+Keď udalosť Motion obsahuje metadáta prehrávania X-Sense, integrácia sa hneď pokúsi uložiť klip do cache. Keď je súbor pripravený, oznámenie použije `recording_media_url` na prehranie videa; inak `recording_url` otvorí prehliadač X-Sense Recordings v Home Assistante. Ručné spustenie automatizácie používa najnovšie údaje záznamu vybranej entity udalosti, takže oznámenie so záznamom sa odošle až po tom, čo táto entita dostane skutočný odkaz na záznam. Recording media sync môže pripravovať novšie klipy na pozadí.
 
 [![Importovať blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

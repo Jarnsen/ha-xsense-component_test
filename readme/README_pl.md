@@ -118,7 +118,7 @@ ____________________________________________________________
 ## Podgląd kamery na żywo i powiadomienia AI
 Najprościej użyć dołączonego blueprintu. Zaimportuj go przyciskiem poniżej, wybierz encję zdarzenia kamery `Motion` albo `AI Detection` dla kamery z subskrypcją, a następnie w razie potrzeby zmień akcję powiadomienia.
 
-Gdy zdarzenie Motion zawiera metadane odtwarzania X-Sense, integracja od razu próbuje zapisać klip w cache. Gdy plik jest gotowy, powiadomienie używa `recording_media_url` do odtwarzania wideo; w przeciwnym razie `recording_url` otwiera widok X-Sense Recordings w Home Assistant. Recording media sync może przygotowywać najnowsze klipy w tle.
+Gdy zdarzenie Motion zawiera metadane odtwarzania X-Sense, integracja od razu próbuje zapisać klip w cache. Gdy plik jest gotowy, powiadomienie używa `recording_media_url` do odtwarzania wideo; w przeciwnym razie `recording_url` otwiera widok X-Sense Recordings w Home Assistant. Ręczne uruchomienia automatyzacji używają najnowszych danych nagrania z wybranej encji zdarzenia, więc powiadomienie z nagraniem jest wysyłane dopiero po otrzymaniu przez tę encję prawdziwego linku do nagrania. Recording media sync może przygotowywać najnowsze klipy w tle.
 
 [![Importuj blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

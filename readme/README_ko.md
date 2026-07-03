@@ -204,7 +204,7 @@ ____________________________________________________________
 ## 카메라 라이브 보기 및 AI 알림
 가장 쉬운 방법은 포함된 blueprint를 사용하는 것입니다. 아래 버튼으로 가져온 뒤 카메라 `Motion` 이벤트 엔티티 또는 구독 카메라에서 사용할 수 있는 경우 `AI Detection`을 선택하고, 필요하면 알림 동작을 조정하세요.
 
-Motion 이벤트에 X-Sense 재생 메타데이터가 포함되면 통합은 즉시 클립 캐시를 시도합니다. 캐시된 파일이 준비되면 알림은 동영상 재생에 `recording_media_url`을 사용하고, 그렇지 않으면 `recording_url`로 Home Assistant의 X-Sense Recordings 뷰어를 엽니다. Recording media sync는 최근 클립을 백그라운드에서 준비할 수 있습니다.
+Motion 이벤트에 X-Sense 재생 메타데이터가 포함되면 통합은 즉시 클립 캐시를 시도합니다. 캐시된 파일이 준비되면 알림은 동영상 재생에 `recording_media_url`을 사용하고, 그렇지 않으면 `recording_url`로 Home Assistant의 X-Sense Recordings 뷰어를 엽니다. 자동화를 수동으로 실행하면 선택한 이벤트 엔티티의 최신 녹화 데이터를 사용하므로, 해당 엔티티가 실제 녹화 링크를 받은 뒤에만 녹화 알림을 보냅니다. Recording media sync는 최근 클립을 백그라운드에서 준비할 수 있습니다.
 
 [![blueprint 가져오기](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

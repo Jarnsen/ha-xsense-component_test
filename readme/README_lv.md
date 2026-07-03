@@ -58,7 +58,7 @@ Ierīču pārvaldība, kopīgošana, noņemšana, firmware, konti un maksājumi 
 ## Kameras tiešraide un AI paziņojumi
 Vienkāršākais veids ir importēt iekļauto blueprint ar zemāk esošo pogu, izvēlēties `Motion` vai pieejamo `AI Detection` un pielāgot paziņojuma darbību.
 
-Kad Motion notikumā ir X-Sense atskaņošanas metadati, integrācija uzreiz mēģina saglabāt klipu cache. Kad fails ir gatavs, paziņojums video atskaņošanai izmanto `recording_media_url`; citādi `recording_url` atver X-Sense Recordings skatītāju Home Assistant. Recording media sync var sagatavot jaunākos klipus fonā.
+Kad Motion notikumā ir X-Sense atskaņošanas metadati, integrācija uzreiz mēģina saglabāt klipu cache. Kad fails ir gatavs, paziņojums video atskaņošanai izmanto `recording_media_url`; citādi `recording_url` atver X-Sense Recordings skatītāju Home Assistant. Manuāla automatizācijas palaišana izmanto atlasītās notikuma entītijas jaunākos ieraksta datus, tāpēc ieraksta paziņojums tiek nosūtīts tikai tad, kad šī entītija ir saņēmusi īstu ieraksta saiti. Recording media sync var sagatavot jaunākos klipus fonā.
 
 [![Importēt blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

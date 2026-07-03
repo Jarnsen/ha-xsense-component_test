@@ -204,7 +204,7 @@ ____________________________________________________________
 ## Tampilan langsung kamera dan notifikasi AI
 Cara termudah adalah mengimpor blueprint yang disertakan dengan tombol di bawah, memilih `Motion` atau `AI Detection` yang tersedia, lalu menyesuaikan aksi notifikasi jika perlu.
 
-Saat event Motion berisi metadata pemutaran X-Sense, integrasi langsung mencoba menyimpan klip ke cache. Jika file sudah siap, notifikasi memakai `recording_media_url` untuk pemutaran video; jika belum, `recording_url` membuka viewer X-Sense Recordings di Home Assistant. Recording media sync dapat menyiapkan klip terbaru di background.
+Saat event Motion berisi metadata pemutaran X-Sense, integrasi langsung mencoba menyimpan klip ke cache. Jika file sudah siap, notifikasi memakai `recording_media_url` untuk pemutaran video; jika belum, `recording_url` membuka viewer X-Sense Recordings di Home Assistant. Menjalankan automasi secara manual memakai data rekaman terbaru dari entitas event yang dipilih, jadi notifikasi rekaman hanya dikirim setelah entitas tersebut menerima link rekaman yang sebenarnya. Recording media sync dapat menyiapkan klip terbaru di background.
 
 [![Impor blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

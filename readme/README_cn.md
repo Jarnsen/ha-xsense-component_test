@@ -18,7 +18,7 @@ ____________________________________________________________
 ## 摄像机实时预览和 AI 通知
 最简单的方式是使用随附的 blueprint。点击下方按钮导入，选择摄像机的 `Motion` 事件实体，或在订阅摄像机可用时选择 `AI Detection`，然后按需调整通知动作。
 
-当 Motion 事件包含 X-Sense 回放元数据时，集成会立即尝试缓存该片段。缓存媒体就绪时，通知会使用 `recording_media_url` 作为视频播放目标；否则会使用 `recording_url` 打开 Home Assistant 中的 X-Sense Recordings 查看器。Recording media sync 可以在后台预先准备最近的片段。
+当 Motion 事件包含 X-Sense 回放元数据时，集成会立即尝试缓存该片段。缓存媒体就绪时，通知会使用 `recording_media_url` 作为视频播放目标；否则会使用 `recording_url` 打开 Home Assistant 中的 X-Sense Recordings 查看器。手动运行自动化时会使用所选事件实体中最新的录像数据，因此只有在该实体收到真实录像链接后才会发送录像通知。Recording media sync 可以在后台预先准备最近的片段。
 
 [![导入 blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

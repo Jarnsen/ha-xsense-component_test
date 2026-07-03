@@ -234,16 +234,28 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     notification_data = direct_url_action["data"]
     fallback_notification_data = fallback_url_action["data"]
 
+    assert variables["xsense_event_entity"] == "ai_detection_event"
     assert variables["xsense_include_recording_link"] == "include_recording_link"
     assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
     assert "trigger.to_state.attributes" in variables["xsense_event_data"]
     assert "trigger.event.data" in variables["xsense_event_data"]
+    assert "state_attr(xsense_event_entity, 'event_type')" in variables["xsense_event_type"]
     assert "camera_name" in variables["xsense_camera_name"]
+    assert "state_attr(xsense_event_entity, 'camera_name')" in variables["xsense_camera_name"]
+    assert "state_attr(xsense_event_entity, 'friendly_name')" in variables["xsense_camera_name"]
     assert "recording_url" in variables["xsense_recording_url"]
+    assert "state_attr(xsense_event_entity, 'recording_url')" in variables["xsense_recording_url"]
     assert "recording_media_url" in variables["xsense_recording_media_url"]
-    assert "xsense_recording_url or xsense_recording_media_url" in variables["xsense_recording_tap_url"]
+    assert "state_attr(xsense_event_entity, 'recording_media_url')" in variables["xsense_recording_media_url"]
+    assert "xsense_recording_url[0:13] != '/media/local/'" in variables[
+        "xsense_recording_tap_url"
+    ]
+    assert "xsense_recording_media_url or xsense_recording_url" in variables[
+        "xsense_recording_tap_url"
+    ]
     assert "xsense_recording_target" not in variables
     assert "snapshot_url" in variables["xsense_snapshot_url"]
+    assert "state_attr(xsense_event_entity, 'snapshot_url')" in variables["xsense_snapshot_url"]
     assert "xsense_notification_url" not in variables
     assert "noAction" not in str(blueprint)
     assert "app://com.xsense.security" not in str(blueprint)

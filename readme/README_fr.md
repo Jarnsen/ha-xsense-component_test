@@ -119,7 +119,7 @@ ____________________________________________________________
 ## Vue en direct caméra et notifications IA
 Le plus simple est d’utiliser le blueprint inclus. Importez-le avec le bouton ci-dessous, choisissez l’entité d’événement caméra `Motion` ou `AI Detection` pour une caméra avec abonnement, puis adaptez l’action de notification si nécessaire.
 
-Quand un événement Motion contient les métadonnées de lecture X-Sense, l’intégration essaie aussitôt de mettre le clip en cache. Quand le fichier est prêt, la notification utilise `recording_media_url` pour lire la vidéo; sinon `recording_url` ouvre le lecteur X-Sense Recordings dans Home Assistant. Recording media sync peut préparer les clips récents en arrière-plan.
+Quand un événement Motion contient les métadonnées de lecture X-Sense, l’intégration essaie aussitôt de mettre le clip en cache. Quand le fichier est prêt, la notification utilise `recording_media_url` pour lire la vidéo; sinon `recording_url` ouvre le lecteur X-Sense Recordings dans Home Assistant. Les exécutions manuelles de l’automatisation utilisent les dernières données d’enregistrement de l’entité d’événement sélectionnée; une notification d’enregistrement n’est donc envoyée qu’après réception d’un vrai lien d’enregistrement par cette entité. Recording media sync peut préparer les clips récents en arrière-plan.
 
 [![Importer le blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

@@ -58,7 +58,7 @@ Enhetshantering, delning, borttagning, firmware, konton och betalningar ligger k
 ## Kamera-livevisning och AI-aviseringar
 Enklast är att importera den inkluderade blueprinten med knappen nedan, välja `Motion` eller tillgänglig `AI Detection`, och justera aviseringsåtgärden.
 
-När en Motion-händelse innehåller X-Sense-uppspelningsmetadata försöker integrationen genast cachelagra klippet. När filen är klar använder aviseringen `recording_media_url` för videouppspelning; annars öppnar `recording_url` X-Sense Recordings-vyn i Home Assistant. Recording media sync kan förbereda nya klipp i bakgrunden.
+När en Motion-händelse innehåller X-Sense-uppspelningsmetadata försöker integrationen genast cachelagra klippet. När filen är klar använder aviseringen `recording_media_url` för videouppspelning; annars öppnar `recording_url` X-Sense Recordings-vyn i Home Assistant. Manuella automationskörningar använder de senaste inspelningsdata från den valda händelseentiteten, så en inspelningsavisering skickas först när entiteten har fått en riktig inspelningslänk. Recording media sync kan förbereda nya klipp i bakgrunden.
 
 [![Importera blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

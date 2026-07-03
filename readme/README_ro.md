@@ -58,7 +58,7 @@ Administrarea dispozitivelor, partajarea, eliminarea, firmware-ul, conturile și
 ## Vizualizare live cameră și notificări AI
 Cel mai simplu este să importați blueprint-ul inclus cu butonul de mai jos, să alegeți `Motion` sau `AI Detection` disponibil și să ajustați acțiunea de notificare.
 
-Când un eveniment Motion include metadate de redare X-Sense, integrarea încearcă imediat să salveze clipul în cache. Când fișierul este gata, notificarea folosește `recording_media_url` pentru redare video; altfel `recording_url` deschide vizualizatorul X-Sense Recordings în Home Assistant. Recording media sync poate pregăti clipurile recente în fundal.
+Când un eveniment Motion include metadate de redare X-Sense, integrarea încearcă imediat să salveze clipul în cache. Când fișierul este gata, notificarea folosește `recording_media_url` pentru redare video; altfel `recording_url` deschide vizualizatorul X-Sense Recordings în Home Assistant. Rulările manuale ale automatizării folosesc cele mai recente date de înregistrare ale entității de eveniment selectate, deci o notificare cu înregistrare este trimisă doar după ce acea entitate primește un link real de înregistrare. Recording media sync poate pregăti clipurile recente în fundal.
 
 [![Importă blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
