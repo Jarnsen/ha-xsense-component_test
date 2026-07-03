@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -13,6 +14,7 @@ from homeassistant.helpers.device_registry import (
     CONNECTION_BLUETOOTH,
     CONNECTION_NETWORK_MAC,
 )
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import slugify
 
 from .api.async_xsense import is_camera_entity
@@ -187,6 +189,7 @@ OBSOLETE_ENTITY_SUFFIXES_BY_DOMAIN = {
 OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
     "XS03-iWX": ("mute",),
 }
+BLUEPRINT_REPAIR_CHECK_INTERVAL = timedelta(minutes=5)
 
 def _sensor_unique_id(entity_id: str, key: str) -> str:
     """Return the unique ID format used by X-Sense sensor entities."""
@@ -602,6 +605,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await async_register_playback_view(hass)
     await async_register_recording_services(hass)
     await async_check_stale_camera_blueprints(hass)
+    entry.async_on_unload(
+        async_track_time_interval(
+            hass,
+            lambda _now: hass.async_create_task(
+                async_check_stale_camera_blueprints(hass)
+            ),
+            BLUEPRINT_REPAIR_CHECK_INTERVAL,
+        )
+    )
     async_start_recording_media_sync(hass, entry)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 

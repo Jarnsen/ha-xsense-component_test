@@ -27,6 +27,14 @@ _CURRENT_BLUEPRINT_MARKERS = (
     "xsense_event_data is mapping",
     "state_attr(xsense_event_entity, 'recording_media_url')",
 )
+_UNSAFE_EVENT_DATA_GET_MARKERS = (
+    "xsense_event_data.get('event_type')",
+    'xsense_event_data.get("event_type")',
+    "xsense_event_data.get('recording_url')",
+    'xsense_event_data.get("recording_url")',
+    "xsense_event_data.get('recording_media_url')",
+    'xsense_event_data.get("recording_media_url")',
+)
 
 
 async def async_check_stale_camera_blueprints(hass: HomeAssistant) -> None:
@@ -77,7 +85,7 @@ def _stale_camera_blueprint_files(blueprint_dir: Path) -> list[str]:
 
         if not _is_xsense_camera_blueprint(text):
             continue
-        if _is_current_camera_blueprint(text):
+        if not _is_stale_camera_blueprint(text):
             continue
         stale_files.append(_relative_blueprint_path(blueprint_dir, path))
 
@@ -91,7 +99,19 @@ def _is_xsense_camera_blueprint(text: str) -> bool:
 
 def _is_current_camera_blueprint(text: str) -> bool:
     """Return whether the imported blueprint has the current safe templates."""
-    return all(marker in text for marker in _CURRENT_BLUEPRINT_MARKERS)
+    if f"xsense_blueprint_version: {CAMERA_BLUEPRINT_VERSION}" in text:
+        return True
+    return (
+        "xsense_event_data is mapping" in text
+        and "state_attr(xsense_event_entity, 'recording_media_url')" in text
+    )
+
+
+def _is_stale_camera_blueprint(text: str) -> bool:
+    """Return whether an X-Sense camera blueprint has unsafe old templates."""
+    if _is_current_camera_blueprint(text):
+        return False
+    return any(marker in text for marker in _UNSAFE_EVENT_DATA_GET_MARKERS)
 
 
 def _relative_blueprint_path(blueprint_dir: Path, path: Path) -> str:

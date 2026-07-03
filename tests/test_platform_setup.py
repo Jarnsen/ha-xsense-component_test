@@ -229,13 +229,10 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
 
     variables = blueprint["variables"]
     choose_action = blueprint["actions"][0]
-    media_url_choice = choose_action["choose"][0]
-    fallback_url_choice = choose_action["choose"][1]
-    direct_url_action = media_url_choice["sequence"][0]
-    fallback_url_action = fallback_url_choice["sequence"][0]
+    notification_choice = choose_action["choose"][0]
+    direct_url_action = notification_choice["sequence"][0]
     direct_message = direct_url_action["message"]
     notification_data = direct_url_action["data"]
-    fallback_notification_data = fallback_url_action["data"]
 
     assert variables["xsense_event_entity"] == "ai_detection_event"
     assert variables["xsense_include_recording_link"] == "include_recording_link"
@@ -272,10 +269,10 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert direct_url_action["device_id"] == "notify_device"
     assert direct_url_action["title"] == "{{ xsense_camera_name }}"
     assert len(blueprint["actions"]) == 1
-    assert len(choose_action["choose"]) == 2
+    assert len(choose_action["choose"]) == 1
     assert "default" not in choose_action
     assert "actions" not in blueprint["blueprint"]["input"]
-    assert "Companion app video playback target" in blueprint["blueprint"]["description"]
+    assert "keeps mobile push delivery reliable" in blueprint["blueprint"]["description"]
     assert "recording_media_url" in blueprint["blueprint"]["description"]
     assert "xsense_camera_name" in direct_message
     assert "xsense_recording_url" not in direct_message
@@ -284,18 +281,9 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "trigger." not in direct_message
     assert notification_data["url"] == "{{ xsense_recording_tap_url }}"
     assert notification_data["clickAction"] == "{{ xsense_recording_tap_url }}"
-    assert notification_data["video"] == "{{ xsense_recording_media_url }}"
-    assert notification_data["attachment"] == {
-        "url": "{{ xsense_recording_media_url }}",
-        "content-type": "video/mp4",
-        "hide-thumbnail": False,
-    }
-    assert "xsense_recording_media_url" in str(media_url_choice["conditions"])
-    assert "xsense_recording_tap_url" in str(fallback_url_choice["conditions"])
-    assert fallback_notification_data == {
-        "url": "{{ xsense_recording_tap_url }}",
-        "clickAction": "{{ xsense_recording_tap_url }}",
-    }
+    assert "video" not in notification_data
+    assert "attachment" not in notification_data
+    assert "xsense_recording_tap_url" in str(notification_choice["conditions"])
     assert "actions" not in notification_data
     assert "trigger." not in str(choose_action)
 
@@ -326,6 +314,17 @@ variables:
   xsense_event_data: "{{{{ trigger.event.data }}}}"
   xsense_event_type: "{{{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}}}"
   xsense_recording_media_url: "{{{{ state_attr(xsense_event_entity, 'recording_media_url') }}}}"
+""",
+        encoding="utf-8",
+    )
+    safe_without_version = xsense_dir / "safe_without_version.yaml"
+    safe_without_version.write_text(
+        """
+blueprint:
+  name: X-Sense Camera Event
+variables:
+  xsense_event_type: "{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}"
+  xsense_recording_media_url: "{{ state_attr(xsense_event_entity, 'recording_media_url') }}"
 """,
         encoding="utf-8",
     )
