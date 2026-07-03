@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import (
@@ -605,12 +605,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await async_register_playback_view(hass)
     await async_register_recording_services(hass)
     await async_check_stale_camera_blueprints(hass)
+
+    @callback
+    def _schedule_blueprint_repair_check(_now) -> None:
+        """Schedule the periodic stale blueprint repair check on the event loop."""
+        hass.create_task(async_check_stale_camera_blueprints(hass))
+
     entry.async_on_unload(
         async_track_time_interval(
             hass,
-            lambda _now: hass.async_create_task(
-                async_check_stale_camera_blueprints(hass)
-            ),
+            _schedule_blueprint_repair_check,
             BLUEPRINT_REPAIR_CHECK_INTERVAL,
         )
     )

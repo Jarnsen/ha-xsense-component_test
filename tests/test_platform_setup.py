@@ -1,10 +1,12 @@
 from types import SimpleNamespace
 
 import asyncio
+import inspect
 
 import yaml
 from yaml.loader import SafeLoader
 
+import custom_components.xsense as xsense_module
 from custom_components.xsense import (
     alarm_control_panel,
     binary_sensor,
@@ -178,6 +180,16 @@ def test_ai_notification_blueprint_docs_use_github_file_import_url():
     ) in readme
 
 
+def test_blueprint_repair_interval_callback_stays_event_loop_safe():
+    source = inspect.getsource(xsense_module.async_setup_entry)
+
+    assert "@callback" in source
+    assert "def _schedule_blueprint_repair_check" in source
+    assert "hass.create_task(async_check_stale_camera_blueprints(hass))" in source
+    assert "lambda _now: hass.async_create_task" not in source
+    assert "hass.async_create_task(async_check_stale_camera_blueprints(hass))" not in source
+
+
 def test_ai_notification_blueprint_filters_by_selected_event_entity():
     with open(
         "blueprints/automation/xsense/camera_ai_notification.yaml",
@@ -188,22 +200,10 @@ def test_ai_notification_blueprint_filters_by_selected_event_entity():
     trigger = blueprint["triggers"][0]
 
     assert "event_types" not in blueprint["blueprint"]["input"]
-    assert trigger["trigger"] == "event.received"
-    assert trigger["target"]["entity_id"] == "ai_detection_event"
-    assert trigger["options"]["event_type"] == [
-        "motion",
-        "ai_detection",
-        "person",
-        "pet",
-        "vehicle",
-        "vehicle_enter",
-        "vehicle_out",
-        "vehicle_held_up",
-        "package",
-        "package_drop_off",
-        "package_pick_up",
-        "package_exist",
-        "other",
+    assert trigger == {"trigger": "event", "event_type": "xsense_camera_event"}
+    assert blueprint["actions"][0]["condition"] == "template"
+    assert "xsense_event_entity_id == xsense_event_entity" in blueprint["actions"][0][
+        "value_template"
     ]
     assert "AI activity" not in str(blueprint)
 
@@ -228,7 +228,8 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
         blueprint = yaml.load(file, Loader=BlueprintLoader)
 
     variables = blueprint["variables"]
-    choose_action = blueprint["actions"][0]
+    entity_guard = blueprint["actions"][0]
+    choose_action = blueprint["actions"][1]
     notification_choice = choose_action["choose"][0]
     direct_url_action = notification_choice["sequence"][0]
     default_action = choose_action["default"][0]
@@ -238,14 +239,15 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert variables["xsense_event_entity"] == "ai_detection_event"
     assert variables["xsense_include_recording_link"] == "include_recording_link"
     assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
-    assert "trigger.to_state.attributes" in variables["xsense_event_data"]
     assert "trigger.event.data" in variables["xsense_event_data"]
+    assert "trigger.to_state" not in variables["xsense_event_data"]
     assert "xsense_event_data is mapping" in variables["xsense_event_type"]
     assert "state_attr(xsense_event_entity, 'event_type')" in variables["xsense_event_type"]
     assert "camera_name" in variables["xsense_camera_name"]
     assert "xsense_event_data is mapping" in variables["xsense_camera_name"]
     assert "state_attr(xsense_event_entity, 'camera_name')" in variables["xsense_camera_name"]
     assert "state_attr(xsense_event_entity, 'friendly_name')" in variables["xsense_camera_name"]
+    assert "event_entity_id" in variables["xsense_event_entity_id"]
     assert "recording_url" in variables["xsense_recording_url"]
     assert "xsense_event_data is mapping" in variables["xsense_recording_url"]
     assert "state_attr(xsense_event_entity, 'recording_url')" in variables["xsense_recording_url"]
@@ -275,7 +277,8 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert default_action["type"] == "notify"
     assert default_action["device_id"] == "notify_device"
     assert "data" not in default_action
-    assert len(blueprint["actions"]) == 1
+    assert len(blueprint["actions"]) == 2
+    assert "xsense_event_entity_id" in entity_guard["value_template"]
     assert len(choose_action["choose"]) == 1
     assert len(choose_action["default"]) == 1
     assert "actions" not in blueprint["blueprint"]["input"]
@@ -317,11 +320,15 @@ variables:
         f"""
 blueprint:
   name: X-Sense Camera Event
+triggers:
+  - trigger: event
+    event_type: xsense_camera_event
 variables:
   xsense_blueprint_version: {repairs.CAMERA_BLUEPRINT_VERSION}
   xsense_event_data: "{{{{ trigger.event.data }}}}"
   xsense_event_type: "{{{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}}}"
   xsense_recording_media_url: "{{{{ state_attr(xsense_event_entity, 'recording_media_url') }}}}"
+  xsense_notification_url: "{{{{ xsense_recording_tap_url or '/xsense-recordings' }}}}"
 """,
         encoding="utf-8",
     )
@@ -330,6 +337,9 @@ variables:
         """
 blueprint:
   name: X-Sense Camera Event
+triggers:
+  - trigger: event
+    event_type: xsense_camera_event
 variables:
   xsense_event_type: "{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}"
   xsense_recording_media_url: "{{ state_attr(xsense_event_entity, 'recording_media_url') }}"
@@ -342,6 +352,8 @@ variables:
         """
 blueprint:
   name: X-Sense Camera Event
+triggers:
+  - trigger: event.received
 variables:
   xsense_blueprint_version: 2
   xsense_event_type: "{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}"
@@ -408,6 +420,9 @@ variables:
         f"""
 blueprint:
   name: X-Sense Camera Event
+triggers:
+  - trigger: event
+    event_type: xsense_camera_event
 variables:
   xsense_blueprint_version: {repairs.CAMERA_BLUEPRINT_VERSION}
   xsense_event_type: "{{{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}}}"

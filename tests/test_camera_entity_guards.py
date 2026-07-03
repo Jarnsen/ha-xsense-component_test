@@ -1065,6 +1065,52 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog
     assert "'total_elapsed_ms': 300" in log_text
 
 
+def test_trigger_camera_event_fires_entity_and_rich_bus_event():
+    fired = []
+
+    class Bus:
+        def async_fire(self, event_type, payload):
+            fired.append(("bus", event_type, payload))
+
+    event_entity = SimpleNamespace(
+        hass=SimpleNamespace(bus=Bus()),
+        entity_id="event.garden_motion",
+        _trigger_event=lambda event_type, data: fired.append(
+            ("entity", event_type, dict(data))
+        ),
+    )
+
+    event._trigger_camera_event(
+        event_entity,
+        "motion",
+        {
+            "camera_name": "Garden",
+            "recording_url": "/xsense-recordings#entry_id=entry-id",
+        },
+    )
+
+    assert fired == [
+        (
+            "entity",
+            "motion",
+            {
+                "camera_name": "Garden",
+                "recording_url": "/xsense-recordings#entry_id=entry-id",
+            },
+        ),
+        (
+            "bus",
+            event.CAMERA_EVENT_BUS_TYPE,
+            {
+                "camera_name": "Garden",
+                "recording_url": "/xsense-recordings#entry_id=entry-id",
+                "event_type": "motion",
+                "event_entity_id": "event.garden_motion",
+            },
+        ),
+    ]
+
+
 def test_motion_event_entity_fires_when_recording_cache_returns_no_media(monkeypatch):
     from custom_components.xsense import media_source
 

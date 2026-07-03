@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 
 AI_DETECTION_EVENT_TYPE = "ai_detection"
 MOTION_EVENT_TYPE = "motion"
+CAMERA_EVENT_BUS_TYPE = "xsense_camera_event"
 AI_DETECTION_TYPES: tuple[str, ...] = (
     "person",
     "pet",
@@ -221,7 +222,7 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
         objects = event_data["objects"]
         event_type = objects[0] if len(objects) == 1 else AI_DETECTION_EVENT_TYPE
         if not self._trigger_event_after_recording_cache(event_type, entity, event_data):
-            self._trigger_event(event_type, event_data)
+            _trigger_camera_event(self, event_type, event_data)
         self._write_state_if_added()
 
     def _write_state_if_added(self) -> None:
@@ -302,7 +303,7 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
             entity,
             event_data,
         ):
-            self._trigger_event(MOTION_EVENT_TYPE, event_data)
+            _trigger_camera_event(self, MOTION_EVENT_TYPE, event_data)
         self._write_state_if_added()
 
     def _add_camera_event_context(
@@ -550,7 +551,7 @@ def _trigger_event_after_recording_cache(
                     "has_cache_error": bool(event_data.get("recording_cache_error")),
                 },
             )
-            event_entity._trigger_event(event_type, event_data)
+            _trigger_camera_event(event_entity, event_type, event_data)
             _write_event_state(event_entity)
             return
         event_data["recording_media_url"] = cached_url
@@ -572,11 +573,28 @@ def _trigger_event_after_recording_cache(
                 "total_elapsed_ms": total_elapsed_ms,
             },
         )
-        event_entity._trigger_event(event_type, event_data)
+        _trigger_camera_event(event_entity, event_type, event_data)
         _write_event_state(event_entity)
 
     hass.async_create_task(_async_cache_then_trigger())
     return True
+
+
+def _trigger_camera_event(
+    event_entity: EventEntity,
+    event_type: str,
+    event_data: dict[str, Any] | None,
+) -> None:
+    """Trigger the event entity and fire a rich HA bus event for blueprints."""
+    event_entity._trigger_event(event_type, event_data)
+    hass = getattr(event_entity, "hass", None)
+    if not hasattr(hass, "bus"):
+        return
+    payload = dict(event_data or {})
+    payload["event_type"] = event_type
+    if entity_id := getattr(event_entity, "entity_id", None):
+        payload["event_entity_id"] = entity_id
+    hass.bus.async_fire(CAMERA_EVENT_BUS_TYPE, payload)
 
 
 def _write_event_state(event_entity: EventEntity) -> None:
