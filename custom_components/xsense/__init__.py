@@ -29,6 +29,7 @@ from .media_source import (
     async_start_recording_media_sync,
 )
 from .playback import async_register_playback_view
+from .repairs import async_check_stale_camera_blueprints
 
 PLATFORMS: list[Platform] = [
     Platform.ALARM_CONTROL_PANEL,
@@ -600,6 +601,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await async_register_recordings_http_views(hass)
     await async_register_playback_view(hass)
     await async_register_recording_services(hass)
+    await async_check_stale_camera_blueprints(hass)
     async_start_recording_media_sync(hass, entry)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 

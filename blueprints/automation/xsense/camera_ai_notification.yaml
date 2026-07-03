@@ -64,16 +64,17 @@ triggers:
         - other
 
 variables:
+  xsense_blueprint_version: 2
   xsense_event_entity: !input ai_detection_event
   xsense_include_recording_link: !input include_recording_link
   xsense_include_snapshot_link: !input include_snapshot_link
   xsense_event_data: "{{ trigger.to_state.attributes if trigger is defined and trigger.to_state is defined and trigger.to_state.attributes is mapping else (trigger.event.data if trigger is defined and trigger.event is defined and trigger.event.data is mapping else {}) }}"
-  xsense_event_type: "{{ xsense_event_data.get('event_type') or state_attr(xsense_event_entity, 'event_type') or (trigger.event.event_type if trigger is defined and trigger.event is defined else '') }}"
-  xsense_camera_name: "{{ xsense_event_data.get('camera_name') or state_attr(xsense_event_entity, 'camera_name') or (trigger.to_state.name if trigger is defined and trigger.to_state is defined else state_attr(xsense_event_entity, 'friendly_name') or 'X-Sense camera') }}"
-  xsense_recording_url: "{{ xsense_event_data.get('recording_url') or state_attr(xsense_event_entity, 'recording_url') or '' }}"
-  xsense_recording_media_url: "{{ xsense_event_data.get('recording_media_url') or state_attr(xsense_event_entity, 'recording_media_url') or '' }}"
+  xsense_event_type: "{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'event_type') or (trigger.event.event_type if trigger is defined and trigger.event is defined else '') }}"
+  xsense_camera_name: "{{ (xsense_event_data.get('camera_name') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'camera_name') or (trigger.to_state.name if trigger is defined and trigger.to_state is defined else state_attr(xsense_event_entity, 'friendly_name') or 'X-Sense camera') }}"
+  xsense_recording_url: "{{ (xsense_event_data.get('recording_url') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'recording_url') or '' }}"
+  xsense_recording_media_url: "{{ (xsense_event_data.get('recording_media_url') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'recording_media_url') or '' }}"
   xsense_recording_tap_url: "{{ xsense_recording_url if xsense_recording_url and xsense_recording_url[0:13] != '/media/local/' else xsense_recording_media_url or xsense_recording_url }}"
-  xsense_snapshot_url: "{{ xsense_event_data.get('snapshot_url') or state_attr(xsense_event_entity, 'snapshot_url') or '' }}"
+  xsense_snapshot_url: "{{ (xsense_event_data.get('snapshot_url') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'snapshot_url') or '' }}"
 
 actions:
   - choose:

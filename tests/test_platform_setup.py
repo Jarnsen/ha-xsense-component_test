@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+import asyncio
+
 import yaml
 from yaml.loader import SafeLoader
 
@@ -10,6 +12,7 @@ from custom_components.xsense import (
     camera,
     event,
     number,
+    repairs,
     select,
     sensor,
     switch,
@@ -239,13 +242,17 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
     assert "trigger.to_state.attributes" in variables["xsense_event_data"]
     assert "trigger.event.data" in variables["xsense_event_data"]
+    assert "xsense_event_data is mapping" in variables["xsense_event_type"]
     assert "state_attr(xsense_event_entity, 'event_type')" in variables["xsense_event_type"]
     assert "camera_name" in variables["xsense_camera_name"]
+    assert "xsense_event_data is mapping" in variables["xsense_camera_name"]
     assert "state_attr(xsense_event_entity, 'camera_name')" in variables["xsense_camera_name"]
     assert "state_attr(xsense_event_entity, 'friendly_name')" in variables["xsense_camera_name"]
     assert "recording_url" in variables["xsense_recording_url"]
+    assert "xsense_event_data is mapping" in variables["xsense_recording_url"]
     assert "state_attr(xsense_event_entity, 'recording_url')" in variables["xsense_recording_url"]
     assert "recording_media_url" in variables["xsense_recording_media_url"]
+    assert "xsense_event_data is mapping" in variables["xsense_recording_media_url"]
     assert "state_attr(xsense_event_entity, 'recording_media_url')" in variables["xsense_recording_media_url"]
     assert "xsense_recording_url[0:13] != '/media/local/'" in variables[
         "xsense_recording_tap_url"
@@ -255,6 +262,7 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     ]
     assert "xsense_recording_target" not in variables
     assert "snapshot_url" in variables["xsense_snapshot_url"]
+    assert "xsense_event_data is mapping" in variables["xsense_snapshot_url"]
     assert "state_attr(xsense_event_entity, 'snapshot_url')" in variables["xsense_snapshot_url"]
     assert "xsense_notification_url" not in variables
     assert "noAction" not in str(blueprint)
@@ -290,6 +298,105 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     }
     assert "actions" not in notification_data
     assert "trigger." not in str(choose_action)
+
+
+def test_stale_camera_blueprint_detection(tmp_path):
+    blueprint_dir = tmp_path / "blueprints" / "automation"
+    xsense_dir = blueprint_dir / "xsense"
+    xsense_dir.mkdir(parents=True)
+    stale = xsense_dir / "old.yaml"
+    stale.write_text(
+        """
+blueprint:
+  name: X-Sense Camera Event
+  source_url: https://github.com/Jarnsen/ha-xsense-component_test/blob/main/blueprints/automation/xsense/camera_ai_notification.yaml
+variables:
+  xsense_event_data: "{{ trigger.event.data }}"
+  xsense_event_type: "{{ xsense_event_data.get('event_type') }}"
+""",
+        encoding="utf-8",
+    )
+    current = xsense_dir / "current.yaml"
+    current.write_text(
+        f"""
+blueprint:
+  name: X-Sense Camera Event
+variables:
+  xsense_blueprint_version: {repairs.CAMERA_BLUEPRINT_VERSION}
+  xsense_event_data: "{{{{ trigger.event.data }}}}"
+  xsense_event_type: "{{{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}}}"
+  xsense_recording_media_url: "{{{{ state_attr(xsense_event_entity, 'recording_media_url') }}}}"
+""",
+        encoding="utf-8",
+    )
+    (blueprint_dir / "other.yaml").write_text(
+        "blueprint:\n  name: Other Blueprint\n",
+        encoding="utf-8",
+    )
+
+    assert repairs._stale_camera_blueprint_files(blueprint_dir) == ["xsense/old.yaml"]
+
+
+def test_stale_camera_blueprint_repair_issue_created_and_cleared(
+    tmp_path, monkeypatch
+):
+    blueprint_dir = tmp_path / "blueprints" / "automation"
+    blueprint_dir.mkdir(parents=True)
+    (blueprint_dir / "old.yaml").write_text(
+        """
+blueprint:
+  name: X-Sense Camera Event
+variables:
+  xsense_event_type: "{{ xsense_event_data.get('event_type') }}"
+""",
+        encoding="utf-8",
+    )
+    created = []
+    deleted = []
+
+    async def async_add_executor_job(func, *args):
+        return func(*args)
+
+    hass = SimpleNamespace(
+        config=SimpleNamespace(path=lambda *parts: str(tmp_path.joinpath(*parts))),
+        async_add_executor_job=async_add_executor_job,
+    )
+    monkeypatch.setattr(
+        repairs.ir,
+        "async_create_issue",
+        lambda *args, **kwargs: created.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        repairs.ir,
+        "async_delete_issue",
+        lambda *args, **kwargs: deleted.append((args, kwargs)),
+    )
+
+    asyncio.run(repairs.async_check_stale_camera_blueprints(hass))
+
+    assert created
+    assert created[0][0][2] == repairs.CAMERA_BLUEPRINT_ISSUE_ID
+    assert created[0][1]["translation_key"] == repairs.CAMERA_BLUEPRINT_ISSUE_ID
+    assert created[0][1]["translation_placeholders"]["files"] == "old.yaml"
+    assert deleted == []
+
+    created.clear()
+    (blueprint_dir / "old.yaml").write_text(
+        f"""
+blueprint:
+  name: X-Sense Camera Event
+variables:
+  xsense_blueprint_version: {repairs.CAMERA_BLUEPRINT_VERSION}
+  xsense_event_type: "{{{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}}}"
+  xsense_recording_media_url: "{{{{ state_attr(xsense_event_entity, 'recording_media_url') }}}}"
+""",
+        encoding="utf-8",
+    )
+
+    asyncio.run(repairs.async_check_stale_camera_blueprints(hass))
+
+    assert created == []
+    assert deleted[0][0][2] == repairs.CAMERA_BLUEPRINT_ISSUE_ID
 
 
 def test_recordings_panel_registration_adds_sidebar_panel(monkeypatch):
