@@ -12,6 +12,11 @@
 
 Home Assistant-ৰ আনুষ্ঠানিক একীকৰণ উপলব্ধ নোহোৱা পৰ্যন্ত, এই HACS integration-টো নতুন সুবিধা যোগ কৰা আৰু সমস্যা সমাধানৰ বাবে আপডেট হৈ থাকিব।
 
+## Compatibility and HACS Updates
+If you are still using an old `v1.2.6.x` build, update to `v1.3.14` or newer before upgrading Home Assistant Core to 2026.7 or newer. Current `v1.3.x` builds no longer require `aiortc`.
+
+This integration is installed as a HACS custom repository. If the update does not appear immediately, open HACS, select the X-Sense repository, run **Update information**, then update or redownload the integration and restart Home Assistant.
+
 ## বৈশিষ্ট্য
 - বিভিন্ন X-Sense ডিভাইচ Home Assistant-ত যোগ কৰে।
 - X-Sense চেন্সৰৰ তথ্য-ৰ ওপৰত automation সমৰ্থন কৰে।

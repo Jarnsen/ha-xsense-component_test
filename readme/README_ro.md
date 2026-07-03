@@ -12,6 +12,11 @@ Această integrare pentru Home Assistant expune dispozitivele X-Sense în casa i
 
 Recomandăm crearea unui al doilea cont X-Sense pentru Home Assistant și partajarea din contul principal doar a dispozitivelor acceptate.
 
+## Compatibilitate și actualizări HACS
+Dacă încă folosiți o versiune veche `v1.2.6.x`, actualizați la `v1.3.14` sau mai nouă înainte de a actualiza Home Assistant Core la 2026.7 sau mai nou. Versiunile vechi necesitau `aiortc`, care nu este compatibil cu runtime-ul Python 3.14 din Home Assistant. Versiunile actuale `v1.3.x` nu mai necesită `aiortc`.
+
+Această integrare este instalată ca depozit HACS personalizat. Dacă actualizarea nu apare imediat, deschideți HACS, selectați depozitul X-Sense, rulați **Update information**, apoi actualizați sau descărcați din nou integrarea și reporniți Home Assistant.
+
 ## Instalare
 În HACS adăugați depozitul personalizat `https://github.com/Jarnsen/ha-xsense-component_test`, descărcați integrarea, urmați instrucțiunile HACS pentru repornire, apoi configurați integrarea cu acel cont X-Sense.
 

@@ -12,6 +12,11 @@ Ova integracija za Home Assistant omogućuje korištenje X-Sense uređaja u pame
 
 Preporučujemo stvaranje drugog X-Sense računa za Home Assistant i dijeljenje samo podržanih uređaja iz glavnog računa.
 
+## Kompatibilnost i HACS ažuriranja
+Ako još koristite staru verziju `v1.2.6.x`, ažurirajte na `v1.3.14` ili noviju prije nadogradnje Home Assistant Core na 2026.7 ili noviju. Stare verzije zahtijevale su `aiortc`, koji nije kompatibilan s Python 3.14 runtimeom u Home Assistantu. Trenutne `v1.3.x` verzije više ne zahtijevaju `aiortc`.
+
+Ova integracija instalira se kao prilagođeni HACS repozitorij. Ako se ažuriranje ne prikaže odmah, otvorite HACS, odaberite X-Sense repozitorij, pokrenite **Update information**, zatim ažurirajte ili ponovno preuzmite integraciju i ponovno pokrenite Home Assistant.
+
 ## Instalacija
 V HACS dodajte repozitorij po meri `https://github.com/Jarnsen/ha-xsense-component_test`, prenesite integracijo, sledite navodilom HACS za ponovni zagon in jo nato nastavite z računom X-Sense za Home Assistant.
 

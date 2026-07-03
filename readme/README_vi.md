@@ -12,6 +12,11 @@ Tích hợp Home Assistant này cho phép sử dụng thiết bị X-Sense trong
 
 Cho đến khi có tích hợp Home Assistant chính thức, tích hợp HACS này sẽ tiếp tục được cập nhật để thêm tính năng và sửa lỗi.
 
+## Tương thích và cập nhật HACS
+Nếu bạn vẫn đang dùng bản cũ `v1.2.6.x`, hãy cập nhật lên `v1.3.14` hoặc mới hơn trước khi nâng cấp Home Assistant Core lên 2026.7 hoặc mới hơn. Các bản cũ cần `aiortc`, không tương thích với runtime Python 3.14 của Home Assistant. Các bản `v1.3.x` hiện tại không còn cần `aiortc`.
+
+Tích hợp này được cài dưới dạng kho HACS tùy chỉnh. Nếu Home Assistant chưa hiển thị cập nhật ngay, mở HACS, chọn kho X-Sense, chạy **Update information**, sau đó cập nhật hoặc tải lại tích hợp và khởi động lại Home Assistant.
+
 ## Tính năng
 - Tích hợp nhiều thiết bị X-Sense vào Home Assistant.
 - Hỗ trợ tự động hóa dựa trên dữ liệu cảm biến X-Sense.

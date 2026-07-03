@@ -12,6 +12,11 @@
 
 공식 Home Assistant 통합이 제공되기 전까지 이 HACS 통합은 새 기능 추가와 문제 수정을 위해 계속 업데이트됩니다.
 
+## 호환성 및 HACS 업데이트
+아직 오래된 `v1.2.6.x` 빌드를 사용 중이라면 Home Assistant Core를 2026.7 이상으로 올리기 전에 `v1.3.14` 이상으로 업데이트하세요. 오래된 `v1.2.6.x` 빌드는 `aiortc`가 필요했지만, 이는 Home Assistant의 Python 3.14 런타임과 호환되지 않습니다. 현재 `v1.3.x` 빌드는 더 이상 `aiortc`가 필요하지 않습니다.
+
+이 통합은 HACS 사용자 지정 저장소로 설치됩니다. Home Assistant에 업데이트가 바로 표시되지 않으면 HACS를 열고 X-Sense 저장소를 선택한 뒤 점 세 개 메뉴에서 **Update information**을 실행하고, 통합을 업데이트하거나 다시 다운로드한 다음 Home Assistant를 재시작하세요.
+
 ## 기능
 - 여러 X-Sense 장치를 Home Assistant에 통합합니다.
 - X-Sense 센서 데이터를 기반으로 자동화를 만들 수 있습니다.

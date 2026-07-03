@@ -12,6 +12,11 @@ Ez a Home Assistant integráció elérhetővé teszi az X-Sense eszközöket az 
 
 Javasolt egy külön X-Sense fiókot létrehozni a Home Assistant számára, majd a fő fiókból csak a támogatott eszközöket megosztani vele.
 
+## Kompatibilitás és HACS-frissítések
+Ha még régi `v1.2.6.x` verziót használ, frissítsen `v1.3.14` vagy újabb verzióra, mielőtt a Home Assistant Core-t 2026.7 vagy újabb verzióra frissíti. A régi verziók `aiortc`-t igényeltek, amely nem kompatibilis a Home Assistant Python 3.14 futtatókörnyezetével. A jelenlegi `v1.3.x` verziók már nem igénylik az `aiortc`-t.
+
+Ez az integráció egyéni HACS-tárolóként települ. Ha a frissítés nem jelenik meg azonnal, nyissa meg a HACS-t, válassza az X-Sense tárolót, futtassa az **Update information** műveletet, majd frissítse vagy töltse le újra az integrációt, és indítsa újra a Home Assistantot.
+
 ## Telepítés
 A HACS-ben adja hozzá egyéni tárolóként a `https://github.com/Jarnsen/ha-xsense-component_test` címet, töltse le az integrációt, kövesse a HACS újraindítási utasítását, majd állítsa be a Home Assistant célú X-Sense fiókkal.
 

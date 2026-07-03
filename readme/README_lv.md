@@ -12,6 +12,11 @@
 
 Iesakām izveidot atsevišķu X-Sense kontu Home Assistant vajadzībām un no galvenā konta kopīgot tikai atbalstītās ierīces.
 
+## Saderība un HACS atjauninājumi
+Ja joprojām izmantojat vecu `v1.2.6.x` versiju, atjauniniet uz `v1.3.14` vai jaunāku pirms Home Assistant Core atjaunināšanas uz 2026.7 vai jaunāku. Vecās versijas prasīja `aiortc`, kas nav saderīgs ar Home Assistant Python 3.14 vidi. Pašreizējām `v1.3.x` versijām `aiortc` vairs nav vajadzīgs.
+
+Šī integrācija tiek instalēta kā pielāgots HACS repozitorijs. Ja atjauninājums neparādās uzreiz, atveriet HACS, izvēlieties X-Sense repozitoriju, palaidiet **Update information**, pēc tam atjauniniet vai atkārtoti lejupielādējiet integrāciju un restartējiet Home Assistant.
+
 ## Instalēšana
 HACS pievienojiet pielāgoto repozitoriju `https://github.com/Jarnsen/ha-xsense-component_test`, lejupielādējiet integrāciju, izpildiet HACS restartēšanas norādījumus un konfigurējiet to ar Home Assistant paredzēto X-Sense kontu.
 

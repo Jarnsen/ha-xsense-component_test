@@ -12,6 +12,11 @@
 
 Rekomenduojame sukurti atskirą X-Sense paskyrą Home Assistant ir iš pagrindinės paskyros bendrinti tik palaikomus įrenginius.
 
+## Suderinamumas ir HACS naujinimai
+Jei vis dar naudojate seną `v1.2.6.x` versiją, atnaujinkite į `v1.3.14` arba naujesnę prieš atnaujindami Home Assistant Core į 2026.7 arba naujesnę. Senos versijos reikalavo `aiortc`, kuris nesuderinamas su Home Assistant Python 3.14 aplinka. Dabartinėms `v1.3.x` versijoms `aiortc` nebereikalingas.
+
+Ši integracija įdiegiama kaip pasirinktinis HACS saugyklos įrašas. Jei naujinimas nepasirodo iš karto, atidarykite HACS, pasirinkite X-Sense saugyklą, paleiskite **Update information**, tada atnaujinkite arba iš naujo atsisiųskite integraciją ir paleiskite Home Assistant iš naujo.
+
 ## Diegimas
 HACS pridėkite pasirinktinę saugyklą `https://github.com/Jarnsen/ha-xsense-component_test`, atsisiųskite integraciją, vykdykite HACS paleidimo iš naujo nurodymus ir sukonfigūruokite ją su Home Assistant skirta X-Sense paskyra.
 
