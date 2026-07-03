@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 import voluptuous as vol
+import voluptuous_serialize
 
 from custom_components.xsense.config_flow import (
     XSenseOptionsFlow,
@@ -74,6 +75,18 @@ def test_options_schema_accepts_recording_sync_options():
     }
 
 
+def test_options_schema_can_be_serialized_for_home_assistant_options_ui():
+    converted = voluptuous_serialize.convert(options_schema({}))
+    storage_path_field = next(
+        item
+        for item in converted
+        if item["name"] == CONF_RECORDING_MEDIA_STORAGE_PATH
+    )
+
+    assert storage_path_field["type"] == "string"
+    assert storage_path_field["default"] == "/media/xsense_recordings"
+
+
 def test_options_schema_normalizes_stale_prerelease_options():
     schema = options_schema(
         {
@@ -94,11 +107,34 @@ def test_options_schema_normalizes_stale_prerelease_options():
     }
 
 
-def test_options_schema_rejects_storage_path_outside_media():
+def test_options_schema_accepts_storage_path_text_for_ui_validation():
     schema = options_schema({})
 
-    with pytest.raises(vol.Invalid):
-        schema({CONF_RECORDING_MEDIA_STORAGE_PATH: "/tmp/xsense"})
+    assert (
+        schema({CONF_RECORDING_MEDIA_STORAGE_PATH: "/tmp/xsense"})[
+            CONF_RECORDING_MEDIA_STORAGE_PATH
+        ]
+        == "/tmp/xsense"
+    )
+
+
+def test_options_flow_rejects_storage_path_outside_media_without_schema_crash():
+    flow = XSenseOptionsFlow(SimpleNamespace(options={}))
+    user_input = {
+        CONF_RECORDING_MEDIA_STORAGE_PATH: "/tmp/xsense",
+        CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
+        CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
+        CONF_RECORDING_MEDIA_DAYS_ORDER: "Ascending",
+        CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
+    }
+
+    result = asyncio.run(flow.async_step_init(user_input))
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "init"
+    assert result["errors"] == {
+        CONF_RECORDING_MEDIA_STORAGE_PATH: "invalid_recording_media_path"
+    }
 
 
 def test_recording_media_storage_path_change_detection():

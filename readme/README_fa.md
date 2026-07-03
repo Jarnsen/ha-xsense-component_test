@@ -198,6 +198,8 @@ ____________________________________________________________
 ## نمای زنده دوربین و اعلان‌های AI
 ساده‌ترین راه، وارد کردن blueprint همراه با دکمه زیر، انتخاب `Motion` یا `AI Detection` موجود و تنظیم اقدام اعلان در صورت نیاز است.
 
+وقتی رویداد Motion شامل داده‌های پخش X-Sense باشد، یکپارچه‌سازی فوراً تلاش می‌کند کلیپ را کش کند. وقتی فایل آماده باشد، اعلان برای پخش ویدئو از `recording_media_url` استفاده می‌کند؛ در غیر این صورت `recording_url` نمایشگر X-Sense Recordings را در Home Assistant باز می‌کند. Recording media sync می‌تواند کلیپ‌های جدید را در پس‌زمینه آماده نگه دارد.
+
 [![وارد کردن blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion و AI Detection رویدادهای یک‌باره هستند، نه وضعیت روشن/خاموش. برای اتوماسیون دستی از `event.received` استفاده کنید؛ `event_type` فقط برای فیلتر کردن نوع‌هایی مانند `person`، `pet`، `vehicle`، `package`، `other` یا `ai_detection` لازم است.

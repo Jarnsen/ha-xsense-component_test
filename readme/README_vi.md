@@ -111,6 +111,8 @@ ____________________________________________________________
 ## Xem trực tiếp camera và thông báo AI
 Cách đơn giản nhất là nhập blueprint đi kèm bằng nút bên dưới, chọn `Motion` hoặc `AI Detection` có sẵn, rồi chỉnh hành động thông báo nếu cần.
 
+Khi sự kiện Motion có metadata phát lại từ X-Sense, tích hợp sẽ cố gắng cache clip ngay lập tức. Khi tệp đã sẵn sàng, thông báo dùng `recording_media_url` để phát video; nếu chưa, `recording_url` mở trình xem X-Sense Recordings trong Home Assistant. Recording media sync có thể chuẩn bị các clip mới ở nền.
+
 [![Nhập blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion và AI Detection là sự kiện một lần, không phải trạng thái bật/tắt. Với tự động hóa thủ công hãy dùng `event.received`; chỉ dùng `event_type` để lọc các loại như `person`, `pet`, `vehicle`, `package`, `other` hoặc `ai_detection`.

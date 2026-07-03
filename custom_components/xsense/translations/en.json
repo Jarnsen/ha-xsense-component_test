@@ -56,6 +56,9 @@
             "confirm_recording_media_storage_path": {
                 "description": "The recording cache folder will change from `{old_path}` to `{new_path}`. Existing cached videos and thumbnails are not moved automatically. Move the existing `videos` and `thumbs` folders first if you want old cached recordings to remain available."
             }
+        },
+        "error": {
+            "invalid_recording_media_path": "Use a folder under /media."
         }
     },
     "entity": {

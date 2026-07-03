@@ -196,6 +196,8 @@ ____________________________________________________________
 ## कैमरा लाइव व्यू और AI सूचनाएं
 सबसे आसान तरीका नीचे दिए बटन से शामिल blueprint import करना, `Motion` या उपलब्ध `AI Detection` चुनना, और ज़रूरत हो तो notification action बदलना है।
 
+जब Motion event में X-Sense playback metadata होता है, integration तुरंत clip cache करने की कोशिश करता है। Cached file तैयार होने पर notification video playback के लिए `recording_media_url` इस्तेमाल करता है; नहीं तो `recording_url` Home Assistant में X-Sense Recordings viewer खोलता है। Recording media sync हाल के clips को background में तैयार रख सकता है।
+
 [![Blueprint import करें](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion और AI Detection एक बार होने वाले events हैं, on/off states नहीं। Manual automations के लिए `event.received` इस्तेमाल करें; `event_type` केवल `person`, `pet`, `vehicle`, `package`, `other` या `ai_detection` जैसे types filter करने के लिए चाहिए।

@@ -75,7 +75,7 @@ def options_schema(options: dict[str, Any] | None = None) -> vol.Schema:
                     CONF_RECORDING_MEDIA_STORAGE_PATH,
                     DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
                 ),
-            ): vol.All(str, vol.Match(r"^/media(/.*)?$")),
+            ): str,
             vol.Optional(
                 CONF_RECORDING_MEDIA_DAYS_ORDER,
                 default=options.get(
@@ -153,9 +153,15 @@ def _safe_sync_hours(value: Any) -> int:
 
 def _safe_media_path(value: Any) -> str:
     path = str(value or DEFAULT_RECORDING_MEDIA_STORAGE_PATH).strip()
-    if path == "/media" or path.startswith("/media/"):
+    if _recording_media_path_allowed(path):
         return path
     return DEFAULT_RECORDING_MEDIA_STORAGE_PATH
+
+
+def _recording_media_path_allowed(value: Any) -> bool:
+    """Return whether a recording media path stays under Home Assistant media."""
+    path = str(value or "").strip()
+    return path == "/media" or path.startswith("/media/")
 
 
 def _safe_order(value: Any, default: str) -> str:
@@ -331,15 +337,22 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage X-Sense options."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            if recording_media_storage_path_changed(self._options, user_input):
+            if not _recording_media_path_allowed(
+                user_input.get(CONF_RECORDING_MEDIA_STORAGE_PATH)
+            ):
+                errors[CONF_RECORDING_MEDIA_STORAGE_PATH] = "invalid_recording_media_path"
+            elif recording_media_storage_path_changed(self._options, user_input):
                 self._pending_options = dict(user_input)
                 return await self.async_step_confirm_recording_media_storage_path()
-            return self.async_create_entry(title="", data=user_input)
+            else:
+                return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(
             step_id="init",
             data_schema=options_schema(self._options),
+            errors=errors,
         )
 
     async def async_step_confirm_recording_media_storage_path(

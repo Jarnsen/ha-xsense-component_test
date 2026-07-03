@@ -111,6 +111,8 @@ ____________________________________________________________
 ## Camera-livebeeld en AI-meldingen
 De eenvoudigste manier is de meegeleverde blueprint. Importeer die met de knop hieronder, kies de camera-evententiteit `Motion` of `AI Detection` voor een camera met abonnement, en pas de meldingsactie zo nodig aan.
 
+Wanneer een Motion-event X-Sense-afspeelmetadata bevat, probeert de integratie de clip meteen te cachen. Zodra het bestand klaar is, gebruikt de melding `recording_media_url` voor videoweergave; anders opent `recording_url` de X-Sense Recordings-viewer in Home Assistant. Recording media sync kan recente clips op de achtergrond voorbereiden.
+
 [![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion en AI Detection zijn eenmalige events, geen aan/uit-statussen. Gebruik voor handmatige automatiseringen de Home Assistant-trigger `event.received` met de camera-entiteit `Motion` of `AI Detection`; `event_type` is alleen nodig om AI Detection met abonnement te beperken tot typen zoals `person`, `pet`, `vehicle`, `package`, `other` of `ai_detection`.

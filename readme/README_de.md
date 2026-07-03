@@ -118,6 +118,8 @@ ____________________________________________________________
 ## Kamera-Liveansicht und KI-Benachrichtigungen
 Der einfachste Weg ist der enthaltene Blueprint. Importiere ihn mit der Schaltfläche unten, wähle die Kamera-Event-Entität `Motion` oder bei abonnierter Kamera `AI Detection`, und passe die Benachrichtigungsaktion bei Bedarf an.
 
+Wenn ein Motion-Event X-Sense-Wiedergabedaten enthält, versucht die Integration den Clip sofort zu cachen. Sobald die Datei bereit ist, nutzt die Benachrichtigung `recording_media_url` für die Videowiedergabe; andernfalls öffnet `recording_url` den X-Sense-Recordings-Viewer in Home Assistant. Recording media sync kann aktuelle Clips im Hintergrund vorbereiten.
+
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion und AI Detection sind einmalige Events, keine Ein/Aus-Zustände. Für eigene Automationen nutze den Home-Assistant-Trigger `event.received` mit der Kamera-Entität `Motion` oder `AI Detection`; `event_type` ist nur zum Eingrenzen abonnierter AI-Detection-Objekttypen wie `person`, `pet`, `vehicle`, `package`, `other` oder `ai_detection` nötig.

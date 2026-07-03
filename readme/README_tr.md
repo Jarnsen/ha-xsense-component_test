@@ -199,6 +199,8 @@ ____________________________________________________________
 ## Kamera canlı görüntüsü ve AI bildirimleri
 En kolay yol, aşağıdaki düğmeyle dahil edilen blueprint’i içe aktarmak, `Motion` veya kullanılabilir `AI Detection` seçmek ve gerekirse bildirim eylemini ayarlamaktır.
 
+Motion olayı X-Sense oynatma metadata içerdiğinde entegrasyon klibi hemen cache’e almaya çalışır. Dosya hazır olduğunda bildirim video oynatma için `recording_media_url` kullanır; aksi halde `recording_url` Home Assistant içindeki X-Sense Recordings görüntüleyicisini açar. Recording media sync son klipleri arka planda hazır tutabilir.
+
 [![Blueprint’i içe aktar](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion ve AI Detection tek seferlik olaylardır, aç/kapat durumları değildir. Manuel otomasyonlar için `event.received` kullanın; `event_type` yalnızca `person`, `pet`, `vehicle`, `package`, `other` veya `ai_detection` gibi türleri filtrelemek için gerekir.

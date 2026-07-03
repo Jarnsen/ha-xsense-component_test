@@ -565,6 +565,7 @@ def _trigger_event_after_recording_cache(
                 },
             )
             event_entity._trigger_event(event_type, event_data)
+            _write_event_state(event_entity)
             return
         event_data["recording_media_url"] = cached_url
         event_data["recording_cache_ready"] = True
@@ -586,9 +587,20 @@ def _trigger_event_after_recording_cache(
             },
         )
         event_entity._trigger_event(event_type, event_data)
+        _write_event_state(event_entity)
 
     hass.async_create_task(_async_cache_then_trigger())
     return True
+
+
+def _write_event_state(event_entity: EventEntity) -> None:
+    """Write event state after a delayed trigger if the entity is added."""
+    if (
+        getattr(event_entity, "hass", None) is None
+        or getattr(event_entity, "platform", None) is None
+    ):
+        return
+    event_entity.async_write_ha_state()
 
 
 def _masked_serial(value: Any) -> str:

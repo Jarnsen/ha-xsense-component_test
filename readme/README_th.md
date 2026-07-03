@@ -112,6 +112,8 @@ ____________________________________________________________
 ## มุมมองสดของกล้องและการแจ้งเตือน AI
 วิธีที่ง่ายที่สุดคือ import blueprint ที่ให้มาด้วยปุ่มด้านล่าง เลือก `Motion` หรือ `AI Detection` ที่มี และปรับ action การแจ้งเตือนตามต้องการ
 
+เมื่อ event Motion มี metadata การเล่นย้อนหลังจาก X-Sense integration จะพยายาม cache คลิปทันที เมื่อไฟล์พร้อมแล้ว notification จะใช้ `recording_media_url` สำหรับเล่นวิดีโอ; ถ้ายังไม่พร้อม `recording_url` จะเปิด X-Sense Recordings viewer ใน Home Assistant ส่วน Recording media sync สามารถเตรียมคลิปล่าสุดไว้เบื้องหลังได้
+
 [![นำเข้า blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
 Motion และ AI Detection เป็นเหตุการณ์ครั้งเดียว ไม่ใช่สถานะเปิด/ปิด สำหรับ automation แบบกำหนดเองให้ใช้ `event.received`; ใช้ `event_type` เฉพาะเมื่อกรองประเภทเช่น `person`, `pet`, `vehicle`, `package`, `other` หรือ `ai_detection`

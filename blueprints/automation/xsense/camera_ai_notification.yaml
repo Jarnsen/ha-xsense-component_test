@@ -2,16 +2,15 @@ blueprint:
   name: X-Sense Camera Event
   description: >
     Send a recording notification after an X-Sense camera reports motion or AI
-    detection and the integration has cached the new clip. Select the camera
-    Motion or AI Detection event entity.
-    Motion events expose recording_url and recording_media_url from the event
-    entity attributes after the clip has been cached.
+    detection. Select the camera Motion or AI Detection event entity.
+    Motion events expose recording_url when playback metadata is available and
+    recording_media_url when the clip has been cached.
     For best recording playback results, enable X-Sense Recording media sync in
     the integration options. The integration keeps a broad background catch-up
     sync for older clips, checks for recent clips every couple minutes, and
-    immediately downloads motion or AI event recordings before firing this
-    notification. recording_media_url is attached to the mobile notification as
-    the Companion app video playback target.
+    immediately tries to download motion or AI event recordings before firing
+    this notification. recording_media_url is attached to the mobile
+    notification as the Companion app video playback target when it is ready.
   domain: automation
   author: X-Sense Home Security
   source_url: https://github.com/Jarnsen/ha-xsense-component_test/blob/main/blueprints/automation/xsense/camera_ai_notification.yaml
@@ -28,7 +27,7 @@ blueprint:
               domain: event
     include_recording_link:
       name: Send recording notification
-      description: Send the default notification only when a cached recording URL is available.
+      description: Send the default notification when a recording link is available. Cached video is attached when ready.
       default: true
       selector:
         boolean:
@@ -96,6 +95,20 @@ actions:
                 url: "{{ xsense_recording_media_url }}"
                 content-type: video/mp4
                 hide-thumbnail: false
+      - conditions:
+          - condition: template
+            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url }}"
+        sequence:
+          - domain: mobile_app
+            type: notify
+            device_id: !input notify_device
+            title: "{{ xsense_camera_name }}"
+            message: >-
+              Motion detected by {{ xsense_camera_name }}. Recording link available.{% if xsense_include_snapshot_link and xsense_snapshot_url %}
+              Snapshot: {{ xsense_snapshot_url }}{% endif %}
+            data:
+              url: "{{ xsense_recording_tap_url }}"
+              clickAction: "{{ xsense_recording_tap_url }}"
 
 mode: queued
 max: 10
