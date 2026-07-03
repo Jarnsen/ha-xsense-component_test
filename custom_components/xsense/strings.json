@@ -42,6 +42,7 @@
           "recording_media_sync_enabled": "Recording media sync",
           "recording_media_sync_hours": "Background sync interval",
           "recording_media_storage_path": "Recording cache folder",
+          "recording_notification_quality": "Notification recording quality",
           "recording_media_days_order": "Recording day order",
           "recording_media_clips_order": "Recording clip order"
         },
@@ -49,6 +50,7 @@
           "recording_media_sync_enabled": "Cache recent recordings automatically. This uses storage space and may wake cameras more often.",
           "recording_media_sync_hours": "How often the normal background catch-up sync should run. Recent recordings are checked every couple minutes when sync is enabled.",
           "recording_media_storage_path": "Use a folder under /media. New cached videos and thumbnails are stored here.",
+          "recording_notification_quality": "Choose HD to prefer X-Sense's direct/high-resolution clip URLs for mobile notifications. Choose SD to use the camera playback capture path when available.",
           "recording_media_days_order": "Choose whether newer or older days appear first in the recordings viewer.",
           "recording_media_clips_order": "Choose whether newer or older clips appear first within each day."
         }

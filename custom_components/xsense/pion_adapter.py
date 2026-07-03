@@ -9,6 +9,7 @@ import platform
 from contextlib import suppress
 from importlib import import_module
 from pathlib import Path
+from time import monotonic
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -66,6 +67,7 @@ async def _async_capture_sd_recording_unlocked(
     h264_path.unlink(missing_ok=True)
     temp_output_path.unlink(missing_ok=True)
     output_path.unlink(missing_ok=True)
+    capture_started_at = monotonic()
 
     ticket_data = await coordinator.xsense.get_camera_webrtc_ticket(
         camera, force_refresh=True
@@ -127,10 +129,11 @@ async def _async_capture_sd_recording_unlocked(
         await _send_helper_command({"type": "answer", "sdp": answer_sdp})
         signal_session.start_forwarding_remote_candidates()
         result = await _wait_for_helper(proc, helper_timeout)
+        helper_finished_at = monotonic()
         if int(result.get("h264Samples") or 0) <= 0 or not h264_path.exists():
             raise RuntimeError(f"X-Sense Pion adapter did not receive video: {result}")
-        await _remux_h264_to_mp4(ffmpeg_binary, h264_path, temp_output_path)
-        await _finalize_mp4_for_browser(ffmpeg_binary, temp_output_path, output_path)
+        await _remux_h264_to_mp4(ffmpeg_binary, h264_path, output_path)
+        mp4_finished_at = monotonic()
         if not _mp4_ready(output_path):
             raise RuntimeError("X-Sense Pion adapter did not create a playable MP4")
         LOGGER.debug(
@@ -143,6 +146,13 @@ async def _async_capture_sd_recording_unlocked(
                 "h264_samples": result.get("h264Samples"),
                 "h264_bytes": result.get("h264Bytes"),
                 "output_bytes": output_path.stat().st_size,
+                "helper_elapsed_ms": int(
+                    (helper_finished_at - capture_started_at) * 1000
+                ),
+                "mp4_elapsed_ms": int(
+                    (mp4_finished_at - helper_finished_at) * 1000
+                ),
+                "total_elapsed_ms": int((mp4_finished_at - capture_started_at) * 1000),
             },
         )
         return output_path
@@ -298,35 +308,11 @@ async def _remux_h264_to_mp4(
             "-c:v",
             "copy",
             "-movflags",
-            "frag_keyframe+empty_moov+default_base_moof",
-            "-y",
-            str(output_path),
-        ],
-        "remux X-Sense SD recording",
-    )
-
-
-async def _finalize_mp4_for_browser(
-    ffmpeg_binary: str, input_path: Path, output_path: Path
-) -> None:
-    await _run_ffmpeg(
-        [
-            ffmpeg_binary,
-            "-hide_banner",
-            "-loglevel",
-            "warning",
-            "-i",
-            str(input_path),
-            "-map",
-            "0",
-            "-c",
-            "copy",
-            "-movflags",
             "+faststart",
             "-y",
             str(output_path),
         ],
-        "finalize X-Sense SD recording",
+        "remux X-Sense SD recording",
     )
 
 

@@ -1388,11 +1388,8 @@ def test_pion_capture_passes_duration_timeout_to_helper_wait(monkeypatch, tmp_pa
         wait_calls.append(("wait", timeout))
         return {"packets": 1, "bytes": 10, "h264Samples": 1, "h264Bytes": 10}
 
-    async def remux(ffmpeg_binary, raw_path, temp_path):
-        temp_path.write_bytes(b"\x00\x00\x00\x18ftypmp42temp")
-
-    async def finalize(ffmpeg_binary, temp_path, final_path):
-        final_path.write_bytes(b"\x00\x00\x00\x18ftypmp42final")
+    async def remux(ffmpeg_binary, raw_path, final_path):
+        final_path.write_bytes(b"\x00\x00\x00\x18ftypmp42final-video")
 
     monkeypatch.setattr(pion_adapter, "_pion_helper_path", lambda: tmp_path / "helper")
     monkeypatch.setattr(pion_adapter, "_ffmpeg_binary", lambda hass: "ffmpeg")
@@ -1400,7 +1397,6 @@ def test_pion_capture_passes_duration_timeout_to_helper_wait(monkeypatch, tmp_pa
     monkeypatch.setattr(pion_adapter, "_read_helper_offer", AsyncMock(return_value="v=0"))
     monkeypatch.setattr(pion_adapter, "_wait_for_helper", wait_for_helper)
     monkeypatch.setattr(pion_adapter, "_remux_h264_to_mp4", remux)
-    monkeypatch.setattr(pion_adapter, "_finalize_mp4_for_browser", finalize)
     monkeypatch.setattr(pion_adapter, "async_get_clientsession", lambda hass: object())
 
     async def import_job(func, module):
@@ -1548,6 +1544,8 @@ def test_recording_media_source_builds_sd_playback_clip_url():
         "date": "2026-06-21",
         "title": "13:41:44 - 13:42:14",
         "source": "sd_playback",
+        "requested_source": "sd_playback",
+        "quality": "HD",
         "playback_url": (
             "/xsense/recording/entry-id/1782049304"
             "?serial=CAMERA-SN&end_time=1782049334"
@@ -1627,9 +1625,65 @@ def test_recording_media_source_preserves_direct_video_url():
     )
 
     assert clip["source"] == "video_url"
+    assert clip["quality"] == "HD"
     assert clip["playback_url"] == "https://example.invalid/clip.mp4"
     assert clip["cached_url"].endswith(
         "/media/local/xsense_recordings/videos/CAMERA-SN_1782049304_1782049304.mp4"
+    )
+
+
+def test_recording_media_source_prefers_hd_direct_video_candidate():
+    from custom_components.xsense import media_source
+
+    clip = media_source._recording_clip_from_playback(
+        "entry-id",
+        "CAMERA-SN",
+        "camera.garden",
+        {
+            "source": "sd_playback",
+            "start_time_s": 1782049304,
+            "end_time_s": 1782049334,
+            "video_url": "https://example.invalid/default.mp4",
+            "multi_resolution_videos": [
+                {
+                    "resolution": "640x360",
+                    "url": "https://example.invalid/sd.mp4",
+                },
+                {
+                    "resolution": "1920x1080",
+                    "url": "https://example.invalid/hd.mp4",
+                },
+            ],
+        },
+    )
+
+    assert clip["quality"] == "HD"
+    assert clip["source"] == "video_url"
+    assert clip["playback_url"] == "https://example.invalid/hd.mp4"
+
+
+def test_recording_media_source_uses_sd_capture_when_requested():
+    from custom_components.xsense import media_source
+
+    clip = media_source._recording_clip_from_playback(
+        "entry-id",
+        "CAMERA-SN",
+        "camera.garden",
+        {
+            "source": "video_url",
+            "start_time_s": 1782049304,
+            "end_time_s": 1782049334,
+            "video_url": "https://example.invalid/hd.mp4",
+        },
+        quality="SD",
+    )
+
+    assert clip["quality"] == "SD"
+    assert clip["source"] == "sd_playback"
+    assert clip["requested_source"] == "video_url"
+    assert clip["playback_url"] == (
+        "/xsense/recording/entry-id/1782049304"
+        "?serial=CAMERA-SN&end_time=1782049334"
     )
 
 

@@ -21,13 +21,16 @@ from .const import (
     CONF_RECORDING_MEDIA_STORAGE_PATH,
     CONF_RECORDING_MEDIA_SYNC_ENABLED,
     CONF_RECORDING_MEDIA_SYNC_HOURS,
+    CONF_RECORDING_NOTIFICATION_QUALITY,
     DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
     DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
     DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
     DEFAULT_RECORDING_MEDIA_SYNC_ENABLED,
     DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
+    DEFAULT_RECORDING_NOTIFICATION_QUALITY,
     DOMAIN,
     RECORDING_MEDIA_ORDER_OPTIONS,
+    RECORDING_NOTIFICATION_QUALITY_OPTIONS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,6 +79,13 @@ def options_schema(options: dict[str, Any] | None = None) -> vol.Schema:
                     DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
                 ),
             ): str,
+            vol.Optional(
+                CONF_RECORDING_NOTIFICATION_QUALITY,
+                default=options.get(
+                    CONF_RECORDING_NOTIFICATION_QUALITY,
+                    DEFAULT_RECORDING_NOTIFICATION_QUALITY,
+                ),
+            ): vol.In(RECORDING_NOTIFICATION_QUALITY_OPTIONS),
             vol.Optional(
                 CONF_RECORDING_MEDIA_DAYS_ORDER,
                 default=options.get(
@@ -130,6 +140,9 @@ def _normalized_options(options: dict[str, Any]) -> dict[str, Any]:
     normalized[CONF_RECORDING_MEDIA_STORAGE_PATH] = _safe_media_path(
         normalized.get(CONF_RECORDING_MEDIA_STORAGE_PATH)
     )
+    normalized[CONF_RECORDING_NOTIFICATION_QUALITY] = _safe_recording_quality(
+        normalized.get(CONF_RECORDING_NOTIFICATION_QUALITY)
+    )
     normalized[CONF_RECORDING_MEDIA_DAYS_ORDER] = _safe_order(
         normalized.get(CONF_RECORDING_MEDIA_DAYS_ORDER),
         DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
@@ -174,6 +187,13 @@ def _safe_order(value: Any, default: str) -> str:
     if lookup in {"descending", "desc", "newest", "newest first"}:
         return "Descending"
     return default
+
+
+def _safe_recording_quality(value: Any) -> str:
+    text = str(value or "").strip().upper()
+    if text in RECORDING_NOTIFICATION_QUALITY_OPTIONS:
+        return text
+    return DEFAULT_RECORDING_NOTIFICATION_QUALITY
 
 
 async def _async_init_and_login(session: AsyncXSense, email, password) -> None:

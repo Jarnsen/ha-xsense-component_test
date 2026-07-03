@@ -17,10 +17,12 @@ from custom_components.xsense.const import (
     CONF_RECORDING_MEDIA_STORAGE_PATH,
     CONF_RECORDING_MEDIA_SYNC_ENABLED,
     CONF_RECORDING_MEDIA_SYNC_HOURS,
+    CONF_RECORDING_NOTIFICATION_QUALITY,
     DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
     DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
     DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
     DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
+    DEFAULT_RECORDING_NOTIFICATION_QUALITY,
 )
 
 
@@ -31,6 +33,7 @@ def test_options_schema_has_recording_sync_defaults_without_camera_path_option()
         CONF_RECORDING_MEDIA_SYNC_ENABLED: False,
         CONF_RECORDING_MEDIA_SYNC_HOURS: DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
         CONF_RECORDING_MEDIA_STORAGE_PATH: DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_NOTIFICATION_QUALITY: DEFAULT_RECORDING_NOTIFICATION_QUALITY,
         CONF_RECORDING_MEDIA_DAYS_ORDER: DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
         CONF_RECORDING_MEDIA_CLIPS_ORDER: DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
     }
@@ -43,6 +46,7 @@ def test_options_schema_orders_recording_options_for_the_ui():
         CONF_RECORDING_MEDIA_SYNC_ENABLED,
         CONF_RECORDING_MEDIA_SYNC_HOURS,
         CONF_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_NOTIFICATION_QUALITY,
         CONF_RECORDING_MEDIA_DAYS_ORDER,
         CONF_RECORDING_MEDIA_CLIPS_ORDER,
     ]
@@ -63,6 +67,7 @@ def test_options_schema_accepts_recording_sync_options():
             CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
             CONF_RECORDING_MEDIA_SYNC_HOURS: "6",
             CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_alt",
+            CONF_RECORDING_NOTIFICATION_QUALITY: "SD",
             CONF_RECORDING_MEDIA_DAYS_ORDER: "Ascending",
             CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
         }
@@ -72,6 +77,7 @@ def test_options_schema_accepts_recording_sync_options():
         CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_alt",
+        CONF_RECORDING_NOTIFICATION_QUALITY: "SD",
     }
 
 
@@ -93,6 +99,7 @@ def test_options_schema_normalizes_stale_prerelease_options():
             CONF_RECORDING_MEDIA_SYNC_ENABLED: "yes",
             CONF_RECORDING_MEDIA_SYNC_HOURS: "999",
             CONF_RECORDING_MEDIA_STORAGE_PATH: "/tmp/xsense",
+            CONF_RECORDING_NOTIFICATION_QUALITY: "bad",
             CONF_RECORDING_MEDIA_DAYS_ORDER: "newest_first",
             CONF_RECORDING_MEDIA_CLIPS_ORDER: "oldest-first",
         }
@@ -102,6 +109,7 @@ def test_options_schema_normalizes_stale_prerelease_options():
         CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
         CONF_RECORDING_MEDIA_SYNC_HOURS: DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
         CONF_RECORDING_MEDIA_STORAGE_PATH: DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_NOTIFICATION_QUALITY: DEFAULT_RECORDING_NOTIFICATION_QUALITY,
         CONF_RECORDING_MEDIA_DAYS_ORDER: "Descending",
         CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
     }
@@ -124,6 +132,7 @@ def test_options_flow_rejects_storage_path_outside_media_without_schema_crash():
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/tmp/xsense",
         CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
+        CONF_RECORDING_NOTIFICATION_QUALITY: "HD",
         CONF_RECORDING_MEDIA_DAYS_ORDER: "Ascending",
         CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
     }
@@ -156,6 +165,7 @@ def test_options_flow_confirms_recording_storage_path_changes():
                 CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_recordings",
                 CONF_RECORDING_MEDIA_SYNC_ENABLED: False,
                 CONF_RECORDING_MEDIA_SYNC_HOURS: 24,
+                CONF_RECORDING_NOTIFICATION_QUALITY: "HD",
                 CONF_RECORDING_MEDIA_DAYS_ORDER: "Descending",
                 CONF_RECORDING_MEDIA_CLIPS_ORDER: "Descending",
             }
@@ -165,6 +175,7 @@ def test_options_flow_confirms_recording_storage_path_changes():
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_alt",
         CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
+        CONF_RECORDING_NOTIFICATION_QUALITY: "SD",
         CONF_RECORDING_MEDIA_DAYS_ORDER: "Ascending",
         CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
     }
@@ -196,6 +207,7 @@ def test_options_flow_saves_without_warning_when_storage_path_unchanged():
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_recordings",
         CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
+        CONF_RECORDING_NOTIFICATION_QUALITY: "HD",
         CONF_RECORDING_MEDIA_DAYS_ORDER: "Ascending",
         CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
     }

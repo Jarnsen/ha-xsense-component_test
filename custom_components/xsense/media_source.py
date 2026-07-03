@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from time import monotonic
 from typing import Any
 from urllib.parse import parse_qsl, quote, urlencode, urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -28,9 +29,11 @@ from .const import (
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
     CONF_RECORDING_MEDIA_DAYS_ORDER,
     CONF_RECORDING_MEDIA_STORAGE_PATH,
+    CONF_RECORDING_NOTIFICATION_QUALITY,
     DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
     DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
     DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
+    DEFAULT_RECORDING_NOTIFICATION_QUALITY,
     CONF_RECORDING_MEDIA_SYNC_ENABLED,
     CONF_RECORDING_MEDIA_SYNC_HOURS,
     DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
@@ -219,6 +222,7 @@ async def async_cache_recording_playback(
     """Cache one motion-event recording from APK playback metadata."""
     if not getattr(entity, "sn", None):
         return ""
+    started_at = monotonic()
 
     media_root = _recording_media_root(hass, entry_id)
     clip = _recording_clip_from_playback(
@@ -227,24 +231,58 @@ async def async_cache_recording_playback(
         camera_entity_id,
         playback,
         media_root,
+        quality=_recording_notification_quality(hass, entry_id),
     )
     if clip is None or not _clip_media_playable(clip):
+        LOGGER.debug(
+            "X-Sense motion recording cache skipped: %s",
+            {
+                "camera": _short_serial(getattr(entity, "sn", "")),
+                "source": playback.get("source"),
+                "reason": "no_playable_clip",
+                "elapsed_ms": int((monotonic() - started_at) * 1000),
+            },
+        )
         return ""
     _remember_event_recording_clip(hass, clip)
 
     output_path = _clip_cache_path(clip)
     if _path_ready(output_path):
+        LOGGER.debug(
+            "X-Sense motion recording cache already ready: %s",
+            {
+                "camera": _short_serial(clip.get("serial")),
+                "source": clip.get("source"),
+                "start": clip.get("start"),
+                "elapsed_ms": int((monotonic() - started_at) * 1000),
+            },
+        )
         return _local_media_url(output_path)
 
     media_source = XSenseRecordingsMediaSource(hass)
-    if await media_source._async_cache_thumbnail(clip):
-        LOGGER.debug(
-            "X-Sense motion recording thumbnail cached: %s",
-            {"serial": _short_serial(clip.get("serial")), "start": clip.get("start")},
-        )
     cached_url = await media_source._async_cached_playback_url(clip)
     if _path_ready(output_path):
+        LOGGER.debug(
+            "X-Sense motion recording cache ready: %s",
+            {
+                "camera": _short_serial(clip.get("serial")),
+                "source": clip.get("source"),
+                "start": clip.get("start"),
+                "duration": _clip_duration(clip),
+                "elapsed_ms": int((monotonic() - started_at) * 1000),
+            },
+        )
         return cached_url or _local_media_url(output_path)
+    LOGGER.debug(
+        "X-Sense motion recording cache missing output after cache attempt: %s",
+        {
+            "camera": _short_serial(clip.get("serial")),
+            "source": clip.get("source"),
+            "start": clip.get("start"),
+            "duration": _clip_duration(clip),
+            "elapsed_ms": int((monotonic() - started_at) * 1000),
+        },
+    )
     return ""
 
 
@@ -1031,9 +1069,11 @@ def _recording_clip_from_playback(
     camera_entity_id: str,
     playback: dict[str, Any],
     media_root: Path | None = None,
+    quality: str | None = None,
 ) -> dict[str, Any] | None:
     """Build one cacheable recording clip from APK playback metadata."""
     media_root = media_root or _recording_media_root_from_value(None)
+    quality = _safe_recording_quality(quality)
     start = _playback_epoch_seconds(
         _first_present(
             playback,
@@ -1048,9 +1088,19 @@ def _recording_clip_from_playback(
     end = _playback_epoch_seconds(
         _first_present(playback, "end_time_s", "end_time")
     ) or _clip_end_from_period(start, playback.get("period"))
-    source = playback.get("source") or "sd_playback"
-    direct_url = playback.get("video_url")
-    resolved_url = direct_url or recording_media_url(
+    requested_source = playback.get("source") or "sd_playback"
+    direct_url = _preferred_recording_video_url(playback, quality)
+    use_sd_playback = quality == "SD" and _sd_playback_available(playback)
+    source = (
+        "sd_playback"
+        if use_sd_playback or not direct_url
+        else "video_url"
+    )
+    resolved_url = (
+        None
+        if use_sd_playback
+        else direct_url
+    ) or recording_media_url(
         entry_id,
         serial,
         int(start),
@@ -1066,6 +1116,8 @@ def _recording_clip_from_playback(
         "date": _clip_date(int(start)),
         "title": _clip_title(int(start), int(end or start)),
         "source": source,
+        "requested_source": requested_source,
+        "quality": quality,
         "playback_url": resolved_url,
         "thumbnail_url": thumbnail_url,
         "cached_thumbnail_url": _local_media_url(
@@ -1258,6 +1310,129 @@ def _recording_media_sync_enabled(hass: HomeAssistant, entry_id: str) -> bool:
     return bool(getattr(entry, "options", {}).get(CONF_RECORDING_MEDIA_SYNC_ENABLED))
 
 
+def _recording_notification_quality(hass: HomeAssistant, entry_id: str) -> str:
+    """Return the preferred recording quality for mobile notification clips."""
+    config_entries = getattr(hass, "config_entries", None)
+    if config_entries is None or not hasattr(config_entries, "async_get_entry"):
+        return DEFAULT_RECORDING_NOTIFICATION_QUALITY
+    entry = config_entries.async_get_entry(entry_id)
+    if entry is None:
+        return DEFAULT_RECORDING_NOTIFICATION_QUALITY
+    return _safe_recording_quality(
+        getattr(entry, "options", {}).get(
+            CONF_RECORDING_NOTIFICATION_QUALITY,
+            DEFAULT_RECORDING_NOTIFICATION_QUALITY,
+        )
+    )
+
+
+def _safe_recording_quality(value: Any) -> str:
+    """Return a supported recording quality option."""
+    quality = str(value or DEFAULT_RECORDING_NOTIFICATION_QUALITY).strip().upper()
+    if quality in {"HD", "SD"}:
+        return quality
+    return DEFAULT_RECORDING_NOTIFICATION_QUALITY
+
+
+def _preferred_recording_video_url(
+    playback: dict[str, Any], quality: str | None = None
+) -> str:
+    """Return the preferred APK-provided direct video URL for a recording."""
+    quality = _safe_recording_quality(quality)
+    candidates = _recording_video_candidates(playback)
+    if not candidates:
+        return ""
+    candidates.sort(
+        key=lambda item: _recording_video_candidate_score(item, quality),
+        reverse=True,
+    )
+    return candidates[0]["url"]
+
+
+def _recording_video_candidates(playback: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return direct video candidates from APK playback metadata."""
+    candidates: list[dict[str, Any]] = []
+    if url := _direct_video_url_from_item(playback):
+        candidates.append(
+            {
+                "url": url,
+                "resolution": playback.get("resolution")
+                or playback.get("resolution_info"),
+                "quality": playback.get("quality") or playback.get("video_type"),
+                "default": True,
+            }
+        )
+    for key in ("multi_resolution_videos", "sub_videos"):
+        values = playback.get(key)
+        if not isinstance(values, list):
+            continue
+        for item in values:
+            if not isinstance(item, dict):
+                continue
+            if url := _direct_video_url_from_item(item):
+                candidates.append(
+                    {
+                        "url": url,
+                        "resolution": item.get("resolution")
+                        or item.get("resolutionInfo")
+                        or item.get("videoResolution"),
+                        "quality": item.get("quality")
+                        or item.get("videoType")
+                        or item.get("type")
+                        or item.get("name"),
+                        "default": False,
+                    }
+                )
+    return candidates
+
+
+def _direct_video_url_from_item(item: dict[str, Any]) -> str:
+    """Return a direct video URL from one APK video metadata object."""
+    for key in (
+        "video_url",
+        "videoUrl",
+        "url",
+        "playUrl",
+        "playbackUrl",
+        "downloadUrl",
+        "fileUrl",
+    ):
+        value = item.get(key)
+        if isinstance(value, str) and value.startswith(("http://", "https://")):
+            return value
+    return ""
+
+
+def _recording_video_candidate_score(item: dict[str, Any], quality: str) -> int:
+    """Return a preference score for one direct video candidate."""
+    text = " ".join(
+        str(item.get(key) or "") for key in ("resolution", "quality", "url")
+    ).lower()
+    score = 0
+    if item.get("default"):
+        score += 10
+    if "1920" in text or "1080" in text or "hd" in text:
+        score += 100 if quality == "HD" else -20
+    if "1280" in text or "720" in text:
+        score += 60 if quality == "HD" else 20
+    if "640" in text or "480" in text or "sd" in text or "sub" in text:
+        score += 100 if quality == "SD" else -20
+    return score
+
+
+def _sd_playback_available(playback: dict[str, Any]) -> bool:
+    """Return whether APK metadata has enough timing to request SD playback."""
+    return _playback_epoch_seconds(
+        _first_present(
+            playback,
+            "start_time_s",
+            "start_time",
+            "timestamp_s",
+            "timestamp",
+        )
+    ) is not None
+
+
 def _clip_cache_path(clip: dict[str, Any]) -> Path:
     """Return the cache path for one clip."""
     start = _clip_start_for_sort(clip)
@@ -1384,6 +1559,14 @@ def _safe_segment(value: str) -> str:
         character if character.isalnum() or character in {"-", "_"} else "_"
         for character in str(value)
     )
+
+
+def _short_serial(value: Any) -> str:
+    """Return a redacted camera serial for debug logs."""
+    text = str(value or "")
+    if len(text) <= 6:
+        return "..."
+    return f"...{text[-6:]}"
 
 
 def _clip_date(start: int) -> str:
