@@ -82,7 +82,7 @@ def playback_url(
     entry_id: str,
     serial: str,
     start_time: int,
-    camera_entity_id: str,
+    camera_entity_id: str = "",
     base_url: str | None = None,
     end_time: int | None = None,
 ) -> str:

@@ -1,7 +1,7 @@
 blueprint:
   name: X-Sense Camera Event
   description: >
-    Send a recording notification after an X-Sense camera reports motion or AI
+    Send a notification after an X-Sense camera reports motion or AI
     detection. Select the camera Motion or AI Detection event entity.
     Motion events expose recording_url when playback metadata is available and
     recording_media_url when the clip has been cached.
@@ -65,7 +65,7 @@ triggers:
         - other
 
 variables:
-  xsense_blueprint_version: 2
+  xsense_blueprint_version: 3
   xsense_event_entity: !input ai_detection_event
   xsense_include_recording_link: !input include_recording_link
   xsense_include_snapshot_link: !input include_snapshot_link
@@ -75,24 +75,33 @@ variables:
   xsense_recording_url: "{{ (xsense_event_data.get('recording_url') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'recording_url') or '' }}"
   xsense_recording_media_url: "{{ (xsense_event_data.get('recording_media_url') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'recording_media_url') or '' }}"
   xsense_recording_tap_url: "{{ xsense_recording_url if xsense_recording_url and xsense_recording_url[0:13] != '/media/local/' else xsense_recording_media_url or xsense_recording_url }}"
+  xsense_notification_url: "{{ xsense_recording_tap_url or '/xsense-recordings' }}"
   xsense_snapshot_url: "{{ (xsense_event_data.get('snapshot_url') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'snapshot_url') or '' }}"
 
 actions:
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url }}"
+            value_template: "{{ xsense_include_recording_link }}"
         sequence:
           - domain: mobile_app
             type: notify
             device_id: !input notify_device
             title: "{{ xsense_camera_name }}"
             message: >-
-              Motion detected by {{ xsense_camera_name }}. Recording ready.{% if xsense_include_snapshot_link and xsense_snapshot_url %}
+              Motion detected by {{ xsense_camera_name }}.{% if xsense_recording_tap_url %} Recording ready.{% else %} Open X-Sense Recordings to view recent clips.{% endif %}{% if xsense_include_snapshot_link and xsense_snapshot_url %}
               Snapshot: {{ xsense_snapshot_url }}{% endif %}
             data:
-              url: "{{ xsense_recording_tap_url }}"
-              clickAction: "{{ xsense_recording_tap_url }}"
+              url: "{{ xsense_notification_url }}"
+              clickAction: "{{ xsense_notification_url }}"
+    default:
+      - domain: mobile_app
+        type: notify
+        device_id: !input notify_device
+        title: "{{ xsense_camera_name }}"
+        message: >-
+          Motion detected by {{ xsense_camera_name }}.{% if xsense_include_snapshot_link and xsense_snapshot_url %}
+          Snapshot: {{ xsense_snapshot_url }}{% endif %}
 
 mode: queued
 max: 10

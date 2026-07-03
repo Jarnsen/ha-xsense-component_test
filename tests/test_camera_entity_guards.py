@@ -873,6 +873,44 @@ def test_motion_event_entity_derives_recording_url_end_from_period(monkeypatch):
     )
 
 
+def test_motion_event_entity_adds_recordings_link_without_camera_entity(monkeypatch):
+    camera_entity = entity("SSC0A", {})
+    camera_entity.entity_id = "camera-id"
+    camera_entity.sn = "CAMERA-SN"
+    event_entity = event.XSenseMotionEventEntity.__new__(
+        event.XSenseMotionEventEntity
+    )
+    event_entity.hass = object()
+    event_entity.coordinator = SimpleNamespace(
+        entry=SimpleNamespace(entry_id="entry-id")
+    )
+
+    monkeypatch.setattr(
+        event.er,
+        "async_get",
+        lambda hass: SimpleNamespace(
+            async_get_entity_id=lambda platform, domain, unique_id: None
+        ),
+    )
+    event_data = {
+        "time": "20260621134144",
+        "playback": {
+            "source": "sd_playback",
+            "start_time": 1782049304,
+            "period": 30,
+        },
+    }
+
+    event_entity._add_camera_event_context(camera_entity, event_data)
+    event_entity._add_motion_playback_url(camera_entity, event_data)
+
+    assert "camera_entity_id" not in event_data
+    assert event_data["recording_url"] == (
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "&start=1782049304&end=1782049334"
+    )
+
+
 def test_motion_event_entity_normalizes_ms_recording_times(monkeypatch):
     camera_entity = entity("SSC0A", {})
     camera_entity.entity_id = "camera-id"

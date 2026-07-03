@@ -9,7 +9,7 @@ from homeassistant.helpers import issue_registry as ir
 
 from .const import DOMAIN, LOGGER
 
-CAMERA_BLUEPRINT_VERSION = 2
+CAMERA_BLUEPRINT_VERSION = 3
 CAMERA_BLUEPRINT_ISSUE_ID = "stale_camera_notification_blueprint"
 CAMERA_BLUEPRINT_IMPORT_URL = (
     "https://my.home-assistant.io/redirect/blueprint_import/"
@@ -26,6 +26,7 @@ _CURRENT_BLUEPRINT_MARKERS = (
     f"xsense_blueprint_version: {CAMERA_BLUEPRINT_VERSION}",
     "xsense_event_data is mapping",
     "state_attr(xsense_event_entity, 'recording_media_url')",
+    "xsense_notification_url",
 )
 _UNSAFE_EVENT_DATA_GET_MARKERS = (
     "xsense_event_data.get('event_type')",
@@ -104,6 +105,7 @@ def _is_current_camera_blueprint(text: str) -> bool:
     return (
         "xsense_event_data is mapping" in text
         and "state_attr(xsense_event_entity, 'recording_media_url')" in text
+        and "xsense_notification_url" in text
     )
 
 
@@ -111,6 +113,10 @@ def _is_stale_camera_blueprint(text: str) -> bool:
     """Return whether an X-Sense camera blueprint has unsafe old templates."""
     if _is_current_camera_blueprint(text):
         return False
+    if "xsense_blueprint_version: 2" in text:
+        return True
+    if "xsense_recording_tap_url" in text and "xsense_notification_url" not in text:
+        return True
     return any(marker in text for marker in _UNSAFE_EVENT_DATA_GET_MARKERS)
 
 

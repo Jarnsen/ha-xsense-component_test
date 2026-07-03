@@ -231,6 +231,7 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     choose_action = blueprint["actions"][0]
     notification_choice = choose_action["choose"][0]
     direct_url_action = notification_choice["sequence"][0]
+    default_action = choose_action["default"][0]
     direct_message = direct_url_action["message"]
     notification_data = direct_url_action["data"]
 
@@ -257,33 +258,40 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "xsense_recording_media_url or xsense_recording_url" in variables[
         "xsense_recording_tap_url"
     ]
+    assert variables["xsense_notification_url"] == (
+        "{{ xsense_recording_tap_url or '/xsense-recordings' }}"
+    )
     assert "xsense_recording_target" not in variables
     assert "snapshot_url" in variables["xsense_snapshot_url"]
     assert "xsense_event_data is mapping" in variables["xsense_snapshot_url"]
     assert "state_attr(xsense_event_entity, 'snapshot_url')" in variables["xsense_snapshot_url"]
-    assert "xsense_notification_url" not in variables
     assert "noAction" not in str(blueprint)
     assert "app://com.xsense.security" not in str(blueprint)
     assert direct_url_action["domain"] == "mobile_app"
     assert direct_url_action["type"] == "notify"
     assert direct_url_action["device_id"] == "notify_device"
     assert direct_url_action["title"] == "{{ xsense_camera_name }}"
+    assert default_action["domain"] == "mobile_app"
+    assert default_action["type"] == "notify"
+    assert default_action["device_id"] == "notify_device"
+    assert "data" not in default_action
     assert len(blueprint["actions"]) == 1
     assert len(choose_action["choose"]) == 1
-    assert "default" not in choose_action
+    assert len(choose_action["default"]) == 1
     assert "actions" not in blueprint["blueprint"]["input"]
     assert "keeps mobile push delivery reliable" in blueprint["blueprint"]["description"]
     assert "recording_media_url" in blueprint["blueprint"]["description"]
     assert "xsense_camera_name" in direct_message
     assert "xsense_recording_url" not in direct_message
+    assert "xsense_recording_tap_url" in direct_message
     assert "xsense_snapshot_url" in direct_message
     assert "No playback URL" not in str(blueprint)
     assert "trigger." not in direct_message
-    assert notification_data["url"] == "{{ xsense_recording_tap_url }}"
-    assert notification_data["clickAction"] == "{{ xsense_recording_tap_url }}"
+    assert notification_data["url"] == "{{ xsense_notification_url }}"
+    assert notification_data["clickAction"] == "{{ xsense_notification_url }}"
     assert "video" not in notification_data
     assert "attachment" not in notification_data
-    assert "xsense_recording_tap_url" in str(notification_choice["conditions"])
+    assert "xsense_include_recording_link" in str(notification_choice["conditions"])
     assert "actions" not in notification_data
     assert "trigger." not in str(choose_action)
 
@@ -325,6 +333,19 @@ blueprint:
 variables:
   xsense_event_type: "{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}"
   xsense_recording_media_url: "{{ state_attr(xsense_event_entity, 'recording_media_url') }}"
+  xsense_notification_url: "{{ xsense_recording_tap_url or '/xsense-recordings' }}"
+""",
+        encoding="utf-8",
+    )
+    stale_v2 = xsense_dir / "v2.yaml"
+    stale_v2.write_text(
+        """
+blueprint:
+  name: X-Sense Camera Event
+variables:
+  xsense_blueprint_version: 2
+  xsense_event_type: "{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}"
+  xsense_recording_media_url: "{{ state_attr(xsense_event_entity, 'recording_media_url') }}"
 """,
         encoding="utf-8",
     )
@@ -333,7 +354,10 @@ variables:
         encoding="utf-8",
     )
 
-    assert repairs._stale_camera_blueprint_files(blueprint_dir) == ["xsense/old.yaml"]
+    assert repairs._stale_camera_blueprint_files(blueprint_dir) == [
+        "xsense/old.yaml",
+        "xsense/v2.yaml",
+    ]
 
 
 def test_stale_camera_blueprint_repair_issue_created_and_cleared(
@@ -388,6 +412,7 @@ variables:
   xsense_blueprint_version: {repairs.CAMERA_BLUEPRINT_VERSION}
   xsense_event_type: "{{{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}}}"
   xsense_recording_media_url: "{{{{ state_attr(xsense_event_entity, 'recording_media_url') }}}}"
+  xsense_notification_url: "{{{{ xsense_recording_tap_url or '/xsense-recordings' }}}}"
 """,
         encoding="utf-8",
     )

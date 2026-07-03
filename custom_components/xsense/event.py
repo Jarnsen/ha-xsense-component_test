@@ -167,14 +167,7 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
         )
         if start_time in (None, "") or not getattr(entity, "sn", None):
             return
-        camera_entity_id = event_data.get(
-            "camera_entity_id"
-        ) or _camera_entity_id_for_event(
-            self.hass,
-            entity,
-        )
-        if camera_entity_id is None:
-            return
+        camera_entity_id = event_data.get("camera_entity_id") or ""
         end_time = _recording_epoch_seconds(
             _first_present(playback, "end_time_s", "end_time")
         )
@@ -343,14 +336,7 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
         )
         if start_time in (None, "") or not getattr(entity, "sn", None):
             return
-        camera_entity_id = event_data.get(
-            "camera_entity_id"
-        ) or _camera_entity_id_for_event(
-            self.hass,
-            entity,
-        )
-        if camera_entity_id is None:
-            return
+        camera_entity_id = event_data.get("camera_entity_id") or ""
         end_time = _recording_epoch_seconds(
             _first_present(playback, "end_time_s", "end_time")
         )

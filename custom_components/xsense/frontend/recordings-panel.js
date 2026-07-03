@@ -6,7 +6,6 @@ class XSenseRecordingsPanel extends HTMLElement {
     this.selectedCameraKey = "";
     this.selectedDate = "";
     this.selectedClip = null;
-    this.routeClipActive = false;
     this.loading = false;
     this.error = "";
     this.signedPaths = new Map();
@@ -83,7 +82,7 @@ class XSenseRecordingsPanel extends HTMLElement {
     const clips = this.clips;
     const clipCount = clips.length;
     const viewerClip = this.selectedClip && this.findClip(this.selectedClip.entry_id, this.selectedClip.serial, this.selectedClip.start, this.selectedClip.end);
-    const useViewerPage = viewerClip && (!this.isMobileViewport() || this.routeClipActive);
+    const useViewerPage = Boolean(viewerClip);
     this.shadowRoot.innerHTML = `
       <style>
         :host {
@@ -235,28 +234,6 @@ class XSenseRecordingsPanel extends HTMLElement {
           font-size: 12px;
           color: var(--secondary-text-color);
         }
-        .clip-player {
-          width: 100%;
-          height: 100%;
-          min-height: 220px;
-          background: #000;
-          display: block;
-        }
-        .clip-progress {
-          display: none;
-          height: 5px;
-          background: var(--divider-color);
-          overflow: hidden;
-        }
-        .clip[playing] .clip-progress {
-          display: block;
-        }
-        .clip-progress-bar {
-          width: 0%;
-          height: 100%;
-          background: var(--primary-color);
-          transition: width 160ms linear;
-        }
         .viewer {
           display: grid;
           gap: 12px;
@@ -335,9 +312,6 @@ class XSenseRecordingsPanel extends HTMLElement {
           .meta {
             min-height: 54px;
             padding-bottom: 14px;
-          }
-          .clip[playing] {
-            border-color: var(--primary-color);
           }
           .viewer {
             gap: 14px;
@@ -447,17 +421,11 @@ class XSenseRecordingsPanel extends HTMLElement {
   }
 
   renderClip(clip) {
-    const isPlaying = this.selectedClip && this.selectedClip.entry_id === clip.entry_id && this.selectedClip.serial === clip.serial && this.selectedClip.start === clip.start && this.selectedClip.end === clip.end;
     return `
-      <div class="clip" role="button" tabindex="0" data-entry-id="${this.escape(clip.entry_id)}" data-serial="${this.escape(clip.serial)}" data-start="${clip.start}" data-end="${clip.end}" ${isPlaying ? "playing" : ""}>
+      <div class="clip" role="button" tabindex="0" data-entry-id="${this.escape(clip.entry_id)}" data-serial="${this.escape(clip.serial)}" data-start="${clip.start}" data-end="${clip.end}">
         <div class="thumb">
-          ${
-            isPlaying && clip.signed_playback_url
-              ? `<video id="mobile-video" class="clip-player" controls autoplay playsinline disablepictureinpicture disableremoteplayback controlsList="nodownload noplaybackrate noremoteplayback" preload="auto" src="${this.escape(clip.signed_playback_url)}"></video>`
-              : `${clip.signed_thumbnail_url ? `<img src="${this.escape(clip.signed_thumbnail_url)}" loading="lazy" alt="">` : `<div class="missing-thumb">No thumbnail</div>`}<span class="badge">${this.escape(this.formatDuration(clip.duration))}</span>`
-          }
+          ${clip.signed_thumbnail_url ? `<img src="${this.escape(clip.signed_thumbnail_url)}" loading="lazy" alt="">` : `<div class="missing-thumb">No thumbnail</div>`}<span class="badge">${this.escape(this.formatDuration(clip.duration))}</span>
         </div>
-        <div class="clip-progress"><div id="mobile-progress-bar" class="clip-progress-bar"></div></div>
         <div class="meta">
           <div class="title">${this.escape(this.formatClipTime(clip))}</div>
           <div class="sub">${clip.cached ? "Cached" : "Not cached"}</div>
@@ -504,27 +472,9 @@ class XSenseRecordingsPanel extends HTMLElement {
   }
 
   afterRender() {
-    const video = this.shadowRoot.getElementById("viewer-video") || this.shadowRoot.getElementById("mobile-video");
+    const video = this.shadowRoot.getElementById("viewer-video");
     if (!video) return;
-    this.bindMobileProgress(video);
     video.play?.().catch(() => undefined);
-  }
-
-  bindMobileProgress(video) {
-    if (video.id !== "mobile-video") return;
-    const bar = this.shadowRoot.getElementById("mobile-progress-bar");
-    if (!bar) return;
-    const update = () => {
-      const duration = Number(video.duration) || 0;
-      const current = Number(video.currentTime) || 0;
-      const progress = duration > 0 ? Math.min(100, Math.max(0, (current / duration) * 100)) : 0;
-      bar.style.width = `${progress}%`;
-    };
-    video.addEventListener("timeupdate", update);
-    video.addEventListener("progress", update);
-    video.addEventListener("loadedmetadata", update);
-    video.addEventListener("seeked", update);
-    update();
   }
 
   statusText(camera, clipCount) {
@@ -559,24 +509,22 @@ class XSenseRecordingsPanel extends HTMLElement {
       await this.signClip(clip, { playback: true, thumbnail: true });
     }
     this.selectedClip = clip;
-    if (this.isMobileViewport()) {
-      this.routeClipActive = false;
-      this.render();
-      return;
-    }
     const params = new URLSearchParams();
     params.set("entry_id", clip.entry_id);
     params.set("serial", clip.serial);
     params.set("start", String(clip.start));
     params.set("end", String(clip.end));
-    window.history.pushState(null, "", `${window.location.pathname}${window.location.search}#${params.toString()}`);
+    window.history.pushState({ xsenseRecordingViewer: true }, "", `${window.location.pathname}${window.location.search}#${params.toString()}`);
     this.render();
   }
 
   closeViewer() {
     this.selectedClip = null;
-    this.routeClipActive = false;
-    window.history.pushState(null, "", `${window.location.pathname}${window.location.search}`);
+    if (window.history.state?.xsenseRecordingViewer) {
+      window.history.back();
+      return;
+    }
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     this.render();
   }
 
@@ -590,18 +538,15 @@ class XSenseRecordingsPanel extends HTMLElement {
     if ((!entryId || !serial || !start) || !this.data) {
       if (!entryId && !serial && !start) {
         this.selectedClip = null;
-        this.routeClipActive = false;
       }
       return;
     }
     const clip = this.findClip(entryId, serial, start, end);
     if (!clip) {
       this.selectedClip = null;
-      this.routeClipActive = false;
       return;
     }
     this.selectedClip = clip;
-    this.routeClipActive = true;
     this.selectedCameraKey = this.clipKey(clip);
     this.selectedDate = clip.date || this.selectedDate;
   }
@@ -624,10 +569,6 @@ class XSenseRecordingsPanel extends HTMLElement {
 
   cameraName(entryId, serial) {
     return (this.data?.cameras || []).find((camera) => camera.entry_id === entryId && camera.serial === serial)?.name || serial;
-  }
-
-  isMobileViewport() {
-    return window.matchMedia?.("(max-width: 900px), (pointer: coarse)")?.matches || false;
   }
 
   async signPath(path) {
