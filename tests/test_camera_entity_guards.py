@@ -1025,7 +1025,7 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog
     assert "'total_elapsed_ms': 300" in log_text
 
 
-def test_motion_event_entity_does_not_fire_until_recording_is_cached(monkeypatch):
+def test_motion_event_entity_fires_when_recording_cache_returns_no_media(monkeypatch):
     from custom_components.xsense import media_source
 
     camera_entity = entity(
@@ -1079,7 +1079,14 @@ def test_motion_event_entity_does_not_fire_until_recording_is_cached(monkeypatch
     event_entity._handle_coordinator_update()
     asyncio.run(scheduled[0])
 
-    assert triggered == []
+    assert len(triggered) == 1
+    assert triggered[0]["recording_cache_ready"] is False
+    assert triggered[0]["recording_cache_elapsed_ms"] >= 0
+    assert triggered[0]["recording_total_elapsed_ms"] >= 0
+    assert triggered[0]["recording_url"] == (
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "&start=1782049304&end=1782049334"
+    )
 
 
 def test_motion_event_cache_preserves_absolute_recordings_panel_url(monkeypatch):

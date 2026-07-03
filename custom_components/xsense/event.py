@@ -543,23 +543,33 @@ def _trigger_event_after_recording_cache(
             )
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug("X-Sense event recording cache failed: %s", exc)
+            event_data["recording_cache_error"] = str(exc)
             cached_url = ""
         cache_finished_at = monotonic()
         cache_elapsed_ms = int((cache_finished_at - cache_started_at) * 1000)
         total_elapsed_ms = int((cache_finished_at - event_received_at) * 1000)
         if not cached_url:
+            event_data["recording_cache_ready"] = False
+            event_data["recording_cache_elapsed_ms"] = cache_elapsed_ms
+            event_data["recording_total_elapsed_ms"] = total_elapsed_ms
             LOGGER.debug(
-                "X-Sense event recording cache did not produce media; event not fired: %s",
+                "X-Sense event recording cache did not produce media; firing event without cached media: %s",
                 {
                     "camera": _masked_serial(getattr(entity, "sn", "")),
                     "event_type": event_type,
                     "source": playback.get("source"),
                     "cache_elapsed_ms": cache_elapsed_ms,
                     "total_elapsed_ms": total_elapsed_ms,
+                    "has_recording_url": bool(event_data.get("recording_url")),
+                    "has_cache_error": bool(event_data.get("recording_cache_error")),
                 },
             )
+            event_entity._trigger_event(event_type, event_data)
             return
         event_data["recording_media_url"] = cached_url
+        event_data["recording_cache_ready"] = True
+        event_data["recording_cache_elapsed_ms"] = cache_elapsed_ms
+        event_data["recording_total_elapsed_ms"] = total_elapsed_ms
         recording_url = str(event_data.get("recording_url") or "")
         if not _is_ha_recording_panel_url(recording_url):
             event_data["recording_url"] = cached_url
