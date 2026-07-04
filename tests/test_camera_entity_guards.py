@@ -1227,6 +1227,52 @@ def test_motion_event_cache_preserves_absolute_recordings_panel_url(monkeypatch)
     )
 
 
+def test_motion_event_cache_does_not_replace_recording_url_with_raw_media(
+    monkeypatch,
+):
+    from custom_components.xsense import event as event_module
+
+    scheduled = []
+    triggered = []
+
+    class Hass:
+        def async_create_task(self, coro):
+            scheduled.append(coro)
+
+    event_entity = SimpleNamespace(
+        hass=Hass(),
+        coordinator=SimpleNamespace(entry=SimpleNamespace(entry_id="entry-id")),
+        _trigger_event=lambda event_type, data: triggered.append(dict(data)),
+    )
+    entity_obj = SimpleNamespace(sn="CAMERA-SN")
+    event_data = {
+        "recording_url": "https://example.invalid/clip.mp4",
+        "playback": {"source": "video_url"},
+    }
+
+    async def cache_recording(*args, **kwargs):
+        return "/media/local/xsense_recordings/videos/clip.mp4"
+
+    monkeypatch.setattr(
+        "custom_components.xsense.media_source.async_cache_recording_playback",
+        cache_recording,
+    )
+
+    assert event_module._trigger_event_after_recording_cache(
+        event_entity,
+        "motion",
+        entity_obj,
+        event_data,
+    )
+    asyncio.run(scheduled[0])
+
+    assert triggered[0]["recording_url"] == "https://example.invalid/clip.mp4"
+    assert (
+        triggered[0]["recording_media_url"]
+        == "/media/local/xsense_recordings/videos/clip.mp4"
+    )
+
+
 def test_playback_page_uses_ha_webrtc_answer_and_sd_command():
     from custom_components.xsense import playback
 
@@ -1882,6 +1928,33 @@ def test_recording_media_source_resolve_includes_local_path(monkeypatch, tmp_pat
     assert resolved.url == "/media/local/custom.mp4"
     assert resolved.mime_type == media_source.MIME_TYPE
     assert resolved.path == output_path
+
+
+def test_recording_media_source_does_not_fall_back_to_external_video_url(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import media_source
+
+    source = media_source.XSenseRecordingsMediaSource(SimpleNamespace())
+    clip = {
+        "source": "video_url",
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "playback_url": "https://example.invalid/clip.mp4",
+        "media_root": tmp_path.as_posix(),
+    }
+
+    async def download_direct_clip(url, output_path):
+        raise RuntimeError("download failed")
+
+    monkeypatch.setattr(source, "_async_download_direct_clip", download_direct_clip)
+    monkeypatch.setattr(media_source, "_path_ready", lambda path: False)
+
+    with pytest.raises(media_source.Unresolvable):
+        asyncio.run(source._async_cached_playback_url(clip))
 
 
 def test_recording_media_source_lazy_shows_uncached_clips_when_sync_disabled(

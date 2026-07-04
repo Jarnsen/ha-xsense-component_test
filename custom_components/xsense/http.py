@@ -274,10 +274,10 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
             )
             raise web.HTTPNotFound(reason="X-Sense recording is not ready")
         LOGGER.debug(
-            "X-Sense recordings panel playback redirected to direct media: %s",
+            "X-Sense recordings panel playback did not produce cached media: %s",
             _clip_debug_context(entry_id, serial, start, end),
         )
-        raise web.HTTPFound(url)
+        raise web.HTTPNotFound(reason="X-Sense recording is not ready")
 
     async def _clip(
         self,
@@ -344,13 +344,6 @@ class XSenseRecordingsPanelThumbnailView(http.HomeAssistantView):
                 output_path,
                 headers={"Cache-Control": "private, max-age=3600"},
             )
-        thumbnail_url = str(clip.get("thumbnail_url") or "")
-        if thumbnail_url.startswith(("http://", "https://")):
-            LOGGER.debug(
-                "X-Sense recordings panel thumbnail redirected to direct media: %s",
-                _clip_debug_context(entry_id, serial, start, end),
-            )
-            raise web.HTTPFound(thumbnail_url)
         LOGGER.debug(
             "X-Sense recordings panel thumbnail not ready: %s",
             _clip_debug_context(entry_id, serial, start, end),

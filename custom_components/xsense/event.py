@@ -6,7 +6,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from time import monotonic
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
 
 from .api.async_xsense import is_camera_entity
 from .api.device import Device
@@ -25,8 +24,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN, LOGGER
 from .entity import XSenseEntity, coordinator_devices
-from .frontend import FRONTEND_URL_PATH as RECORDINGS_PANEL_PATH
-from .playback import PLAYBACK_PANEL_PATH, playback_url
+from .playback import playback_url
 
 if TYPE_CHECKING:
     from .coordinator import XSenseDataUpdateCoordinator
@@ -558,9 +556,6 @@ def _trigger_event_after_recording_cache(
         event_data["recording_cache_ready"] = True
         event_data["recording_cache_elapsed_ms"] = cache_elapsed_ms
         event_data["recording_total_elapsed_ms"] = total_elapsed_ms
-        recording_url = str(event_data.get("recording_url") or "")
-        if not _is_ha_recording_panel_url(recording_url):
-            event_data["recording_url"] = cached_url
         event_data["recording_source"] = "cached_media"
         LOGGER.debug(
             "X-Sense event recording cache finished before trigger: %s",
@@ -613,16 +608,6 @@ def _masked_serial(value: Any) -> str:
     if len(text) <= 6:
         return "..."
     return f"...{text[-6:]}"
-
-
-def _is_ha_recording_panel_url(value: str) -> bool:
-    """Return whether a URL targets an X-Sense HA recording panel."""
-    if not value:
-        return False
-    if value.startswith((f"/{PLAYBACK_PANEL_PATH}", f"/{RECORDINGS_PANEL_PATH}")):
-        return True
-    parsed = urlparse(value)
-    return parsed.path in {f"/{PLAYBACK_PANEL_PATH}", f"/{RECORDINGS_PANEL_PATH}"}
 
 
 def _recording_end_from_period(start_time: Any, period: Any) -> int:

@@ -613,14 +613,14 @@ class XSenseRecordingsMediaSource(MediaSource):
             await self._async_download_direct_clip(direct_url, output_path)
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug(
-                "Could not cache X-Sense direct recording, using direct URL: %s",
+                "Could not cache X-Sense direct recording: %s",
                 exc,
             )
-            return direct_url
+            raise Unresolvable("X-Sense direct recording could not be cached") from exc
 
         if _path_ready(output_path):
             return _local_media_url(output_path)
-        return direct_url
+        raise Unresolvable("X-Sense direct recording cache did not create media")
 
     async def _async_cached_sd_playback_url(self, clip: dict[str, Any]) -> str:
         """Capture an SD-only X-Sense clip to cached MP4 media."""
