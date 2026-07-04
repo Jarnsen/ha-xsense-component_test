@@ -58,7 +58,7 @@ Laitteiden hallinta, jakaminen, poistaminen, laiteohjelmisto, tilit ja maksut py
 ## Kameran live-näkymä ja AI-ilmoitukset
 Helpoin tapa on tuoda mukana oleva blueprint alla olevalla painikkeella, valita `Motion` tai saatavilla oleva `AI Detection` ja muokata ilmoitustoimintoa.
 
-Kun Motion-tapahtuma sisältää X-Sense-toistometatietoja, integraatio yrittää tallentaa klipin heti välimuistiin. Kun tiedosto on valmis, ilmoitus käyttää videotoistoon `recording_media_url`-osoitetta; muuten `recording_url` avaa X-Sense Recordings -näkymän Home Assistantissa. Automaation manuaaliset ajot käyttävät valitun tapahtumaentiteetin uusimpia tallennetietoja, joten tallenneilmoitus lähetetään vasta, kun entiteetti on saanut oikean tallennelinkin. Recording media sync voi pitää viimeisimmät klipit valmiina taustalla.
+When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. The default camera-event blueprint sends a recording notification only after cached media is ready, using `recording_url` to open the X-Sense Recordings viewer and `recording_media_url` as proof that the clip is playable. Manual automation runs use the selected event entity's latest recording data, so recording-link notifications are skipped until that entity has a ready cached clip. Recording media sync can keep recent clips ready in the background.
 
 [![Tuo blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

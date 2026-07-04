@@ -117,7 +117,7 @@ ____________________________________________________________
 ## มุมมองสดของกล้องและการแจ้งเตือน AI
 วิธีที่ง่ายที่สุดคือ import blueprint ที่ให้มาด้วยปุ่มด้านล่าง เลือก `Motion` หรือ `AI Detection` ที่มี และปรับ action การแจ้งเตือนตามต้องการ
 
-เมื่อ event Motion มี metadata การเล่นย้อนหลังจาก X-Sense integration จะพยายาม cache คลิปทันที เมื่อไฟล์พร้อมแล้ว notification จะใช้ `recording_media_url` สำหรับเล่นวิดีโอ; ถ้ายังไม่พร้อม `recording_url` จะเปิด X-Sense Recordings viewer ใน Home Assistant การรัน automation แบบ manual จะใช้ข้อมูล recording ล่าสุดจาก event entity ที่เลือกไว้ ดังนั้น notification สำหรับ recording จะถูกส่งก็ต่อเมื่อ entity นั้นได้รับลิงก์ recording จริงแล้วเท่านั้น ส่วน Recording media sync สามารถเตรียมคลิปล่าสุดไว้เบื้องหลังได้
+When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. The default camera-event blueprint sends a recording notification only after cached media is ready, using `recording_url` to open the X-Sense Recordings viewer and `recording_media_url` as proof that the clip is playable. Manual automation runs use the selected event entity's latest recording data, so recording-link notifications are skipped until that entity has a ready cached clip. Recording media sync can keep recent clips ready in the background.
 
 [![นำเข้า blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

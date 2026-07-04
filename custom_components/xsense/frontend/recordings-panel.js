@@ -9,10 +9,13 @@ class XSenseRecordingsPanel extends HTMLElement {
     this.loading = false;
     this.error = "";
     this.signedPaths = new Map();
+    this.playbackUrls = new Map();
+    this.playbackErrors = new Map();
+    this.playbackLoadingKey = "";
     this.handleRouteChange = async () => {
       this.syncRouteFromHash();
       if (this.selectedClip) {
-        await this.signClip(this.selectedClip, { playback: true, thumbnail: true });
+        await this.prepareClipPlayback(this.selectedClip);
       }
       this.render();
     };
@@ -35,6 +38,10 @@ class XSenseRecordingsPanel extends HTMLElement {
   disconnectedCallback() {
     window.removeEventListener("hashchange", this.handleRouteChange);
     window.removeEventListener("popstate", this.handleRouteChange);
+    for (const url of this.playbackUrls.values()) {
+      URL.revokeObjectURL(url);
+    }
+    this.playbackUrls.clear();
   }
 
   async loadData() {
@@ -56,7 +63,7 @@ class XSenseRecordingsPanel extends HTMLElement {
       this.syncRouteFromHash();
       await this.signVisibleThumbnails();
       if (this.selectedClip) {
-        await this.signClip(this.selectedClip, { playback: true, thumbnail: true });
+        await this.prepareClipPlayback(this.selectedClip);
       }
     } catch (err) {
       this.error = err?.message || String(err);
@@ -403,6 +410,10 @@ class XSenseRecordingsPanel extends HTMLElement {
   }
 
   renderViewer(clip) {
+    const clipKey = this.playbackKey(clip);
+    const playbackUrl = this.playbackUrls.get(clipKey) || "";
+    const playbackError = this.playbackErrors.get(clipKey) || "";
+    const preparing = this.playbackLoadingKey === clipKey;
     return `
       <div class="viewer">
         <div class="viewer-bar">
@@ -410,11 +421,11 @@ class XSenseRecordingsPanel extends HTMLElement {
           <div class="viewer-title"></div>
         </div>
         <div class="viewer-frame">
-          ${clip.signed_playback_url ? `<video id="viewer-video" controls autoplay playsinline disablepictureinpicture disableremoteplayback controlsList="nodownload noplaybackrate noremoteplayback" preload="auto" src="${this.escape(clip.signed_playback_url)}"></video>` : `<div class="no-video">Not cached yet</div>`}
+          ${playbackUrl ? `<video id="viewer-video" controls autoplay playsinline disablepictureinpicture disableremoteplayback controlsList="nodownload noplaybackrate noremoteplayback" preload="auto" src="${this.escape(playbackUrl)}"></video>` : `<div class="no-video">${this.escape(playbackError || (preparing ? "Preparing recording..." : "Select a recording to play"))}</div>`}
         </div>
         <div class="viewer-details">
           <div class="title">${this.escape(this.cameraName(clip.entry_id, clip.serial))} - ${this.escape(this.formatClipTime(clip))}</div>
-          <div class="sub">${this.escape(this.formatDuration(clip.duration))} - ${clip.cached ? "Cached" : "Not cached"}</div>
+          <div class="sub">${this.escape(this.formatDuration(clip.duration))} - ${playbackUrl ? "Ready" : preparing ? "Preparing" : clip.cached ? "Cached" : "Not cached"}</div>
         </div>
       </div>
     `;
@@ -492,11 +503,7 @@ class XSenseRecordingsPanel extends HTMLElement {
   }
 
   async signClip(clip, options = {}) {
-    const signPlayback = options.playback === true;
     const signThumbnail = options.thumbnail === true;
-    if (signPlayback && clip.playback_url) {
-      clip.signed_playback_url = await this.signPath(clip.playback_url);
-    }
     if (signThumbnail && clip.thumbnail_url) {
       clip.signed_thumbnail_url = await this.signPath(clip.thumbnail_url);
     }
@@ -505,9 +512,6 @@ class XSenseRecordingsPanel extends HTMLElement {
   async openClip(clip) {
     this.selectedCameraKey = this.clipKey(clip);
     this.selectedDate = clip.date || this.selectedDate;
-    if (!clip.signed_playback_url) {
-      await this.signClip(clip, { playback: true, thumbnail: true });
-    }
     this.selectedClip = clip;
     const params = new URLSearchParams();
     params.set("entry_id", clip.entry_id);
@@ -515,6 +519,8 @@ class XSenseRecordingsPanel extends HTMLElement {
     params.set("start", String(clip.start));
     params.set("end", String(clip.end));
     window.history.pushState({ xsenseRecordingViewer: true }, "", `${window.location.pathname}${window.location.search}#${params.toString()}`);
+    this.render();
+    await this.prepareClipPlayback(clip);
     this.render();
   }
 
@@ -557,6 +563,44 @@ class XSenseRecordingsPanel extends HTMLElement {
       if (clip) return clip;
     }
     return null;
+  }
+
+  playbackKey(clip) {
+    return `${clip.entry_id}:${clip.serial}:${clip.start}:${clip.end}`;
+  }
+
+  async prepareClipPlayback(clip) {
+    if (!clip?.playback_url) return;
+    const key = this.playbackKey(clip);
+    if (this.playbackUrls.has(key) || this.playbackLoadingKey === key) return;
+    this.playbackLoadingKey = key;
+    this.playbackErrors.delete(key);
+    this.render();
+    try {
+      const signedPath = await this.signPath(clip.playback_url);
+      const response = await fetch(signedPath, {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`Recording is not ready (${response.status})`);
+      }
+      const blob = await response.blob();
+      if (!blob.size) {
+        throw new Error("Recording is empty");
+      }
+      const previousUrl = this.playbackUrls.get(key);
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
+      }
+      this.playbackUrls.set(key, URL.createObjectURL(blob));
+    } catch (err) {
+      this.playbackErrors.set(key, err?.message || String(err));
+    } finally {
+      if (this.playbackLoadingKey === key) {
+        this.playbackLoadingKey = "";
+      }
+    }
   }
 
   cameraKey(camera) {

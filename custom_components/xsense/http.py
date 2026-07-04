@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from time import monotonic
 from typing import Any
 from urllib.parse import quote
 
@@ -243,6 +244,14 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
         if not serial:
             raise web.HTTPBadRequest(reason="Missing X-Sense camera serial")
         clip = await self._clip(entry_id, serial, start, end)
+        started_at = monotonic()
+        context = {
+            **_clip_debug_context(entry_id, serial, start, end),
+            "source": clip.get("source"),
+            "quality": clip.get("quality"),
+            "cached": _path_ready(_clip_cache_path(clip)),
+        }
+        LOGGER.debug("X-Sense recordings panel playback requested: %s", context)
         if _recording_media_sync_enabled(self.hass, entry_id) and not _path_ready(
             _clip_cache_path(clip)
         ):
@@ -264,9 +273,16 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
         if _path_ready(output_path):
             LOGGER.debug(
                 "X-Sense recordings panel playback served cached file: %s",
-                _clip_debug_context(entry_id, serial, start, end),
+                {
+                    **context,
+                    "elapsed_ms": int((monotonic() - started_at) * 1000),
+                    "bytes": output_path.stat().st_size,
+                },
             )
-            return web.FileResponse(output_path)
+            return web.FileResponse(
+                output_path,
+                headers={"Cache-Control": "private, max-age=3600"},
+            )
         if not url:
             LOGGER.debug(
                 "X-Sense recordings panel playback missing media URL: %s",
@@ -275,7 +291,10 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
             raise web.HTTPNotFound(reason="X-Sense recording is not ready")
         LOGGER.debug(
             "X-Sense recordings panel playback did not produce cached media: %s",
-            _clip_debug_context(entry_id, serial, start, end),
+            {
+                **context,
+                "elapsed_ms": int((monotonic() - started_at) * 1000),
+            },
         )
         raise web.HTTPNotFound(reason="X-Sense recording is not ready")
 

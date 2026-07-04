@@ -1111,7 +1111,10 @@ def test_trigger_camera_event_fires_entity_and_rich_bus_event():
     ]
 
 
-def test_motion_event_entity_fires_when_recording_cache_returns_no_media(monkeypatch):
+def test_motion_event_entity_does_not_fire_when_recording_cache_returns_no_media(
+    monkeypatch,
+    caplog,
+):
     from custom_components.xsense import media_source
 
     camera_entity = entity(
@@ -1163,18 +1166,11 @@ def test_motion_event_entity_fires_when_recording_cache_returns_no_media(monkeyp
     )
 
     event_entity._handle_coordinator_update()
+    caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
     asyncio.run(scheduled[0])
 
-    assert len(triggered) == 3
-    assert triggered[0] == ("write", None)
-    assert triggered[1]["recording_cache_ready"] is False
-    assert triggered[1]["recording_cache_elapsed_ms"] >= 0
-    assert triggered[1]["recording_total_elapsed_ms"] >= 0
-    assert triggered[1]["recording_url"] == (
-        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
-        "&start=1782049304&end=1782049334"
-    )
-    assert triggered[2] == ("write", None)
+    assert triggered == [("write", None), ("write", None)]
+    assert "event not fired" in caplog.text
 
 
 def test_motion_event_cache_preserves_absolute_recordings_panel_url(monkeypatch):

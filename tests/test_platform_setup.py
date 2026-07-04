@@ -233,8 +233,9 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     entity_guard = blueprint["actions"][0]
     choose_action = blueprint["actions"][1]
     notification_choice = choose_action["choose"][0]
+    no_recording_choice = choose_action["choose"][1]
     direct_url_action = notification_choice["sequence"][0]
-    default_action = choose_action["default"][0]
+    default_action = no_recording_choice["sequence"][0]
     direct_message = direct_url_action["message"]
     notification_data = direct_url_action["data"]
 
@@ -279,14 +280,14 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "data" not in default_action
     assert len(blueprint["actions"]) == 2
     assert "xsense_event_entity_id" in entity_guard["value_template"]
-    assert len(choose_action["choose"]) == 1
-    assert len(choose_action["default"]) == 1
+    assert len(choose_action["choose"]) == 2
+    assert "default" not in choose_action
     assert "actions" not in blueprint["blueprint"]["input"]
     assert "keeps mobile push delivery reliable" in blueprint["blueprint"]["description"]
     assert "recording_media_url" in blueprint["blueprint"]["description"]
     assert "xsense_camera_name" in direct_message
     assert "xsense_recording_url" not in direct_message
-    assert "xsense_recording_tap_url" in direct_message
+    assert "Recording ready" in direct_message
     assert "xsense_snapshot_url" in direct_message
     assert "No playback URL" not in str(blueprint)
     assert "trigger." not in direct_message
@@ -295,6 +296,9 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "video" not in notification_data
     assert "attachment" not in notification_data
     assert "xsense_include_recording_link" in str(notification_choice["conditions"])
+    assert "xsense_recording_tap_url" in str(notification_choice["conditions"])
+    assert "xsense_recording_media_url" in str(notification_choice["conditions"])
+    assert "not xsense_include_recording_link" in str(no_recording_choice["conditions"])
     assert "actions" not in notification_data
     assert "trigger." not in str(choose_action)
 
@@ -360,6 +364,11 @@ variables:
   xsense_recording_media_url: "{{{{ state_attr(xsense_event_entity, 'recording_media_url') }}}}"
   xsense_recording_tap_url: "{{{{ xsense_recording_url if xsense_recording_url == '/xsense-recordings' or xsense_recording_url[0:19] == '/xsense-recordings#' else '' }}}}"
   xsense_notification_url: "{{{{ xsense_recording_tap_url or '/xsense-recordings' }}}}"
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}}}"
 """,
         encoding="utf-8",
     )
@@ -376,6 +385,29 @@ variables:
   xsense_recording_media_url: "{{ state_attr(xsense_event_entity, 'recording_media_url') }}"
   xsense_recording_tap_url: "{{ xsense_recording_url if xsense_recording_url == '/xsense-recordings' or xsense_recording_url[0:19] == '/xsense-recordings#' else '' }}"
   xsense_notification_url: "{{ xsense_recording_tap_url or '/xsense-recordings' }}"
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}"
+""",
+        encoding="utf-8",
+    )
+    stale_v5 = xsense_dir / "v5.yaml"
+    stale_v5.write_text(
+        """
+blueprint:
+  name: X-Sense Camera Event
+triggers:
+  - trigger: event
+    event_type: xsense_camera_event
+variables:
+  xsense_blueprint_version: 5
+  xsense_event_type: "{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}"
+  xsense_recording_media_url: "{{ state_attr(xsense_event_entity, 'recording_media_url') }}"
+  xsense_recording_tap_url: "{{ xsense_recording_url if xsense_recording_url == '/xsense-recordings' or xsense_recording_url[0:19] == '/xsense-recordings#' else '' }}"
+  xsense_notification_url: "{{ xsense_recording_tap_url or '/xsense-recordings' }}"
+message: Open X-Sense Recordings to view recent clips.
 """,
         encoding="utf-8",
     )
@@ -417,6 +449,7 @@ variables:
         "xsense/old.yaml",
         "xsense/v2.yaml",
         "xsense/v4.yaml",
+        "xsense/v5.yaml",
     ]
 
 
@@ -477,6 +510,11 @@ variables:
   xsense_recording_media_url: "{{{{ state_attr(xsense_event_entity, 'recording_media_url') }}}}"
   xsense_recording_tap_url: "{{{{ xsense_recording_url if xsense_recording_url == '/xsense-recordings' or xsense_recording_url[0:19] == '/xsense-recordings#' else '' }}}}"
   xsense_notification_url: "{{{{ xsense_recording_tap_url or '/xsense-recordings' }}}}"
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}}}"
 """,
         encoding="utf-8",
     )
@@ -532,7 +570,7 @@ def test_recordings_panel_url_deep_links_to_clip():
     )
 
 
-def test_recordings_panel_video_uses_signed_playback_path():
+def test_recordings_panel_video_uses_authenticated_blob_playback():
     with open(
         "custom_components/xsense/frontend/recordings-panel.js",
         encoding="utf-8",
@@ -540,8 +578,12 @@ def test_recordings_panel_video_uses_signed_playback_path():
         panel = file.read()
 
     assert 'type: "auth/sign_path"' in panel
-    assert "clip.signed_playback_url = await this.signPath(clip.playback_url)" in panel
-    assert 'src="${this.escape(clip.signed_playback_url)}"' in panel
+    assert "const signedPath = await this.signPath(clip.playback_url)" in panel
+    assert "const response = await fetch(signedPath" in panel
+    assert "URL.createObjectURL(blob)" in panel
+    assert 'src="${this.escape(playbackUrl)}"' in panel
+    assert "Preparing recording..." in panel
+    assert "clip.signed_playback_url" not in panel
     assert 'src="${this.escape(clip.playback_url)}"' not in panel
     assert 'src="${clip.playback_url}"' not in panel
 

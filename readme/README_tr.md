@@ -204,7 +204,7 @@ ____________________________________________________________
 ## Kamera canlı görüntüsü ve AI bildirimleri
 En kolay yol, aşağıdaki düğmeyle dahil edilen blueprint’i içe aktarmak, `Motion` veya kullanılabilir `AI Detection` seçmek ve gerekirse bildirim eylemini ayarlamaktır.
 
-Motion olayı X-Sense oynatma metadata içerdiğinde entegrasyon klibi hemen cache’e almaya çalışır. Dosya hazır olduğunda bildirim video oynatma için `recording_media_url` kullanır; aksi halde `recording_url` Home Assistant içindeki X-Sense Recordings görüntüleyicisini açar. Otomasyonu elle çalıştırma, seçilen event entity’sinin en son kayıt verilerini kullanır; bu yüzden kayıt bildirimi yalnızca bu entity gerçek bir kayıt bağlantısı aldıktan sonra gönderilir. Recording media sync son klipleri arka planda hazır tutabilir.
+When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. The default camera-event blueprint sends a recording notification only after cached media is ready, using `recording_url` to open the X-Sense Recordings viewer and `recording_media_url` as proof that the clip is playable. Manual automation runs use the selected event entity's latest recording data, so recording-link notifications are skipped until that entity has a ready cached clip. Recording media sync can keep recent clips ready in the background.
 
 [![Blueprint’i içe aktar](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

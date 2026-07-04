@@ -538,7 +538,7 @@ def _trigger_event_after_recording_cache(
             event_data["recording_cache_elapsed_ms"] = cache_elapsed_ms
             event_data["recording_total_elapsed_ms"] = total_elapsed_ms
             LOGGER.debug(
-                "X-Sense event recording cache did not produce media; firing event without cached media: %s",
+                "X-Sense event recording cache did not produce media; event not fired: %s",
                 {
                     "camera": _masked_serial(getattr(entity, "sn", "")),
                     "event_type": event_type,
@@ -549,7 +549,6 @@ def _trigger_event_after_recording_cache(
                     "has_cache_error": bool(event_data.get("recording_cache_error")),
                 },
             )
-            _trigger_camera_event(event_entity, event_type, event_data)
             _write_event_state(event_entity)
             return
         event_data["recording_media_url"] = cached_url
