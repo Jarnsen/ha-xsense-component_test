@@ -9,7 +9,7 @@ from homeassistant.helpers import issue_registry as ir
 
 from .const import DOMAIN, LOGGER
 
-CAMERA_BLUEPRINT_VERSION = 5
+CAMERA_BLUEPRINT_VERSION = 6
 CAMERA_BLUEPRINT_ISSUE_ID = "stale_camera_notification_blueprint"
 CAMERA_BLUEPRINT_IMPORT_URL = (
     "https://my.home-assistant.io/redirect/blueprint_import/"
@@ -28,6 +28,7 @@ _CURRENT_BLUEPRINT_MARKERS = (
     "state_attr(xsense_event_entity, 'recording_media_url')",
     "xsense_recording_url[0:19] == '/xsense-recordings#'",
     "xsense_notification_url",
+    "xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url",
 )
 _UNSAFE_EVENT_DATA_GET_MARKERS = (
     "xsense_event_data.get('event_type')",
@@ -112,6 +113,7 @@ def _is_stale_camera_blueprint(text: str) -> bool:
         "xsense_blueprint_version: 2" in text
         or "xsense_blueprint_version: 3" in text
         or "xsense_blueprint_version: 4" in text
+        or "xsense_blueprint_version: 5" in text
     ):
         return True
     if "trigger: event.received" in text:
@@ -119,6 +121,8 @@ def _is_stale_camera_blueprint(text: str) -> bool:
     if "/media/local" in text and "xsense_recording_tap_url" in text:
         return True
     if "xsense_recording_tap_url" in text and "xsense_notification_url" not in text:
+        return True
+    if "Open X-Sense Recordings to view recent clips" in text:
         return True
     return any(marker in text for marker in _UNSAFE_EVENT_DATA_GET_MARKERS)
 

@@ -58,7 +58,7 @@ Seadmehaldus, jagamine, eemaldamine, püsivara, kontod ja maksed jäävad X-Sens
 ## Kaamera otsevaade ja AI-teavitused
 Lihtsaim viis on importida kaasas olev blueprint alloleva nupuga, valida `Motion` või saadaolev `AI Detection`, ja vajadusel muuta teavitustoimingut.
 
-Kui Motion-sündmus sisaldab X-Sense taasesituse metaandmeid, proovib integratsioon klipi kohe vahemällu salvestada. Kui fail on valmis, kasutab teavitus video esitamiseks `recording_media_url`; muul juhul avab `recording_url` Home Assistantis X-Sense Recordings vaaturi. Automatsiooni käsitsi käivitamisel kasutatakse valitud sündmuse olemi uusimaid salvestusandmeid, seega saadetakse salvestuse teavitus alles pärast seda, kui see olem on saanud päris salvestuse lingi. Recording media sync saab hiljutisi klippe taustal valmis hoida.
+When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. The default camera-event blueprint sends a recording notification only after cached media is ready, using `recording_url` to open the X-Sense Recordings viewer and `recording_media_url` as proof that the clip is playable. Manual automation runs use the selected event entity's latest recording data, so recording-link notifications are skipped until that entity has a ready cached clip. Recording media sync can keep recent clips ready in the background.
 
 [![Impordi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

@@ -49,7 +49,7 @@ triggers:
     event_type: xsense_camera_event
 
 variables:
-  xsense_blueprint_version: 5
+  xsense_blueprint_version: 6
   xsense_event_entity: !input ai_detection_event
   xsense_include_recording_link: !input include_recording_link
   xsense_include_snapshot_link: !input include_snapshot_link
@@ -69,26 +69,29 @@ actions:
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ xsense_include_recording_link }}"
+            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}"
         sequence:
           - domain: mobile_app
             type: notify
             device_id: !input notify_device
             title: "{{ xsense_camera_name }}"
             message: >-
-              Motion detected by {{ xsense_camera_name }}.{% if xsense_recording_tap_url %} Recording ready.{% else %} Open X-Sense Recordings to view recent clips.{% endif %}{% if xsense_include_snapshot_link and xsense_snapshot_url %}
+              Motion detected by {{ xsense_camera_name }}. Recording ready.{% if xsense_include_snapshot_link and xsense_snapshot_url %}
               Snapshot: {{ xsense_snapshot_url }}{% endif %}
             data:
               url: "{{ xsense_notification_url }}"
               clickAction: "{{ xsense_notification_url }}"
-    default:
-      - domain: mobile_app
-        type: notify
-        device_id: !input notify_device
-        title: "{{ xsense_camera_name }}"
-        message: >-
-          Motion detected by {{ xsense_camera_name }}.{% if xsense_include_snapshot_link and xsense_snapshot_url %}
-          Snapshot: {{ xsense_snapshot_url }}{% endif %}
+      - conditions:
+          - condition: template
+            value_template: "{{ not xsense_include_recording_link }}"
+        sequence:
+          - domain: mobile_app
+            type: notify
+            device_id: !input notify_device
+            title: "{{ xsense_camera_name }}"
+            message: >-
+              Motion detected by {{ xsense_camera_name }}.{% if xsense_include_snapshot_link and xsense_snapshot_url %}
+              Snapshot: {{ xsense_snapshot_url }}{% endif %}
 
 mode: queued
 max: 10
