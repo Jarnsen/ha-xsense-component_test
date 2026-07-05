@@ -49,7 +49,7 @@ triggers:
     event_type: xsense_camera_event
 
 variables:
-  xsense_blueprint_version: 8
+  xsense_blueprint_version: 9
   xsense_event_entity: !input ai_detection_event
   xsense_include_recording_link: !input include_recording_link
   xsense_include_snapshot_link: !input include_snapshot_link
@@ -71,7 +71,7 @@ actions:
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}"
+            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_cache_ready }}"
         sequence:
           - domain: mobile_app
             type: notify

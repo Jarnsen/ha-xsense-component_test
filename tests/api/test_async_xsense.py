@@ -3934,6 +3934,12 @@ def test_camera_data_normalizes_apk_integer_support_flags():
     assert data["supportPersonDetect"] is True
 
 
+def test_camera_data_normalizes_charging_as_boolean():
+    assert async_xsense._camera_data({"isCharging": 1})["isCharging"] is True
+    assert async_xsense._camera_data({"isCharging": 0})["isCharging"] is False
+    assert async_xsense._camera_data({"isCharging": "true"})["isCharging"] is True
+
+
 def test_camera_data_uses_explicit_apk_webrtc_support_flag():
     assert (
         async_xsense._camera_data({"deviceSupport": {"supportWebrtc": 1}})[

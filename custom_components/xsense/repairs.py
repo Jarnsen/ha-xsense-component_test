@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import LOGGER
 
-CAMERA_BLUEPRINT_VERSION = 8
+CAMERA_BLUEPRINT_VERSION = 9
 _CAMERA_BLUEPRINT_MARKERS = (
     "X-Sense Camera Event",
     "camera_ai_notification.yaml",
@@ -22,7 +22,7 @@ _CURRENT_BLUEPRINT_MARKERS = (
     "xsense_recording_cache_ready",
     "xsense_recording_url[0:19] == '/xsense-recordings#'",
     "xsense_notification_url",
-    "xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url",
+    "xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_cache_ready",
     "not xsense_include_recording_link and (xsense_event_data.get('recording_cache_ready') if xsense_event_data is mapping else false) != true",
 )
 _UNSAFE_EVENT_DATA_GET_MARKERS = (
@@ -165,6 +165,7 @@ def _is_stale_camera_blueprint(text: str) -> bool:
         or "xsense_blueprint_version: 5" in text
         or "xsense_blueprint_version: 6" in text
         or "xsense_blueprint_version: 7" in text
+        or "xsense_blueprint_version: 8" in text
     ):
         return True
     if "trigger: event.received" in text:

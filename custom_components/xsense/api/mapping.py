@@ -196,7 +196,7 @@ type_mapping: dict[str, Callable[[typing.Any], typing.Any]] = {
     "firmwareStatus": safe_int,
     "voiceVol": safe_int,
     "chirpVol": safe_int,
-    "isCharging": safe_int,
+    "isCharging": bool_state,
     "languageCount": safe_int,
     "languageIndex": safe_int,
     "ledBrt": safe_int,

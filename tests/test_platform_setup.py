@@ -256,7 +256,7 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     notification_data = direct_url_action["data"]
 
     assert variables["xsense_event_entity"] == "ai_detection_event"
-    assert variables["xsense_blueprint_version"] == 8
+    assert variables["xsense_blueprint_version"] == 9
     assert variables["xsense_include_recording_link"] == "include_recording_link"
     assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
     assert "trigger.event.data" in variables["xsense_event_data"]
@@ -318,7 +318,8 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "attachment" not in notification_data
     assert "xsense_include_recording_link" in str(notification_choice["conditions"])
     assert "xsense_recording_tap_url" in str(notification_choice["conditions"])
-    assert "xsense_recording_media_url" in str(notification_choice["conditions"])
+    assert "xsense_recording_cache_ready" in str(notification_choice["conditions"])
+    assert "xsense_recording_media_url" not in str(notification_choice["conditions"])
     assert plain_notification_choice["conditions"] == [
         {
             "condition": "template",
@@ -396,7 +397,7 @@ actions:
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}}}"
+            value_template: "{{{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_cache_ready }}}}"
       - conditions:
           - condition: template
             value_template: "{{{{ not xsense_include_recording_link and (xsense_event_data.get('recording_cache_ready') if xsense_event_data is mapping else false) != true }}}}"
@@ -422,7 +423,7 @@ actions:
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}"
+            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_cache_ready }}"
       - conditions:
           - condition: template
             value_template: "{{ not xsense_include_recording_link and (xsense_event_data.get('recording_cache_ready') if xsense_event_data is mapping else false) != true }}"
@@ -451,6 +452,28 @@ actions:
       - conditions:
           - condition: template
             value_template: "{{ not xsense_include_recording_link }}"
+""",
+        encoding="utf-8",
+    )
+    stale_v8 = xsense_dir / "v8.yaml"
+    stale_v8.write_text(
+        """
+blueprint:
+  name: X-Sense Camera Event
+triggers:
+  - trigger: event
+    event_type: xsense_camera_event
+variables:
+  xsense_blueprint_version: 8
+  xsense_recording_media_url: "{{ state_attr(xsense_event_entity, 'recording_media_url') }}"
+  xsense_recording_cache_ready: "{{ (xsense_event_data.get('recording_cache_ready') if xsense_event_data is mapping else false) or false }}"
+  xsense_recording_tap_url: "{{ xsense_recording_url if xsense_recording_url == '/xsense-recordings' or xsense_recording_url[0:19] == '/xsense-recordings#' else '' }}"
+  xsense_notification_url: "{{ xsense_recording_tap_url or '/xsense-recordings' }}"
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}"
 """,
         encoding="utf-8",
     )
@@ -535,6 +558,7 @@ variables:
         "xsense/v5.yaml",
         "xsense/v6.yaml",
         "xsense/v7.yaml",
+        "xsense/v8.yaml",
     ]
 
 

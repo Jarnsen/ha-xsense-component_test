@@ -11,6 +11,7 @@ from .entity import Entity
 from .entity_map import EntityType, entities
 from .exceptions import SessionExpired, APIFailure, XSenseError
 from .house import House
+from .mapping import bool_state
 from .station import Station
 from ..const import LOGGER
 
@@ -1750,7 +1751,7 @@ def _camera_data(data: Dict) -> Dict:
             if data.get("userId") is not None and data.get("adminId") is not None
             else data.get("isAdmin")
         ),
-        "isCharging": data.get("isCharging"),
+        "isCharging": bool_state(data.get("isCharging")),
         "isMoved": data.get("isMoved"),
         "liveAudioToggleOn": data.get("liveAudioToggleOn"),
         "modelNo": data.get("modelNo"),
