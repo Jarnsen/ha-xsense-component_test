@@ -25,7 +25,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
 
-from xsense.async_xsense import is_camera_entity
+from .api.async_xsense import is_camera_entity
 from .const import (
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
     CONF_RECORDING_MEDIA_DAYS_ORDER,
@@ -1603,24 +1603,16 @@ def _merge_event_recording_clips(
                 camera_by_key[key] = camera
                 merged.append(camera)
             clips = [dict(clip) for clip in camera.get("clips", [])]
-            clip_indexes_by_start = {
-                _clip_start_for_sort(clip): index
-                for index, clip in enumerate(clips)
-                if _clip_start_for_sort(clip)
-            }
+            existing_starts = {_clip_start_for_sort(clip) for clip in clips}
             for start, clip in clips_by_start.items():
                 try:
                     start_int = int(start)
                 except (TypeError, ValueError):
                     start_int = _clip_start_for_sort(clip)
-                if not start_int or not isinstance(clip, dict):
+                if start_int in existing_starts or not isinstance(clip, dict):
                     continue
-                if start_int in clip_indexes_by_start:
-                    index = clip_indexes_by_start[start_int]
-                    clips[index] = {**clips[index], **dict(clip)}
-                    continue
-                clip_indexes_by_start[start_int] = len(clips)
                 clips.append(dict(clip))
+                existing_starts.add(start_int)
             clips.sort(key=_clip_start_for_sort, reverse=True)
             camera["clips"] = clips
     return merged

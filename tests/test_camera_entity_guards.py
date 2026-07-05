@@ -27,7 +27,7 @@ from custom_components.xsense import (
     sensor,
     switch,
 )
-from xsense import mapping
+from custom_components.xsense.api import mapping
 from homeassistant.const import Platform
 
 
@@ -3058,52 +3058,6 @@ def test_event_recording_clip_merges_into_recording_index():
     assert merged[0]["clips"] == [clip]
 
 
-def test_event_recording_clip_updates_matching_index_clip():
-    from custom_components.xsense import media_source
-
-    hass = SimpleNamespace(data={media_source.DOMAIN: {}})
-    indexed_clip = {
-        "entry_id": "entry-id",
-        "serial": "CAMERA-SN",
-        "date": "2026-06-30",
-        "start": 1782049304,
-        "end": 1782049330,
-        "title": "Indexed clip",
-        "source": "sd_playback",
-        "playback_url": "/xsense/recording/entry-id/1782049304?serial=CAMERA-SN",
-    }
-    event_clip = {
-        "entry_id": "entry-id",
-        "serial": "CAMERA-SN",
-        "date": "2026-06-30",
-        "start": 1782049304,
-        "end": 1782049334,
-        "title": "Event clip",
-        "source": "video_url",
-        "playback_url": "https://example.invalid/event.m3u8",
-        "cached_url": "/media/local/xsense_recordings/videos/CAMERA-SN_1782049304_1782049334.mp4",
-    }
-
-    media_source._remember_event_recording_clip(hass, event_clip)
-    merged = media_source._merge_event_recording_clips(
-        hass,
-        [
-            {
-                "entry_id": "entry-id",
-                "serial": "CAMERA-SN",
-                "name": "Garden",
-                "clips": [indexed_clip],
-            }
-        ],
-    )
-
-    assert len(merged[0]["clips"]) == 1
-    assert merged[0]["clips"][0]["end"] == event_clip["end"]
-    assert merged[0]["clips"][0]["source"] == "video_url"
-    assert merged[0]["clips"][0]["playback_url"] == event_clip["playback_url"]
-    assert merged[0]["clips"][0]["cached_url"] == event_clip["cached_url"]
-
-
 def test_event_recording_clip_memory_is_bounded():
     from custom_components.xsense import media_source
 
@@ -3623,7 +3577,7 @@ def test_ai_detection_event_entity_does_not_write_before_added():
 
 
 def test_camera_availability_follows_apk_non_offline_statuses():
-    from xsense.entity_map import EntityType
+    from custom_components.xsense.api.entity_map import EntityType
     from custom_components.xsense.entity import _apk_entity_is_available
 
     camera = SimpleNamespace(
@@ -3956,7 +3910,7 @@ def test_webrtc_candidate_debug_context_hides_raw_candidate():
 
 
 def test_camera_live_resolution_defaults_to_apk_live_view_default():
-    from xsense.async_xsense import camera_live_resolution
+    from custom_components.xsense.api.async_xsense import camera_live_resolution
 
     camera_entity = entity(
         "SSC0A",
@@ -4088,7 +4042,7 @@ async def test_default_camera_returns_live_url_from_stream_endpoint():
 
 
 async def test_default_camera_raises_when_stream_endpoint_no_response():
-    from xsense.exceptions import APIFailure
+    from custom_components.xsense.api.exceptions import APIFailure
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseCameraEntity,

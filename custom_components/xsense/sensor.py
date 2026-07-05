@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from xsense.async_xsense import is_camera_entity
-from xsense.device import Device
-from xsense.entity import Entity
-from xsense.entity_map import EntityType, entities
+from .api.async_xsense import is_camera_entity
+from .api.device import Device
+from .api.entity import Entity
+from .api.entity_map import EntityType, entities
 
 from homeassistant import config_entries
 from homeassistant.components.sensor import (
