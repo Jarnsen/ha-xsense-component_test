@@ -3058,6 +3058,52 @@ def test_event_recording_clip_merges_into_recording_index():
     assert merged[0]["clips"] == [clip]
 
 
+def test_event_recording_clip_updates_matching_index_clip():
+    from custom_components.xsense import media_source
+
+    hass = SimpleNamespace(data={media_source.DOMAIN: {}})
+    indexed_clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "date": "2026-06-30",
+        "start": 1782049304,
+        "end": 1782049330,
+        "title": "Indexed clip",
+        "source": "sd_playback",
+        "playback_url": "/xsense/recording/entry-id/1782049304?serial=CAMERA-SN",
+    }
+    event_clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "date": "2026-06-30",
+        "start": 1782049304,
+        "end": 1782049334,
+        "title": "Event clip",
+        "source": "video_url",
+        "playback_url": "https://example.invalid/event.m3u8",
+        "cached_url": "/media/local/xsense_recordings/videos/CAMERA-SN_1782049304_1782049334.mp4",
+    }
+
+    media_source._remember_event_recording_clip(hass, event_clip)
+    merged = media_source._merge_event_recording_clips(
+        hass,
+        [
+            {
+                "entry_id": "entry-id",
+                "serial": "CAMERA-SN",
+                "name": "Garden",
+                "clips": [indexed_clip],
+            }
+        ],
+    )
+
+    assert len(merged[0]["clips"]) == 1
+    assert merged[0]["clips"][0]["end"] == event_clip["end"]
+    assert merged[0]["clips"][0]["source"] == "video_url"
+    assert merged[0]["clips"][0]["playback_url"] == event_clip["playback_url"]
+    assert merged[0]["clips"][0]["cached_url"] == event_clip["cached_url"]
+
+
 def test_event_recording_clip_memory_is_bounded():
     from custom_components.xsense import media_source
 
