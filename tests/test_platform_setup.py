@@ -832,8 +832,8 @@ def test_recordings_panel_video_uses_authenticated_blob_playback():
     assert "fallback_playback_url" not in panel
     assert "retryClipPlaybackWithFallback" not in panel
     assert 'this.logPanelEvent("playback_fallback_start"' not in panel
-    assert "routeClipFromParams" in panel
-    assert "route_clip_missing_using_route" in panel
+    assert "route_clip_missing" in panel
+    assert "routeClipFromParams" not in panel
     assert 'this.logPanelEvent("clip_open"' in panel
     assert 'this.logPanelEvent("playback_fetch_start"' in panel
     assert 'this.logPanelEvent("playback_fetch_response"' in panel
@@ -1297,17 +1297,13 @@ def test_recordings_panel_playback_waits_for_sync_when_sync_enabled(
         )
 
 
-def test_recordings_panel_playback_uses_route_clip_when_not_indexed(
+def test_recordings_panel_playback_rejects_missing_clip(
     monkeypatch,
-    tmp_path,
 ):
     from aiohttp import web
 
     from custom_components.xsense import http
     from custom_components.xsense.media_source import XSenseRecordingsMediaSource
-
-    clip_path = tmp_path / "clip.mp4"
-    seen = {}
 
     async def load_index(self):
         return {
@@ -1321,41 +1317,22 @@ def test_recordings_panel_playback_uses_route_clip_when_not_indexed(
             ]
         }
 
-    async def cached_url(self, current_clip):
-        seen.update(current_clip)
-        clip_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00route")
-        return "/media/local/xsense_recordings/videos/clip.mp4"
-
     monkeypatch.setattr(XSenseRecordingsMediaSource, "_async_load_index", load_index)
-    monkeypatch.setattr(
-        XSenseRecordingsMediaSource,
-        "_async_cached_playback_url",
-        cached_url,
-    )
-    monkeypatch.setattr(http, "_clip_cache_path", lambda current_clip: clip_path)
     hass = SimpleNamespace(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )
     )
 
-    response = asyncio.run(
-        http.XSenseRecordingsPanelPlaybackView(hass).get(
-            SimpleNamespace(query={"serial": "CAMERA-SN"}),
-            "entry-id",
-            "1782049304",
-            "1782049334",
+    with pytest.raises(web.HTTPNotFound):
+        asyncio.run(
+            http.XSenseRecordingsPanelPlaybackView(hass).get(
+                SimpleNamespace(query={"serial": "CAMERA-SN"}),
+                "entry-id",
+                "1782049304",
+                "1782049334",
+            )
         )
-    )
-
-    assert isinstance(response, web.FileResponse)
-    assert seen["source"] == "sd_playback"
-    assert seen["requested_source"] == "route"
-    assert seen["media_root"] == "/media/xsense_recordings"
-    assert seen["playback_url"] == (
-        "/api/xsense/recordings/play/entry-id/1782049304/1782049334"
-        "?serial=CAMERA-SN"
-    )
 
 
 def test_recordings_panel_playback_does_not_redirect_to_external_media(

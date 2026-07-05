@@ -16,7 +16,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN, LOGGER
-from .webrtc_signal import make_start_sd_playback_command_payload
+from .webrtc_signal import (
+    XSenseWebRTCSignalSession,
+    XSenseWebRTCTicket,
+    make_start_sd_playback_command_payload,
+)
 
 HELPER_TIMEOUT = 45
 FFMPEG_TIMEOUT = 60
@@ -75,10 +79,7 @@ async def _async_capture_sd_recording_unlocked(
     if not isinstance(ticket_data, dict):
         raise RuntimeError("X-Sense did not return a WebRTC ticket")
 
-    webrtc_signal = await hass.async_add_import_executor_job(
-        import_module, f"{DOMAIN}.webrtc_signal"
-    )
-    ticket = webrtc_signal.XSenseWebRTCTicket.from_api(camera.sn, ticket_data)
+    ticket = XSenseWebRTCTicket.from_api(camera.sn, ticket_data)
 
     helper_timeout = _capture_timeout(duration_seconds)
     LOGGER.debug(
@@ -117,7 +118,7 @@ async def _async_capture_sd_recording_unlocked(
     signal_session = None
     try:
         offer_sdp = await _read_helper_offer(proc)
-        signal_session = webrtc_signal.XSenseWebRTCSignalSession(
+        signal_session = XSenseWebRTCSignalSession(
             session=async_get_clientsession(hass),
             ticket=ticket,
             offer_sdp=offer_sdp,

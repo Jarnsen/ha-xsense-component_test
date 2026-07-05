@@ -1047,32 +1047,10 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog
 
     event_entity._handle_coordinator_update()
 
-    assert order == [
-        (
-            "trigger",
-            "motion",
-            "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
-            "&start=1782049304&end=1782049334",
-            None,
-            "sd_playback",
-            True,
-            False,
-        ),
-        ("write", None),
-    ]
+    assert order == [("write", None)]
     assert len(scheduled) == 1
     asyncio.run(scheduled[0])
     assert order == [
-        (
-            "trigger",
-            "motion",
-            "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
-            "&start=1782049304&end=1782049334",
-            None,
-            "sd_playback",
-            True,
-            False,
-        ),
         ("write", None),
         ("cache", "trace-id-1"),
         (
@@ -1088,7 +1066,7 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog
         ("write", None),
     ]
     log_text = caplog.text
-    assert "X-Sense event recording cache started after pending trigger" in log_text
+    assert "X-Sense event recording cache started" in log_text
     assert "X-Sense event recording cache finished; firing ready trigger" in log_text
     assert "'queue_elapsed_ms': 50" in log_text
     assert "'cache_elapsed_ms': 250" in log_text
@@ -1224,18 +1202,7 @@ def test_motion_event_entity_updates_state_only_when_recording_cache_returns_no_
     caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
     asyncio.run(scheduled[0])
 
-    assert len(triggered) == 4
-    assert triggered[0][0] == "trigger"
-    assert triggered[0][1]["recording_cache_pending"] is True
-    assert triggered[0][1]["recording_cache_ready"] is False
-    assert "recording_media_url" not in triggered[0][1]
-    assert triggered[1] == ("write", None)
-    assert triggered[2][0] == "trigger"
-    assert triggered[2][1]["recording_cache_pending"] is False
-    assert triggered[2][1]["recording_cache_ready"] is False
-    assert triggered[2][1]["recording_cache_elapsed_ms"] >= 0
-    assert "recording_media_url" not in triggered[2][1]
-    assert triggered[3] == ("write", None)
+    assert triggered == [("write", None), ("write", None)]
     assert "ready event not fired" in caplog.text
 
 
@@ -1284,15 +1251,13 @@ def test_motion_event_cache_replaces_absolute_recordings_panel_url(monkeypatch):
     )
     asyncio.run(scheduled[0])
 
-    assert triggered[0]["recording_cache_pending"] is True
-    assert triggered[0]["recording_cache_ready"] is False
-    assert "recording_media_url" not in triggered[0]
-    assert triggered[1]["recording_url"] == (
+    assert len(triggered) == 1
+    assert triggered[0]["recording_url"] == (
         "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
         "&start=1782049304&end=1782049334"
     )
     assert (
-        triggered[1]["recording_media_url"]
+        triggered[0]["recording_media_url"]
         == "/media/local/xsense_recordings/videos/clip.mp4"
     )
 
@@ -1340,16 +1305,13 @@ def test_motion_event_cache_replaces_raw_recording_url_with_panel_link(
     )
     asyncio.run(scheduled[0])
 
+    assert len(triggered) == 1
     assert triggered[0]["recording_url"] == (
         "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
         "&start=1782049304&end=1782049334"
     )
-    assert triggered[0]["recording_cache_pending"] is True
-    assert triggered[0]["recording_cache_ready"] is False
-    assert "recording_media_url" not in triggered[0]
-    assert triggered[1]["recording_url"] == triggered[0]["recording_url"]
     assert (
-        triggered[1]["recording_media_url"]
+        triggered[0]["recording_media_url"]
         == "/media/local/xsense_recordings/videos/clip.mp4"
     )
 
@@ -1648,6 +1610,9 @@ def test_pion_capture_passes_duration_timeout_to_helper_wait(monkeypatch, tmp_pa
             b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00final-video"
         )
 
+    ticket_factory = SimpleNamespace(
+        from_api=lambda serial, data: SimpleNamespace(ice_servers=[])
+    )
     monkeypatch.setattr(pion_adapter, "_pion_helper_path", lambda: tmp_path / "helper")
     monkeypatch.setattr(pion_adapter, "_ffmpeg_binary", lambda hass: "ffmpeg")
     monkeypatch.setattr(pion_adapter, "_start_helper", start_helper)
@@ -1655,18 +1620,11 @@ def test_pion_capture_passes_duration_timeout_to_helper_wait(monkeypatch, tmp_pa
     monkeypatch.setattr(pion_adapter, "_wait_for_helper", wait_for_helper)
     monkeypatch.setattr(pion_adapter, "_remux_h264_to_mp4", remux)
     monkeypatch.setattr(pion_adapter, "async_get_clientsession", lambda hass: object())
-
-    async def import_job(func, module):
-        return SimpleNamespace(
-            XSenseWebRTCTicket=SimpleNamespace(
-                from_api=lambda serial, data: SimpleNamespace(ice_servers=[])
-            ),
-            XSenseWebRTCSignalSession=SignalSession,
-        )
+    monkeypatch.setattr(pion_adapter, "XSenseWebRTCTicket", ticket_factory)
+    monkeypatch.setattr(pion_adapter, "XSenseWebRTCSignalSession", SignalSession)
 
     hass = SimpleNamespace(
         data={pion_adapter.DOMAIN: {}},
-        async_add_import_executor_job=import_job,
         async_create_task=lambda coro: asyncio.create_task(coro),
     )
     coordinator = SimpleNamespace(
@@ -1736,14 +1694,9 @@ def test_pion_capture_does_not_promote_invalid_remux_output(monkeypatch, tmp_pat
     async def remux(ffmpeg_binary, raw_path, final_path):
         final_path.write_bytes(b"not an mp4")
 
-    async def import_job(func, module):
-        return SimpleNamespace(
-            XSenseWebRTCTicket=SimpleNamespace(
-                from_api=lambda serial, data: SimpleNamespace(ice_servers=[])
-            ),
-            XSenseWebRTCSignalSession=SignalSession,
-        )
-
+    ticket_factory = SimpleNamespace(
+        from_api=lambda serial, data: SimpleNamespace(ice_servers=[])
+    )
     monkeypatch.setattr(pion_adapter, "_pion_helper_path", lambda: tmp_path / "helper")
     monkeypatch.setattr(pion_adapter, "_ffmpeg_binary", lambda hass: "ffmpeg")
     monkeypatch.setattr(pion_adapter, "_start_helper", start_helper)
@@ -1755,10 +1708,11 @@ def test_pion_capture_does_not_promote_invalid_remux_output(monkeypatch, tmp_pat
     )
     monkeypatch.setattr(pion_adapter, "_remux_h264_to_mp4", remux)
     monkeypatch.setattr(pion_adapter, "async_get_clientsession", lambda hass: object())
+    monkeypatch.setattr(pion_adapter, "XSenseWebRTCTicket", ticket_factory)
+    monkeypatch.setattr(pion_adapter, "XSenseWebRTCSignalSession", SignalSession)
 
     hass = SimpleNamespace(
         data={pion_adapter.DOMAIN: {}},
-        async_add_import_executor_job=import_job,
         async_create_task=lambda coro: asyncio.create_task(coro),
     )
     coordinator = SimpleNamespace(

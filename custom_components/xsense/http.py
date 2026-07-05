@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from time import monotonic
 from typing import Any
@@ -370,18 +370,10 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
         index = await source._async_load_index()
         camera = source._find_camera(index, entry_id, serial)
         if camera is None:
-            return _route_clip(self.hass, entry_id, serial, start_int, end_int)
+            raise web.HTTPNotFound(reason="X-Sense recording camera is not ready")
         clip = source._find_clip(camera, start_int)
         if clip is None:
-            return _route_clip(
-                self.hass,
-                entry_id,
-                serial,
-                start_int,
-                end_int,
-                camera_name=str(camera.get("name") or serial),
-                online=bool(camera.get("online")),
-            )
+            raise web.HTTPNotFound(reason="X-Sense recording is not ready")
         clip_end = _clip_end_for_panel(clip, start_int)
         if clip_end != end_int:
             raise web.HTTPNotFound(reason="X-Sense recording time does not match")
@@ -480,40 +472,6 @@ def _clip_end_for_panel(clip: dict[str, Any], start: int) -> int:
         return int(clip.get("end") or clip.get("start") or start)
     except (TypeError, ValueError):
         return start
-
-
-def _route_clip(
-    hass: HomeAssistant,
-    entry_id: str,
-    serial: str,
-    start: int,
-    end: int,
-    *,
-    camera_name: str | None = None,
-    online: bool = True,
-) -> dict[str, Any]:
-    """Return a playable clip from notification route parameters."""
-    clip = {
-        "entry_id": entry_id,
-        "serial": serial,
-        "camera_entity_id": "",
-        "start": start,
-        "end": end,
-        "date": datetime.fromtimestamp(start, timezone.utc).date().isoformat(),
-        "title": _clip_title(start, end),
-        "source": "sd_playback",
-        "requested_source": "route",
-        "quality": "",
-        "playback_url": _playback_api_url(entry_id, serial, start, end),
-        "thumbnail_url": "",
-        "cached_thumbnail_url": "",
-        "cached_url": "",
-        "media_root": _recording_media_root(hass, entry_id).as_posix(),
-        "camera_name": camera_name or serial,
-        "online": online,
-    }
-    clip["cached_url"] = _local_media_url(_clip_cache_path(clip))
-    return clip
 
 
 def _playback_api_url(

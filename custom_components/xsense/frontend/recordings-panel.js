@@ -557,11 +557,9 @@ class XSenseRecordingsPanel extends HTMLElement {
     }
     const clip = this.findClip(entryId, serial, start, end);
     if (!clip) {
-      const routeClip = this.routeClipFromParams(entryId, serial, start, end);
-      this.selectedClip = routeClip;
-      this.selectedCameraKey = this.clipKey(routeClip);
-      this.selectedDate = routeClip.date || this.selectedDate;
-      this.logPanelEvent("route_clip_missing_using_route", this.clipDebugPayload(routeClip));
+      this.selectedClip = null;
+      this.error = "Recording is not ready yet.";
+      this.logPanelEvent("route_clip_missing", { entry_id: entryId, serial, start, end });
       return;
     }
     this.selectedClip = clip;
@@ -576,24 +574,6 @@ class XSenseRecordingsPanel extends HTMLElement {
       if (clip) return clip;
     }
     return null;
-  }
-
-  routeClipFromParams(entryId, serial, start, end) {
-    const safeEnd = end || start;
-    return {
-      entry_id: entryId,
-      serial,
-      date: new Date(start * 1000).toISOString().slice(0, 10),
-      start,
-      end: safeEnd,
-      duration: Math.max(0, safeEnd - start),
-      title: `${start} - ${safeEnd}`,
-      cached: false,
-      thumbnail_cached: false,
-      playable: true,
-      playback_url: `/api/xsense/recordings/play/${encodeURIComponent(entryId)}/${start}/${safeEnd}?serial=${encodeURIComponent(serial)}`,
-      thumbnail_url: "",
-    };
   }
 
   playbackKey(clip) {

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from homeassistant.components import frontend
@@ -16,17 +15,12 @@ FRONTEND_URL_PATH = "xsense-recordings"
 STATIC_URL_PATH = f"/{DOMAIN}_recordings_static"
 PANEL_ELEMENT_NAME = "xsense-recordings-panel"
 PANEL_TITLE = "X-Sense Recordings"
+PANEL_ASSET_VERSION = "1.3.15.11"
 
 
 def _recordings_panel_module_url() -> str:
     """Return the recordings panel module URL with a release cache-buster."""
-    version = "dev"
-    try:
-        manifest = json.loads((Path(__file__).parent / "manifest.json").read_text())
-        version = str(manifest.get("version") or version)
-    except (OSError, json.JSONDecodeError):
-        pass
-    return f"{STATIC_URL_PATH}/recordings-panel.js?v={version}"
+    return f"{STATIC_URL_PATH}/recordings-panel.js?v={PANEL_ASSET_VERSION}"
 
 
 async def async_register_recordings_panel(hass: HomeAssistant) -> None:

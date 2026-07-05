@@ -508,7 +508,7 @@ def _trigger_event_after_recording_cache(
     entity: Entity,
     event_data: dict[str, Any] | None,
 ) -> bool:
-    """Fire a pending event, then cache recording metadata for a ready event."""
+    """Cache recording media before firing a notification-capable event."""
     if event_data is None:
         return False
     playback = event_data.get("playback")
@@ -522,17 +522,15 @@ def _trigger_event_after_recording_cache(
         return False
     _add_recording_panel_url(event_data, entry_id=entry_id, entity=entity)
     event_received_at = monotonic()
-    pending_event_data = dict(event_data)
-    pending_event_data["recording_cache_pending"] = True
-    pending_event_data["recording_cache_ready"] = False
-    _trigger_camera_event(event_entity, event_type, pending_event_data)
+    event_data["recording_cache_pending"] = True
+    event_data["recording_cache_ready"] = False
 
     async def _async_cache_then_trigger() -> None:
         from .media_source import async_cache_recording_playback
 
         cache_started_at = monotonic()
         LOGGER.debug(
-            "X-Sense event recording cache started after pending trigger: %s",
+            "X-Sense event recording cache started: %s",
             {
                 "camera": _masked_serial(getattr(entity, "sn", "")),
                 "event_type": event_type,
@@ -578,7 +576,6 @@ def _trigger_event_after_recording_cache(
                     "has_cache_error": bool(event_data.get("recording_cache_error")),
                 },
             )
-            event_entity._trigger_event(event_type, event_data)
             _write_event_state(event_entity)
             return
         event_data["recording_media_url"] = cached_url
