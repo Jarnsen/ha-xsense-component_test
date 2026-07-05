@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from time import monotonic
 from typing import Any
@@ -27,7 +27,9 @@ from .media_source import (
     _clip_start_for_sort,
     _clip_thumbnail_cache_path,
     _clip_visible_for_media_mode,
+    _fallback_capture_clip,
     _local_media_url,
+    _mp4_ready,
     _path_ready,
     _recording_media_root,
     _recording_media_sync_enabled,
@@ -96,7 +98,7 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
             camera_stats["indexed_clips"] += 1
             clip_path = _clip_cache_path(clip)
             thumb_path = _clip_thumbnail_cache_path(clip)
-            clip_cached = _path_ready(clip_path)
+            clip_cached = _mp4_ready(clip_path)
             thumb_cached = _path_ready(thumb_path)
             if clip_cached:
                 stats["cached_videos"] += 1
@@ -107,7 +109,7 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
                 camera_stats["cached_thumbnails"] += 1
                 camera_stats["thumbnail_bytes"] += _file_size(thumb_path)
             playable = _clip_media_playable(clip)
-            ready = playable and clip_cached and (thumb_cached or not clip.get("thumbnail_url"))
+            ready = playable and clip_cached
             if ready:
                 stats["ready_clips"] += 1
                 camera_stats["ready_clips"] += 1
@@ -255,6 +257,8 @@ class XSenseRecordingsPanelDebugView(http.HomeAssistantView):
                 "status": _safe_int(payload.get("status")),
                 "ok": _safe_bool(payload.get("ok")),
                 "bytes": _safe_int(payload.get("bytes")),
+                "content_type": str(payload.get("content_type") or "")[:80],
+                "blob_type": str(payload.get("blob_type") or "")[:80],
                 "elapsed_ms": _safe_int(payload.get("elapsed_ms")),
                 "duration_ms": _safe_int(payload.get("duration")),
                 "ready_state": _safe_int(payload.get("ready_state")),
@@ -289,14 +293,22 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
             raise web.HTTPBadRequest(reason="Missing X-Sense camera serial")
         clip = await self._clip(entry_id, serial, start, end)
         started_at = monotonic()
+        capture_requested = str(request.query.get("capture") or "") == "1"
+        if capture_requested:
+            replacing_direct_cache = clip.get("source") == "video_url"
+            clip = _fallback_capture_clip(clip)
+            output_path = _clip_cache_path(clip)
+            if replacing_direct_cache and _path_ready(output_path):
+                output_path.unlink(missing_ok=True)
         context = {
             **_clip_debug_context(entry_id, serial, start, end),
             "source": clip.get("source"),
             "quality": clip.get("quality"),
-            "cached": _path_ready(_clip_cache_path(clip)),
+            "capture_requested": capture_requested,
+            "cached": _mp4_ready(_clip_cache_path(clip)),
         }
         LOGGER.debug("X-Sense recordings panel playback requested: %s", context)
-        if _recording_media_sync_enabled(self.hass, entry_id) and not _path_ready(
+        if _recording_media_sync_enabled(self.hass, entry_id) and not _mp4_ready(
             _clip_cache_path(clip)
         ):
             LOGGER.debug(
@@ -314,7 +326,7 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
             )
             raise web.HTTPNotFound(reason="X-Sense recording is not ready") from exc
         output_path = _clip_cache_path(clip)
-        if _path_ready(output_path):
+        if _mp4_ready(output_path):
             LOGGER.debug(
                 "X-Sense recordings panel playback served cached file: %s",
                 {
@@ -358,10 +370,18 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
         index = await source._async_load_index()
         camera = source._find_camera(index, entry_id, serial)
         if camera is None:
-            raise web.HTTPNotFound(reason="X-Sense camera is not loaded")
+            return _route_clip(self.hass, entry_id, serial, start_int, end_int)
         clip = source._find_clip(camera, start_int)
         if clip is None:
-            raise web.HTTPNotFound(reason="X-Sense recording is not indexed")
+            return _route_clip(
+                self.hass,
+                entry_id,
+                serial,
+                start_int,
+                end_int,
+                camera_name=str(camera.get("name") or serial),
+                online=bool(camera.get("online")),
+            )
         clip_end = _clip_end_for_panel(clip, start_int)
         if clip_end != end_int:
             raise web.HTTPNotFound(reason="X-Sense recording time does not match")
@@ -462,11 +482,55 @@ def _clip_end_for_panel(clip: dict[str, Any], start: int) -> int:
         return start
 
 
-def _playback_api_url(entry_id: str, serial: str, start: int, end: int) -> str:
-    return (
+def _route_clip(
+    hass: HomeAssistant,
+    entry_id: str,
+    serial: str,
+    start: int,
+    end: int,
+    *,
+    camera_name: str | None = None,
+    online: bool = True,
+) -> dict[str, Any]:
+    """Return a playable clip from notification route parameters."""
+    clip = {
+        "entry_id": entry_id,
+        "serial": serial,
+        "camera_entity_id": "",
+        "start": start,
+        "end": end,
+        "date": datetime.fromtimestamp(start, timezone.utc).date().isoformat(),
+        "title": _clip_title(start, end),
+        "source": "sd_playback",
+        "requested_source": "route",
+        "quality": "",
+        "playback_url": _playback_api_url(entry_id, serial, start, end),
+        "thumbnail_url": "",
+        "cached_thumbnail_url": "",
+        "cached_url": "",
+        "media_root": _recording_media_root(hass, entry_id).as_posix(),
+        "camera_name": camera_name or serial,
+        "online": online,
+    }
+    clip["cached_url"] = _local_media_url(_clip_cache_path(clip))
+    return clip
+
+
+def _playback_api_url(
+    entry_id: str,
+    serial: str,
+    start: int,
+    end: int,
+    *,
+    capture: bool = False,
+) -> str:
+    url = (
         f"/api/{DOMAIN}/recordings/play/"
         f"{quote(entry_id, safe='')}/{start}/{end}?serial={quote(serial, safe='')}"
     )
+    if capture:
+        url = f"{url}&capture=1"
+    return url
 
 
 def _thumbnail_api_url(entry_id: str, serial: str, start: int, end: int) -> str:

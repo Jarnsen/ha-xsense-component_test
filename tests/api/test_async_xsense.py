@@ -35,6 +35,7 @@ device_module = load_api_module("device")
 entity_map = load_api_module("entity_map")
 exceptions = load_api_module("exceptions")
 house = load_api_module("house")
+mapping = load_api_module("mapping")
 mqtt_helper = load_api_module("mqtt_helper")
 station = load_api_module("station")
 sys.modules["custom_components.xsense.api"].AsyncXSense = async_xsense.AsyncXSense
@@ -442,6 +443,7 @@ def test_station_shadow_names_follow_apk_factory_rules():
     assert make_station("STH0C").shadow_name == "STH0C-serial"
     assert make_station("SWS0B").shadow_name == "SWS0B-serial"
     assert make_station("XR0A-iR").shadow_name == "XR0A-iR-serial"
+    assert make_station("XC0M-iR").shadow_name == "XC0M-iR-serial"
     assert make_station("XS0R-iA").shadow_name == "XS0R-iA-serial"
     assert make_station("SC07-WX").shadow_name == "SC07-WX-serial"
     assert make_station("XC04-WX").shadow_name == "XC04-WX-serial"
@@ -1011,6 +1013,55 @@ async def test_get_station_state_uses_second_info_for_new_wifi_devices_like_apk(
 
     assert calls == ["2nd_info_station-sn"]
     assert station.data == {"temperature": 21}
+
+
+def test_xc0m_ir_maps_compact_temperature_and_humidity_fields():
+    data = mapping.map_values(
+        "XC0M-iR",
+        {
+            "b": "21.5",
+            "c": "44",
+            "d": "1",
+            "t": "20260705090102",
+        },
+    )
+
+    assert data["temperature"] == 21.5
+    assert data["humidity"] == 44.0
+    assert data["tempUnit"] == "1"
+    assert data["time"] == "20260705090102"
+
+
+@pytest.mark.asyncio
+async def test_get_station_state_uses_second_info_for_xc0m_ir():
+    client = async_xsense.AsyncXSense()
+    station = FakeStation("XC0M-iR")
+    station.set_data = lambda values: station.data.update(
+        mapping.map_values(station.type, values)
+    )
+    calls = []
+
+    async def get_thing(station_arg, page):
+        calls.append(page)
+        client._lastres = FakeResponse(200)
+        return {
+            "state": {
+                "reported": {
+                    "b": "21.5",
+                    "c": "44",
+                }
+            }
+        }
+
+    client.get_thing = get_thing
+
+    await client.get_station_state(station)
+
+    assert calls == ["2nd_info_station-sn"]
+    assert station.data == {
+        "temperature": 21.5,
+        "humidity": 44.0,
+    }
 
 
 @pytest.mark.asyncio

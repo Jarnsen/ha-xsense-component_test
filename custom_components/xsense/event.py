@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from time import monotonic
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 from .api.async_xsense import is_camera_entity
 from .api.device import Device
@@ -151,37 +152,17 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
     def _add_recording_playback_url(
         self, entity: Entity, event_data: dict[str, Any] | None
     ) -> None:
-        """Add a Home Assistant playback URL for X-Sense SD recording events."""
-        if event_data is None or event_data.get("recording_url"):
+        """Add a Home Assistant recordings-panel URL for X-Sense recording events."""
+        if event_data is None:
             return
-        playback = event_data.get("playback")
-        if not isinstance(playback, dict) or playback.get("source") != "sd_playback":
+        entry_id = _event_entity_entry_id(self)
+        if not entry_id:
             return
-        start_time = _recording_epoch_seconds(
-            _first_present(
-                playback,
-                "start_time_s",
-                "start_time",
-                "timestamp_s",
-                "timestamp",
-            )
+        _add_recording_panel_url(
+            event_data,
+            entry_id=entry_id,
+            entity=entity,
         )
-        if start_time in (None, "") or not getattr(entity, "sn", None):
-            return
-        camera_entity_id = event_data.get("camera_entity_id") or ""
-        end_time = _recording_epoch_seconds(
-            _first_present(playback, "end_time_s", "end_time")
-        )
-        if end_time in (None, ""):
-            end_time = _recording_end_from_period(start_time, playback.get("period"))
-        event_data["recording_url"] = playback_url(
-            self.coordinator.entry.entry_id,
-            str(entity.sn),
-            int(start_time),
-            camera_entity_id,
-            end_time=end_time,
-        )
-        event_data["recording_source"] = "sd_playback"
 
     def _trigger_event_after_recording_cache(
         self,
@@ -322,37 +303,17 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
     def _add_motion_playback_url(
         self, entity: Entity, event_data: dict[str, Any] | None
     ) -> None:
-        """Add a Home Assistant playback URL for X-Sense SD recording events."""
-        if event_data is None or event_data.get("recording_url"):
+        """Add a Home Assistant recordings-panel URL for X-Sense recording events."""
+        if event_data is None:
             return
-        playback = event_data.get("playback")
-        if not isinstance(playback, dict) or playback.get("source") != "sd_playback":
+        entry_id = _event_entity_entry_id(self)
+        if not entry_id:
             return
-        start_time = _recording_epoch_seconds(
-            _first_present(
-                playback,
-                "start_time_s",
-                "start_time",
-                "timestamp_s",
-                "timestamp",
-            )
+        _add_recording_panel_url(
+            event_data,
+            entry_id=entry_id,
+            entity=entity,
         )
-        if start_time in (None, "") or not getattr(entity, "sn", None):
-            return
-        camera_entity_id = event_data.get("camera_entity_id") or ""
-        end_time = _recording_epoch_seconds(
-            _first_present(playback, "end_time_s", "end_time")
-        )
-        if end_time in (None, ""):
-            end_time = _recording_end_from_period(start_time, playback.get("period"))
-        event_data["recording_url"] = playback_url(
-            self.coordinator.entry.entry_id,
-            str(entity.sn),
-            int(start_time),
-            camera_entity_id,
-            end_time=end_time,
-        )
-        event_data["recording_source"] = "sd_playback"
 
     def _write_state_if_added(self) -> None:
         """Write HA state after the entity is registered."""
@@ -467,13 +428,67 @@ def motion_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
 def _recording_event_data(playback: dict[str, Any]) -> dict[str, Any]:
     """Return flat recording fields for automation templates."""
     event_data: dict[str, Any] = {}
-    if recording_url := playback.get("video_url"):
-        event_data["recording_url"] = recording_url
+    if direct_url := playback.get("video_url"):
+        event_data["recording_direct_url"] = direct_url
         if recording_source := playback.get("source"):
             event_data["recording_source"] = recording_source
     if snapshot_url := playback.get("image_url") or playback.get("package_image_url"):
         event_data["snapshot_url"] = snapshot_url
     return event_data
+
+
+def _add_recording_panel_url(
+    event_data: dict[str, Any],
+    *,
+    entry_id: str,
+    entity: Entity,
+) -> None:
+    """Add the Home Assistant recordings-panel URL for playback metadata."""
+    playback = event_data.get("playback")
+    if not isinstance(playback, dict):
+        return
+    start_time = _recording_epoch_seconds(
+        _first_present(
+            playback,
+            "start_time_s",
+            "start_time",
+            "timestamp_s",
+            "timestamp",
+        )
+    )
+    if start_time in (None, "") or not getattr(entity, "sn", None):
+        return
+    end_time = _recording_epoch_seconds(
+        _first_present(playback, "end_time_s", "end_time")
+    )
+    if end_time in (None, ""):
+        end_time = _recording_end_from_period(start_time, playback.get("period"))
+    if not _is_recordings_panel_url(event_data.get("recording_url")):
+        event_data["recording_url"] = playback_url(
+            entry_id,
+            str(entity.sn),
+            int(start_time),
+            str(event_data.get("camera_entity_id") or ""),
+            end_time=end_time,
+        )
+    if recording_source := playback.get("source"):
+        event_data["recording_source"] = str(recording_source)
+
+
+def _is_recordings_panel_url(value: Any) -> bool:
+    """Return whether a URL points to the HA X-Sense recordings panel."""
+    text = str(value or "")
+    if not text:
+        return False
+    parsed = urlparse(text)
+    return not parsed.scheme and not parsed.netloc and parsed.path == "/xsense-recordings"
+
+
+def _event_entity_entry_id(event_entity: EventEntity) -> str:
+    """Return the config entry id for an event entity when available."""
+    coordinator = getattr(event_entity, "coordinator", None)
+    entry = getattr(coordinator, "entry", None)
+    return str(getattr(entry, "entry_id", "") or "")
 
 
 def motion_fingerprint(
@@ -502,6 +517,10 @@ def _trigger_event_after_recording_cache(
     hass = getattr(event_entity, "hass", None)
     if not hasattr(hass, "async_create_task"):
         return False
+    entry_id = _event_entity_entry_id(event_entity)
+    if not entry_id:
+        return False
+    _add_recording_panel_url(event_data, entry_id=entry_id, entity=entity)
     event_received_at = monotonic()
     pending_event_data = dict(event_data)
     pending_event_data["recording_cache_pending"] = True
@@ -529,7 +548,7 @@ def _trigger_event_after_recording_cache(
         try:
             cached_url = await async_cache_recording_playback(
                 hass,
-                entry_id=event_entity.coordinator.entry.entry_id,
+                entry_id=entry_id,
                 entity=entity,
                 playback=playback,
                 camera_entity_id=str(event_data.get("camera_entity_id") or ""),
@@ -555,6 +574,7 @@ def _trigger_event_after_recording_cache(
                     "cache_elapsed_ms": cache_elapsed_ms,
                     "total_elapsed_ms": total_elapsed_ms,
                     "has_recording_url": bool(event_data.get("recording_url")),
+                    "recording_url_kind": _url_kind(event_data.get("recording_url")),
                     "has_cache_error": bool(event_data.get("recording_cache_error")),
                 },
             )
@@ -576,6 +596,8 @@ def _trigger_event_after_recording_cache(
                 "source": playback.get("source"),
                 "cache_elapsed_ms": cache_elapsed_ms,
                 "total_elapsed_ms": total_elapsed_ms,
+                "recording_url_kind": _url_kind(event_data.get("recording_url")),
+                "recording_media_url_kind": _url_kind(cached_url),
             },
         )
         _trigger_camera_event(event_entity, event_type, event_data)
@@ -606,7 +628,9 @@ def _trigger_camera_event(
             "event_type": event_type,
             "camera": _masked_serial(payload.get("camera_serial")),
             "has_recording_url": bool(payload.get("recording_url")),
+            "recording_url_kind": _url_kind(payload.get("recording_url")),
             "has_recording_media_url": bool(payload.get("recording_media_url")),
+            "recording_media_url_kind": _url_kind(payload.get("recording_media_url")),
             "recording_cache_ready": payload.get("recording_cache_ready"),
             "recording_cache_elapsed_ms": payload.get("recording_cache_elapsed_ms"),
             "recording_total_elapsed_ms": payload.get("recording_total_elapsed_ms"),
@@ -623,6 +647,22 @@ def _write_event_state(event_entity: EventEntity) -> None:
     ):
         return
     event_entity.async_write_ha_state()
+
+
+def _url_kind(value: Any) -> str:
+    """Return a safe URL category for debug logs."""
+    text = str(value or "")
+    if not text:
+        return ""
+    if text.startswith("/media/local/"):
+        return "local_media"
+    if text.startswith("/api/"):
+        return "api"
+    if text.startswith("/xsense-recordings"):
+        return "panel"
+    if text.startswith(("http://", "https://")):
+        return "external"
+    return "other"
 
 
 def _masked_serial(value: Any) -> str:

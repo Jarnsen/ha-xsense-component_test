@@ -189,7 +189,7 @@ OBSOLETE_ENTITY_SUFFIXES_BY_DOMAIN = {
 OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
     "XS03-iWX": ("mute",),
 }
-BLUEPRINT_REPAIR_CHECK_INTERVAL = timedelta(minutes=5)
+BLUEPRINT_MAINTENANCE_CHECK_INTERVAL = timedelta(minutes=5)
 
 def _sensor_unique_id(entity_id: str, key: str) -> str:
     """Return the unique ID format used by X-Sense sensor entities."""
@@ -607,15 +607,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await async_check_stale_camera_blueprints(hass)
 
     @callback
-    def _schedule_blueprint_repair_check(_now) -> None:
-        """Schedule the periodic stale blueprint repair check on the event loop."""
+    def _schedule_blueprint_maintenance_check(_now) -> None:
+        """Schedule the periodic stale blueprint maintenance check."""
         hass.create_task(async_check_stale_camera_blueprints(hass))
 
     entry.async_on_unload(
         async_track_time_interval(
             hass,
-            _schedule_blueprint_repair_check,
-            BLUEPRINT_REPAIR_CHECK_INTERVAL,
+            _schedule_blueprint_maintenance_check,
+            BLUEPRINT_MAINTENANCE_CHECK_INTERVAL,
         )
     )
     async_start_recording_media_sync(hass, entry)

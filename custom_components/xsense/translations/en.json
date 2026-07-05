@@ -63,12 +63,7 @@
             "invalid_recording_media_path": "Use a folder under /media."
         }
     },
-    "issues": {
-        "stale_camera_notification_blueprint": {
-            "title": "Update imported X-Sense camera notification blueprint",
-            "description": "One or more imported X-Sense camera notification blueprints are out of date: {files}. Re-import the X-Sense Camera Event blueprint, then open each automation that uses it and save it again so Home Assistant uses the updated template. Import URL: {import_url}"
-        }
-    },
+    "issues": {},
     "entity": {
         "binary_sensor": {
             "activate": {

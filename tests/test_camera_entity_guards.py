@@ -951,7 +951,7 @@ def test_motion_event_entity_normalizes_ms_recording_times(monkeypatch):
     )
 
 
-def test_motion_event_entity_does_not_replace_direct_recording_url(monkeypatch):
+def test_motion_event_entity_replaces_direct_recording_url_with_panel_link(monkeypatch):
     camera_entity = entity("SSC0A", {})
     camera_entity.entity_id = "camera-id"
     camera_entity.sn = "CAMERA-SN"
@@ -974,7 +974,10 @@ def test_motion_event_entity_does_not_replace_direct_recording_url(monkeypatch):
 
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
-    assert event_data["recording_url"] == "https://example.invalid/clip.mp4"
+    assert event_data["recording_url"] == (
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "&start=1782049304&end=1782049304"
+    )
 
 
 def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog):
@@ -1236,7 +1239,7 @@ def test_motion_event_entity_updates_state_only_when_recording_cache_returns_no_
     assert "ready event not fired" in caplog.text
 
 
-def test_motion_event_cache_preserves_absolute_recordings_panel_url(monkeypatch):
+def test_motion_event_cache_replaces_absolute_recordings_panel_url(monkeypatch):
     from custom_components.xsense import event as event_module
 
     scheduled = []
@@ -1258,7 +1261,11 @@ def test_motion_event_cache_preserves_absolute_recordings_panel_url(monkeypatch)
             "https://ha.example.invalid/xsense-recordings#entry_id=entry-id"
             "&serial=CAMERA-SN&start=1782049304&end=1782049334"
         ),
-        "playback": {"source": "sd_playback"},
+        "playback": {
+            "source": "sd_playback",
+            "start_time_s": 1782049304,
+            "end_time_s": 1782049334,
+        },
     }
 
     async def cache_recording(*args, **kwargs):
@@ -1280,8 +1287,9 @@ def test_motion_event_cache_preserves_absolute_recordings_panel_url(monkeypatch)
     assert triggered[0]["recording_cache_pending"] is True
     assert triggered[0]["recording_cache_ready"] is False
     assert "recording_media_url" not in triggered[0]
-    assert triggered[1]["recording_url"].startswith(
-        "https://ha.example.invalid/xsense-recordings#"
+    assert triggered[1]["recording_url"] == (
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "&start=1782049304&end=1782049334"
     )
     assert (
         triggered[1]["recording_media_url"]
@@ -1289,7 +1297,7 @@ def test_motion_event_cache_preserves_absolute_recordings_panel_url(monkeypatch)
     )
 
 
-def test_motion_event_cache_does_not_replace_recording_url_with_raw_media(
+def test_motion_event_cache_replaces_raw_recording_url_with_panel_link(
     monkeypatch,
 ):
     from custom_components.xsense import event as event_module
@@ -1309,7 +1317,11 @@ def test_motion_event_cache_does_not_replace_recording_url_with_raw_media(
     entity_obj = SimpleNamespace(sn="CAMERA-SN")
     event_data = {
         "recording_url": "https://example.invalid/clip.mp4",
-        "playback": {"source": "video_url"},
+        "playback": {
+            "source": "video_url",
+            "start_time_s": 1782049304,
+            "end_time_s": 1782049334,
+        },
     }
 
     async def cache_recording(*args, **kwargs):
@@ -1328,15 +1340,58 @@ def test_motion_event_cache_does_not_replace_recording_url_with_raw_media(
     )
     asyncio.run(scheduled[0])
 
-    assert triggered[0]["recording_url"] == "https://example.invalid/clip.mp4"
+    assert triggered[0]["recording_url"] == (
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "&start=1782049304&end=1782049334"
+    )
     assert triggered[0]["recording_cache_pending"] is True
     assert triggered[0]["recording_cache_ready"] is False
     assert "recording_media_url" not in triggered[0]
-    assert triggered[1]["recording_url"] == "https://example.invalid/clip.mp4"
+    assert triggered[1]["recording_url"] == triggered[0]["recording_url"]
     assert (
         triggered[1]["recording_media_url"]
         == "/media/local/xsense_recordings/videos/clip.mp4"
     )
+
+
+def test_motion_event_cache_does_not_schedule_without_entry_id():
+    from custom_components.xsense import event as event_module
+
+    scheduled = []
+    triggered = []
+    event_entity = SimpleNamespace(
+        hass=SimpleNamespace(async_create_task=lambda coro: scheduled.append(coro)),
+        _trigger_event=lambda event_type, data: triggered.append(dict(data)),
+    )
+
+    result = event_module._trigger_event_after_recording_cache(
+        event_entity,
+        "motion",
+        SimpleNamespace(sn="CAMERA-SN"),
+        {
+            "playback": {
+                "source": "sd_playback",
+                "start_time_s": 1782049304,
+                "end_time_s": 1782049334,
+            },
+        },
+    )
+
+    assert result is False
+    assert scheduled == []
+    assert triggered == []
+
+
+def test_recordings_panel_url_detection_rejects_lookalikes():
+    assert event._is_recordings_panel_url("/xsense-recordings")
+    assert event._is_recordings_panel_url(
+        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+    )
+    assert not event._is_recordings_panel_url(
+        "https://ha.example.invalid/xsense-recordings#entry_id=entry-id"
+    )
+    assert not event._is_recordings_panel_url("/xsense-recordings-bad#entry_id=x")
+    assert not event._is_recordings_panel_url("https://example.invalid/clip.mp4")
 
 
 def test_playback_page_uses_ha_webrtc_answer_and_sd_command():
@@ -1410,7 +1465,7 @@ def test_recording_media_view_redirects_cached_clip(monkeypatch, tmp_path):
     camera_entity = entity("SSC0A", {})
     camera_entity.sn = "CAMERA-SN"
     output_path = tmp_path / "clip.mp4"
-    output_path.write_bytes(b"cached mp4")
+    output_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00cached")
     captures = []
     coordinator = SimpleNamespace(
         xsense=object(),
@@ -1471,7 +1526,9 @@ def test_recording_media_view_captures_missing_clip_before_redirect(
 
     async def fake_capture(hass, **kwargs):
         captures.append({"hass": hass, **kwargs})
-        kwargs["output_path"].write_bytes(b"captured mp4")
+        kwargs["output_path"].write_bytes(
+            b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00captured"
+        )
 
     monkeypatch.setattr(
         playback,
@@ -1511,7 +1568,7 @@ def test_pion_capture_skips_ready_output(monkeypatch, tmp_path):
     from custom_components.xsense import pion_adapter
 
     output_path = tmp_path / "ready.mp4"
-    output_path.write_bytes(b"\x00\x00\x00\x18ftypmp42ready")
+    output_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00ready")
     captures = []
     hass = SimpleNamespace(data={pion_adapter.DOMAIN: {}})
 
@@ -1543,6 +1600,7 @@ def test_pion_capture_passes_duration_timeout_to_helper_wait(monkeypatch, tmp_pa
 
     output_path = tmp_path / "clip.mp4"
     h264_path = output_path.with_name(f"{output_path.name}.h264")
+    temp_output_path = output_path.with_suffix(".tmp.mp4")
     wait_calls = []
 
     class Stdin:
@@ -1585,7 +1643,10 @@ def test_pion_capture_passes_duration_timeout_to_helper_wait(monkeypatch, tmp_pa
         return {"packets": 1, "bytes": 10, "h264Samples": 1, "h264Bytes": 10}
 
     async def remux(ffmpeg_binary, raw_path, final_path):
-        final_path.write_bytes(b"\x00\x00\x00\x18ftypmp42final-video")
+        assert final_path == temp_output_path
+        final_path.write_bytes(
+            b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00final-video"
+        )
 
     monkeypatch.setattr(pion_adapter, "_pion_helper_path", lambda: tmp_path / "helper")
     monkeypatch.setattr(pion_adapter, "_ffmpeg_binary", lambda hass: "ffmpeg")
@@ -1629,7 +1690,99 @@ def test_pion_capture_passes_duration_timeout_to_helper_wait(monkeypatch, tmp_pa
     assert result == output_path
     assert output_path.exists()
     assert not h264_path.exists()
+    assert not temp_output_path.exists()
     assert wait_calls == [("start", 70), ("wait", 70)]
+
+
+def test_pion_capture_does_not_promote_invalid_remux_output(monkeypatch, tmp_path):
+    from custom_components.xsense import pion_adapter
+
+    output_path = tmp_path / "clip.mp4"
+
+    class Stdin:
+        def is_closing(self):
+            return False
+
+        def write(self, value):
+            self.value = value
+
+        async def drain(self):
+            pass
+
+    class Proc:
+        returncode = 0
+        stdin = Stdin()
+
+        async def wait(self):
+            return 0
+
+    class SignalSession:
+        def __init__(self, **kwargs):
+            pass
+
+        async def start(self):
+            return "v=0"
+
+        def start_forwarding_remote_candidates(self):
+            pass
+
+        async def close(self):
+            pass
+
+    async def start_helper(helper_path, raw_path, start_time, ticket, timeout):
+        raw_path.write_bytes(b"raw h264")
+        return Proc()
+
+    async def remux(ffmpeg_binary, raw_path, final_path):
+        final_path.write_bytes(b"not an mp4")
+
+    async def import_job(func, module):
+        return SimpleNamespace(
+            XSenseWebRTCTicket=SimpleNamespace(
+                from_api=lambda serial, data: SimpleNamespace(ice_servers=[])
+            ),
+            XSenseWebRTCSignalSession=SignalSession,
+        )
+
+    monkeypatch.setattr(pion_adapter, "_pion_helper_path", lambda: tmp_path / "helper")
+    monkeypatch.setattr(pion_adapter, "_ffmpeg_binary", lambda hass: "ffmpeg")
+    monkeypatch.setattr(pion_adapter, "_start_helper", start_helper)
+    monkeypatch.setattr(pion_adapter, "_read_helper_offer", AsyncMock(return_value="v=0"))
+    monkeypatch.setattr(
+        pion_adapter,
+        "_wait_for_helper",
+        AsyncMock(return_value={"packets": 1, "bytes": 10, "h264Samples": 1}),
+    )
+    monkeypatch.setattr(pion_adapter, "_remux_h264_to_mp4", remux)
+    monkeypatch.setattr(pion_adapter, "async_get_clientsession", lambda hass: object())
+
+    hass = SimpleNamespace(
+        data={pion_adapter.DOMAIN: {}},
+        async_add_import_executor_job=import_job,
+        async_create_task=lambda coro: asyncio.create_task(coro),
+    )
+    coordinator = SimpleNamespace(
+        xsense=SimpleNamespace(
+            get_camera_webrtc_ticket=AsyncMock(return_value={"ticket": "data"})
+        )
+    )
+    camera_entity = SimpleNamespace(sn="CAMERA-SN", online=True, data={})
+
+    with pytest.raises(RuntimeError, match="did not create a playable MP4"):
+        asyncio.run(
+            pion_adapter.async_capture_sd_recording(
+                hass,
+                coordinator=coordinator,
+                camera=camera_entity,
+                start_time=1782049304,
+                output_path=output_path,
+                duration_seconds=60,
+            )
+        )
+
+    assert not output_path.exists()
+    assert not output_path.with_suffix(".tmp.mp4").exists()
+    assert not output_path.with_name(f"{output_path.name}.h264").exists()
 
 
 def test_pion_ice_servers_env_normalizes_xsense_ticket_shape():
@@ -1923,6 +2076,12 @@ def test_cache_recording_playback_returns_cached_media_url(monkeypatch, tmp_path
         cached_url,
     )
     monkeypatch.setattr(media_source, "_path_ready", lambda path: ready)
+    monkeypatch.setattr(media_source, "_mp4_ready", lambda path: ready)
+    monkeypatch.setattr(
+        media_source,
+        "_local_media_url",
+        lambda path: "/media/local/xsense_custom/videos/CAMERA-SN_1782049304_1782049334.mp4",
+    )
 
     result = asyncio.run(
         media_source.async_cache_recording_playback(
@@ -1941,6 +2100,80 @@ def test_cache_recording_playback_returns_cached_media_url(monkeypatch, tmp_path
     assert result == (
         "/media/local/xsense_custom/videos/CAMERA-SN_1782049304_1782049334.mp4"
     )
+
+
+def test_cache_recording_playback_does_not_trust_unvalidated_cache_url(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import media_source
+
+    async def cached_url(self, clip):
+        return "/media/local/xsense_custom/videos/not-actually-ready.mp4"
+
+    monkeypatch.setattr(
+        media_source,
+        "_recording_media_root",
+        lambda hass, entry_id: tmp_path,
+    )
+    monkeypatch.setattr(
+        media_source.XSenseRecordingsMediaSource,
+        "_async_cached_playback_url",
+        cached_url,
+    )
+    monkeypatch.setattr(media_source, "_mp4_ready", lambda path: False)
+
+    result = asyncio.run(
+        media_source.async_cache_recording_playback(
+            SimpleNamespace(data={media_source.DOMAIN: {}}),
+            entry_id="entry-id",
+            entity=SimpleNamespace(sn="CAMERA-SN"),
+            playback={
+                "source": "sd_playback",
+                "start_time_s": 1782049304,
+                "end_time_s": 1782049334,
+            },
+            camera_entity_id="camera.garden",
+        )
+    )
+
+    assert result == ""
+
+
+def test_cache_recording_playback_requires_linkable_media_url(monkeypatch, tmp_path):
+    from custom_components.xsense import media_source
+
+    async def cached_url(self, clip):
+        return "/media/local/xsense_custom/videos/clip.mp4"
+
+    monkeypatch.setattr(
+        media_source,
+        "_recording_media_root",
+        lambda hass, entry_id: tmp_path,
+    )
+    monkeypatch.setattr(
+        media_source.XSenseRecordingsMediaSource,
+        "_async_cached_playback_url",
+        cached_url,
+    )
+    monkeypatch.setattr(media_source, "_mp4_ready", lambda path: True)
+    monkeypatch.setattr(media_source, "_local_media_url", lambda path: "")
+
+    result = asyncio.run(
+        media_source.async_cache_recording_playback(
+            SimpleNamespace(data={media_source.DOMAIN: {}}),
+            entry_id="entry-id",
+            entity=SimpleNamespace(sn="CAMERA-SN"),
+            playback={
+                "source": "sd_playback",
+                "start_time_s": 1782049304,
+                "end_time_s": 1782049334,
+            },
+            camera_entity_id="camera.garden",
+        )
+    )
+
+    assert result == ""
 
 
 def test_recording_media_source_resolve_includes_local_path(monkeypatch, tmp_path):
@@ -1976,6 +2209,7 @@ def test_recording_media_source_resolve_includes_local_path(monkeypatch, tmp_pat
     monkeypatch.setattr(source, "_async_cached_playback_url", cached_url)
     monkeypatch.setattr(media_source, "_clip_cache_path", lambda current_clip: output_path)
     monkeypatch.setattr(media_source, "_path_ready", lambda path: path == output_path)
+    monkeypatch.setattr(media_source, "_mp4_ready", lambda path: path == output_path)
 
     resolved = asyncio.run(
         source.async_resolve_media(
@@ -2021,6 +2255,97 @@ def test_recording_media_source_does_not_fall_back_to_external_video_url(
 
     with pytest.raises(media_source.Unresolvable):
         asyncio.run(source._async_cached_playback_url(clip))
+
+
+def test_recording_media_source_rejects_non_mp4_direct_cache(tmp_path):
+    from custom_components.xsense import media_source
+
+    empty_path = tmp_path / "empty.mp4"
+    empty_path.write_bytes(b"")
+    html_path = tmp_path / "clip.mp4"
+    html_path.write_bytes(b"<html>not video</html>")
+    fake_path = tmp_path / "fake.mp4"
+    fake_path.write_bytes(b"not really an mp4 ftyp nope")
+    mp4_path = tmp_path / "ready.mp4"
+    mp4_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00video")
+
+    assert not media_source._mp4_ready(empty_path)
+    assert not media_source._mp4_ready(html_path)
+    assert not media_source._mp4_ready(fake_path)
+    assert media_source._mp4_ready(mp4_path)
+
+
+def test_recording_media_source_falls_back_to_sd_when_direct_download_not_mp4(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import media_source
+
+    source = media_source.XSenseRecordingsMediaSource(SimpleNamespace())
+    output_path = tmp_path / "clip.mp4"
+    clip = {
+        "source": "video_url",
+        "quality": "HD",
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "playback_url": "https://example.invalid/clip.mp4",
+        "media_root": tmp_path.as_posix(),
+    }
+    seen = {}
+
+    async def cached_sd_playback_url(current_clip):
+        seen.update(current_clip)
+        assert not output_path.exists()
+        output_path.write_bytes(
+            b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00fallback"
+        )
+        return "/media/local/xsense_recordings/videos/fallback.mp4"
+
+    class Response:
+        headers = {"content-type": "text/html"}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def raise_for_status(self):
+            return None
+
+        async def read(self):
+            return b"<html>expired</html>"
+
+    class Session:
+        def get(self, url):
+            return Response()
+
+    class Hass:
+        async def async_add_executor_job(self, func, *args):
+            return func(*args)
+
+    source.hass = Hass()
+
+    monkeypatch.setattr(
+        media_source,
+        "_clip_cache_path",
+        lambda current_clip: output_path,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "async_get_clientsession",
+        lambda hass: Session(),
+    )
+    monkeypatch.setattr(source, "_async_cached_sd_playback_url", cached_sd_playback_url)
+
+    result = asyncio.run(source._async_cached_playback_url(clip))
+
+    assert result == "/media/local/xsense_recordings/videos/fallback.mp4"
+    assert seen["source"] == "sd_playback"
+    assert seen["quality"] == "HD"
+    assert media_source._mp4_ready(output_path)
 
 
 def test_recording_media_source_lazy_shows_uncached_clips_when_sync_disabled(
@@ -2132,6 +2457,7 @@ def test_recording_media_source_sync_hides_uncached_clips(monkeypatch, tmp_path)
 
     monkeypatch.setattr(source, "_async_load_index", load_index)
     monkeypatch.setattr(media_source, "_path_ready", path_ready)
+    monkeypatch.setattr(media_source, "_mp4_ready", path_ready)
 
     browsed = asyncio.run(
         source.async_browse_media(
@@ -2200,6 +2526,11 @@ def test_recording_media_source_sync_hides_uncached_dates(monkeypatch, tmp_path)
     monkeypatch.setattr(
         media_source,
         "_path_ready",
+        lambda path: str(path).endswith("CAMERA-SN_1782049400_1782049430.mp4"),
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_mp4_ready",
         lambda path: str(path).endswith("CAMERA-SN_1782049400_1782049430.mp4"),
     )
 
@@ -2431,6 +2762,11 @@ def test_cache_recording_media_counts_direct_and_sd_playback(monkeypatch):
         "_path_ready",
         lambda path: any(str(path).endswith(f"CAMERA-SN_{start}_{start + 1}.mp4") for start in ready),
     )
+    monkeypatch.setattr(
+        media_source,
+        "_mp4_ready",
+        lambda path: any(str(path).endswith(f"CAMERA-SN_{start}_{start + 1}.mp4") for start in ready),
+    )
     hass = SimpleNamespace(data={media_source.DOMAIN: {}})
 
     summary = asyncio.run(media_source.async_cache_recording_media(hass))
@@ -2555,6 +2891,14 @@ def test_cache_recent_recording_media_force_refreshes_and_skips_old_clips(monkey
     monkeypatch.setattr(
         media_source,
         "_path_ready",
+        lambda path: any(
+            str(path).endswith(f"CAMERA-SN_{start}_{start + 30}.mp4")
+            for start in ready
+        ),
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_mp4_ready",
         lambda path: any(
             str(path).endswith(f"CAMERA-SN_{start}_{start + 30}.mp4")
             for start in ready
@@ -2955,7 +3299,7 @@ def test_motion_event_data_exposes_direct_recording_url_aliases():
             "image_url": "https://example.invalid/still.jpg",
             "package_image_url": "https://example.invalid/package.jpg",
         },
-        "recording_url": "https://example.invalid/clip.mp4",
+        "recording_direct_url": "https://example.invalid/clip.mp4",
         "snapshot_url": "https://example.invalid/still.jpg",
         "recording_source": "video_url",
     }

@@ -132,10 +132,11 @@ async def _async_capture_sd_recording_unlocked(
         helper_finished_at = monotonic()
         if int(result.get("h264Samples") or 0) <= 0 or not h264_path.exists():
             raise RuntimeError(f"X-Sense Pion adapter did not receive video: {result}")
-        await _remux_h264_to_mp4(ffmpeg_binary, h264_path, output_path)
+        await _remux_h264_to_mp4(ffmpeg_binary, h264_path, temp_output_path)
         mp4_finished_at = monotonic()
-        if not _mp4_ready(output_path):
+        if not _mp4_ready(temp_output_path):
             raise RuntimeError("X-Sense Pion adapter did not create a playable MP4")
+        temp_output_path.replace(output_path)
         LOGGER.debug(
             "X-Sense Pion SD recording captured: %s",
             {
@@ -391,11 +392,18 @@ def _camera_resolution(camera: Any) -> str | None:
 
 
 def _mp4_ready(path: Path) -> bool:
-    if not path.exists() or path.stat().st_size <= 16:
+    try:
+        file_size = path.stat().st_size
+        if file_size <= 16:
+            return False
+        with path.open("rb") as file:
+            header = file.read(12)
+    except OSError:
         return False
-    with path.open("rb") as file:
-        head = file.read(32)
-    return b"ftyp" in head
+    if len(header) < 12 or header[4:8] != b"ftyp":
+        return False
+    box_size = int.from_bytes(header[:4], "big")
+    return 8 <= box_size <= file_size
 
 
 def _short_id(value: Any) -> str:

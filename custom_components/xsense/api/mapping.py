@@ -36,6 +36,12 @@ property_mapper = {
         "h": "continuedAlarm",
         "t": "time",
     },
+    "XC0M-iR": {
+        "b": "temperature",
+        "c": "humidity",
+        "d": "tempUnit",
+        "t": "time",
+    },
 }
 
 

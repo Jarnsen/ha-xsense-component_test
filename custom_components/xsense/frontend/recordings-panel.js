@@ -88,7 +88,7 @@ class XSenseRecordingsPanel extends HTMLElement {
     const camera = this.camera;
     const clips = this.clips;
     const clipCount = clips.length;
-    const viewerClip = this.selectedClip && this.findClip(this.selectedClip.entry_id, this.selectedClip.serial, this.selectedClip.start, this.selectedClip.end);
+    const viewerClip = this.selectedClip && (this.findClip(this.selectedClip.entry_id, this.selectedClip.serial, this.selectedClip.start, this.selectedClip.end) || this.selectedClip);
     const useViewerPage = Boolean(viewerClip);
     this.shadowRoot.innerHTML = `
       <style>
@@ -557,8 +557,11 @@ class XSenseRecordingsPanel extends HTMLElement {
     }
     const clip = this.findClip(entryId, serial, start, end);
     if (!clip) {
-      this.logPanelEvent("route_clip_missing", { entry_id: entryId, serial, start, end });
-      this.selectedClip = null;
+      const routeClip = this.routeClipFromParams(entryId, serial, start, end);
+      this.selectedClip = routeClip;
+      this.selectedCameraKey = this.clipKey(routeClip);
+      this.selectedDate = routeClip.date || this.selectedDate;
+      this.logPanelEvent("route_clip_missing_using_route", this.clipDebugPayload(routeClip));
       return;
     }
     this.selectedClip = clip;
@@ -575,6 +578,24 @@ class XSenseRecordingsPanel extends HTMLElement {
     return null;
   }
 
+  routeClipFromParams(entryId, serial, start, end) {
+    const safeEnd = end || start;
+    return {
+      entry_id: entryId,
+      serial,
+      date: new Date(start * 1000).toISOString().slice(0, 10),
+      start,
+      end: safeEnd,
+      duration: Math.max(0, safeEnd - start),
+      title: `${start} - ${safeEnd}`,
+      cached: false,
+      thumbnail_cached: false,
+      playable: true,
+      playback_url: `/api/xsense/recordings/play/${encodeURIComponent(entryId)}/${start}/${safeEnd}?serial=${encodeURIComponent(serial)}`,
+      thumbnail_url: "",
+    };
+  }
+
   playbackKey(clip) {
     return `${clip.entry_id}:${clip.serial}:${clip.start}:${clip.end}`;
   }
@@ -585,6 +606,7 @@ class XSenseRecordingsPanel extends HTMLElement {
       return;
     }
     const key = this.playbackKey(clip);
+    const playbackPath = clip.playback_url;
     if (this.playbackUrls.has(key)) {
       this.logPanelEvent("playback_skipped_already_ready", this.clipDebugPayload(clip));
       return;
@@ -598,12 +620,16 @@ class XSenseRecordingsPanel extends HTMLElement {
     this.playbackErrors.delete(key);
     this.render();
     try {
-      this.logPanelEvent("playback_prepare_start", this.clipDebugPayload(clip));
-      const signedPath = await this.signPath(clip.playback_url);
+      this.logPanelEvent("playback_prepare_start", this.clipDebugPayload(clip, {
+        playback_url: playbackPath,
+      }));
+      const signedPath = await this.signPath(playbackPath);
       this.logPanelEvent("playback_signed_path_ready", this.clipDebugPayload(clip, {
+        playback_url: playbackPath,
         elapsed_ms: Math.round(performance.now() - startedAt),
       }));
       this.logPanelEvent("playback_fetch_start", this.clipDebugPayload(clip, {
+        playback_url: playbackPath,
         elapsed_ms: Math.round(performance.now() - startedAt),
       }));
       const response = await fetch(signedPath, {
@@ -611,8 +637,10 @@ class XSenseRecordingsPanel extends HTMLElement {
         cache: "no-store",
       });
       this.logPanelEvent("playback_fetch_response", this.clipDebugPayload(clip, {
+        playback_url: playbackPath,
         status: response.status,
         ok: response.ok,
+        content_type: response.headers.get("content-type") || "",
         elapsed_ms: Math.round(performance.now() - startedAt),
       }));
       if (!response.ok) {
@@ -628,12 +656,15 @@ class XSenseRecordingsPanel extends HTMLElement {
       }
       this.playbackUrls.set(key, URL.createObjectURL(blob));
       this.logPanelEvent("playback_blob_ready", this.clipDebugPayload(clip, {
+        playback_url: playbackPath,
         bytes: blob.size,
+        blob_type: blob.type || "",
         elapsed_ms: Math.round(performance.now() - startedAt),
       }));
     } catch (err) {
       this.playbackErrors.set(key, err?.message || String(err));
       this.logPanelEvent("playback_error", this.clipDebugPayload(clip, {
+        playback_url: playbackPath,
         message: err?.message || String(err),
         elapsed_ms: Math.round(performance.now() - startedAt),
       }));

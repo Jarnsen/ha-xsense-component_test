@@ -177,7 +177,7 @@ class XSenseRecordingMediaView(HomeAssistantView):
         output_path = _recording_cache_path(
             hass, entry_id, serial, sd_start_time, end_time
         )
-        if not _path_ready(output_path):
+        if not _mp4_ready(output_path):
             LOGGER.debug(
                 "X-Sense recording media route caching SD clip: %s",
                 {
@@ -437,6 +437,24 @@ def _local_media_url(path: Path) -> str:
 
 def _path_ready(path: Path) -> bool:
     return path.exists() and path.stat().st_size > 0
+
+
+def _mp4_ready(path: Path) -> bool:
+    if not _path_ready(path):
+        return False
+    try:
+        with path.open("rb") as file:
+            header = file.read(12)
+    except OSError:
+        return False
+    if len(header) < 12 or header[4:8] != b"ftyp":
+        return False
+    box_size = int.from_bytes(header[:4], "big")
+    try:
+        file_size = path.stat().st_size
+    except OSError:
+        return False
+    return 8 <= box_size <= file_size
 
 
 def _recording_duration(start_time: int, end_time: int) -> int | None:
