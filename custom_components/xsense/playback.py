@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from urllib.parse import quote
 
@@ -183,7 +184,7 @@ class XSenseRecordingMediaView(HomeAssistantView):
         output_path = _recording_cache_path(
             hass, entry_id, serial, sd_start_time, end_time
         )
-        if not _mp4_ready(output_path):
+        if not await _async_mp4_ready(hass, output_path):
             LOGGER.debug(
                 "X-Sense recording media route caching SD clip: %s",
                 {
@@ -443,6 +444,13 @@ def _local_media_url(path: Path) -> str:
 
 def _path_ready(path: Path) -> bool:
     return path.exists() and path.stat().st_size > 0
+
+
+async def _async_mp4_ready(hass: HomeAssistant, path: Path) -> bool:
+    async_add_executor_job = getattr(hass, "async_add_executor_job", None)
+    if async_add_executor_job is not None:
+        return await async_add_executor_job(_mp4_ready, path)
+    return await asyncio.to_thread(_mp4_ready, path)
 
 
 def _mp4_ready(path: Path) -> bool:

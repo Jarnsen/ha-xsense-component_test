@@ -41,7 +41,6 @@ async def async_check_stale_camera_blueprints(hass: HomeAssistant) -> None:
     result = await hass.async_add_executor_job(
         _update_stale_camera_blueprints,
         blueprint_dir,
-        _bundled_camera_blueprint_path(),
     )
     if result["updated"]:
         LOGGER.debug(
@@ -84,12 +83,12 @@ def _bundled_camera_blueprint_path() -> Path:
 
 def _update_stale_camera_blueprints(
     blueprint_dir: Path,
-    bundled_blueprint_path: Path,
 ) -> dict[str, list[str]]:
     """Update stale imported X-Sense camera blueprints in place."""
     result: dict[str, list[str]] = {"updated": [], "failed": []}
     if not blueprint_dir.exists():
         return result
+    bundled_blueprint_path = _bundled_camera_blueprint_path()
     try:
         replacement = bundled_blueprint_path.read_text(encoding="utf-8")
     except OSError as err:

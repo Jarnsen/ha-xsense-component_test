@@ -626,6 +626,17 @@ class XSenseRecordingsPanel extends HTMLElement {
       if (!response.ok) {
         throw new Error(`Recording is not ready (${response.status})`);
       }
+      const contentType = response.headers.get("content-type") || "";
+      if (this.isHlsResponse(contentType, response.url || signedPath)) {
+        this.playbackUrls.set(key, signedPath);
+        this.logPanelEvent("playback_hls_ready", this.clipDebugPayload(clip, {
+          playback_url: playbackPath,
+          content_type: contentType,
+          message: this.hlsSupportMessage(),
+          elapsed_ms: Math.round(performance.now() - startedAt),
+        }));
+        return;
+      }
       const blob = await response.blob();
       if (!blob.size) {
         throw new Error("Recording is empty");
@@ -653,6 +664,19 @@ class XSenseRecordingsPanel extends HTMLElement {
         this.playbackLoadingKey = "";
       }
     }
+  }
+
+  isHlsResponse(contentType, url) {
+    const text = `${contentType || ""} ${url || ""}`.toLowerCase();
+    return text.includes("mpegurl") || text.includes(".m3u8") || text.includes(".m3u");
+  }
+
+  hlsSupportMessage() {
+    const video = document.createElement("video");
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      return "native_hls";
+    }
+    return "native_hls_not_reported";
   }
 
   clipDebugPayload(clip, extra = {}) {

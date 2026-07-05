@@ -674,6 +674,12 @@ def test_recordings_runtime_setup_is_camera_gated():
             "devices": {"device": SimpleNamespace(type="XS01-M")},
         }
     )
+    assert not xsense_module._has_camera_entities(
+        {
+            "stations": {},
+            "devices": {"xcom-ir": SimpleNamespace(type="XC0M-iR")},
+        }
+    )
     assert xsense_module._has_camera_entities(
         {
             "stations": {"camera": SimpleNamespace(type="SSC0A")},
@@ -703,6 +709,40 @@ def test_recordings_runtime_gate_checks_all_loaded_entries():
     )
 
     assert xsense_module._has_any_camera_entities(hass)
+
+
+def test_recordings_runtime_cleanup_removes_stale_non_camera_runtime(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(
+        xsense_module,
+        "async_remove_recording_index",
+        lambda hass, entry_id: calls.append(("remove_index", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recordings_panel",
+        lambda hass: calls.append("recordings_panel"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_playback_panel",
+        lambda hass: calls.append("playback_panel"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recording_services",
+        lambda hass: calls.append("recording_services"),
+    )
+
+    xsense_module._cleanup_recordings_runtime(SimpleNamespace(), "xcom-entry")
+
+    assert calls == [
+        ("remove_index", "xcom-entry"),
+        "recordings_panel",
+        "playback_panel",
+        "recording_services",
+    ]
 
 
 def test_recordings_runtime_unload_unregisters_after_last_camera(monkeypatch):
@@ -844,6 +884,8 @@ def test_recordings_panel_video_uses_authenticated_blob_playback():
     assert "video_${eventName}" in panel
     assert 'this._hass.callApi("POST", "xsense/recordings/panel/debug"' in panel
     assert 'src="${this.escape(playbackUrl)}"' in panel
+    assert 'this.logPanelEvent("playback_hls_ready"' in panel
+    assert "isHlsResponse(contentType, response.url || signedPath)" in panel
     assert "Preparing recording..." in panel
     assert "clip.signed_playback_url" not in panel
     assert 'src="${this.escape(clip.playback_url)}"' not in panel
@@ -864,11 +906,12 @@ def test_recordings_http_registration_adds_panel_views():
     asyncio.run(http.async_register_recordings_http_views(hass))
     asyncio.run(http.async_register_recordings_http_views(hass))
 
-    assert len(views) == 4
+    assert len(views) == 5
     assert isinstance(views[0], http.XSenseRecordingsPanelDataView)
     assert isinstance(views[1], http.XSenseRecordingsPanelDebugView)
     assert isinstance(views[2], http.XSenseRecordingsPanelPlaybackView)
     assert isinstance(views[3], http.XSenseRecordingsPanelThumbnailView)
+    assert isinstance(views[4], http.XSenseRecordingsHlsSegmentView)
 
 
 def test_recordings_panel_debug_view_logs_sanitized_payload(caplog):

@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from time import monotonic
 from typing import Any
-from urllib.parse import parse_qsl, quote, urlencode, urlparse
+from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import voluptuous as vol
@@ -48,6 +49,7 @@ from .playback import recording_media_url
 from .pion_adapter import async_capture_sd_recording
 
 MIME_TYPE = "video/mp4"
+HLS_MIME_TYPE = "application/vnd.apple.mpegurl"
 RECORDING_CACHE_VERSION = 1
 RECORDING_CACHE_TTL = timedelta(minutes=5)
 RECORDING_LOOKBACK_DAYS = 7
@@ -57,6 +59,7 @@ RECORDING_MEDIA_RECENT_SYNC_INTERVAL = timedelta(minutes=2)
 RECORDING_MEDIA_RECENT_LOOKBACK = timedelta(minutes=10)
 THUMBNAIL_WARMUP_LIMIT = 10
 EVENT_RECORDING_CLIP_LIMIT = 50
+HLS_INITIAL_SEGMENT_COUNT = 2
 SERVICE_REFRESH_RECORDINGS = "refresh_recordings"
 SERVICE_CACHE_RECORDINGS = "cache_recordings"
 SERVICE_CLEAR_RECORDINGS_CACHE = "clear_recordings_cache"
@@ -174,6 +177,7 @@ async def async_cache_recording_media(
             "force_refresh": force_refresh,
         },
     )
+    media_source = XSenseRecordingsMediaSource(hass)
     for index in indexes:
         clips = _recording_cache_candidates(index)
         for clip in clips:
@@ -188,8 +192,7 @@ async def async_cache_recording_media(
             if not _clip_media_playable(clip):
                 summary["skipped"] += 1
                 continue
-            output_path = _clip_cache_path(clip)
-            if _mp4_ready(output_path):
+            if await media_source._async_cached_media_ready(clip):
                 summary["skipped"] += 1
                 continue
             try:
@@ -207,7 +210,7 @@ async def async_cache_recording_media(
                 )
                 summary["failed"] += 1
                 continue
-            if _mp4_ready(output_path):
+            if await media_source._async_cached_media_ready(clip):
                 summary["downloaded"] += 1
             else:
                 summary["failed"] += 1
@@ -258,23 +261,24 @@ async def async_cache_recording_playback(
         return ""
     _remember_event_recording_clip(hass, clip)
 
-    output_path = _clip_cache_path(clip)
-    if _mp4_ready(output_path):
+    media_source = XSenseRecordingsMediaSource(hass)
+    cached_url = await media_source._async_cached_media_url(clip)
+    if cached_url:
         LOGGER.debug(
             "X-Sense motion recording cache already ready: %s",
             {
                 "camera": _short_serial(clip.get("serial")),
                 "source": clip.get("source"),
                 "start": clip.get("start"),
+                "format": await media_source._async_cached_media_format(clip),
                 "elapsed_ms": int((monotonic() - started_at) * 1000),
             },
         )
-        return _local_media_url(output_path)
+        return cached_url
 
-    media_source = XSenseRecordingsMediaSource(hass)
     await media_source._async_cached_playback_url(clip)
-    if _mp4_ready(output_path):
-        cached_url = _local_media_url(output_path)
+    cached_url = await media_source._async_cached_media_url(clip)
+    if cached_url:
         if not cached_url:
             LOGGER.debug(
                 "X-Sense motion recording cache not linkable from Home Assistant media: %s",
@@ -282,7 +286,6 @@ async def async_cache_recording_playback(
                     "camera": _short_serial(clip.get("serial")),
                     "source": clip.get("source"),
                     "start": clip.get("start"),
-                    "path": str(output_path),
                     "elapsed_ms": int((monotonic() - started_at) * 1000),
                 },
             )
@@ -294,6 +297,7 @@ async def async_cache_recording_playback(
                 "source": clip.get("source"),
                 "start": clip.get("start"),
                 "duration": _clip_duration(clip),
+                "format": await media_source._async_cached_media_format(clip),
                 "elapsed_ms": int((monotonic() - started_at) * 1000),
             },
         )
@@ -486,16 +490,13 @@ class XSenseRecordingsMediaSource(MediaSource):
             raise Unresolvable("Unknown X-Sense camera")
 
         if entry_id and serial and not clip_date and not start:
-            dated_clips = [
-                clip
-                for clip in camera.get("clips", [])
-                if clip.get("date")
-                and _clip_visible_for_media_mode(
-                    self.hass,
+            dated_clips = []
+            for clip in camera.get("clips", []):
+                if clip.get("date") and await self._async_clip_visible_for_media_mode(
                     entry_id,
                     clip,
-                )
-            ]
+                ):
+                    dated_clips.append(clip)
             dates = sorted(
                 {clip.get("date") for clip in dated_clips},
                 reverse=_sort_descending(
@@ -549,24 +550,23 @@ class XSenseRecordingsMediaSource(MediaSource):
                     DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
                 ),
             )
-            visible_clips = [
-                clip
-                for clip in clips
-                if clip.get("start") and _clip_visible_for_media_mode(
-                    self.hass,
+            visible_clips = []
+            for clip in clips:
+                if clip.get("start") and await self._async_clip_visible_for_media_mode(
                     entry_id,
                     clip,
+                ):
+                    visible_clips.append(clip)
+            children = []
+            for clip in visible_clips:
+                children.append(
+                    await self._async_clip_node(
+                        entry_id=entry_id,
+                        serial=serial,
+                        camera_entity_id=str(camera.get("entity_id") or ""),
+                        clip=clip,
+                    )
                 )
-            ]
-            children = [
-                self._clip_node(
-                    entry_id=entry_id,
-                    serial=serial,
-                    camera_entity_id=str(camera.get("entity_id") or ""),
-                    clip=clip,
-                )
-                for clip in visible_clips
-            ]
             self._schedule_thumbnail_warmup(clips)
             return self._directory_node(
                 identifier=identifier,
@@ -578,7 +578,7 @@ class XSenseRecordingsMediaSource(MediaSource):
             clip = self._find_clip(camera, int(start))
             if clip is None:
                 raise Unresolvable("Unknown X-Sense recording")
-            if not _clip_visible_for_media_mode(self.hass, entry_id, clip):
+            if not await self._async_clip_visible_for_media_mode(entry_id, clip):
                 raise Unresolvable("X-Sense recording is waiting for background sync")
             can_play = _clip_media_playable(clip)
             return BrowseMediaSource(
@@ -590,7 +590,7 @@ class XSenseRecordingsMediaSource(MediaSource):
                 can_play=can_play,
                 can_expand=False,
                 children=[],
-                thumbnail=_clip_thumbnail_url(clip) or None,
+                thumbnail=await self._async_clip_thumbnail_url(clip) or None,
             )
 
         if query.get("empty"):
@@ -615,14 +615,15 @@ class XSenseRecordingsMediaSource(MediaSource):
         clip = self._find_clip(camera, start)
         if clip is None:
             raise Unresolvable("Unknown X-Sense recording")
-        if _recording_media_sync_enabled(self.hass, entry_id) and not _mp4_ready(
-            _clip_cache_path(clip)
-        ):
+        if _recording_media_sync_enabled(
+            self.hass, entry_id
+        ) and not await self._async_cached_media_ready(clip):
             raise Unresolvable("X-Sense recording is waiting for background sync")
         resolved_url = await self._async_cached_playback_url(clip)
         output_path = _clip_cache_path(clip)
-        local_path = output_path if _mp4_ready(output_path) else None
-        return PlayMedia(str(resolved_url), MIME_TYPE, path=local_path)
+        local_path = output_path if await self._async_mp4_ready(output_path) else None
+        mime_type = HLS_MIME_TYPE if await self._async_hls_ready(clip) else MIME_TYPE
+        return PlayMedia(str(resolved_url), mime_type, path=local_path)
 
     async def _async_cached_playback_url(self, clip: dict[str, Any]) -> str:
         """Return a cached media URL for a recording, falling back safely."""
@@ -631,14 +632,16 @@ class XSenseRecordingsMediaSource(MediaSource):
             return await self._async_cached_sd_playback_url(clip)
 
         output_path = _clip_cache_path(clip)
-        if _mp4_ready(output_path):
+        if await self._async_mp4_ready(output_path):
             return _local_media_url(output_path)
-        if _path_ready(output_path):
+        if await self._async_hls_ready(clip):
+            return _local_media_url(_hls_playlist_cache_path(clip))
+        if await self._async_path_ready(output_path):
             LOGGER.debug(
                 "X-Sense direct recording cache is not browser-playable; replacing it: %s",
                 _clip_log_context(clip),
             )
-            output_path.unlink(missing_ok=True)
+            await self._async_file_job(_unlink_missing_ok, output_path)
 
         try:
             download = await self._async_download_direct_clip(direct_url, output_path)
@@ -653,36 +656,62 @@ class XSenseRecordingsMediaSource(MediaSource):
                 _fallback_capture_clip(clip)
             )
 
-        if _mp4_ready(output_path):
+        if await self._async_mp4_ready(output_path):
+            output_bytes = await self._async_file_size(output_path)
             LOGGER.debug(
                 "X-Sense direct recording cache ready: %s",
                 {
                     **_clip_log_context(clip),
                     "content_type": download.get("content_type"),
                     "bytes": download.get("bytes"),
-                    "output_bytes": output_path.stat().st_size,
+                    "output_bytes": output_bytes,
                     "mp4_signature": download.get("mp4_signature"),
                     "download_elapsed_ms": download.get("elapsed_ms"),
                 },
             )
             return _local_media_url(output_path)
+        mp4_signature = await self._async_mp4_signature_present(output_path)
+        if _is_hls_content_type(download.get("content_type")):
+            try:
+                hls = await self._async_cache_hls_clip(direct_url, clip)
+            except Exception as exc:  # noqa: BLE001
+                LOGGER.debug(
+                    "Could not cache X-Sense HLS recording; using SD capture fallback: %s",
+                    {**_clip_log_context(clip), "error": str(exc)},
+                )
+            else:
+                LOGGER.debug(
+                    "X-Sense HLS recording cache ready: %s",
+                    {
+                        **_clip_log_context(clip),
+                        "content_type": download.get("content_type"),
+                        "segments": hls.get("segments"),
+                        "initial_segments": hls.get("initial_segments"),
+                        "deferred_segments": hls.get("deferred_segments"),
+                        "playlists": hls.get("playlists"),
+                        "bytes": hls.get("bytes"),
+                        "download_elapsed_ms": hls.get("elapsed_ms"),
+                    },
+                )
+                await self._async_file_job(_unlink_missing_ok, output_path)
+                return _local_media_url(_hls_playlist_cache_path(clip))
         LOGGER.debug(
             "X-Sense direct recording download was not playable; using SD capture fallback: %s",
             {
                 **_clip_log_context(clip),
                 "content_type": download.get("content_type"),
                 "bytes": download.get("bytes"),
-                "mp4_signature": _mp4_signature_present(output_path),
+                "mp4_signature": mp4_signature,
                 "download_elapsed_ms": download.get("elapsed_ms"),
             },
         )
-        output_path.unlink(missing_ok=True)
+        await self._async_file_job(_unlink_missing_ok, output_path)
         return await self._async_cached_sd_playback_url(_fallback_capture_clip(clip))
 
     async def _async_cached_sd_playback_url(self, clip: dict[str, Any]) -> str:
         """Capture an SD-only X-Sense clip to cached MP4 media."""
         output_path = _clip_cache_path(clip)
-        if _mp4_ready(output_path):
+        if await self._async_mp4_ready(output_path):
             return _local_media_url(output_path)
 
         entry_id = str(clip.get("entry_id") or "")
@@ -727,15 +756,16 @@ class XSenseRecordingsMediaSource(MediaSource):
             raise Unresolvable(
                 "X-Sense SD recording could not be cached as media yet"
             ) from exc
-        if _mp4_ready(output_path):
+        if await self._async_mp4_ready(output_path):
             cached_url = _local_media_url(output_path)
+            output_bytes = await self._async_file_size(output_path)
             LOGGER.debug(
                 "X-Sense SD recording cache ready: %s",
                 {
                     "entry_id": entry_id,
                     "camera": _short_serial(serial),
                     "start": clip.get("start"),
-                    "bytes": output_path.stat().st_size,
+                    "bytes": output_bytes,
                 },
             )
             return cached_url
@@ -746,17 +776,249 @@ class XSenseRecordingsMediaSource(MediaSource):
     ) -> dict[str, Any]:
         """Download one direct X-Sense recording into the media cache."""
         temp_path = output_path.with_name(f"{output_path.name}.direct")
-        temp_path.unlink(missing_ok=True)
+        await self._async_file_job(_unlink_missing_ok, temp_path)
         started_at = monotonic()
         try:
             result = await self._async_download_url(url, temp_path)
-            result["mp4_signature"] = _mp4_signature_present(temp_path)
+            result["mp4_signature"] = await self._async_mp4_signature_present(
+                temp_path
+            )
             result["elapsed_ms"] = int((monotonic() - started_at) * 1000)
-            if _mp4_ready(temp_path):
-                temp_path.replace(output_path)
+            if await self._async_mp4_ready(temp_path):
+                await self._async_file_job(_replace_cache_file, temp_path, output_path)
             return result
         finally:
-            temp_path.unlink(missing_ok=True)
+            await self._async_file_job(_unlink_missing_ok, temp_path)
+
+    async def _async_cache_hls_clip(
+        self,
+        url: str,
+        clip: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Cache one HLS playlist and its referenced media files."""
+        cache_dir = _hls_cache_dir(clip)
+        started_at = monotonic()
+        state = {
+            "remaining_initial_segments": HLS_INITIAL_SEGMENT_COUNT,
+            "initial_segments_cached": 0,
+            "deferred": [],
+            "playlists": 0,
+        }
+        LOGGER.debug(
+            "X-Sense HLS recording cache starting: %s",
+            {
+                **_clip_log_context(clip),
+                "initial_segment_target": HLS_INITIAL_SEGMENT_COUNT,
+            },
+        )
+        await self._async_file_job(_clear_directory, cache_dir)
+        result = await self._async_cache_hls_playlist(
+            url,
+            _hls_playlist_cache_path(clip),
+            cache_dir,
+            prefix="segment",
+            depth=0,
+            state=state,
+        )
+        if not await self._async_hls_ready(clip):
+            raise Unresolvable("X-Sense HLS recording cache did not create media")
+        deferred = [
+            item for item in state["deferred"] if isinstance(item, tuple) and len(item) == 2
+        ]
+        if deferred:
+            self._schedule_hls_background_cache(clip, deferred)
+        result["elapsed_ms"] = int((monotonic() - started_at) * 1000)
+        result["deferred_segments"] = len(deferred)
+        result["initial_segments"] = int(state.get("initial_segments_cached") or 0)
+        result["playlists"] = int(state.get("playlists") or 0)
+        return result
+
+    async def _async_cache_hls_playlist(
+        self,
+        url: str,
+        playlist_path: Path,
+        cache_dir: Path,
+        *,
+        prefix: str,
+        depth: int,
+        state: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Download and rewrite one HLS playlist for local cached playback."""
+        session = async_get_clientsession(self.hass)
+        async with session.get(url) as response:
+            response.raise_for_status()
+            content_type = response.headers.get("content-type", "")
+            playlist_text = await response.text()
+        if "#EXTM3U" not in playlist_text[:256]:
+            raise Unresolvable("X-Sense direct recording was not an HLS playlist")
+
+        state["playlists"] = int(state.get("playlists") or 0) + 1
+        rewritten: list[str] = []
+        total_bytes = 0
+        segment_count = 0
+        key_count = 0
+        child_playlist_count = 0
+        for index, line in enumerate(playlist_text.splitlines()):
+            stripped = line.strip()
+            if not stripped:
+                rewritten.append(line)
+                continue
+            if stripped.startswith("#EXT-X-KEY") and "URI=" in stripped:
+                updated, key_bytes, cached = await self._async_cache_hls_attribute_uri(
+                    line,
+                    url,
+                    cache_dir,
+                    f"{prefix}_key_{key_count}.key",
+                )
+                key_count += 1 if cached else 0
+                total_bytes += key_bytes
+                rewritten.append(updated)
+                continue
+            if stripped.startswith("#EXT-X-MAP") and "URI=" in stripped:
+                updated, map_bytes, cached = await self._async_cache_hls_attribute_uri(
+                    line,
+                    url,
+                    cache_dir,
+                    f"{prefix}_map_{index}{_hls_uri_suffix(stripped, '.mp4')}",
+                )
+                segment_count += 1 if cached else 0
+                total_bytes += map_bytes
+                rewritten.append(updated)
+                continue
+            if stripped.startswith("#"):
+                rewritten.append(line)
+                continue
+
+            media_url = urljoin(url, stripped)
+            if depth == 0 and _is_hls_playlist_uri(media_url):
+                child_dir = cache_dir / f"{prefix}_{index}"
+                child_playlist = child_dir / "index.m3u8"
+                child_result = await self._async_cache_hls_playlist(
+                    media_url,
+                    child_playlist,
+                    child_dir,
+                    prefix=f"{prefix}_{index}",
+                    depth=depth + 1,
+                    state=state,
+                )
+                total_bytes += int(child_result.get("bytes") or 0)
+                segment_count += int(child_result.get("segments") or 0)
+                child_playlist_count += 1
+                rewritten.append(f"{prefix}_{index}/index.m3u8")
+                continue
+
+            suffix = _hls_uri_suffix(media_url, ".ts")
+            segment_name = f"{prefix}_{index:04d}{suffix}"
+            segment_count += 1
+            segment_path = cache_dir / segment_name
+            if int(state.get("remaining_initial_segments") or 0) > 0:
+                payload = await self._async_download_hls_part(media_url)
+                await self._async_file_job(
+                    _write_cache_file,
+                    segment_path,
+                    payload,
+                )
+                total_bytes += len(payload)
+                state["remaining_initial_segments"] = (
+                    int(state.get("remaining_initial_segments") or 0) - 1
+                )
+                state["initial_segments_cached"] = (
+                    int(state.get("initial_segments_cached") or 0) + 1
+                )
+            else:
+                state.setdefault("deferred", []).append((media_url, segment_path))
+            rewritten.append(segment_name)
+
+        LOGGER.debug(
+            "X-Sense HLS playlist cached: %s",
+            {
+                "content_type": content_type,
+                "depth": depth,
+                "lines": len(playlist_text.splitlines()),
+                "segments": segment_count,
+                "child_playlists": child_playlist_count,
+                "keys": key_count,
+                "initial_segments_cached": int(
+                    state.get("initial_segments_cached") or 0
+                ),
+                "deferred_segments": len(state.get("deferred", [])),
+            },
+        )
+        await self._async_file_job(
+            _write_cache_file,
+            playlist_path,
+            ("\n".join(rewritten) + "\n").encode(),
+        )
+        return {
+            "content_type": content_type,
+            "bytes": total_bytes,
+            "segments": segment_count,
+        }
+
+    def _schedule_hls_background_cache(
+        self,
+        clip: dict[str, Any],
+        deferred: list[tuple[str, Path]],
+    ) -> None:
+        """Continue caching HLS segments after the first playable buffer exists."""
+        if not hasattr(self.hass, "async_create_task"):
+            return
+
+        async def _async_background_cache() -> None:
+            started_at = monotonic()
+            cached = 0
+            failed = 0
+            bytes_written = 0
+            for url, path in deferred:
+                if await self._async_path_ready(path):
+                    cached += 1
+                    continue
+                try:
+                    payload = await self._async_download_hls_part(url)
+                    await self._async_file_job(_write_cache_file, path, payload)
+                except Exception as exc:  # noqa: BLE001
+                    failed += 1
+                    LOGGER.debug(
+                        "Could not cache deferred X-Sense HLS segment: %s",
+                        {**_clip_log_context(clip), "error": str(exc)},
+                    )
+                    continue
+                cached += 1
+                bytes_written += len(payload)
+            LOGGER.debug(
+                "X-Sense HLS recording background cache finished: %s",
+                {
+                    **_clip_log_context(clip),
+                    "cached_segments": cached,
+                    "failed_segments": failed,
+                    "bytes": bytes_written,
+                    "elapsed_ms": int((monotonic() - started_at) * 1000),
+                },
+            )
+
+        self.hass.async_create_task(_async_background_cache())
+
+    async def _async_cache_hls_attribute_uri(
+        self,
+        line: str,
+        base_url: str,
+        cache_dir: Path,
+        filename: str,
+    ) -> tuple[str, int, bool]:
+        """Cache an HLS tag URI attribute and rewrite it to a local filename."""
+        uri = _hls_attribute_uri(line)
+        if not uri:
+            return line, 0, False
+        payload = await self._async_download_hls_part(urljoin(base_url, uri))
+        await self._async_file_job(_write_cache_file, cache_dir / filename, payload)
+        return line.replace(f'URI="{uri}"', f'URI="{filename}"'), len(payload), True
+
+    async def _async_download_hls_part(self, url: str) -> bytes:
+        """Download one HLS segment, map, or key file."""
+        session = async_get_clientsession(self.hass)
+        async with session.get(url) as response:
+            response.raise_for_status()
+            return await response.read()
 
     async def _async_cache_thumbnail(self, clip: dict[str, Any]) -> bool:
         """Cache one recording thumbnail when X-Sense provides a direct image URL."""
@@ -764,14 +1026,14 @@ class XSenseRecordingsMediaSource(MediaSource):
         if not thumbnail_url.startswith(("http://", "https://")):
             return False
         output_path = _clip_thumbnail_cache_path(clip)
-        if _path_ready(output_path):
+        if await self._async_path_ready(output_path):
             return False
         try:
             await self._async_download_url(thumbnail_url, output_path)
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug("Could not cache X-Sense recording thumbnail: %s", exc)
             return False
-        return _path_ready(output_path)
+        return await self._async_path_ready(output_path)
 
     async def _async_download_url(self, url: str, output_path: Path) -> dict[str, Any]:
         """Download one URL into the recording media cache."""
@@ -783,26 +1045,94 @@ class XSenseRecordingsMediaSource(MediaSource):
         await self.hass.async_add_executor_job(_write_cache_file, output_path, payload)
         return {"content_type": content_type, "bytes": len(payload)}
 
+    async def _async_path_ready(self, path: Path) -> bool:
+        """Return whether a cached path is present without blocking the loop."""
+        return await self._async_file_job(_path_ready, path)
+
+    async def _async_mp4_ready(self, path: Path) -> bool:
+        """Return whether a cached path is playable MP4 without blocking the loop."""
+        return await self._async_file_job(_mp4_ready, path)
+
+    async def _async_hls_ready(self, clip: dict[str, Any]) -> bool:
+        """Return whether a cached HLS playlist and its media files are present."""
+        return await self._async_file_job(_hls_ready, clip)
+
+    async def _async_cached_media_ready(self, clip: dict[str, Any]) -> bool:
+        """Return whether cached MP4 or HLS media exists for a clip."""
+        return await self._async_mp4_ready(_clip_cache_path(clip)) or await self._async_hls_ready(
+            clip
+        )
+
+    async def _async_cached_media_url(self, clip: dict[str, Any]) -> str:
+        """Return a local media URL for cached MP4 or HLS media."""
+        if await self._async_mp4_ready(_clip_cache_path(clip)):
+            return _local_media_url(_clip_cache_path(clip))
+        if await self._async_hls_ready(clip):
+            return _local_media_url(_hls_playlist_cache_path(clip))
+        return ""
+
+    async def _async_cached_media_format(self, clip: dict[str, Any]) -> str:
+        """Return the cached media format for diagnostics."""
+        if await self._async_mp4_ready(_clip_cache_path(clip)):
+            return "mp4"
+        if await self._async_hls_ready(clip):
+            return "hls"
+        return ""
+
+    async def _async_mp4_signature_present(self, path: Path) -> bool:
+        """Return whether a path has an MP4 signature without blocking the loop."""
+        return await self._async_file_job(_mp4_signature_present, path)
+
+    async def _async_file_size(self, path: Path) -> int:
+        """Return a file size without blocking the loop."""
+        return await self._async_file_job(_file_size, path)
+
+    async def _async_clip_visible_for_media_mode(
+        self,
+        entry_id: str,
+        clip: dict[str, Any],
+    ) -> bool:
+        """Return whether a clip should appear without blocking the loop."""
+        if not _recording_media_sync_enabled(self.hass, entry_id):
+            return True
+        return await self._async_cached_media_ready(clip)
+
+    async def _async_clip_thumbnail_url(self, clip: dict[str, Any]) -> str:
+        """Return a cached thumbnail URL when available without blocking the loop."""
+        thumbnail_path = _clip_thumbnail_cache_path(clip)
+        if await self._async_path_ready(thumbnail_path):
+            return _local_media_url(thumbnail_path)
+        return str(clip.get("thumbnail_url") or "")
+
+    async def _async_file_job(self, func, *args):
+        """Run a small filesystem helper off the event loop."""
+        async_add_executor_job = getattr(self.hass, "async_add_executor_job", None)
+        if async_add_executor_job is not None:
+            return await async_add_executor_job(func, *args)
+        return await asyncio.to_thread(func, *args)
+
     def _schedule_thumbnail_warmup(self, clips: list[dict[str, Any]]) -> None:
         """Warm up missing thumbnails for a browsed date folder."""
         if not hasattr(self.hass, "async_create_task"):
             return
-        pending = [
-            clip
-            for clip in clips
-            if clip.get("thumbnail_url") and not _path_ready(_clip_thumbnail_cache_path(clip))
-        ][:THUMBNAIL_WARMUP_LIMIT]
+        pending = [clip for clip in clips if clip.get("thumbnail_url")]
         if not pending:
             return
 
         async def _async_warmup() -> None:
             cached = 0
+            requested = 0
             for clip in pending:
+                if await self._async_path_ready(_clip_thumbnail_cache_path(clip)):
+                    continue
+                requested += 1
+                if requested > THUMBNAIL_WARMUP_LIMIT:
+                    break
                 if await self._async_cache_thumbnail(clip):
                     cached += 1
             LOGGER.debug(
                 "X-Sense recording thumbnail warmup finished: %s",
-                {"requested": len(pending), "cached": cached},
+                {"requested": requested, "cached": cached},
             )
 
         self.hass.async_create_task(_async_warmup())
@@ -894,8 +1224,8 @@ class XSenseRecordingsMediaSource(MediaSource):
             children=children,
         )
 
-    @staticmethod
-    def _clip_node(
+    async def _async_clip_node(
+        self,
         entry_id: str,
         serial: str,
         camera_entity_id: str,
@@ -918,7 +1248,7 @@ class XSenseRecordingsMediaSource(MediaSource):
             can_play=_clip_media_playable(clip),
             can_expand=False,
             children=[],
-            thumbnail=_clip_thumbnail_url(clip) or None,
+            thumbnail=await self._async_clip_thumbnail_url(clip) or None,
         )
 
 
@@ -1375,17 +1705,6 @@ def _fallback_capture_clip(clip: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _clip_visible_for_media_mode(
-    hass: HomeAssistant,
-    entry_id: str,
-    clip: dict[str, Any],
-) -> bool:
-    """Return whether a clip should appear in the media browser."""
-    if not _recording_media_sync_enabled(hass, entry_id):
-        return True
-    return _mp4_ready(_clip_cache_path(clip))
-
-
 def _recording_media_sync_enabled(hass: HomeAssistant, entry_id: str) -> bool:
     """Return whether recording media browsing is limited to synced clips."""
     config_entries = getattr(hass, "config_entries", None)
@@ -1531,20 +1850,29 @@ def _clip_cache_path(clip: dict[str, Any]) -> Path:
     )
 
 
+def _hls_cache_dir(clip: dict[str, Any]) -> Path:
+    """Return the cache directory for one HLS recording."""
+    start = _clip_start_for_sort(clip)
+    end = _clip_end_for_path(clip, start)
+    root = _recording_media_root_from_value(clip.get("media_root"))
+    return (
+        root
+        / "hls"
+        / f"{_safe_segment(str(clip.get('serial') or ''))}_{start}_{end}"
+    )
+
+
+def _hls_playlist_cache_path(clip: dict[str, Any]) -> Path:
+    """Return the cached HLS playlist path for one recording."""
+    return _hls_cache_dir(clip) / "index.m3u8"
+
+
 def _clip_cache_path_from_values(
     serial: str, start: int, end: int, media_root: Path | str | None = None
 ) -> Path:
     """Return the cache path for one recording video."""
     root = _recording_media_root_from_value(media_root)
     return root / "videos" / f"{_safe_segment(serial)}_{start}_{end}.mp4"
-
-
-def _clip_thumbnail_url(clip: dict[str, Any]) -> str:
-    """Return a cached thumbnail URL when available, otherwise the direct URL."""
-    thumbnail_path = _clip_thumbnail_cache_path(clip)
-    if _path_ready(thumbnail_path):
-        return _local_media_url(thumbnail_path)
-    return str(clip.get("thumbnail_url") or "")
 
 
 def _clip_thumbnail_cache_path(clip: dict[str, Any]) -> Path:
@@ -1574,12 +1902,62 @@ def _write_cache_file(path: Path, payload: bytes) -> None:
     temp_path.replace(path)
 
 
+def _replace_cache_file(source: Path, target: Path) -> None:
+    """Replace one cached recording file."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    source.replace(target)
+
+
+def _unlink_missing_ok(path: Path) -> None:
+    """Remove one cached file when present."""
+    path.unlink(missing_ok=True)
+
+
+def _file_size(path: Path) -> int:
+    try:
+        return path.stat().st_size
+    except OSError:
+        return 0
+
+
 def _path_ready(path: Path) -> bool:
     return path.exists() and path.stat().st_size > 0
 
 
 def _mp4_ready(path: Path) -> bool:
     return _path_ready(path) and _mp4_signature_present(path)
+
+
+def _hls_ready(clip: dict[str, Any]) -> bool:
+    return _hls_playlist_ready(_hls_playlist_cache_path(clip))
+
+
+def _hls_playlist_ready(playlist_path: Path) -> bool:
+    if not _path_ready(playlist_path):
+        return False
+    try:
+        lines = playlist_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+    media_lines = [
+        line.strip()
+        for line in lines
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    if not media_lines:
+        return False
+    child_playlist_seen = False
+    for line in media_lines:
+        path = playlist_path.parent / line
+        if _is_hls_playlist_uri(line):
+            child_playlist_seen = True
+            if _hls_playlist_ready(path):
+                return True
+            continue
+        if not _path_ready(path):
+            return False
+        return True
+    return False
 
 
 def _mp4_signature_present(path: Path) -> bool:
@@ -1609,6 +1987,48 @@ def _clip_log_context(clip: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _is_hls_content_type(value: Any) -> bool:
+    text = str(value or "").lower()
+    return "mpegurl" in text or "application/x-mpegurl" in text
+
+
+def _is_hls_playlist_uri(value: Any) -> bool:
+    path = urlparse(str(value or "")).path.lower()
+    return path.endswith(".m3u8") or path.endswith(".m3u")
+
+
+def _hls_uri_suffix(value: str, default: str) -> str:
+    suffix = Path(urlparse(value).path).suffix
+    if not suffix or len(suffix) > 8:
+        return default
+    return suffix
+
+
+def _hls_attribute_uri(line: str) -> str:
+    marker = 'URI="'
+    start = line.find(marker)
+    if start == -1:
+        return ""
+    start += len(marker)
+    end = line.find('"', start)
+    if end == -1:
+        return ""
+    return line[start:end]
+
+
+def _clear_directory(path: Path) -> None:
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+        return
+    for child in path.rglob("*"):
+        if child.is_file():
+            child.unlink(missing_ok=True)
+    for child in sorted(path.rglob("*"), reverse=True):
+        if child.is_dir():
+            child.rmdir()
+    path.mkdir(parents=True, exist_ok=True)
+
+
 def _clear_media_cache(roots: list[Path]) -> None:
     """Remove cached recording media files."""
     for root in roots:
@@ -1618,6 +2038,9 @@ def _clear_media_cache(roots: list[Path]) -> None:
             for path in folder.glob("*"):
                 if path.is_file() and path.suffix in {".h264", ".jpg", ".mp4"}:
                     path.unlink(missing_ok=True)
+        hls_root = root / "hls"
+        if hls_root.exists():
+            _clear_directory(hls_root)
 
 
 def _configured_recording_media_roots(hass: HomeAssistant) -> list[Path]:

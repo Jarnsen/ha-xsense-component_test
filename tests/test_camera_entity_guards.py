@@ -2284,6 +2284,16 @@ def test_recording_media_source_falls_back_to_sd_when_direct_download_not_mp4(
 
     monkeypatch.setattr(
         media_source,
+        "_hls_cache_dir",
+        lambda current_clip: tmp_path / "hls",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: tmp_path / "hls" / "index.m3u8",
+    )
+    monkeypatch.setattr(
+        media_source,
         "_clip_cache_path",
         lambda current_clip: output_path,
     )
@@ -2300,6 +2310,155 @@ def test_recording_media_source_falls_back_to_sd_when_direct_download_not_mp4(
     assert seen["source"] == "sd_playback"
     assert seen["quality"] == "HD"
     assert media_source._mp4_ready(output_path)
+
+
+def test_recording_media_source_caches_hd_hls_without_sd_fallback(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import media_source
+
+    source = media_source.XSenseRecordingsMediaSource(SimpleNamespace())
+    output_path = tmp_path / "clip.mp4"
+    clip = {
+        "source": "video_url",
+        "quality": "HD",
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "playback_url": "https://example.invalid/index.m3u8",
+        "media_root": tmp_path.as_posix(),
+    }
+    responses = {
+        "https://example.invalid/index.m3u8": (
+            "application/vnd.apple.mpegurl;charset=utf-8",
+            b"#EXTM3U\n#EXT-X-TARGETDURATION:4\nseg-1.ts\nseg-2.ts\nseg-3.ts\n#EXT-X-ENDLIST\n",
+        ),
+        "https://example.invalid/seg-1.ts": ("video/mp2t", b"segment-one"),
+        "https://example.invalid/seg-2.ts": ("video/mp2t", b"segment-two"),
+        "https://example.invalid/seg-3.ts": ("video/mp2t", b"segment-three"),
+    }
+
+    class Response:
+        def __init__(self, url):
+            self.content_type, self.payload = responses[url]
+            self.headers = {"content-type": self.content_type}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def raise_for_status(self):
+            return None
+
+        async def read(self):
+            return self.payload
+
+        async def text(self):
+            return self.payload.decode()
+
+    class Session:
+        def get(self, url):
+            return Response(url)
+
+    class Hass:
+        async def async_add_executor_job(self, func, *args):
+            return func(*args)
+
+    async def cached_sd_playback_url(current_clip):
+        raise AssertionError("HD HLS should not use SD capture fallback")
+
+    source.hass = Hass()
+    monkeypatch.setattr(
+        media_source,
+        "_hls_cache_dir",
+        lambda current_clip: tmp_path / "hls",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: tmp_path / "hls" / "index.m3u8",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_local_media_url",
+        lambda path: f"/media/local/test/{path.name}",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_clip_cache_path",
+        lambda current_clip: output_path,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "async_get_clientsession",
+        lambda hass: Session(),
+    )
+    monkeypatch.setattr(source, "_async_cached_sd_playback_url", cached_sd_playback_url)
+
+    result = asyncio.run(source._async_cached_playback_url(clip))
+
+    playlist = media_source._hls_playlist_cache_path(clip)
+    assert result == "/media/local/test/index.m3u8"
+    assert media_source._hls_ready(clip)
+    assert playlist.read_text(encoding="utf-8") == (
+        "#EXTM3U\n"
+        "#EXT-X-TARGETDURATION:4\n"
+        "segment_0002.ts\n"
+        "segment_0003.ts\n"
+        "segment_0004.ts\n"
+        "#EXT-X-ENDLIST\n"
+    )
+    assert (playlist.parent / "segment_0002.ts").read_bytes() == b"segment-one"
+    assert (playlist.parent / "segment_0003.ts").read_bytes() == b"segment-two"
+    assert not (playlist.parent / "segment_0004.ts").exists()
+
+
+def test_recording_media_source_hls_master_ready_with_one_buffered_variant(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import media_source
+
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "media_root": tmp_path.as_posix(),
+    }
+    root = tmp_path / "hls"
+    variant_a = root / "variant-a"
+    variant_b = root / "variant-b"
+    variant_a.mkdir(parents=True)
+    variant_b.mkdir(parents=True)
+    (root / "index.m3u8").write_text(
+        "#EXTM3U\n"
+        "#EXT-X-STREAM-INF:BANDWIDTH=1000000\n"
+        "variant-a/index.m3u8\n"
+        "#EXT-X-STREAM-INF:BANDWIDTH=2000000\n"
+        "variant-b/index.m3u8\n",
+        encoding="utf-8",
+    )
+    (variant_a / "index.m3u8").write_text(
+        "#EXTM3U\n#EXT-X-TARGETDURATION:4\nsegment_0002.ts\nsegment_0003.ts\n",
+        encoding="utf-8",
+    )
+    (variant_a / "segment_0002.ts").write_bytes(b"segment-one")
+    (variant_b / "index.m3u8").write_text(
+        "#EXTM3U\n#EXT-X-TARGETDURATION:4\nsegment_0004.ts\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: root / "index.m3u8",
+    )
+
+    assert media_source._hls_ready(clip)
 
 
 def test_recording_media_source_lazy_shows_uncached_clips_when_sync_disabled(

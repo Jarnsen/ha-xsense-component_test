@@ -38,7 +38,7 @@ async def async_capture_sd_recording(
     """Capture one SD-card playback session to MP4 without video transcoding."""
     lock = _recording_capture_lock(hass, output_path)
     async with lock:
-        if _mp4_ready(output_path):
+        if await _async_mp4_ready(hass, output_path):
             return output_path
         return await _async_capture_sd_recording_unlocked(
             hass,
@@ -60,17 +60,20 @@ async def _async_capture_sd_recording_unlocked(
     duration_seconds: int | None = None,
 ) -> Path:
     """Capture one SD-card playback session while holding the recording lock."""
-    helper_path = _pion_helper_path()
+    helper_path = await _async_file_job(hass, _pion_helper_path)
     if helper_path is None:
         raise RuntimeError("X-Sense Pion adapter binary is missing")
-    ffmpeg_binary = _ffmpeg_binary(hass)
+    ffmpeg_binary = await _async_file_job(hass, _ffmpeg_binary, hass)
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     h264_path = output_path.with_name(f"{output_path.name}.h264")
     temp_output_path = output_path.with_suffix(".tmp.mp4")
-    h264_path.unlink(missing_ok=True)
-    temp_output_path.unlink(missing_ok=True)
-    output_path.unlink(missing_ok=True)
+    await _async_file_job(
+        hass,
+        _prepare_capture_paths,
+        output_path,
+        h264_path,
+        temp_output_path,
+    )
     capture_started_at = monotonic()
 
     ticket_data = await coordinator.xsense.get_camera_webrtc_ticket(
@@ -131,13 +134,15 @@ async def _async_capture_sd_recording_unlocked(
         signal_session.start_forwarding_remote_candidates()
         result = await _wait_for_helper(proc, helper_timeout)
         helper_finished_at = monotonic()
-        if int(result.get("h264Samples") or 0) <= 0 or not h264_path.exists():
+        h264_ready = await _async_file_job(hass, _path_ready, h264_path)
+        if int(result.get("h264Samples") or 0) <= 0 or not h264_ready:
             raise RuntimeError(f"X-Sense Pion adapter did not receive video: {result}")
         await _remux_h264_to_mp4(ffmpeg_binary, h264_path, temp_output_path)
         mp4_finished_at = monotonic()
-        if not _mp4_ready(temp_output_path):
+        if not await _async_mp4_ready(hass, temp_output_path):
             raise RuntimeError("X-Sense Pion adapter did not create a playable MP4")
-        temp_output_path.replace(output_path)
+        await _async_file_job(hass, _replace_file, temp_output_path, output_path)
+        output_bytes = await _async_file_job(hass, _file_size, output_path)
         LOGGER.debug(
             "X-Sense Pion SD recording captured: %s",
             {
@@ -147,7 +152,7 @@ async def _async_capture_sd_recording_unlocked(
                 "bytes": result.get("bytes"),
                 "h264_samples": result.get("h264Samples"),
                 "h264_bytes": result.get("h264Bytes"),
-                "output_bytes": output_path.stat().st_size,
+                "output_bytes": output_bytes,
                 "helper_elapsed_ms": int(
                     (helper_finished_at - capture_started_at) * 1000
                 ),
@@ -169,8 +174,7 @@ async def _async_capture_sd_recording_unlocked(
                 await asyncio.wait_for(proc.wait(), timeout=5)
             if proc.returncode is None:
                 proc.kill()
-        h264_path.unlink(missing_ok=True)
-        temp_output_path.unlink(missing_ok=True)
+        await _async_file_job(hass, _cleanup_capture_paths, h264_path, temp_output_path)
 
 
 def _recording_capture_lock(hass: HomeAssistant, output_path: Path) -> asyncio.Lock:
@@ -390,6 +394,49 @@ def _camera_resolution(camera: Any) -> str | None:
         if value:
             return str(value)
     return None
+
+
+async def _async_mp4_ready(hass: HomeAssistant, path: Path) -> bool:
+    return await _async_file_job(hass, _mp4_ready, path)
+
+
+async def _async_file_job(hass: HomeAssistant, func, *args):
+    async_add_executor_job = getattr(hass, "async_add_executor_job", None)
+    if async_add_executor_job is not None:
+        return await async_add_executor_job(func, *args)
+    return await asyncio.to_thread(func, *args)
+
+
+def _prepare_capture_paths(
+    output_path: Path,
+    h264_path: Path,
+    temp_output_path: Path,
+) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    h264_path.unlink(missing_ok=True)
+    temp_output_path.unlink(missing_ok=True)
+    output_path.unlink(missing_ok=True)
+
+
+def _cleanup_capture_paths(*paths: Path) -> None:
+    for path in paths:
+        path.unlink(missing_ok=True)
+
+
+def _path_ready(path: Path) -> bool:
+    return path.exists() and path.stat().st_size > 0
+
+
+def _replace_file(source: Path, target: Path) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    source.replace(target)
+
+
+def _file_size(path: Path) -> int:
+    try:
+        return path.stat().st_size
+    except OSError:
+        return 0
 
 
 def _mp4_ready(path: Path) -> bool:

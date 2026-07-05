@@ -214,6 +214,15 @@ def _has_any_camera_entities(hass: HomeAssistant) -> bool:
     return False
 
 
+def _cleanup_recordings_runtime(hass: HomeAssistant, entry_id: str | None = None) -> None:
+    """Remove recordings UI/runtime pieces when no X-Sense cameras are present."""
+    if entry_id:
+        async_remove_recording_index(hass, entry_id)
+    async_unregister_recordings_panel(hass)
+    async_unregister_playback_panel(hass)
+    async_unregister_recording_services(hass)
+
+
 def _sensor_unique_id(entity_id: str, key: str) -> str:
     """Return the unique ID format used by X-Sense sensor entities."""
     return f"{entity_id}-{key}".replace("_", "-").lower()
@@ -630,9 +639,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await async_register_playback_view(hass)
         await async_register_recording_services(hass)
     else:
-        async_unregister_recordings_panel(hass)
-        async_unregister_playback_panel(hass)
-        async_unregister_recording_services(hass)
+        _cleanup_recordings_runtime(hass, entry.entry_id)
     await async_check_stale_camera_blueprints(hass)
 
     @callback
@@ -676,9 +683,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if coordinator is not None:
             await coordinator.async_shutdown()
         if not _has_any_camera_entities(hass):
-            async_unregister_recordings_panel(hass)
-            async_unregister_playback_panel(hass)
-            async_unregister_recording_services(hass)
+            _cleanup_recordings_runtime(hass)
 
     return unload_ok
 
