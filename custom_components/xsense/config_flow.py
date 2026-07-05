@@ -13,8 +13,8 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import AsyncXSense
-from .api.exceptions import APIFailure, AuthFailed
+from xsense import AsyncXSense
+from xsense.exceptions import APIFailure, AuthFailed
 from .const import (
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
     CONF_RECORDING_MEDIA_DAYS_ORDER,

@@ -27,7 +27,7 @@ from custom_components.xsense import (
     sensor,
     switch,
 )
-from custom_components.xsense.api import mapping
+from xsense import mapping
 from homeassistant.const import Platform
 
 
@@ -3577,7 +3577,7 @@ def test_ai_detection_event_entity_does_not_write_before_added():
 
 
 def test_camera_availability_follows_apk_non_offline_statuses():
-    from custom_components.xsense.api.entity_map import EntityType
+    from xsense.entity_map import EntityType
     from custom_components.xsense.entity import _apk_entity_is_available
 
     camera = SimpleNamespace(
@@ -3910,7 +3910,7 @@ def test_webrtc_candidate_debug_context_hides_raw_candidate():
 
 
 def test_camera_live_resolution_defaults_to_apk_live_view_default():
-    from custom_components.xsense.api.async_xsense import camera_live_resolution
+    from xsense.async_xsense import camera_live_resolution
 
     camera_entity = entity(
         "SSC0A",
@@ -4042,7 +4042,7 @@ async def test_default_camera_returns_live_url_from_stream_endpoint():
 
 
 async def test_default_camera_raises_when_stream_endpoint_no_response():
-    from custom_components.xsense.api.exceptions import APIFailure
+    from xsense.exceptions import APIFailure
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseCameraEntity,

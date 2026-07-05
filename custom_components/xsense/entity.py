@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .api.entity import Entity
-from .api.entity_map import EntityType
+from xsense.entity import Entity
+from xsense.entity_map import EntityType
 
 from homeassistant.const import ATTR_VIA_DEVICE
 from homeassistant.helpers.device_registry import DeviceInfo
