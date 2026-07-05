@@ -12,10 +12,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .api.async_xsense import is_camera_entity
-from .api.device import Device
-from .api.entity import Entity
-from .api.entity_map import EntityType
+from xsense.async_xsense import is_camera_entity
+from xsense.device import Device
+from xsense.entity import Entity
+from xsense.entity_map import EntityType
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (

@@ -25,7 +25,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
 
-from .api.async_xsense import is_camera_entity
+from xsense.async_xsense import is_camera_entity
 from .const import (
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
     CONF_RECORDING_MEDIA_DAYS_ORDER,

@@ -18,7 +18,7 @@ from .const import (
     DOMAIN,
     LOGGER,
 )
-from .api.async_xsense import is_camera_entity
+from xsense.async_xsense import is_camera_entity
 from .frontend import recordings_panel_url
 from .pion_adapter import async_capture_sd_recording
 from .webrtc_signal import (

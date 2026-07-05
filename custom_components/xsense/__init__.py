@@ -17,7 +17,7 @@ from homeassistant.helpers.device_registry import (
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import slugify
 
-from .api.async_xsense import is_camera_entity
+from xsense.async_xsense import is_camera_entity
 from .const import (
     CAMERA_AI_SERVICE_AVAILABLE,
     DOMAIN,

@@ -2,7 +2,7 @@ from custom_components.xsense.alarm_control_panel import (
     XSenseAlarmControlPanel,
     station_supports_alarm_panel,
 )
-from custom_components.xsense.api.station import Station
+from xsense.station import Station
 from custom_components.xsense.binary_sensor import (
     XSenseBinarySensorEntity,
     XSenseBinarySensorEntityDescription,
