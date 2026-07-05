@@ -41,6 +41,7 @@ async def async_register_recordings_http_views(hass: HomeAssistant) -> None:
     if domain_data.get("_recordings_http_views_registered"):
         return
     hass.http.register_view(XSenseRecordingsPanelDataView(hass))
+    hass.http.register_view(XSenseRecordingsPanelDebugView(hass))
     hass.http.register_view(XSenseRecordingsPanelPlaybackView(hass))
     hass.http.register_view(XSenseRecordingsPanelThumbnailView(hass))
     domain_data["_recordings_http_views_registered"] = True
@@ -220,6 +221,49 @@ class XSenseRecordingsPanelDataView(http.HomeAssistantView):
             },
         )
         return web.json_response(data)
+
+
+class XSenseRecordingsPanelDebugView(http.HomeAssistantView):
+    """Receive frontend playback diagnostics from the recordings panel."""
+
+    url = f"/api/{DOMAIN}/recordings/panel/debug"
+    name = f"api:{DOMAIN}:recordings:panel:debug"
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        """Initialize the panel debug view."""
+        self.hass = hass
+
+    async def post(self, request: web.Request) -> web.Response:
+        """Log one recordings panel frontend diagnostic event."""
+        try:
+            payload = await request.json()
+        except Exception as exc:  # noqa: BLE001
+            raise web.HTTPBadRequest(reason="Invalid X-Sense panel debug payload") from exc
+        if not isinstance(payload, dict):
+            raise web.HTTPBadRequest(reason="Invalid X-Sense panel debug payload")
+
+        LOGGER.debug(
+            "X-Sense recordings panel frontend event: %s",
+            {
+                "event": str(payload.get("event") or "unknown")[:80],
+                "entry_id": str(payload.get("entry_id") or "")[:32],
+                "camera": _short_serial(payload.get("serial")),
+                "start": _safe_int(payload.get("start")),
+                "end": _safe_int(payload.get("end")),
+                "cached": _safe_bool(payload.get("cached")),
+                "playback_url_kind": _url_kind(payload.get("playback_url")),
+                "status": _safe_int(payload.get("status")),
+                "ok": _safe_bool(payload.get("ok")),
+                "bytes": _safe_int(payload.get("bytes")),
+                "elapsed_ms": _safe_int(payload.get("elapsed_ms")),
+                "duration_ms": _safe_int(payload.get("duration")),
+                "ready_state": _safe_int(payload.get("ready_state")),
+                "network_state": _safe_int(payload.get("network_state")),
+                "error_code": _safe_int(payload.get("error_code")),
+                "message": str(payload.get("message") or "")[:240],
+            },
+        )
+        return web.json_response({"ok": True})
 
 
 class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
@@ -474,6 +518,36 @@ def _short_serial(value: Any) -> str:
     if len(text) <= 6:
         return text
     return f"...{text[-6:]}"
+
+
+def _safe_int(value: Any) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_bool(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if value in (None, ""):
+        return None
+    return bool(value)
+
+
+def _url_kind(value: Any) -> str:
+    text = str(value or "")
+    if not text:
+        return ""
+    if text.startswith("/api/"):
+        return "api"
+    if text.startswith("/media/local/"):
+        return "local_media"
+    if text.startswith("/xsense-recordings"):
+        return "panel"
+    if text.startswith(("http://", "https://")):
+        return "external"
+    return "other"
 
 
 def _clip_title(start: int, end: int) -> str:

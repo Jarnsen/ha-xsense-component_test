@@ -28,7 +28,7 @@ blueprint:
               domain: event
     include_recording_link:
       name: Include recording link
-      description: Send the notification when a real recording link is available. Manual runs use the selected event entity's latest recording data.
+      description: Wait for cached recording media and include a recording link. Turn this off to send a plain motion notification without waiting for video.
       default: true
       selector:
         boolean:
@@ -49,19 +49,20 @@ triggers:
     event_type: xsense_camera_event
 
 variables:
-  xsense_blueprint_version: 6
+  xsense_blueprint_version: 7
   xsense_event_entity: !input ai_detection_event
   xsense_include_recording_link: !input include_recording_link
   xsense_include_snapshot_link: !input include_snapshot_link
   xsense_event_data: "{{ trigger.event.data if trigger is defined and trigger.event is defined and trigger.event.data is mapping else {} }}"
+  xsense_has_trigger_data: "{{ trigger is defined and trigger.event is defined and trigger.event.data is mapping }}"
   xsense_event_type: "{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'event_type') or (trigger.event.event_type if trigger is defined and trigger.event is defined else '') }}"
   xsense_camera_name: "{{ (xsense_event_data.get('camera_name') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'camera_name') or (trigger.to_state.name if trigger is defined and trigger.to_state is defined else state_attr(xsense_event_entity, 'friendly_name') or 'X-Sense camera') }}"
   xsense_event_entity_id: "{{ xsense_event_data.get('event_entity_id') if xsense_event_data is mapping else '' }}"
-  xsense_recording_url: "{{ (xsense_event_data.get('recording_url') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'recording_url') or '' }}"
-  xsense_recording_media_url: "{{ (xsense_event_data.get('recording_media_url') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'recording_media_url') or '' }}"
+  xsense_recording_url: "{{ (xsense_event_data.get('recording_url') if trigger is defined and trigger.event is defined and trigger.event.data is mapping else state_attr(xsense_event_entity, 'recording_url')) or '' }}"
+  xsense_recording_media_url: "{{ (xsense_event_data.get('recording_media_url') if trigger is defined and trigger.event is defined and trigger.event.data is mapping else state_attr(xsense_event_entity, 'recording_media_url')) or '' }}"
   xsense_recording_tap_url: "{{ xsense_recording_url if xsense_recording_url == '/xsense-recordings' or xsense_recording_url[0:19] == '/xsense-recordings#' else '' }}"
   xsense_notification_url: "{{ xsense_recording_tap_url or '/xsense-recordings' }}"
-  xsense_snapshot_url: "{{ (xsense_event_data.get('snapshot_url') if xsense_event_data is mapping else '') or state_attr(xsense_event_entity, 'snapshot_url') or '' }}"
+  xsense_snapshot_url: "{{ (xsense_event_data.get('snapshot_url') if trigger is defined and trigger.event is defined and trigger.event.data is mapping else state_attr(xsense_event_entity, 'snapshot_url')) or '' }}"
 
 actions:
   - condition: template
@@ -83,7 +84,7 @@ actions:
               clickAction: "{{ xsense_notification_url }}"
       - conditions:
           - condition: template
-            value_template: "{{ not xsense_include_recording_link }}"
+            value_template: "{{ not xsense_include_recording_link and not xsense_recording_media_url }}"
         sequence:
           - domain: mobile_app
             type: notify

@@ -470,6 +470,7 @@ class XSenseRecordingsPanel extends HTMLElement {
         const end = Number(button.dataset.end);
         const clip = this.findClip(entryId, serial, start, end);
         if (clip) {
+          this.logPanelEvent("clip_open", this.clipDebugPayload(clip));
           await this.openClip(clip);
         }
       };
@@ -485,7 +486,14 @@ class XSenseRecordingsPanel extends HTMLElement {
   afterRender() {
     const video = this.shadowRoot.getElementById("viewer-video");
     if (!video) return;
-    video.play?.().catch(() => undefined);
+    this.bindVideoDiagnostics(video);
+    video.play?.().catch((err) => {
+      if (this.selectedClip) {
+        this.logPanelEvent("video_autoplay_error", this.clipDebugPayload(this.selectedClip, {
+          message: err?.message || String(err),
+        }));
+      }
+    });
   }
 
   statusText(camera, clipCount) {
@@ -549,12 +557,14 @@ class XSenseRecordingsPanel extends HTMLElement {
     }
     const clip = this.findClip(entryId, serial, start, end);
     if (!clip) {
+      this.logPanelEvent("route_clip_missing", { entry_id: entryId, serial, start, end });
       this.selectedClip = null;
       return;
     }
     this.selectedClip = clip;
     this.selectedCameraKey = this.clipKey(clip);
     this.selectedDate = clip.date || this.selectedDate;
+    this.logPanelEvent("route_clip_selected", this.clipDebugPayload(clip));
   }
 
   findClip(entryId, serial, start, end) {
@@ -570,18 +580,41 @@ class XSenseRecordingsPanel extends HTMLElement {
   }
 
   async prepareClipPlayback(clip) {
-    if (!clip?.playback_url) return;
+    if (!clip?.playback_url) {
+      this.logPanelEvent("playback_skipped_missing_url", this.clipDebugPayload(clip));
+      return;
+    }
     const key = this.playbackKey(clip);
-    if (this.playbackUrls.has(key) || this.playbackLoadingKey === key) return;
+    if (this.playbackUrls.has(key)) {
+      this.logPanelEvent("playback_skipped_already_ready", this.clipDebugPayload(clip));
+      return;
+    }
+    if (this.playbackLoadingKey === key) {
+      this.logPanelEvent("playback_skipped_already_loading", this.clipDebugPayload(clip));
+      return;
+    }
+    const startedAt = performance.now();
     this.playbackLoadingKey = key;
     this.playbackErrors.delete(key);
     this.render();
     try {
+      this.logPanelEvent("playback_prepare_start", this.clipDebugPayload(clip));
       const signedPath = await this.signPath(clip.playback_url);
+      this.logPanelEvent("playback_signed_path_ready", this.clipDebugPayload(clip, {
+        elapsed_ms: Math.round(performance.now() - startedAt),
+      }));
+      this.logPanelEvent("playback_fetch_start", this.clipDebugPayload(clip, {
+        elapsed_ms: Math.round(performance.now() - startedAt),
+      }));
       const response = await fetch(signedPath, {
         credentials: "same-origin",
         cache: "no-store",
       });
+      this.logPanelEvent("playback_fetch_response", this.clipDebugPayload(clip, {
+        status: response.status,
+        ok: response.ok,
+        elapsed_ms: Math.round(performance.now() - startedAt),
+      }));
       if (!response.ok) {
         throw new Error(`Recording is not ready (${response.status})`);
       }
@@ -594,12 +627,58 @@ class XSenseRecordingsPanel extends HTMLElement {
         URL.revokeObjectURL(previousUrl);
       }
       this.playbackUrls.set(key, URL.createObjectURL(blob));
+      this.logPanelEvent("playback_blob_ready", this.clipDebugPayload(clip, {
+        bytes: blob.size,
+        elapsed_ms: Math.round(performance.now() - startedAt),
+      }));
     } catch (err) {
       this.playbackErrors.set(key, err?.message || String(err));
+      this.logPanelEvent("playback_error", this.clipDebugPayload(clip, {
+        message: err?.message || String(err),
+        elapsed_ms: Math.round(performance.now() - startedAt),
+      }));
     } finally {
       if (this.playbackLoadingKey === key) {
         this.playbackLoadingKey = "";
       }
+    }
+  }
+
+  clipDebugPayload(clip, extra = {}) {
+    return {
+      entry_id: clip?.entry_id || "",
+      serial: clip?.serial || "",
+      start: clip?.start || 0,
+      end: clip?.end || 0,
+      cached: Boolean(clip?.cached),
+      playback_url: clip?.playback_url || "",
+      ...extra,
+    };
+  }
+
+  logPanelEvent(event, payload = {}) {
+    if (!this._hass?.callApi) return;
+    this._hass.callApi("POST", "xsense/recordings/panel/debug", {
+      event,
+      ...payload,
+    }).catch(() => undefined);
+  }
+
+  bindVideoDiagnostics(video) {
+    const clip = this.selectedClip;
+    if (!clip) return;
+    const events = ["loadedmetadata", "canplay", "playing", "waiting", "stalled", "error"];
+    for (const eventName of events) {
+      video.addEventListener(eventName, () => {
+        const mediaError = video.error;
+        this.logPanelEvent(`video_${eventName}`, this.clipDebugPayload(clip, {
+          duration: Number.isFinite(video.duration) ? Math.round(video.duration * 1000) : null,
+          ready_state: video.readyState,
+          network_state: video.networkState,
+          error_code: mediaError?.code || null,
+          message: mediaError?.message || "",
+        }));
+      }, { once: true });
     }
   }
 

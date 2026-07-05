@@ -9,7 +9,7 @@ from homeassistant.helpers import issue_registry as ir
 
 from .const import DOMAIN, LOGGER
 
-CAMERA_BLUEPRINT_VERSION = 6
+CAMERA_BLUEPRINT_VERSION = 7
 CAMERA_BLUEPRINT_ISSUE_ID = "stale_camera_notification_blueprint"
 CAMERA_BLUEPRINT_IMPORT_URL = (
     "https://my.home-assistant.io/redirect/blueprint_import/"
@@ -25,10 +25,12 @@ _CAMERA_BLUEPRINT_MARKERS = (
 _CURRENT_BLUEPRINT_MARKERS = (
     "xsense_event_data is mapping",
     "event_type: xsense_camera_event",
+    "xsense_has_trigger_data",
     "state_attr(xsense_event_entity, 'recording_media_url')",
     "xsense_recording_url[0:19] == '/xsense-recordings#'",
     "xsense_notification_url",
     "xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url",
+    "not xsense_include_recording_link and not xsense_recording_media_url",
 )
 _UNSAFE_EVENT_DATA_GET_MARKERS = (
     "xsense_event_data.get('event_type')",
@@ -114,6 +116,7 @@ def _is_stale_camera_blueprint(text: str) -> bool:
         or "xsense_blueprint_version: 3" in text
         or "xsense_blueprint_version: 4" in text
         or "xsense_blueprint_version: 5" in text
+        or "xsense_blueprint_version: 6" in text
     ):
         return True
     if "trigger: event.received" in text:

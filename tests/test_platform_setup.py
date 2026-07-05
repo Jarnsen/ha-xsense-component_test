@@ -2,6 +2,8 @@ from types import SimpleNamespace
 
 import asyncio
 import inspect
+import json
+import logging
 
 import yaml
 from jinja2 import Template
@@ -233,17 +235,19 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     entity_guard = blueprint["actions"][0]
     choose_action = blueprint["actions"][1]
     notification_choice = choose_action["choose"][0]
-    no_recording_choice = choose_action["choose"][1]
+    plain_notification_choice = choose_action["choose"][1]
     direct_url_action = notification_choice["sequence"][0]
-    default_action = no_recording_choice["sequence"][0]
+    plain_notification_action = plain_notification_choice["sequence"][0]
     direct_message = direct_url_action["message"]
     notification_data = direct_url_action["data"]
 
     assert variables["xsense_event_entity"] == "ai_detection_event"
+    assert variables["xsense_blueprint_version"] == 7
     assert variables["xsense_include_recording_link"] == "include_recording_link"
     assert variables["xsense_include_snapshot_link"] == "include_snapshot_link"
     assert "trigger.event.data" in variables["xsense_event_data"]
     assert "trigger.to_state" not in variables["xsense_event_data"]
+    assert "trigger.event.data is mapping" in variables["xsense_has_trigger_data"]
     assert "xsense_event_data is mapping" in variables["xsense_event_type"]
     assert "state_attr(xsense_event_entity, 'event_type')" in variables["xsense_event_type"]
     assert "camera_name" in variables["xsense_camera_name"]
@@ -252,10 +256,10 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "state_attr(xsense_event_entity, 'friendly_name')" in variables["xsense_camera_name"]
     assert "event_entity_id" in variables["xsense_event_entity_id"]
     assert "recording_url" in variables["xsense_recording_url"]
-    assert "xsense_event_data is mapping" in variables["xsense_recording_url"]
+    assert "trigger.event.data is mapping" in variables["xsense_recording_url"]
     assert "state_attr(xsense_event_entity, 'recording_url')" in variables["xsense_recording_url"]
     assert "recording_media_url" in variables["xsense_recording_media_url"]
-    assert "xsense_event_data is mapping" in variables["xsense_recording_media_url"]
+    assert "trigger.event.data is mapping" in variables["xsense_recording_media_url"]
     assert "state_attr(xsense_event_entity, 'recording_media_url')" in variables["xsense_recording_media_url"]
     assert "xsense_recording_url[0:19] == '/xsense-recordings#'" in variables[
         "xsense_recording_tap_url"
@@ -266,7 +270,7 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     )
     assert "xsense_recording_target" not in variables
     assert "snapshot_url" in variables["xsense_snapshot_url"]
-    assert "xsense_event_data is mapping" in variables["xsense_snapshot_url"]
+    assert "trigger.event.data is mapping" in variables["xsense_snapshot_url"]
     assert "state_attr(xsense_event_entity, 'snapshot_url')" in variables["xsense_snapshot_url"]
     assert "noAction" not in str(blueprint)
     assert "app://com.xsense.security" not in str(blueprint)
@@ -274,10 +278,11 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert direct_url_action["type"] == "notify"
     assert direct_url_action["device_id"] == "notify_device"
     assert direct_url_action["title"] == "{{ xsense_camera_name }}"
-    assert default_action["domain"] == "mobile_app"
-    assert default_action["type"] == "notify"
-    assert default_action["device_id"] == "notify_device"
-    assert "data" not in default_action
+    assert plain_notification_action["domain"] == "mobile_app"
+    assert plain_notification_action["type"] == "notify"
+    assert plain_notification_action["device_id"] == "notify_device"
+    assert plain_notification_action["title"] == "{{ xsense_camera_name }}"
+    assert "data" not in plain_notification_action
     assert len(blueprint["actions"]) == 2
     assert "xsense_event_entity_id" in entity_guard["value_template"]
     assert len(choose_action["choose"]) == 2
@@ -298,7 +303,10 @@ def test_ai_notification_blueprint_exposes_safe_event_variables():
     assert "xsense_include_recording_link" in str(notification_choice["conditions"])
     assert "xsense_recording_tap_url" in str(notification_choice["conditions"])
     assert "xsense_recording_media_url" in str(notification_choice["conditions"])
-    assert "not xsense_include_recording_link" in str(no_recording_choice["conditions"])
+    assert str(plain_notification_choice["conditions"]) == (
+        "[{'condition': 'template', "
+        "'value_template': '{{ not xsense_include_recording_link and not xsense_recording_media_url }}'}]"
+    )
     assert "actions" not in notification_data
     assert "trigger." not in str(choose_action)
 
@@ -359,6 +367,7 @@ triggers:
     event_type: xsense_camera_event
 variables:
   xsense_blueprint_version: {repairs.CAMERA_BLUEPRINT_VERSION}
+  xsense_has_trigger_data: "{{{{ trigger is defined and trigger.event is defined and trigger.event.data is mapping }}}}"
   xsense_event_data: "{{{{ trigger.event.data }}}}"
   xsense_event_type: "{{{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}}}"
   xsense_recording_media_url: "{{{{ state_attr(xsense_event_entity, 'recording_media_url') }}}}"
@@ -369,6 +378,9 @@ actions:
       - conditions:
           - condition: template
             value_template: "{{{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}}}"
+      - conditions:
+          - condition: template
+            value_template: "{{{{ not xsense_include_recording_link and not xsense_recording_media_url }}}}"
 """,
         encoding="utf-8",
     )
@@ -381,6 +393,32 @@ triggers:
   - trigger: event
     event_type: xsense_camera_event
 variables:
+  xsense_has_trigger_data: "{{ trigger is defined and trigger.event is defined and trigger.event.data is mapping }}"
+  xsense_event_type: "{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}"
+  xsense_recording_media_url: "{{ state_attr(xsense_event_entity, 'recording_media_url') }}"
+  xsense_recording_tap_url: "{{ xsense_recording_url if xsense_recording_url == '/xsense-recordings' or xsense_recording_url[0:19] == '/xsense-recordings#' else '' }}"
+  xsense_notification_url: "{{ xsense_recording_tap_url or '/xsense-recordings' }}"
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ not xsense_include_recording_link and not xsense_recording_media_url }}"
+""",
+        encoding="utf-8",
+    )
+    stale_v6 = xsense_dir / "v6.yaml"
+    stale_v6.write_text(
+        """
+blueprint:
+  name: X-Sense Camera Event
+triggers:
+  - trigger: event
+    event_type: xsense_camera_event
+variables:
+  xsense_blueprint_version: 6
   xsense_event_type: "{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}"
   xsense_recording_media_url: "{{ state_attr(xsense_event_entity, 'recording_media_url') }}"
   xsense_recording_tap_url: "{{ xsense_recording_url if xsense_recording_url == '/xsense-recordings' or xsense_recording_url[0:19] == '/xsense-recordings#' else '' }}"
@@ -450,6 +488,7 @@ variables:
         "xsense/v2.yaml",
         "xsense/v4.yaml",
         "xsense/v5.yaml",
+        "xsense/v6.yaml",
     ]
 
 
@@ -506,6 +545,7 @@ triggers:
     event_type: xsense_camera_event
 variables:
   xsense_blueprint_version: {repairs.CAMERA_BLUEPRINT_VERSION}
+  xsense_has_trigger_data: "{{{{ trigger is defined and trigger.event is defined and trigger.event.data is mapping }}}}"
   xsense_event_type: "{{{{ (xsense_event_data.get('event_type') if xsense_event_data is mapping else '') }}}}"
   xsense_recording_media_url: "{{{{ state_attr(xsense_event_entity, 'recording_media_url') }}}}"
   xsense_recording_tap_url: "{{{{ xsense_recording_url if xsense_recording_url == '/xsense-recordings' or xsense_recording_url[0:19] == '/xsense-recordings#' else '' }}}}"
@@ -515,6 +555,9 @@ actions:
       - conditions:
           - condition: template
             value_template: "{{{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_media_url }}}}"
+      - conditions:
+          - condition: template
+            value_template: "{{{{ not xsense_include_recording_link and not xsense_recording_media_url }}}}"
 """,
         encoding="utf-8",
     )
@@ -553,7 +596,11 @@ def test_recordings_panel_registration_adds_sidebar_panel(monkeypatch):
     assert panels[0]["webcomponent_name"] == "xsense-recordings-panel"
     assert panels[0]["sidebar_title"] == "X-Sense Recordings"
     assert panels[0]["sidebar_icon"] == "mdi:video-box"
-    assert panels[0]["module_url"] == "/xsense_recordings_static/recordings-panel.js"
+    with open("custom_components/xsense/manifest.json", encoding="utf-8") as file:
+        version = json.load(file)["version"]
+    assert panels[0]["module_url"] == (
+        f"/xsense_recordings_static/recordings-panel.js?v={version}"
+    )
 
 
 def test_recordings_panel_url_deep_links_to_clip():
@@ -581,6 +628,15 @@ def test_recordings_panel_video_uses_authenticated_blob_playback():
     assert "const signedPath = await this.signPath(clip.playback_url)" in panel
     assert "const response = await fetch(signedPath" in panel
     assert "URL.createObjectURL(blob)" in panel
+    assert 'this.logPanelEvent("clip_open"' in panel
+    assert 'this.logPanelEvent("playback_fetch_start"' in panel
+    assert 'this.logPanelEvent("playback_fetch_response"' in panel
+    assert 'this.logPanelEvent("playback_blob_ready"' in panel
+    assert 'this.logPanelEvent("playback_error"' in panel
+    assert 'this.logPanelEvent("video_autoplay_error"' in panel
+    assert 'const events = ["loadedmetadata", "canplay", "playing", "waiting", "stalled", "error"]' in panel
+    assert "video_${eventName}" in panel
+    assert 'this._hass.callApi("POST", "xsense/recordings/panel/debug"' in panel
     assert 'src="${this.escape(playbackUrl)}"' in panel
     assert "Preparing recording..." in panel
     assert "clip.signed_playback_url" not in panel
@@ -602,10 +658,50 @@ def test_recordings_http_registration_adds_panel_views():
     asyncio.run(http.async_register_recordings_http_views(hass))
     asyncio.run(http.async_register_recordings_http_views(hass))
 
-    assert len(views) == 3
+    assert len(views) == 4
     assert isinstance(views[0], http.XSenseRecordingsPanelDataView)
-    assert isinstance(views[1], http.XSenseRecordingsPanelPlaybackView)
-    assert isinstance(views[2], http.XSenseRecordingsPanelThumbnailView)
+    assert isinstance(views[1], http.XSenseRecordingsPanelDebugView)
+    assert isinstance(views[2], http.XSenseRecordingsPanelPlaybackView)
+    assert isinstance(views[3], http.XSenseRecordingsPanelThumbnailView)
+
+
+def test_recordings_panel_debug_view_logs_sanitized_payload(caplog):
+    from custom_components.xsense import http
+
+    class Request:
+        async def json(self):
+            return {
+                "event": "playback_fetch_response",
+                "entry_id": "01KT8FZM5BZWF5R3Y4VWY3PMZ1",
+                "serial": "CAMERA-SERIAL-123456",
+                "start": "1782049304",
+                "end": "1782049334",
+                "cached": False,
+                "playback_url": "/api/xsense/recordings/play/entry-id/1/2",
+                "status": 404,
+                "ok": False,
+                "bytes": 0,
+                "elapsed_ms": 1234,
+                "duration": 30000,
+                "ready_state": 0,
+                "network_state": 3,
+                "error_code": 4,
+                "message": "Recording is not ready (404)",
+            }
+
+    caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
+
+    response = asyncio.run(http.XSenseRecordingsPanelDebugView(None).post(Request()))
+
+    assert response.status == 200
+    assert "X-Sense recordings panel frontend event" in caplog.text
+    assert "playback_fetch_response" in caplog.text
+    assert "'playback_url_kind': 'api'" in caplog.text
+    assert "'duration_ms': 30000" in caplog.text
+    assert "'ready_state': 0" in caplog.text
+    assert "'network_state': 3" in caplog.text
+    assert "'error_code': 4" in caplog.text
+    assert "CAMERA-SERIAL-123456" not in caplog.text
 
 
 def test_recordings_panel_data_exposes_cache_backed_clips(monkeypatch):

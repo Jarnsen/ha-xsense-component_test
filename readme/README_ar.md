@@ -213,7 +213,7 @@ ____________________________________________________________
 ## العرض المباشر للكاميرا وإشعارات AI
 أسهل طريقة هي استيراد الـ blueprint المرفق بالزر أدناه، ثم اختيار `Motion` أو `AI Detection` المتاح وتعديل إجراء الإشعار عند الحاجة.
 
-عندما يتضمن حدث Motion بيانات تشغيل التسجيل من X-Sense، يحاول التكامل تخزين المقطع فورًا. تستخدم الإشعارات `recording_media_url` للفيديو المخزن عندما يكون جاهزًا، وإلا تفتح `recording_url` عارض X-Sense Recordings داخل Home Assistant. تستخدم عمليات تشغيل الأتمتة اليدوية أحدث بيانات تسجيل محفوظة في كيان الحدث المحدد، لذلك لا ترسل إشعار تسجيل إلا بعد أن يستلم ذلك الكيان رابط تسجيل حقيقي. يمكن لمزامنة وسائط التسجيل إبقاء المقاطع الحديثة جاهزة في الخلفية.
+When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. With recording links enabled, the default camera-event blueprint waits until cached media is ready, then sends a mobile notification that opens the matching X-Sense Recordings clip. Turn recording links off if you want a plain motion notification without waiting for video. Manual automation runs use the selected event entity's latest recording data. Recording media sync can keep recent clips ready in the background.
 
 [![استيراد blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

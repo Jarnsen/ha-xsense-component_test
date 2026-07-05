@@ -826,6 +826,7 @@ def test_motion_event_entity_adds_ha_sd_playback_url(monkeypatch):
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
     assert event_data["camera_name"] == "Garden Camera"
+    assert event_data["camera_serial"] == "CAMERA-SN"
     assert event_data["camera_entity_id"] == "camera.garden"
     assert event_data["recording_url"] == (
         "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
@@ -1015,6 +1016,8 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog
             data["recording_url"],
             data.get("recording_media_url"),
             data.get("recording_source"),
+            data.get("recording_cache_pending"),
+            data.get("recording_cache_ready"),
         )
     )
     event_entity.async_write_ha_state = lambda: order.append(("write", None))
@@ -1041,10 +1044,32 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog
 
     event_entity._handle_coordinator_update()
 
-    assert order == [("write", None)]
+    assert order == [
+        (
+            "trigger",
+            "motion",
+            "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+            "&start=1782049304&end=1782049334",
+            None,
+            "sd_playback",
+            True,
+            False,
+        ),
+        ("write", None),
+    ]
     assert len(scheduled) == 1
     asyncio.run(scheduled[0])
     assert order == [
+        (
+            "trigger",
+            "motion",
+            "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+            "&start=1782049304&end=1782049334",
+            None,
+            "sd_playback",
+            True,
+            False,
+        ),
         ("write", None),
         ("cache", "trace-id-1"),
         (
@@ -1054,18 +1079,20 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog
             "&start=1782049304&end=1782049334",
             "/media/local/xsense_recordings/videos/CAMERA-SN_1782049304_1782049334.mp4",
             "cached_media",
+            False,
+            True,
         ),
         ("write", None),
     ]
     log_text = caplog.text
-    assert "X-Sense event recording cache started before trigger" in log_text
-    assert "X-Sense event recording cache finished before trigger" in log_text
+    assert "X-Sense event recording cache started after pending trigger" in log_text
+    assert "X-Sense event recording cache finished; firing ready trigger" in log_text
     assert "'queue_elapsed_ms': 50" in log_text
     assert "'cache_elapsed_ms': 250" in log_text
     assert "'total_elapsed_ms': 300" in log_text
 
 
-def test_trigger_camera_event_fires_entity_and_rich_bus_event():
+def test_trigger_camera_event_fires_entity_and_rich_bus_event(caplog):
     fired = []
 
     class Bus:
@@ -1080,12 +1107,19 @@ def test_trigger_camera_event_fires_entity_and_rich_bus_event():
         ),
     )
 
+    caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
+
     event._trigger_camera_event(
         event_entity,
         "motion",
         {
             "camera_name": "Garden",
+            "camera_serial": "CAMERA-SN",
             "recording_url": "/xsense-recordings#entry_id=entry-id",
+            "recording_media_url": "/media/local/xsense_recordings/videos/clip.mp4",
+            "recording_cache_ready": True,
+            "recording_cache_elapsed_ms": 250,
+            "recording_total_elapsed_ms": 300,
         },
     )
 
@@ -1095,7 +1129,12 @@ def test_trigger_camera_event_fires_entity_and_rich_bus_event():
             "motion",
             {
                 "camera_name": "Garden",
+                "camera_serial": "CAMERA-SN",
                 "recording_url": "/xsense-recordings#entry_id=entry-id",
+                "recording_media_url": "/media/local/xsense_recordings/videos/clip.mp4",
+                "recording_cache_ready": True,
+                "recording_cache_elapsed_ms": 250,
+                "recording_total_elapsed_ms": 300,
             },
         ),
         (
@@ -1103,15 +1142,26 @@ def test_trigger_camera_event_fires_entity_and_rich_bus_event():
             event.CAMERA_EVENT_BUS_TYPE,
             {
                 "camera_name": "Garden",
+                "camera_serial": "CAMERA-SN",
                 "recording_url": "/xsense-recordings#entry_id=entry-id",
+                "recording_media_url": "/media/local/xsense_recordings/videos/clip.mp4",
+                "recording_cache_ready": True,
+                "recording_cache_elapsed_ms": 250,
+                "recording_total_elapsed_ms": 300,
                 "event_type": "motion",
                 "event_entity_id": "event.garden_motion",
             },
         ),
     ]
+    assert "X-Sense camera event fired for automations" in caplog.text
+    assert "'event_entity_id': 'event.garden_motion'" in caplog.text
+    assert "'has_recording_url': True" in caplog.text
+    assert "'has_recording_media_url': True" in caplog.text
+    assert "'recording_cache_ready': True" in caplog.text
+    assert "CAMERA-SN" not in caplog.text
 
 
-def test_motion_event_entity_does_not_fire_when_recording_cache_returns_no_media(
+def test_motion_event_entity_updates_state_only_when_recording_cache_returns_no_media(
     monkeypatch,
     caplog,
 ):
@@ -1146,7 +1196,9 @@ def test_motion_event_entity_does_not_fire_when_recording_cache_returns_no_media
         entry=SimpleNamespace(entry_id="entry-id")
     )
     event_entity._current_entity = lambda: camera_entity
-    event_entity._trigger_event = lambda event_type, data: triggered.append(dict(data))
+    event_entity._trigger_event = lambda event_type, data: triggered.append(
+        ("trigger", dict(data))
+    )
     event_entity.async_write_ha_state = lambda: triggered.append(("write", None))
     monkeypatch.setattr(
         event.er,
@@ -1169,8 +1221,19 @@ def test_motion_event_entity_does_not_fire_when_recording_cache_returns_no_media
     caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
     asyncio.run(scheduled[0])
 
-    assert triggered == [("write", None), ("write", None)]
-    assert "event not fired" in caplog.text
+    assert len(triggered) == 4
+    assert triggered[0][0] == "trigger"
+    assert triggered[0][1]["recording_cache_pending"] is True
+    assert triggered[0][1]["recording_cache_ready"] is False
+    assert "recording_media_url" not in triggered[0][1]
+    assert triggered[1] == ("write", None)
+    assert triggered[2][0] == "trigger"
+    assert triggered[2][1]["recording_cache_pending"] is False
+    assert triggered[2][1]["recording_cache_ready"] is False
+    assert triggered[2][1]["recording_cache_elapsed_ms"] >= 0
+    assert "recording_media_url" not in triggered[2][1]
+    assert triggered[3] == ("write", None)
+    assert "ready event not fired" in caplog.text
 
 
 def test_motion_event_cache_preserves_absolute_recordings_panel_url(monkeypatch):
@@ -1214,11 +1277,14 @@ def test_motion_event_cache_preserves_absolute_recordings_panel_url(monkeypatch)
     )
     asyncio.run(scheduled[0])
 
-    assert triggered[0]["recording_url"].startswith(
+    assert triggered[0]["recording_cache_pending"] is True
+    assert triggered[0]["recording_cache_ready"] is False
+    assert "recording_media_url" not in triggered[0]
+    assert triggered[1]["recording_url"].startswith(
         "https://ha.example.invalid/xsense-recordings#"
     )
     assert (
-        triggered[0]["recording_media_url"]
+        triggered[1]["recording_media_url"]
         == "/media/local/xsense_recordings/videos/clip.mp4"
     )
 
@@ -1263,8 +1329,12 @@ def test_motion_event_cache_does_not_replace_recording_url_with_raw_media(
     asyncio.run(scheduled[0])
 
     assert triggered[0]["recording_url"] == "https://example.invalid/clip.mp4"
+    assert triggered[0]["recording_cache_pending"] is True
+    assert triggered[0]["recording_cache_ready"] is False
+    assert "recording_media_url" not in triggered[0]
+    assert triggered[1]["recording_url"] == "https://example.invalid/clip.mp4"
     assert (
-        triggered[0]["recording_media_url"]
+        triggered[1]["recording_media_url"]
         == "/media/local/xsense_recordings/videos/clip.mp4"
     )
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from homeassistant.components import panel_custom
@@ -14,6 +15,17 @@ FRONTEND_URL_PATH = "xsense-recordings"
 STATIC_URL_PATH = f"/{DOMAIN}_recordings_static"
 PANEL_ELEMENT_NAME = "xsense-recordings-panel"
 PANEL_TITLE = "X-Sense Recordings"
+
+
+def _recordings_panel_module_url() -> str:
+    """Return the recordings panel module URL with a release cache-buster."""
+    version = "dev"
+    try:
+        manifest = json.loads((Path(__file__).parent / "manifest.json").read_text())
+        version = str(manifest.get("version") or version)
+    except (OSError, json.JSONDecodeError):
+        pass
+    return f"{STATIC_URL_PATH}/recordings-panel.js?v={version}"
 
 
 async def async_register_recordings_panel(hass: HomeAssistant) -> None:
@@ -38,7 +50,7 @@ async def async_register_recordings_panel(hass: HomeAssistant) -> None:
         webcomponent_name=PANEL_ELEMENT_NAME,
         sidebar_title=PANEL_TITLE,
         sidebar_icon="mdi:video-box",
-        module_url=f"{STATIC_URL_PATH}/recordings-panel.js",
+        module_url=_recordings_panel_module_url(),
         embed_iframe=False,
     )
     domain_data["_recordings_panel_registered"] = True

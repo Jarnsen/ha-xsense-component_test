@@ -143,6 +143,8 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
             return
         if camera_name := getattr(entity, "name", None):
             event_data["camera_name"] = str(camera_name)
+        if camera_serial := getattr(entity, "sn", None):
+            event_data["camera_serial"] = str(camera_serial)
         if camera_entity_id := _camera_entity_id_for_event(self.hass, entity):
             event_data["camera_entity_id"] = camera_entity_id
 
@@ -312,6 +314,8 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
             return
         if camera_name := getattr(entity, "name", None):
             event_data["camera_name"] = str(camera_name)
+        if camera_serial := getattr(entity, "sn", None):
+            event_data["camera_serial"] = str(camera_serial)
         if camera_entity_id := _camera_entity_id_for_event(self.hass, entity):
             event_data["camera_entity_id"] = camera_entity_id
 
@@ -489,7 +493,7 @@ def _trigger_event_after_recording_cache(
     entity: Entity,
     event_data: dict[str, Any] | None,
 ) -> bool:
-    """Cache recording metadata before firing a notification-capable event."""
+    """Fire a pending event, then cache recording metadata for a ready event."""
     if event_data is None:
         return False
     playback = event_data.get("playback")
@@ -499,13 +503,17 @@ def _trigger_event_after_recording_cache(
     if not hasattr(hass, "async_create_task"):
         return False
     event_received_at = monotonic()
+    pending_event_data = dict(event_data)
+    pending_event_data["recording_cache_pending"] = True
+    pending_event_data["recording_cache_ready"] = False
+    _trigger_camera_event(event_entity, event_type, pending_event_data)
 
     async def _async_cache_then_trigger() -> None:
         from .media_source import async_cache_recording_playback
 
         cache_started_at = monotonic()
         LOGGER.debug(
-            "X-Sense event recording cache started before trigger: %s",
+            "X-Sense event recording cache started after pending trigger: %s",
             {
                 "camera": _masked_serial(getattr(entity, "sn", "")),
                 "event_type": event_type,
@@ -534,11 +542,12 @@ def _trigger_event_after_recording_cache(
         cache_elapsed_ms = int((cache_finished_at - cache_started_at) * 1000)
         total_elapsed_ms = int((cache_finished_at - event_received_at) * 1000)
         if not cached_url:
+            event_data["recording_cache_pending"] = False
             event_data["recording_cache_ready"] = False
             event_data["recording_cache_elapsed_ms"] = cache_elapsed_ms
             event_data["recording_total_elapsed_ms"] = total_elapsed_ms
             LOGGER.debug(
-                "X-Sense event recording cache did not produce media; event not fired: %s",
+                "X-Sense event recording cache did not produce media; ready event not fired: %s",
                 {
                     "camera": _masked_serial(getattr(entity, "sn", "")),
                     "event_type": event_type,
@@ -549,15 +558,17 @@ def _trigger_event_after_recording_cache(
                     "has_cache_error": bool(event_data.get("recording_cache_error")),
                 },
             )
+            event_entity._trigger_event(event_type, event_data)
             _write_event_state(event_entity)
             return
         event_data["recording_media_url"] = cached_url
         event_data["recording_cache_ready"] = True
+        event_data["recording_cache_pending"] = False
         event_data["recording_cache_elapsed_ms"] = cache_elapsed_ms
         event_data["recording_total_elapsed_ms"] = total_elapsed_ms
         event_data["recording_source"] = "cached_media"
         LOGGER.debug(
-            "X-Sense event recording cache finished before trigger: %s",
+            "X-Sense event recording cache finished; firing ready trigger: %s",
             {
                 "camera": _masked_serial(getattr(entity, "sn", "")),
                 "cached": True,
@@ -588,6 +599,19 @@ def _trigger_camera_event(
     payload["event_type"] = event_type
     if entity_id := getattr(event_entity, "entity_id", None):
         payload["event_entity_id"] = entity_id
+    LOGGER.debug(
+        "X-Sense camera event fired for automations: %s",
+        {
+            "event_entity_id": payload.get("event_entity_id"),
+            "event_type": event_type,
+            "camera": _masked_serial(payload.get("camera_serial")),
+            "has_recording_url": bool(payload.get("recording_url")),
+            "has_recording_media_url": bool(payload.get("recording_media_url")),
+            "recording_cache_ready": payload.get("recording_cache_ready"),
+            "recording_cache_elapsed_ms": payload.get("recording_cache_elapsed_ms"),
+            "recording_total_elapsed_ms": payload.get("recording_total_elapsed_ms"),
+        },
+    )
     hass.bus.async_fire(CAMERA_EVENT_BUS_TYPE, payload)
 
 
