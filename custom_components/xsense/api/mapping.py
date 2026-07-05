@@ -37,9 +37,14 @@ property_mapper = {
         "t": "time",
     },
     "XC0M-iR": {
+        "a": "alarmStatus",
         "b": "temperature",
         "c": "humidity",
         "d": "tempUnit",
+        "e": "tRange",
+        "f": "hRange",
+        "g": "alarmEnabled",
+        "h": "continuedAlarm",
         "t": "time",
     },
 }
@@ -73,6 +78,8 @@ def safe_float(value: typing.Any) -> float | None:
 
 
 def safe_float_list(value: typing.Any) -> list[float] | None:
+    if isinstance(value, str):
+        value = [item.strip() for item in value.split(",")]
     if not isinstance(value, (list, tuple)):
         return None
     result = []

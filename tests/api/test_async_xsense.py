@@ -1019,16 +1019,26 @@ def test_xc0m_ir_maps_compact_temperature_and_humidity_fields():
     data = mapping.map_values(
         "XC0M-iR",
         {
+            "a": "1",
             "b": "21.5",
             "c": "44",
             "d": "1",
+            "e": "10,30",
+            "f": "20,80",
+            "g": "1",
+            "h": "0",
             "t": "20260705090102",
         },
     )
 
+    assert data["alarmStatus"] is True
     assert data["temperature"] == 21.5
     assert data["humidity"] == 44.0
     assert data["tempUnit"] == "1"
+    assert data["tRange"] == [10.0, 30.0]
+    assert data["hRange"] == [20.0, 80.0]
+    assert data["alarmEnabled"] is True
+    assert data["continuedAlarm"] is False
     assert data["time"] == "20260705090102"
 
 
@@ -1047,8 +1057,10 @@ async def test_get_station_state_uses_second_info_for_xc0m_ir():
         return {
             "state": {
                 "reported": {
+                    "a": "0",
                     "b": "21.5",
                     "c": "44",
+                    "g": "1",
                 }
             }
         }
@@ -1059,8 +1071,10 @@ async def test_get_station_state_uses_second_info_for_xc0m_ir():
 
     assert calls == ["2nd_info_station-sn"]
     assert station.data == {
+        "alarmStatus": False,
         "temperature": 21.5,
         "humidity": 44.0,
+        "alarmEnabled": True,
     }
 
 
