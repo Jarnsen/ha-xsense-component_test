@@ -650,6 +650,159 @@ def test_recordings_panel_registration_adds_sidebar_panel(monkeypatch):
     )
 
 
+def test_recordings_panel_unregister_removes_sidebar_panel(monkeypatch):
+    from custom_components.xsense import frontend
+
+    removed = []
+
+    def remove_panel(hass, frontend_url_path, *, warn_if_unknown=True):
+        removed.append((frontend_url_path, warn_if_unknown))
+
+    monkeypatch.setattr(frontend.frontend, "async_remove_panel", remove_panel)
+    hass = SimpleNamespace(data={DOMAIN: {"_recordings_panel_registered": True}})
+
+    frontend.async_unregister_recordings_panel(hass)
+
+    assert removed == [("xsense-recordings", False)]
+    assert "_recordings_panel_registered" not in hass.data[DOMAIN]
+
+
+def test_recordings_runtime_setup_is_camera_gated():
+    assert not xsense_module._has_camera_entities(
+        {
+            "stations": {"station": SimpleNamespace(type="SBS50")},
+            "devices": {"device": SimpleNamespace(type="XS01-M")},
+        }
+    )
+    assert xsense_module._has_camera_entities(
+        {
+            "stations": {"camera": SimpleNamespace(type="SSC0A")},
+            "devices": {},
+        }
+    )
+
+
+def test_recordings_runtime_gate_checks_all_loaded_entries():
+    hass = SimpleNamespace(
+        data={
+            DOMAIN: {
+                "entry-one": SimpleNamespace(
+                    data={
+                        "stations": {"station": SimpleNamespace(type="SBS50")},
+                        "devices": {},
+                    }
+                ),
+                "entry-two": SimpleNamespace(
+                    data={
+                        "stations": {},
+                        "devices": {"camera": SimpleNamespace(type="SSC0A")},
+                    }
+                ),
+            }
+        }
+    )
+
+    assert xsense_module._has_any_camera_entities(hass)
+
+
+def test_recordings_runtime_unload_unregisters_after_last_camera(monkeypatch):
+    calls = []
+
+    class ConfigEntries:
+        async def async_unload_platforms(self, entry, platforms):
+            return True
+
+    async def async_shutdown():
+        calls.append("shutdown")
+
+    monkeypatch.setattr(
+        xsense_module,
+        "async_remove_recording_index",
+        lambda hass, entry_id: calls.append(("remove_index", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recordings_panel",
+        lambda hass: calls.append("recordings_panel"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_playback_panel",
+        lambda hass: calls.append("playback_panel"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recording_services",
+        lambda hass: calls.append("recording_services"),
+    )
+
+    entry = SimpleNamespace(entry_id="camera-entry")
+    coordinator = SimpleNamespace(
+        data={
+            "stations": {"camera": SimpleNamespace(type="SSC0A")},
+            "devices": {},
+        },
+        async_shutdown=async_shutdown,
+    )
+    hass = SimpleNamespace(
+        config_entries=ConfigEntries(),
+        data={DOMAIN: {entry.entry_id: coordinator}},
+    )
+
+    assert asyncio.run(xsense_module.async_unload_entry(hass, entry))
+    assert calls == [
+        ("remove_index", "camera-entry"),
+        "shutdown",
+        "recordings_panel",
+        "playback_panel",
+        "recording_services",
+    ]
+
+
+def test_recordings_runtime_unregister_helpers(monkeypatch):
+    from custom_components.xsense import media_source, playback
+
+    removed_panels = []
+    removed_services = []
+
+    monkeypatch.setattr(
+        playback.frontend,
+        "async_remove_panel",
+        lambda hass, path, *, warn_if_unknown=True: removed_panels.append(
+            (path, warn_if_unknown)
+        ),
+    )
+
+    class Services:
+        def has_service(self, domain, service):
+            return True
+
+        def async_remove(self, domain, service):
+            removed_services.append((domain, service))
+
+    hass = SimpleNamespace(
+        data={
+            DOMAIN: {
+                "_playback_panel_registered": True,
+                "_recording_services_registered": True,
+            }
+        },
+        services=Services(),
+    )
+
+    playback.async_unregister_playback_panel(hass)
+    media_source.async_unregister_recording_services(hass)
+
+    assert removed_panels == [("xsense-playback", False)]
+    assert "_playback_panel_registered" not in hass.data[DOMAIN]
+    assert removed_services == [
+        (DOMAIN, "refresh_recordings"),
+        (DOMAIN, "cache_recordings"),
+        (DOMAIN, "clear_recordings_cache"),
+    ]
+    assert "_recording_services_registered" not in hass.data[DOMAIN]
+
+
 def test_recordings_panel_url_deep_links_to_clip():
     from custom_components.xsense.frontend import recordings_panel_url
 

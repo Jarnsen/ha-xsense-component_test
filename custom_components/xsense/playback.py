@@ -78,6 +78,12 @@ async def async_register_playback_view(hass: HomeAssistant) -> None:
         domain_data["_recording_media_view_registered"] = True
 
 
+def async_unregister_playback_panel(hass: HomeAssistant) -> None:
+    """Remove the hidden X-Sense playback panel if it was registered."""
+    frontend.async_remove_panel(hass, PLAYBACK_PANEL_PATH, warn_if_unknown=False)
+    hass.data.setdefault(DOMAIN, {}).pop("_playback_panel_registered", None)
+
+
 def playback_url(
     entry_id: str,
     serial: str,

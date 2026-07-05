@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from homeassistant.components import frontend
 from homeassistant.components import panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
@@ -54,6 +55,12 @@ async def async_register_recordings_panel(hass: HomeAssistant) -> None:
         embed_iframe=False,
     )
     domain_data["_recordings_panel_registered"] = True
+
+
+def async_unregister_recordings_panel(hass: HomeAssistant) -> None:
+    """Remove the X-Sense recordings sidebar panel if it was registered."""
+    frontend.async_remove_panel(hass, FRONTEND_URL_PATH, warn_if_unknown=False)
+    hass.data.setdefault(DOMAIN, {}).pop("_recordings_panel_registered", None)
 
 
 def recordings_panel_url(

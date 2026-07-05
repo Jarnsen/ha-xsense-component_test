@@ -114,6 +114,18 @@ async def async_register_recording_services(hass: HomeAssistant) -> None:
     domain_data["_recording_services_registered"] = True
 
 
+def async_unregister_recording_services(hass: HomeAssistant) -> None:
+    """Remove X-Sense recording services if they were registered."""
+    for service in (
+        SERVICE_REFRESH_RECORDINGS,
+        SERVICE_CACHE_RECORDINGS,
+        SERVICE_CLEAR_RECORDINGS_CACHE,
+    ):
+        if hass.services.has_service(DOMAIN, service):
+            hass.services.async_remove(DOMAIN, service)
+    hass.data.setdefault(DOMAIN, {}).pop("_recording_services_registered", None)
+
+
 async def async_refresh_recording_indexes(
     hass: HomeAssistant,
     *,
