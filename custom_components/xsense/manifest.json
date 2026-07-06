@@ -18,7 +18,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Jarnsen/ha-xsense-component_test/issues",
   "requirements": [
-    "wheemer-python-xsense @ https://github.com/Wheemer/python-xsense/releases/download/wheemer-python-xsense-0.1.0.dev2026070501/wheemer_python_xsense-0.1.0.dev2026070501-py3-none-any.whl",
+    "wheemer-python-xsense @ https://github.com/Wheemer/python-xsense/releases/download/wheemer-python-xsense-0.1.0.dev20260705/wheemer_python_xsense-0.1.0.dev20260705-py3-none-any.whl",
     "boto3",
     "botocore",
     "pycognito",
