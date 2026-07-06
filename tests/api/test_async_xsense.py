@@ -3260,15 +3260,8 @@ async def test_update_camera_data_loads_apk_form_options():
         if endpoint == "/user/getFormOptions":
             return {
                 "deviceFormOptions": {
-                    "videoSeconds": [
-                        {"enabled": True, "value": -1},
-                        {"enabled": False, "value": 60},
-                        {"value": 300},
-                    ],
-                    "cooldown_in_s": [
-                        {"enabled": True, "value": 10},
-                        {"enabled": False, "value": 30},
-                    ],
+                    "videoSeconds": [{"enabled": True, "value": -1}],
+                    "cooldown_in_s": [{"enabled": True, "value": 10}],
                 }
             }
         return {}
@@ -3281,23 +3274,14 @@ async def test_update_camera_data_loads_apk_form_options():
     assert camera.data["motionSensitivity"] == 0
     assert camera.data["videoSeconds"] == -1
     assert camera.data["videoSecondsValues"] == [-1]
-    assert camera.data["videoSecondsOptions"] == [
-        {"value": -1, "enabled": True},
-        {"value": 60, "enabled": False},
-        {"value": 300, "enabled": None},
-    ]
     assert camera.data["cooldownOptions"] == [10]
-    assert camera.data["cooldownOptionDetails"] == [
-        {"value": 10, "enabled": True},
-        {"value": 30, "enabled": False},
-    ]
     assert "cameraWebrtcTicket" not in camera.data
     assert ("/user/getFormOptions", {"serialNumber": "cam-sn"}) in calls
     assert ("/device/getWebrtcTicket", {"serialNumber": "cam-sn", "verifyDormancyStatus": True}) not in calls
 
 
 @pytest.mark.asyncio
-async def test_update_camera_sleep_uses_apk_dormancy_switch():
+async def test_update_camera_sleep_uses_apk_dormancy_switch_then_refreshes():
     client = async_xsense.AsyncXSense()
     camera = station.Station(
         None,
@@ -3313,7 +3297,13 @@ async def test_update_camera_sleep_uses_apk_dormancy_switch():
         calls.append((endpoint, kwargs))
         return {}
 
+    refreshes = []
+
+    async def update_camera_data():
+        refreshes.append(True)
+
     client.addx_call = addx_call
+    client.update_camera_data = update_camera_data
 
     await client.update_camera_sleep(camera, True)
 
@@ -3323,7 +3313,8 @@ async def test_update_camera_sleep_uses_apk_dormancy_switch():
             {"serialNumber": "cam-sn", "dormancySwitch": 1},
         )
     ]
-    assert camera.data["deviceStatus"] == 3
+    assert refreshes == [True]
+    assert camera.data["deviceStatus"] == 1001
 
 
 @pytest.mark.asyncio

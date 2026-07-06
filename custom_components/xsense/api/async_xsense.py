@@ -684,10 +684,6 @@ class AsyncXSense(XSenseBase):
                 setting_options = None
             if setting_options:
                 camera.set_data(_camera_settings_options_data(setting_options))
-                LOGGER.debug(
-                    "X-Sense camera form options loaded: %s",
-                    _camera_options_debug_context(camera),
-                )
 
             if (
                 any(
@@ -983,7 +979,7 @@ class AsyncXSense(XSenseBase):
             serialNumber=camera.sn,
             dormancySwitch=1 if enabled else 0,
         )
-        camera.set_data({"deviceStatus": 3 if enabled else 1001})
+        await self.update_camera_data()
 
     async def update_camera_doorbell_config(self, camera: Entity, **updates) -> None:
         """Write doorbell config through the Android app endpoint."""
@@ -1938,7 +1934,7 @@ def _enabled_option_values(options: Any) -> list[Any]:
     for option in options:
         if not isinstance(option, dict):
             continue
-        if _addx_bool(option.get("enabled")) is not True:
+        if option.get("enabled") is False:
             continue
         value = option.get("value")
         if value is not None:
@@ -1946,61 +1942,17 @@ def _enabled_option_values(options: Any) -> list[Any]:
     return values
 
 
-def _option_debug_values(options: Any) -> list[dict[str, Any]]:
-    """Return safe APK option metadata for debug/diagnostics."""
-    if not isinstance(options, list):
-        return []
-    values: list[dict[str, Any]] = []
-    for option in options:
-        if not isinstance(option, dict):
-            continue
-        value = option.get("value")
-        if value is None:
-            continue
-        values.append(
-            {
-                "value": value,
-                "enabled": _addx_bool(option.get("enabled")),
-            }
-        )
-    return values
-
-
 def _camera_settings_options_data(data: Dict) -> Dict:
     """Return APK camera form options from /user/getFormOptions."""
     form_options = data.get("deviceFormOptions") or {} if isinstance(data, dict) else {}
-    video_seconds_options = form_options.get("videoSeconds")
-    cooldown_options = form_options.get("cooldown_in_s")
-    video_seconds = _enabled_option_values(video_seconds_options)
-    cooldown = _enabled_option_values(cooldown_options)
+    video_seconds = _enabled_option_values(form_options.get("videoSeconds"))
+    cooldown = _enabled_option_values(form_options.get("cooldown_in_s"))
     result: Dict[str, Any] = {}
-    video_seconds_debug = _option_debug_values(video_seconds_options)
-    cooldown_debug = _option_debug_values(cooldown_options)
-    if video_seconds_debug:
-        result["videoSecondsOptions"] = video_seconds_debug
-    if cooldown_debug:
-        result["cooldownOptionDetails"] = cooldown_debug
     if video_seconds:
         result["videoSecondsValues"] = video_seconds
     if cooldown:
         result["cooldownOptions"] = cooldown
     return result
-
-
-def _camera_options_debug_context(camera: Entity) -> Dict:
-    """Return safe camera option-list diagnostics."""
-    return {
-        "camera": _short_id(getattr(camera, "sn", None)),
-        "model": camera.data.get("modelNo") or getattr(camera, "type", None),
-        "video_seconds": camera.data.get("videoSeconds"),
-        "video_seconds_values": camera.data.get("videoSecondsValues"),
-        "video_seconds_options": camera.data.get("videoSecondsOptions"),
-        "cooldown": camera.data.get("cooldownValue"),
-        "cooldown_options": camera.data.get("cooldownOptions"),
-        "cooldown_option_details": camera.data.get("cooldownOptionDetails"),
-        "recording_resolution": camera.data.get("recResolution"),
-        "recording_resolutions": camera.data.get("supportedRecordingResolutions"),
-    }
 
 
 def _camera_config_data(data: Dict) -> Dict:

@@ -322,12 +322,15 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             ),
         )
         self._webrtc_sessions[session_id] = session
+        _mark_camera_webrtc_live(self.hass, getattr(entity, "sn", None))
         await self._flush_pending_webrtc_candidates(entity, session_id, session)
         try:
             answer = await session.start()
         except Exception as err:  # noqa: BLE001 - HA frontend needs a clean error
-            self._webrtc_sessions.pop(session_id, None)
+            removed_session = self._webrtc_sessions.pop(session_id, None)
             self._pending_webrtc_candidates.pop(session_id, None)
+            if removed_session is not None:
+                _unmark_camera_webrtc_live(self.hass, getattr(entity, "sn", None))
             await session.close()
             LOGGER.debug(
                 "X-Sense camera WebRTC signal relay failed: %s",
@@ -364,6 +367,9 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             )
         if not sessions:
             return
+        entity = self._current_entity()
+        for _session in sessions:
+            _unmark_camera_webrtc_live(self.hass, getattr(entity, "sn", None))
         LOGGER.debug(
             "X-Sense camera closing previous WebRTC signal sessions before new offer: %s",
             {"count": len(sessions)},
@@ -438,6 +444,8 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         entity = self._current_entity()
         session = self._webrtc_sessions.pop(session_id, None)
         self._pending_webrtc_candidates.pop(session_id, None)
+        if session is not None:
+            _unmark_camera_webrtc_live(self.hass, getattr(entity, "sn", None))
         LOGGER.debug(
             "X-Sense camera WebRTC session close requested: %s",
             _camera_debug_context(
@@ -462,6 +470,9 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         sessions = list(self._webrtc_sessions.values())
         self._webrtc_sessions.clear()
         self._pending_webrtc_candidates.clear()
+        entity = self._current_entity()
+        for _session in sessions:
+            _unmark_camera_webrtc_live(self.hass, getattr(entity, "sn", None))
         for session in sessions:
             await session.close()
         await super().async_will_remove_from_hass()
@@ -518,6 +529,41 @@ def _short_id(value):
         return None
     text = str(value)
     return text if len(text) <= 6 else f"...{text[-6:]}"
+
+
+def _active_webrtc_camera_counts(hass) -> dict[str, int]:
+    """Return active native-WebRTC camera session counts by serial."""
+    return hass.data.setdefault(DOMAIN, {}).setdefault(
+        "_active_webrtc_camera_counts",
+        {},
+    )
+
+
+def _mark_camera_webrtc_live(hass, serial: object) -> None:
+    """Mark one camera as actively using the native live WebRTC path."""
+    if not serial:
+        return
+    counts = _active_webrtc_camera_counts(hass)
+    key = str(serial)
+    counts[key] = int(counts.get(key) or 0) + 1
+
+
+def _unmark_camera_webrtc_live(hass, serial: object) -> None:
+    """Clear one active native live WebRTC session marker."""
+    if not serial:
+        return
+    domain_data = hass.data.get(DOMAIN, {})
+    counts = domain_data.get("_active_webrtc_camera_counts")
+    if not isinstance(counts, dict):
+        return
+    key = str(serial)
+    remaining = int(counts.get(key) or 0) - 1
+    if remaining > 0:
+        counts[key] = remaining
+        return
+    counts.pop(key, None)
+    if not counts:
+        domain_data.pop("_active_webrtc_camera_counts", None)
 
 
 def _camera_debug_context(entity, session_id, **extra):

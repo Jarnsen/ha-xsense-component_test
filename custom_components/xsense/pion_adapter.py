@@ -40,6 +40,12 @@ async def async_capture_sd_recording(
     async with lock:
         if await _async_mp4_ready(hass, output_path):
             return output_path
+        if _camera_live_webrtc_active(hass, camera):
+            LOGGER.debug(
+                "X-Sense Pion SD recording capture skipped while live view is active: %s",
+                {"camera": _short_id(getattr(camera, "sn", ""))},
+            )
+            raise RuntimeError("X-Sense camera live stream is active")
         return await _async_capture_sd_recording_unlocked(
             hass,
             coordinator=coordinator,
@@ -186,6 +192,18 @@ def _recording_capture_lock(hass: HomeAssistant, output_path: Path) -> asyncio.L
         lock = asyncio.Lock()
         locks[key] = lock
     return lock
+
+
+def _camera_live_webrtc_active(hass: HomeAssistant, camera: Any) -> bool:
+    """Return whether this camera is already serving a native live WebRTC view."""
+    serial = getattr(camera, "sn", None)
+    if not serial:
+        return False
+    domain_data = hass.data.get(DOMAIN, {})
+    counts = domain_data.get("_active_webrtc_camera_counts")
+    if not isinstance(counts, dict):
+        return False
+    return int(counts.get(str(serial)) or 0) > 0
 
 
 async def _start_helper(

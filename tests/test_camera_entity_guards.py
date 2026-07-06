@@ -28,7 +28,7 @@ from custom_components.xsense import (
     switch,
 )
 from custom_components.xsense.api import mapping
-from homeassistant.const import Platform
+from homeassistant.const import EntityCategory, Platform
 
 
 def entity(device_type, data):
@@ -363,6 +363,7 @@ def test_camera_sleep_switch_follows_apk_support_and_device_status(camera_type):
         camera_type, {"isAdmin": True, "supportSleep": False, "deviceStatus": 3}
     )
 
+    assert description.entity_category == EntityCategory.CONFIG
     assert description.exists_fn(sleeping)
     assert description.value_fn(sleeping) is True
     assert description.exists_fn(awake)
@@ -1576,6 +1577,43 @@ def test_pion_capture_skips_ready_output(monkeypatch, tmp_path):
     )
 
     assert result == output_path
+    assert captures == []
+
+
+def test_pion_capture_refuses_sd_capture_while_live_webrtc_active(monkeypatch, tmp_path):
+    from custom_components.xsense import pion_adapter
+
+    output_path = tmp_path / "clip.mp4"
+    captures = []
+    hass = SimpleNamespace(
+        data={
+            pion_adapter.DOMAIN: {
+                "_active_webrtc_camera_counts": {"SSC0ATEST": 1},
+            }
+        }
+    )
+    camera_entity = SimpleNamespace(sn="SSC0ATEST")
+
+    async def fake_capture(*args, **kwargs):
+        captures.append((args, kwargs))
+
+    monkeypatch.setattr(
+        pion_adapter,
+        "_async_capture_sd_recording_unlocked",
+        fake_capture,
+    )
+
+    with pytest.raises(RuntimeError, match="live stream is active"):
+        asyncio.run(
+            pion_adapter.async_capture_sd_recording(
+                hass,
+                coordinator=object(),
+                camera=camera_entity,
+                start_time=1782049304,
+                output_path=output_path,
+            )
+        )
+
     assert captures == []
 
 
@@ -4194,6 +4232,8 @@ async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkey
     )
 
     class FakeHass:
+        data = {}
+
         async def async_add_import_executor_job(self, func, module):
             return fake_module
 
@@ -4210,6 +4250,9 @@ async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkey
     )
 
     assert camera._webrtc_sessions == {}
+    assert camera.hass.data.get(camera_module.DOMAIN, {}).get(
+        "_active_webrtc_camera_counts"
+    ) is None
     assert not camera.is_streaming
     assert messages[0].code == "xsense_webrtc_start_failed"
 
@@ -4322,6 +4365,8 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
     )
 
     class FakeHass:
+        data = {}
+
         async def async_add_import_executor_job(self, func, module):
             return fake_module
 
@@ -4345,6 +4390,9 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
     assert len(created_sessions) == 1
     assert created_sessions[0].candidates == [candidate]
     assert camera._pending_webrtc_candidates == {}
+    assert camera.hass.data[camera_module.DOMAIN]["_active_webrtc_camera_counts"] == {
+        "SSC0ATEST": 1
+    }
     assert isinstance(messages[0], WebRTCAnswer)
 
 
@@ -4424,6 +4472,8 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
     )
 
     class FakeHass:
+        data = {}
+
         async def async_add_import_executor_job(self, func, module):
             return fake_module
 
@@ -4435,6 +4485,7 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
     camera.hass = FakeHass()
     old_session = ExistingSession()
     camera._webrtc_sessions["old-session"] = old_session
+    camera_module._mark_camera_webrtc_live(camera.hass, camera_entity.sn)
     messages = []
 
     await camera.async_handle_async_webrtc_offer(
@@ -4443,6 +4494,9 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
 
     assert old_session.closed is True
     assert list(camera._webrtc_sessions) == ["new-session"]
+    assert camera.hass.data[camera_module.DOMAIN]["_active_webrtc_camera_counts"] == {
+        "SSC0ATEST": 1
+    }
     assert len(created_sessions) == 1
     assert stop_calls == []
     assert isinstance(messages[0], WebRTCAnswer)
@@ -4478,6 +4532,8 @@ async def test_frontend_webrtc_close_closes_signal_session():
     tasks = []
 
     class FakeHass:
+        data = {}
+
         def async_create_task(self, coro):
             task = asyncio.create_task(coro)
             tasks.append(task)
@@ -4487,6 +4543,9 @@ async def test_frontend_webrtc_close_closes_signal_session():
     camera.hass = FakeHass()
     session = Session()
     camera._webrtc_sessions["session-1"] = session
+    from custom_components.xsense import camera as camera_module
+
+    camera_module._mark_camera_webrtc_live(camera.hass, camera_entity.sn)
     camera._pending_webrtc_candidates["session-1"] = [object()]
 
     camera.close_webrtc_session("session-1")
@@ -4496,6 +4555,9 @@ async def test_frontend_webrtc_close_closes_signal_session():
     assert camera_entity.data["cameraWebrtcTicket"] == {"id": "ticket-id"}
     assert camera._webrtc_sessions == {}
     assert camera._pending_webrtc_candidates == {}
+    assert camera.hass.data.get(camera_module.DOMAIN, {}).get(
+        "_active_webrtc_camera_counts"
+    ) is None
 
 
 async def test_frontend_webrtc_close_keeps_live_when_other_session_exists():
@@ -4527,6 +4589,8 @@ async def test_frontend_webrtc_close_keeps_live_when_other_session_exists():
     tasks = []
 
     class FakeHass:
+        data = {}
+
         def async_create_task(self, coro):
             task = asyncio.create_task(coro)
             tasks.append(task)
@@ -4534,6 +4598,10 @@ async def test_frontend_webrtc_close_keeps_live_when_other_session_exists():
 
     camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
     camera.hass = FakeHass()
+    from custom_components.xsense import camera as camera_module
+
+    camera_module._mark_camera_webrtc_live(camera.hass, camera_entity.sn)
+    camera_module._mark_camera_webrtc_live(camera.hass, camera_entity.sn)
     old_session = Session()
     active_session = Session()
     camera._webrtc_sessions["old-session"] = old_session
@@ -4546,6 +4614,9 @@ async def test_frontend_webrtc_close_keeps_live_when_other_session_exists():
     assert active_session.closed is False
     assert camera_entity.data["cameraWebrtcTicket"] == {"id": "ticket-id"}
     assert list(camera._webrtc_sessions) == ["active-session"]
+    assert camera.hass.data[camera_module.DOMAIN]["_active_webrtc_camera_counts"] == {
+        "SSC0ATEST": 1
+    }
 
 
 def test_camera_online_uses_parsed_entity_online_state_like_apk():

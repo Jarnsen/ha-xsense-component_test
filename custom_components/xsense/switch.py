@@ -588,6 +588,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         addx_key="sleep.dormancySwitch",
         name="Camera Sleep",
         icon="mdi:power-sleep",
+        entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity: (
             is_camera_entity(entity)
             and entity.data.get("isAdmin") is True
