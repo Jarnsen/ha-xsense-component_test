@@ -24,6 +24,7 @@ from custom_components.xsense import (
     _obsolete_camera_motion_unique_ids,
     _obsolete_sensor_unique_ids,
     _sensor_unique_id,
+    _stale_button_unique_ids,
     _clear_visible_device_metadata,
     _remove_obsolete_device_metadata,
     _remove_obsolete_sensor_entities,
@@ -61,7 +62,27 @@ def test_obsolete_action_unique_ids_target_removed_model_actions_only():
     )
 
     assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["XS03-iWX"] == ("mute",)
-    assert unique_ids == {"hall-smoke-mute"}
+    assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["XS01-WX"] == ("test",)
+    assert unique_ids == {"hall-smoke-mute", "kitchen-smoke-test"}
+
+
+def test_stale_button_unique_ids_follow_current_button_descriptions():
+    class FakeXSense:
+        def has_action(self, entity, action):
+            return action == "mute"
+
+    device = SimpleNamespace(entity_id="kitchen_smoke", type="XS01-WX", data={})
+
+    unique_ids = _stale_button_unique_ids(
+        {"stations": {}, "devices": {"kitchen": device}}, FakeXSense()
+    )
+
+    assert "kitchen-smoke-mute" not in unique_ids
+    assert unique_ids == {
+        "kitchen-smoke-test",
+        "kitchen-smoke-fire-drill",
+        "kitchen-smoke-camera-wake",
+    }
 
 
 def test_obsolete_camera_motion_unique_ids_target_cameras_only():
@@ -485,6 +506,12 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
             unique_id='kitchen-smoke-mute',
             entity_id='button.kitchen_smoke_mute',
         ),
+        SimpleNamespace(
+            domain='button',
+            platform='xsense',
+            unique_id='kitchen-smoke-test',
+            entity_id='button.kitchen_smoke_test',
+        ),
     ]
 
     import custom_components.xsense as xsense
@@ -517,6 +544,100 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
         'binary_sensor.kitchen_smoke_alarm_led_light',
         'binary_sensor.garden_camera_motion',
         'button.hall_smoke_mute',
+        'button.kitchen_smoke_test',
+    ]
+
+
+def test_obsolete_sensor_cleanup_removes_stale_buttons_from_current_rules(
+    monkeypatch,
+):
+    removed = []
+
+    class FakeEntityRegistry:
+        entities = {}
+
+        def async_get_entity_id(self, platform, domain, unique_id):
+            return None
+
+        def async_remove(self, entity_id):
+            removed.append(entity_id)
+
+        def async_update_entity(self, entity_id, **kwargs):
+            raise AssertionError("No entities should be updated")
+
+    class FakeXSense:
+        def has_action(self, entity, action):
+            return action == "mute"
+
+    registry = FakeEntityRegistry()
+    entries = [
+        SimpleNamespace(
+            domain="button",
+            platform="xsense",
+            unique_id="kitchen-smoke-test",
+            entity_id="button.kitchen_smoke_test",
+        ),
+        SimpleNamespace(
+            domain="button",
+            platform="xsense",
+            unique_id="kitchen-smoke-mute",
+            entity_id="button.kitchen_smoke_mute",
+        ),
+        SimpleNamespace(
+            domain="button",
+            platform="xsense",
+            unique_id="kitchen-smoke-fire-drill",
+            entity_id="button.kitchen_smoke_fire_drill",
+        ),
+        SimpleNamespace(
+            domain="switch",
+            platform="xsense",
+            unique_id="kitchen-smoke-led-light",
+            entity_id="switch.kitchen_smoke_led_light",
+        ),
+        SimpleNamespace(
+            domain="select",
+            platform="xsense",
+            unique_id="kitchen-smoke-alarm-tone",
+            entity_id="select.kitchen_smoke_alarm_tone",
+        ),
+        SimpleNamespace(
+            domain="number",
+            platform="xsense",
+            unique_id="kitchen-smoke-alarm-volume",
+            entity_id="number.kitchen_smoke_alarm_volume",
+        ),
+    ]
+
+    import custom_components.xsense as xsense
+
+    monkeypatch.setattr(xsense.er, "async_get", lambda hass: registry)
+    monkeypatch.setattr(
+        xsense.er,
+        "async_entries_for_config_entry",
+        lambda entity_registry, entry_id: entries,
+    )
+
+    _remove_obsolete_sensor_entities(
+        SimpleNamespace(),
+        {
+            "stations": {},
+            "devices": {
+                "kitchen": SimpleNamespace(
+                    entity_id="kitchen_smoke", type="XS01-WX", data={}
+                ),
+            },
+        },
+        SimpleNamespace(entry_id="entry-id"),
+        FakeXSense(),
+    )
+
+    assert removed == [
+        "button.kitchen_smoke_test",
+        "button.kitchen_smoke_fire_drill",
+        "switch.kitchen_smoke_led_light",
+        "select.kitchen_smoke_alarm_tone",
+        "number.kitchen_smoke_alarm_volume",
     ]
 
 def test_ai_detection_cleanup_disables_existing_entity_when_service_is_absent(
