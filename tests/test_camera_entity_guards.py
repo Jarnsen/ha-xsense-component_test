@@ -348,6 +348,28 @@ def test_camera_ai_setting_switches_follow_apk_support_lists():
     assert not descriptions["camera_ai_assistant_package"].exists_fn(camera)
 
 
+@pytest.mark.parametrize("camera_type", ("SSC0A", "SSC0B"))
+def test_camera_sleep_switch_follows_apk_support_and_device_status(camera_type):
+    descriptions = {description.key: description for description in switch.SWITCHES}
+    description = descriptions["camera_sleep"]
+
+    sleeping = entity(
+        camera_type, {"isAdmin": True, "supportSleep": True, "deviceStatus": 3}
+    )
+    awake = entity(
+        camera_type, {"isAdmin": True, "supportSleep": True, "deviceStatus": 1001}
+    )
+    unsupported = entity(
+        camera_type, {"isAdmin": True, "supportSleep": False, "deviceStatus": 3}
+    )
+
+    assert description.exists_fn(sleeping)
+    assert description.value_fn(sleeping) is True
+    assert description.exists_fn(awake)
+    assert description.value_fn(awake) is False
+    assert not description.exists_fn(unsupported)
+
+
 def test_non_camera_switches_require_shadow_write_route():
     descriptions = {description.key: description for description in switch.SWITCHES}
     routed = routed_entity("XS01-WX", {"keySound": "1"})
