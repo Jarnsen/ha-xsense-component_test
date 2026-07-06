@@ -1,6 +1,6 @@
 # ha-xsense-component_test
 
-[Changelog](../CHANGELOG.md) - linked release notes for every published version.
+[Changelog](../CHANGELOG.md) - notas de versión enlazadas para cada versión publicada.
 
 
 <p align="center">
@@ -119,7 +119,7 @@ ____________________________________________________________
 ## Vista en vivo de cámara y notificaciones de IA
 La forma más sencilla es usar el blueprint incluido. Impórtalo con el botón de abajo, elige la entidad de evento de cámara `Motion` o `AI Detection` para una cámara con suscripción, y ajusta la acción de notificación si hace falta.
 
-When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. With recording links enabled, the default camera-event blueprint waits until cached media is ready, then sends a mobile notification that opens the matching X-Sense Recordings clip. Turn recording links off if you want a plain motion notification without waiting for video. Manual automation runs use the selected event entity's latest recording data. Recording media sync can keep recent clips ready in the background. The integration updates older imported X-Sense camera-event blueprints automatically when Home Assistant starts or during the periodic blueprint maintenance check.
+Cuando un evento Motion incluye datos de reproducción de X-Sense, la integración puede almacenar primero el clip en caché y luego enviar una notificación móvil que abre el clip correspondiente en X-Sense Recordings. Desactiva los enlaces de grabación en el blueprint si quieres una notificación de movimiento simple sin esperar al video. La sincronización de medios de grabación puede mantener clips recientes listos en segundo plano, y los blueprints de cámara X-Sense importados se actualizan automáticamente.
 
 [![Importar blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

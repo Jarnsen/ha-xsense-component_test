@@ -1,6 +1,6 @@
 # ha-xsense-component_test
 
-[Changelog](../CHANGELOG.md) - linked release notes for every published version.
+[Changelog](../CHANGELOG.md) - note de lansare legate pentru fiecare versiune publicată.
 
 
 <p align="center">
@@ -58,7 +58,7 @@ Administrarea dispozitivelor, partajarea, eliminarea, firmware-ul, conturile și
 ## Vizualizare live cameră și notificări AI
 Cel mai simplu este să importați blueprint-ul inclus cu butonul de mai jos, să alegeți `Motion` sau `AI Detection` disponibil și să ajustați acțiunea de notificare.
 
-When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. With recording links enabled, the default camera-event blueprint waits until cached media is ready, then sends a mobile notification that opens the matching X-Sense Recordings clip. Turn recording links off if you want a plain motion notification without waiting for video. Manual automation runs use the selected event entity's latest recording data. Recording media sync can keep recent clips ready in the background. The integration updates older imported X-Sense camera-event blueprints automatically when Home Assistant starts or during the periodic blueprint maintenance check.
+Când un eveniment Motion include date de redare X-Sense, integrarea poate salva mai întâi clipul în cache și apoi poate trimite o notificare mobilă care deschide clipul potrivit în X-Sense Recordings. Dezactivați linkurile de înregistrare în blueprint dacă doriți doar o notificare simplă de mișcare fără a aștepta videoclipul. Sincronizarea media a înregistrărilor poate păstra clipurile recente pregătite în fundal, iar blueprinturile vechi de cameră X-Sense importate sunt actualizate automat.
 
 [![Importă blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

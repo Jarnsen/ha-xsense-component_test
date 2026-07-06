@@ -117,6 +117,7 @@ The integration creates Home Assistant entities only for fields that are present
 - Battery, RF signal, Wi-Fi signal, firmware, temperature, humidity, CO level, CO peak, alarm volume, voice volume, chirp volume, reminder volume, warning thresholds, mute timers, readable timestamp fields, timezone, and other diagnostic sensors.
 - Supported camera setup and tuning controls such as recording, night vision, audio, cooldown, codec, motion sensitivity, and doorbell settings are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - Test, mute, fire-drill, and camera wake buttons for device models where the X-Sense app exposes the matching action.
+- SKP0A keypad code submissions fire the `xsense_keypad_code` Home Assistant event with the submitted code, keypad device serial, station serial, selected mode, event ID, event time, and alarm-cancel value.
 
 Some entities are diagnostic or configuration-related and are grouped that way in Home Assistant. If a device does not report a specific field, or the X-Sense app marks the feature unsupported for that device/account, the matching entity is not created. Device binding, removal, sharing, account, payment, firmware update, SD-card format, and other management actions remain in the X-Sense app.
 
