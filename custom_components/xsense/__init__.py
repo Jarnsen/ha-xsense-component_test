@@ -5,10 +5,6 @@ from __future__ import annotations
 from contextlib import suppress
 from datetime import timedelta
 
-from ._vendor_path import install_vendor_path
-
-install_vendor_path()
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
