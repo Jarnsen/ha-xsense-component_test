@@ -1,4 +1,6 @@
 import json
+from importlib import metadata
+import sys
 from pathlib import Path
 
 from xsense import AsyncXSense, House
@@ -7,6 +9,7 @@ from xsense.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpi
 
 
 ROOT = Path(__file__).resolve().parents[1]
+VENDOR_PATH = ROOT / "custom_components" / "xsense" / "_vendor"
 
 
 def _version_key(version: str) -> tuple[int, ...]:
@@ -32,17 +35,24 @@ def test_manifest_version_matches_latest_release_note():
     assert manifest["version"] == latest_release_version
 
 
-def test_manifest_uses_wheemer_python_xsense_package():
+def test_manifest_does_not_use_direct_wheel_requirement():
     manifest = json.loads(
         (ROOT / "custom_components" / "xsense" / "manifest.json").read_text(
             encoding="utf-8"
         )
     )
 
-    assert any(
-        requirement.startswith("wheemer-python-xsense@")
+    assert not any(
+        "wheemer-python-xsense@" in requirement
+        or "github.com/Wheemer/python-xsense" in requirement
         for requirement in manifest["requirements"]
     )
+
+
+def test_vendored_python_xsense_package_is_imported():
+    assert str(VENDOR_PATH) in sys.path
+    assert str(VENDOR_PATH) in str(Path(sys.modules["xsense"].__file__).resolve())
+    assert metadata.version("wheemer-python-xsense") == "0.1.0.dev2026070501"
 
 
 def test_python_xsense_package_exposes_integration_imports():

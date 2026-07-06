@@ -1,0 +1,132 @@
+Metadata-Version: 2.4
+Name: wheemer-python-xsense
+Version: 0.1.0.dev2026070501
+Summary: Temporary Wheemer fork of the async X-Sense cloud, MQTT, and camera client
+Home-page: https://github.com/Wheemer/python-xsense
+Author: Theo Snelleman, Wheemer
+Author-email: wheemer@gmail.com
+License: MIT
+Project-URL: Upstream, https://github.com/theosnel/python-xsense
+Project-URL: Upstream PR #28, https://github.com/theosnel/python-xsense/pull/28
+Project-URL: Source branch, https://github.com/Wheemer/python-xsense/tree/package/wheemer-python-xsense-integration-parity
+Keywords: python,xsense
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.10
+Description-Content-Type: text/x-rst
+Requires-Dist: boto3
+Requires-Dist: botocore
+Requires-Dist: pycognito
+Requires-Dist: aiohttp
+Requires-Dist: paho-mqtt<3,>=2.1.0
+Provides-Extra: test
+Requires-Dist: pytest; extra == "test"
+Provides-Extra: dev
+Requires-Dist: build; extra == "dev"
+Requires-Dist: pip-audit; extra == "dev"
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: twine; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: license
+Dynamic: project-url
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+Python-xsense
+=============
+
+Temporary Wheemer fork
+----------------------
+
+This distribution is published as ``wheemer-python-xsense`` while upstream
+``theosnel/python-xsense`` reviews the async client backport in
+https://github.com/theosnel/python-xsense/pull/28.
+
+It installs the same import package, ``xsense``. The fork exists to let testers
+and the Home Assistant X-Sense integration validate the refreshed client before
+the upstream package has a release containing the PR #28 behavior.
+
+Python-xsense is an async-only client library for X-Sense cloud accounts,
+AWS IoT shadows, MQTT updates, ADDX/VicoHome camera APIs, camera history,
+live-view helpers, and supported device actions/settings.
+
+Supported Python versions are 3.10 through 3.14. Home Assistant currently runs
+on a newer Python, but the library keeps the lower floor for scripts and other
+async Python consumers when the test matrix proves compatibility.
+
+This package contains reusable Python client logic only. Home Assistant
+entity descriptions, icons, translations, blueprints, platform setup, and
+registry cleanup belong in the Home Assistant integration.
+
+Client usage
+------------
+
+::
+
+   >>> import asyncio
+   >>> from xsense import AsyncXSense
+   >>> from xsense.utils import dump_environment
+   >>>
+   >>> async def run(username: str, password: str):
+   >>>     async with AsyncXSense() as api:
+   >>>         await api.init()
+   >>>         await api.login(username, password)
+   >>>         await api.load_all()
+   >>>         for house in api.houses.values():
+   >>>             for station in house.stations.values():
+   >>>                 await api.get_state(station)
+   >>>         dump_environment(api)
+   >>>
+   >>> asyncio.run(run(username, password))
+
+Reusable helpers
+----------------
+
+The main async client lives in ``xsense.AsyncXSense``. It exposes the current
+X-Sense app API request shape, Cognito session refresh, AWS IoT shadow
+reads/writes, ADDX/VicoHome camera discovery, camera thumbnail and live-view
+helpers, and supported device actions/settings.
+
+Pure parsing helpers live in separate modules:
+
+* ``xsense.event_parser`` parses MQTT, camera history, AI detection, presence,
+  and self-test event payloads.
+* ``xsense.mqtt_helper`` handles X-Sense MQTT connection setup, topics,
+  subscription helpers, payload parsing, and publish helpers.
+* ``xsense.webrtc_signal`` parses ADDX WebRTC tickets and builds/parses the
+  signal-server SDP and ICE payloads.
+
+Migration surface
+-----------------
+
+The library is intended to carry the reusable surface currently embedded under
+the Home Assistant integration's ``custom_components/xsense/api`` package:
+
+* authentication, token refresh, app request signing, and AWS credential loading
+* X-Sense ``/app`` calls and AWS IoT shadow reads/writes
+* house, station, device, camera, and entity mapping/normalization
+* MQTT connection helpers, shadow/presence topics, and payload parsing
+* ADDX/VicoHome camera discovery, metadata/config merging, thumbnails, history,
+  AI history, WebRTC tickets, and live-view helpers
+* reusable device actions and settings writes for supported device data
+
+Development
+-----------
+
+This library is in an early development stage. It is maintained as a
+shared upstream client for integrations and other async Python consumers.
