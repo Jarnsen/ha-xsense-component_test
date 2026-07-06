@@ -188,7 +188,6 @@ OBSOLETE_ENTITY_SUFFIXES_BY_DOMAIN = {
 }
 
 OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
-    "XS01-WX": ("test",),
     "XS03-iWX": ("mute",),
 }
 BLUEPRINT_MAINTENANCE_CHECK_INTERVAL = timedelta(minutes=5)
@@ -253,60 +252,6 @@ def _obsolete_action_unique_ids(data) -> set[str]:
             getattr(entity, "type", None), ()
         ):
             unique_ids.add(_sensor_unique_id(entity.entity_id, key))
-    return unique_ids
-
-
-def _stale_button_unique_ids(data, xsense) -> set[str]:
-    """Return button unique IDs the current entity descriptions no longer create."""
-    return _stale_control_unique_ids_by_domain(data, xsense)[Platform.BUTTON]
-
-
-def _description_exists(description, entity, xsense=None) -> bool:
-    """Return whether a platform description would create an entity."""
-    exists = True
-    with suppress(AttributeError, KeyError, TypeError):
-        if xsense is None:
-            exists = description.exists_fn(entity)
-        else:
-            exists = description.exists_fn(entity, xsense)
-    return exists
-
-
-def _stale_control_unique_ids_by_domain(data, xsense) -> dict[Platform, set[str]]:
-    """Return stale control unique IDs grouped by Home Assistant domain."""
-    unique_ids: dict[Platform, set[str]] = {
-        Platform.BUTTON: set(),
-        Platform.SWITCH: set(),
-        Platform.SELECT: set(),
-        Platform.NUMBER: set(),
-    }
-    if xsense is None:
-        return unique_ids
-
-    from .button import BUTTONS
-    from .number import NUMBERS
-    from .select import SELECTS
-    from .switch import SWITCHES
-
-    for entity in (
-        *data.get("stations", {}).values(),
-        *data.get("devices", {}).values(),
-    ):
-        for description in BUTTONS:
-            if not _description_exists(description, entity, xsense):
-                unique_ids[Platform.BUTTON].add(
-                    _sensor_unique_id(entity.entity_id, description.key)
-                )
-        for domain, descriptions in (
-            (Platform.SWITCH, SWITCHES),
-            (Platform.SELECT, SELECTS),
-            (Platform.NUMBER, NUMBERS),
-        ):
-            for description in descriptions:
-                if not _description_exists(description, entity):
-                    unique_ids[domain].add(
-                        _sensor_unique_id(entity.entity_id, description.key)
-                    )
     return unique_ids
 
 
@@ -429,17 +374,12 @@ def _is_obsolete_entity_entry(registry_entry) -> bool:
 
 
 def _remove_obsolete_sensor_entities(
-    hass: HomeAssistant, data, entry: ConfigEntry, xsense=None
+    hass: HomeAssistant, data, entry: ConfigEntry
 ) -> None:
     """Remove old serial/MAC diagnostic sensors from prior releases."""
     entity_registry = er.async_get(hass)
     checked_unique_ids = set()
-    stale_control_unique_ids_by_domain = _stale_control_unique_ids_by_domain(
-        data, xsense
-    )
-    obsolete_action_unique_ids = _obsolete_action_unique_ids(
-        data
-    ) | stale_control_unique_ids_by_domain[Platform.BUTTON]
+    obsolete_action_unique_ids = _obsolete_action_unique_ids(data)
     obsolete_camera_motion_unique_ids = _obsolete_camera_motion_unique_ids(data)
     (
         disabled_camera_ai_detection_unique_ids,
@@ -469,12 +409,6 @@ def _remove_obsolete_sensor_entities(
             and getattr(registry_entry, "platform", None) == DOMAIN
             and _registry_entry_unique_id(registry_entry)
             in obsolete_camera_motion_unique_ids
-        ) or (
-            getattr(registry_entry, "platform", None) == DOMAIN
-            and _registry_entry_unique_id(registry_entry)
-            in stale_control_unique_ids_by_domain.get(
-                _registry_entry_domain(registry_entry), set()
-            )
         ):
             entity_registry.async_remove(registry_entry.entity_id)
         elif (
@@ -521,14 +455,6 @@ def _remove_obsolete_sensor_entities(
         )
         if entity_id is not None:
             entity_registry.async_remove(entity_id)
-
-    for domain, unique_ids in stale_control_unique_ids_by_domain.items():
-        if domain == Platform.BUTTON:
-            continue
-        for unique_id in unique_ids - checked_unique_ids:
-            entity_id = entity_registry.async_get_entity_id(domain, DOMAIN, unique_id)
-            if entity_id is not None:
-                entity_registry.async_remove(entity_id)
 
     for unique_id in disabled_camera_ai_detection_unique_ids - checked_unique_ids:
         entity_id = entity_registry.async_get_entity_id(
@@ -701,7 +627,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_config_entry_first_refresh()
 
-    _remove_obsolete_sensor_entities(hass, coordinator.data, entry, coordinator.xsense)
+    _remove_obsolete_sensor_entities(hass, coordinator.data, entry)
     _remove_obsolete_device_metadata(hass, coordinator.data, entry)
     _migrate_legacy_none_entity_ids(hass, entry)
 
@@ -735,7 +661,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     coordinator.async_start_camera_ai_history_polling()
 
-    _remove_obsolete_sensor_entities(hass, coordinator.data, entry, coordinator.xsense)
+    _remove_obsolete_sensor_entities(hass, coordinator.data, entry)
 
     return True
 
