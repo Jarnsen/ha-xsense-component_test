@@ -34,7 +34,7 @@ blueprint:
         boolean:
     include_snapshot_link:
       name: Include snapshot link
-      description: Add the snapshot URL to the default notification when a Motion event includes one.
+      description: Attach the event snapshot image to the default notification when a Motion event includes one. The notification tap still opens the recording.
       default: false
       selector:
         boolean:
@@ -49,7 +49,7 @@ triggers:
     event_type: xsense_camera_event
 
 variables:
-  xsense_blueprint_version: 9
+  xsense_blueprint_version: 10
   xsense_event_entity: !input ai_detection_event
   xsense_include_recording_link: !input include_recording_link
   xsense_include_snapshot_link: !input include_snapshot_link
@@ -71,18 +71,40 @@ actions:
   - choose:
       - conditions:
           - condition: template
+            value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_cache_ready and xsense_include_snapshot_link and xsense_snapshot_url }}"
+        sequence:
+          - domain: mobile_app
+            type: notify
+            device_id: !input notify_device
+            title: "{{ xsense_camera_name }}"
+            message: "Motion detected by {{ xsense_camera_name }}. Recording ready."
+            data:
+              url: "{{ xsense_notification_url }}"
+              clickAction: "{{ xsense_notification_url }}"
+              image: "{{ xsense_snapshot_url }}"
+      - conditions:
+          - condition: template
             value_template: "{{ xsense_include_recording_link and xsense_recording_tap_url and xsense_recording_cache_ready }}"
         sequence:
           - domain: mobile_app
             type: notify
             device_id: !input notify_device
             title: "{{ xsense_camera_name }}"
-            message: >-
-              Motion detected by {{ xsense_camera_name }}. Recording ready.{% if xsense_include_snapshot_link and xsense_snapshot_url %}
-              Snapshot: {{ xsense_snapshot_url }}{% endif %}
+            message: "Motion detected by {{ xsense_camera_name }}. Recording ready."
             data:
               url: "{{ xsense_notification_url }}"
               clickAction: "{{ xsense_notification_url }}"
+      - conditions:
+          - condition: template
+            value_template: "{{ not xsense_include_recording_link and (xsense_event_data.get('recording_cache_ready') if xsense_event_data is mapping else false) != true and xsense_include_snapshot_link and xsense_snapshot_url }}"
+        sequence:
+          - domain: mobile_app
+            type: notify
+            device_id: !input notify_device
+            title: "{{ xsense_camera_name }}"
+            message: "Motion detected by {{ xsense_camera_name }}."
+            data:
+              image: "{{ xsense_snapshot_url }}"
       - conditions:
           - condition: template
             value_template: "{{ not xsense_include_recording_link and (xsense_event_data.get('recording_cache_ready') if xsense_event_data is mapping else false) != true }}"
@@ -91,9 +113,7 @@ actions:
             type: notify
             device_id: !input notify_device
             title: "{{ xsense_camera_name }}"
-            message: >-
-              Motion detected by {{ xsense_camera_name }}.{% if xsense_include_snapshot_link and xsense_snapshot_url %}
-              Snapshot: {{ xsense_snapshot_url }}{% endif %}
+            message: "Motion detected by {{ xsense_camera_name }}."
 
 mode: queued
 max: 10
