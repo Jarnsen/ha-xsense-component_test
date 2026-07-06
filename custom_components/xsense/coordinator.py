@@ -18,9 +18,9 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.logging import catch_log_exception
 
-from xsense import AsyncXSense, House
-from xsense.async_xsense import is_camera_entity
-from xsense.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
+from .api import AsyncXSense, House
+from .api.async_xsense import is_camera_entity
+from .api.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
 from .const import (
     CAMERA_AI_HISTORY_SCAN_INTERVAL,
     CAMERA_AI_SERVICE_AVAILABLE,

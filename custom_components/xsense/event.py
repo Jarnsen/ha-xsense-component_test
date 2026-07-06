@@ -8,9 +8,9 @@ from time import monotonic
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from xsense.async_xsense import is_camera_entity
-from xsense.device import Device
-from xsense.entity import Entity
+from .api.async_xsense import is_camera_entity
+from .api.device import Device
+from .api.entity import Entity
 
 from homeassistant import config_entries
 from homeassistant.components.event import (

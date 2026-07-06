@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from xsense.async_xsense import is_camera_entity
-from xsense.device import Device
-from xsense.entity import Entity
-from xsense.station import Station
+from .api.async_xsense import is_camera_entity
+from .api.device import Device
+from .api.entity import Entity
+from .api.station import Station
 
 from homeassistant import config_entries
 from homeassistant.components.binary_sensor import (

@@ -24,7 +24,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from webrtc_models import RTCIceCandidateInit
 
-from xsense.async_xsense import camera_live_resolution, is_camera_entity
+from .api.async_xsense import camera_live_resolution, is_camera_entity
 from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
