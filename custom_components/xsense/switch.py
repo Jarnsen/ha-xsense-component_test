@@ -582,6 +582,20 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         exists_fn=has_supported_data("alarmWhenRemoveToggleOn", "supportDoorBellAlarm"),
         value_fn=data_bool("alarmWhenRemoveToggleOn"),
     ),
+    XSenseSwitchEntityDescription(
+        key="camera_sleep",
+        data_key="deviceStatus",
+        addx_key="sleep.dormancySwitch",
+        name="Camera Sleep",
+        icon="mdi:power-sleep",
+        exists_fn=lambda entity: (
+            is_camera_entity(entity)
+            and entity.data.get("isAdmin") is True
+            and entity.data.get("supportSleep") is True
+            and "deviceStatus" in entity.data
+        ),
+        value_fn=lambda entity: entity.data.get("deviceStatus") == 3,
+    ),
     *(
         XSenseSwitchEntityDescription(
             key=f"camera_ai_notification_{event_type}",
@@ -979,6 +993,11 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
                     self.entity_description.addx_key.removeprefix("ai_assistant."),
                     enabled,
                 )
+                self.coordinator.async_update_listeners()
+                return
+
+            if self.entity_description.addx_key == "sleep.dormancySwitch":
+                await xsense.update_camera_sleep(entity, enabled)
                 self.coordinator.async_update_listeners()
                 return
 
