@@ -31,7 +31,7 @@ Diese Integration wird als benutzerdefiniertes HACS-Repository installiert. Wenn
 
 ### Recent Improvements / Aktuelle Verbesserungen
 
-- The integration uses the reviewed `wheemer-python-xsense` package for its X-Sense API client so the reusable client code can stay aligned with the standalone library.
+- The integration now includes its X-Sense API client directly, removing the external `python-xsense` dependency.
 - MQTT shadow updates and polling have been improved to reduce unnecessary cloud requests while keeping device state current.
 - X-Sense camera support now includes Home Assistant camera live view with video and audio through native Home Assistant WebRTC signaling for WebRTC cameras and direct stream URLs for cameras that report RTSP/RTMP support.
 When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. With recording links enabled, the default camera-event blueprint waits until cached media is ready, then sends a mobile notification that opens the matching X-Sense Recordings clip. Turn recording links off if you want a plain motion notification without waiting for video. Manual automation runs use the selected event entity's latest recording data. Recording media sync can keep recent clips ready in the background. The integration updates older imported X-Sense camera-event blueprints automatically when Home Assistant starts or during the periodic blueprint maintenance check.

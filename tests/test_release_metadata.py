@@ -40,7 +40,7 @@ def test_manifest_uses_wheemer_python_xsense_package():
     )
 
     assert any(
-        requirement.startswith("wheemer-python-xsense@")
+        requirement.startswith("wheemer-python-xsense @ ")
         for requirement in manifest["requirements"]
     )
 
