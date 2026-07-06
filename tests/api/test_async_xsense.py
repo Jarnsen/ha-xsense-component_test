@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-API_PATH = Path(__file__).resolve().parents[2] / "custom_components" / "xsense" / "api"
+API_PATH = Path(__file__).resolve().parents[2] / "custom_components" / "xsense" / "python_xsense"
 
 
 def load_api_module(module_name: str):
@@ -21,15 +21,15 @@ def load_api_module(module_name: str):
     xsense_pkg.__path__ = [str(API_PATH.parent)]
     sys.modules["custom_components.xsense"] = xsense_pkg
 
-    api_pkg = types.ModuleType("custom_components.xsense.api")
+    api_pkg = types.ModuleType("custom_components.xsense.python_xsense")
     api_pkg.__path__ = [str(API_PATH)]
-    sys.modules["custom_components.xsense.api"] = api_pkg
+    sys.modules["custom_components.xsense.python_xsense"] = api_pkg
 
-    return importlib.import_module(f"custom_components.xsense.api.{module_name}")
+    return importlib.import_module(f"custom_components.xsense.python_xsense.{module_name}")
 
 
 async_xsense = load_api_module("async_xsense")
-base = importlib.import_module("custom_components.xsense.api.base")
+base = importlib.import_module("custom_components.xsense.python_xsense.base")
 entity = load_api_module("entity")
 device_module = load_api_module("device")
 entity_map = load_api_module("entity_map")
@@ -38,8 +38,9 @@ house = load_api_module("house")
 mapping = load_api_module("mapping")
 mqtt_helper = load_api_module("mqtt_helper")
 station = load_api_module("station")
-sys.modules["custom_components.xsense.api"].AsyncXSense = async_xsense.AsyncXSense
-sys.modules["custom_components.xsense.api"].House = house.House
+sys.modules["custom_components.xsense.python_xsense"].AsyncXSense = async_xsense.AsyncXSense
+sys.modules["custom_components.xsense.python_xsense"].House = house.House
+sys.modules["custom_components.xsense.python_xsense"].__version__ = "0.1.0rc1"
 xsense_mqtt = importlib.import_module("custom_components.xsense.mqtt")
 
 

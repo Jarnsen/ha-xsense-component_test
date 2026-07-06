@@ -100,6 +100,29 @@ class Station(Entity):
     def alarm_data(self):
         return self._alarm_data
 
+    @property
+    def alarm_mode(self):
+        """Return the current security mode reported by X-Sense."""
+        return (
+            self._alarm_data.get("mode")
+            or self._alarm_data.get("safeMode")
+            or self.safe_mode
+            or self.data.get("safeMode")
+        )
+
+    @property
+    def is_armed(self) -> bool | None:
+        """Return whether the security mode is armed when it is known."""
+        mode = self.alarm_mode
+        if mode in (None, ""):
+            return None
+        normalized = str(mode).strip().lower()
+        if normalized in {"0", "disarm", "disarmed", "off"}:
+            return False
+        if normalized in {"1", "2", "home", "away", "armed", "armed_home", "armed_away"}:
+            return True
+        return None
+
 
 def _light_group_device_data(
     station: Station, station_data: Dict, group: Dict, source_devices: List[Dict]

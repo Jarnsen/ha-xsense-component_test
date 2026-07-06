@@ -6,7 +6,7 @@ from contextlib import suppress
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -14,10 +14,10 @@ from homeassistant.helpers.device_registry import (
     CONNECTION_BLUETOOTH,
     CONNECTION_NETWORK_MAC,
 )
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.util import slugify
 
-from .api.async_xsense import is_camera_entity
+from .python_xsense.async_xsense import is_camera_entity
 from .const import (
     CAMERA_AI_SERVICE_AVAILABLE,
     DOMAIN,
@@ -191,6 +191,7 @@ OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
     "XS03-iWX": ("mute",),
 }
 BLUEPRINT_MAINTENANCE_CHECK_INTERVAL = timedelta(minutes=5)
+STARTUP_MAINTENANCE_DELAY = 30
 
 
 def _has_camera_entities(data) -> bool:
@@ -621,15 +622,61 @@ def _remove_obsolete_device_metadata(
         _clear_visible_device_metadata(device_registry, device)
 
 
+async def _async_run_startup_maintenance(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: XSenseDataUpdateCoordinator,
+) -> None:
+    """Run registry and repair maintenance after HA startup."""
+    if hass.data.get(DOMAIN, {}).get(entry.entry_id) is not coordinator:
+        return
+
+    _remove_obsolete_sensor_entities(hass, coordinator.data, entry)
+    _remove_obsolete_device_metadata(hass, coordinator.data, entry)
+    _migrate_legacy_none_entity_ids(hass, entry)
+    await async_check_stale_camera_blueprints(hass)
+
+
+def _schedule_startup_maintenance(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: XSenseDataUpdateCoordinator,
+) -> None:
+    """Schedule startup maintenance outside the HA setup critical path."""
+
+    @callback
+    def _run_startup_maintenance(_now) -> None:
+        """Schedule registry and repair maintenance."""
+        hass.create_task(_async_run_startup_maintenance(hass, entry, coordinator))
+
+    @callback
+    def _schedule_delayed_startup_maintenance(_event=None) -> None:
+        """Delay startup maintenance until HA has finished starting."""
+        entry.async_on_unload(
+            async_call_later(
+                hass,
+                STARTUP_MAINTENANCE_DELAY,
+                _run_startup_maintenance,
+            )
+        )
+
+    if getattr(hass, "is_running", False):
+        _schedule_delayed_startup_maintenance()
+        return
+
+    entry.async_on_unload(
+        hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_STARTED,
+            _schedule_delayed_startup_maintenance,
+        )
+    )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up X-Sense Home Security from a config entry."""
     coordinator = XSenseDataUpdateCoordinator(hass, entry)
 
     await coordinator.async_config_entry_first_refresh()
-
-    _remove_obsolete_sensor_entities(hass, coordinator.data, entry)
-    _remove_obsolete_device_metadata(hass, coordinator.data, entry)
-    _migrate_legacy_none_entity_ids(hass, entry)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     has_cameras = _has_any_camera_entities(hass)
@@ -640,7 +687,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await async_register_recording_services(hass)
     else:
         _cleanup_recordings_runtime(hass, entry.entry_id)
-    await async_check_stale_camera_blueprints(hass)
 
     @callback
     def _schedule_blueprint_maintenance_check(_now) -> None:
@@ -659,9 +705,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    coordinator.async_start_camera_ai_history_polling()
-
-    _remove_obsolete_sensor_entities(hass, coordinator.data, entry)
+    coordinator.async_start_camera_ai_history_polling(immediate=False)
+    coordinator.async_schedule_deferred_refresh()
+    _schedule_startup_maintenance(hass, entry, coordinator)
 
     return True
 

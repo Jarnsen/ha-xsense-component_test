@@ -1,19 +1,21 @@
 import asyncio
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict
 
 import aiohttp
 
 from .aws_signer import AWSSigner
-from .base import XSenseBase
+from .base import XSenseBase, shadow_update_body
 from .entity import Entity
-from .entity_map import EntityType, entities
+from .entity_map import EntityType
 from .exceptions import SessionExpired, APIFailure, XSenseError
 from .house import House
 from .mapping import bool_state
 from .station import Station
-from ..const import LOGGER
+
+LOGGER = logging.getLogger(__name__)
 
 CAMERA_TYPES = {"SSC0A", "SSC0B"}
 CAMERA_LIVE_URL_MAX_AGE_SECONDS = 240
@@ -122,6 +124,11 @@ _SECOND_INFO_DEVICE_TYPES = {
     "XP0J-iA",
     "XR0A-iR",
 }
+
+
+def _shadow_update_body(data: Dict) -> str:
+    """Return compact AWS shadow JSON body kept for integration parity."""
+    return shadow_update_body(data)
 
 
 def _debug_keys(value: Any) -> list[str]:
@@ -239,6 +246,117 @@ def camera_live_resolution(camera: Entity) -> str:
         return supported_resolutions[0]
 
     return "auto"
+
+
+def camera_online(camera: Entity) -> bool:
+    """Return whether ADDX currently reports the camera online."""
+    online = getattr(camera, "online", None)
+    if online is not None:
+        return online is True
+    return camera.data.get("online") == 1
+
+
+def camera_stream_protocol(camera: Entity) -> str | None:
+    """Return the ADDX stream protocol from the camera device model."""
+    protocol = camera.data.get("streamProtocol")
+    if protocol is None:
+        return None
+    return str(protocol).lower()
+
+
+def stream_source_protocol(source: str | None) -> str | None:
+    """Return a stream source URL protocol without exposing the full source URL."""
+    if not isinstance(source, str) or "://" not in source:
+        return None
+    return source.split("://", 1)[0].lower()
+
+
+def schedule_time(value: str) -> str:
+    """Return an APK schedule time in HHMM form."""
+    text = str(value).strip()
+    if ":" in text:
+        hour, minute = text.split(":", 1)
+        text = f"{hour.zfill(2)}{minute.zfill(2)}"
+    if len(text) != 4 or not text.isdigit():
+        raise ValueError("X-Sense schedule time must be HH:MM or HHMM")
+    hour = int(text[:2])
+    minute = int(text[2:])
+    if hour > 23 or minute > 59:
+        raise ValueError("X-Sense schedule time is out of range")
+    return text
+
+
+def schedule_week_days(values: list[str]) -> list[str]:
+    """Return APK weekday values, where 1 is Sunday and 7 is Saturday."""
+    result = [str(value).strip() for value in values]
+    if not result:
+        raise ValueError("X-Sense schedule must include at least one weekday")
+    invalid = [
+        value for value in result if value not in {"1", "2", "3", "4", "5", "6", "7"}
+    ]
+    if invalid:
+        raise ValueError("X-Sense schedule weekdays must be 1 through 7")
+    return result
+
+
+def light_schedule_list(value) -> list:
+    """Return a normalized schedule list from the APK query response."""
+    if isinstance(value, dict):
+        data = value.get("schedList") or value.get("schedule") or value.get("list")
+        return data if isinstance(data, list) else []
+    return value if isinstance(value, list) else []
+
+
+def light_group_list(value) -> list:
+    """Return a normalized group list from the APK query response."""
+    if isinstance(value, dict):
+        data = value.get("groupList") or value.get("groups") or value.get("list")
+        if data is None and isinstance(value.get("reData"), dict):
+            data = value["reData"].get("groupList")
+        return data if isinstance(data, list) else []
+    return value if isinstance(value, list) else []
+
+
+def non_empty_strings(values: list[str], field_name: str) -> list[str]:
+    """Return stripped non-empty strings for API list fields."""
+    result = [str(value).strip() for value in values if str(value).strip()]
+    if not result:
+        raise ValueError(f"X-Sense {field_name} must include at least one ID")
+    return result
+
+
+def typed_option(option: str) -> int | str:
+    """Return option as int when the API supplied numeric options."""
+    try:
+        return int(option)
+    except ValueError:
+        return option
+
+
+def comfort_pair(value, default: list[float]) -> list[float]:
+    """Return a comfort range pair for APK comfort mode writes."""
+    if isinstance(value, (list, tuple)) and len(value) >= 2:
+        try:
+            return [float(value[0]), float(value[1])]
+        except (TypeError, ValueError):
+            pass
+    return list(default)
+
+
+def is_native_stream_camera(camera: Entity) -> bool:
+    """Return whether the camera advertises a native stream protocol."""
+    protocol = camera_stream_protocol(camera)
+    if protocol is None:
+        return False
+    return "rtsp" in protocol or "rtmp" in protocol
+
+
+def is_webrtc_camera(camera: Entity) -> bool:
+    """Return whether the camera should use ADDX WebRTC signaling."""
+    protocol = camera_stream_protocol(camera)
+    if protocol is None:
+        return True
+    return "rtsp" not in protocol and "rtmp" not in protocol
 
 
 class AsyncXSense(XSenseBase):
@@ -421,6 +539,158 @@ class AsyncXSense(XSenseBase):
         )
         return data if isinstance(data, dict) else {}
 
+    async def get_daily_history(
+        self,
+        house: House | str,
+        day_time: str,
+        time_zone: str,
+        next_token: str | None = None,
+    ) -> dict:
+        """Return account daily history using the documented APK endpoint."""
+        house_id = house.house_id if hasattr(house, "house_id") else str(house)
+        payload: dict[str, Any] = {
+            "houseId": house_id,
+            "dayTime": day_time,
+            "timeZone": time_zone,
+        }
+        if next_token:
+            payload["nextToken"] = next_token
+        data = await self.api_call("104001", **payload)
+        return data if isinstance(data, dict) else {}
+
+    async def get_monthly_history(
+        self,
+        house: House | str,
+        month: str,
+        time_zone: str,
+    ) -> dict:
+        """Return account monthly history counts using the APK endpoint."""
+        house_id = house.house_id if hasattr(house, "house_id") else str(house)
+        data = await self.api_call(
+            "104006", houseId=house_id, hisMonth=month, timeZone=time_zone
+        )
+        return data if isinstance(data, dict) else {}
+
+    async def get_station_history(
+        self,
+        station: Station,
+        day_time: str,
+        time_zone: str,
+        *,
+        device: Entity | str | None = None,
+        next_token: str | None = None,
+    ) -> dict:
+        """Return station or device daily history through the APK endpoint."""
+        payload: dict[str, Any] = {
+            "houseId": station.house.house_id,
+            "stationId": station.entity_id,
+            "dayTime": day_time,
+            "timeZone": time_zone,
+        }
+        if device is not None:
+            payload["deviceId"] = (
+                device.entity_id if hasattr(device, "entity_id") else str(device)
+            )
+        if next_token:
+            payload["nextToken"] = next_token
+        data = await self.api_call("104007", **payload)
+        return data if isinstance(data, dict) else {}
+
+    async def get_station_monthly_history(
+        self,
+        station: Station,
+        month: str,
+        time_zone: str,
+        *,
+        device: Entity | str | None = None,
+    ) -> dict:
+        """Return station or device monthly history counts through the APK endpoint."""
+        payload: dict[str, Any] = {
+            "houseId": station.house.house_id,
+            "stationId": station.entity_id,
+            "hisMonth": month,
+            "timeZone": time_zone,
+        }
+        if device is not None:
+            payload["deviceId"] = (
+                device.entity_id if hasattr(device, "entity_id") else str(device)
+            )
+        data = await self.api_call("104008", **payload)
+        return data if isinstance(data, dict) else {}
+
+    async def get_co_history_days(
+        self,
+        station: Station,
+        time_zone: str,
+        *,
+        device: Entity | str | None = None,
+    ) -> dict:
+        """Return CO history days for a station or child device."""
+        payload: dict[str, Any] = {
+            "stationId": station.entity_id,
+            "timeZone": time_zone,
+        }
+        code = "104014"
+        if device is not None:
+            code = "104009"
+            payload["deviceId"] = (
+                device.entity_id if hasattr(device, "entity_id") else str(device)
+            )
+        data = await self.api_call(code, **payload)
+        return data if isinstance(data, dict) else {}
+
+    async def get_co_history_details(
+        self,
+        station: Station,
+        day_time: str,
+        time_zone: str,
+        *,
+        device: Entity | str | None = None,
+    ) -> dict:
+        """Return CO PPM readings for a station or child device."""
+        payload: dict[str, Any] = {
+            "houseId": station.house.house_id,
+            "stationId": station.entity_id,
+            "dayTime": day_time,
+            "timeZone": time_zone,
+        }
+        code = "104015"
+        if device is not None:
+            code = "104010"
+            payload["deviceId"] = (
+                device.entity_id if hasattr(device, "entity_id") else str(device)
+            )
+        data = await self.api_call(code, **payload)
+        return data if isinstance(data, dict) else {}
+
+    async def get_temperature_history(
+        self,
+        station: Station,
+        last_time: str,
+        *,
+        next_token: str | None = None,
+    ) -> dict:
+        """Return temperature/humidity chart history through the APK endpoint."""
+        payload: dict[str, Any] = {
+            "houseId": station.house.house_id,
+            "stationId": station.entity_id,
+            "lastTime": last_time,
+        }
+        if next_token:
+            payload["nextToken"] = next_token
+        data = await self.api_call("104020", **payload)
+        return data if isinstance(data, dict) else {}
+
+    async def get_dispatch_history(
+        self, server_id: str, next_token: str | None = None
+    ) -> dict:
+        """Return security dispatch history through the APK endpoint."""
+        payload: dict[str, Any] = {"serverId": server_id}
+        if next_token:
+            payload["nextToken"] = next_token
+        data = await self.api_call("505001", **payload)
+        return data if isinstance(data, dict) else {}
+
     async def ipc_call(self, code: str, **kwargs):
         """Call the X-Sense IPC endpoint used by the Android app."""
         if self._access_token_expiring():
@@ -537,7 +807,7 @@ class AsyncXSense(XSenseBase):
         }
         return result
 
-    async def get_house(self, house: House, page: str):
+    async def get_house(self, house: House, page: str, *, _retry: bool = True):
         if self._aws_token_expiring():
             await self.load_aws()
 
@@ -546,9 +816,12 @@ class AsyncXSense(XSenseBase):
         session = await self._get_session()
         async with session.get(url, headers=headers) as response:
             self._lastres = response
+            if response.status in (401, 403) and _retry:
+                await self.load_aws()
+                return await self.get_house(house, page, _retry=False)
             return await response.json()
 
-    async def get_thing(self, station: Station, page: str):
+    async def get_thing(self, station: Station, page: str, *, _retry: bool = True):
         if self._aws_token_expiring():
             await self.load_aws()
 
@@ -557,18 +830,31 @@ class AsyncXSense(XSenseBase):
         session = await self._get_session()
         async with session.get(url, headers=headers) as response:
             self._lastres = response
+            if response.status in (401, 403) and _retry:
+                await self.load_aws()
+                return await self.get_thing(station, page, _retry=False)
             return await response.json()
 
-    async def do_thing(self, station: Station, page: str, data: Dict):
+    async def do_thing(
+        self, station: Station, page: str, data: Dict, *, _retry: bool = True
+    ):
         if self._aws_token_expiring():
             await self.load_aws()
 
-        body = _shadow_update_body(data)
+        body = shadow_update_body(data)
         url, headers = self._thing_request(station, page, body)
 
         session = await self._get_session()
         async with session.post(url, data=body, headers=headers) as response:
             self._lastres = response
+            if (
+                response.status in (401, 403)
+                and _retry
+                and self.signer is not None
+                and self.aws_access_expiry is not None
+            ):
+                await self.load_aws()
+                return await self.do_thing(station, page, data, _retry=False)
             if response.status >= 400:
                 text = await response.text()
                 raise APIFailure(
@@ -578,7 +864,7 @@ class AsyncXSense(XSenseBase):
 
     async def login(self, username, password):
         await asyncio.get_running_loop().run_in_executor(
-            None, self.sync_login, username, password
+            None, self._cognito_login, username, password
         )
         await self.load_aws()
 
@@ -684,6 +970,10 @@ class AsyncXSense(XSenseBase):
                 setting_options = None
             if setting_options:
                 camera.set_data(_camera_settings_options_data(setting_options))
+                LOGGER.debug(
+                    "X-Sense camera form options loaded: %s",
+                    _camera_options_debug_context(camera),
+                )
 
             if (
                 any(
@@ -743,6 +1033,19 @@ class AsyncXSense(XSenseBase):
                     camera.set_data(
                         _camera_ai_assistant_data(ai_event_settings, camera.sn)
                     )
+
+    async def get_camera_thumbnail(self, camera: Entity) -> bytes | None:
+        """Return the latest camera thumbnail bytes from the APK thumbnail URL."""
+        thumbnail_url = camera.data.get("thumbImgUrl")
+        if not thumbnail_url:
+            return None
+
+        session = await self._get_session()
+        async with session.get(thumbnail_url) as response:
+            self._lastres = response
+            if response.status >= 400:
+                return None
+            return await response.read()
 
     def _camera_from_addx_device(self, data: Dict) -> Station | None:
         """Return the X-Sense camera entity backed by an ADDX DeviceBean."""
@@ -1206,6 +1509,323 @@ class AsyncXSense(XSenseBase):
 
         return await self.do_thing(target, topic, data)
 
+    def _station_for_entity(self, entity: Entity) -> Station:
+        station = getattr(entity, "station", entity)
+        if not getattr(station, "sn", None):
+            raise XSenseError("Entity is not associated with a station")
+        return station
+
+    def _validate_volume(self, volume: int) -> None:
+        if not isinstance(volume, int):
+            raise XSenseError("Volume must be an integer")
+        if volume < 0 or volume > 100:
+            raise XSenseError("Volume must be between 0 and 100")
+
+    def _bool_value(self, value) -> str:
+        if isinstance(value, bool):
+            return "1" if value else "0"
+        if value in (0, 1, "0", "1"):
+            return str(value)
+        raise XSenseError("Value must be a boolean or 0/1")
+
+    def _utc_timestamp(self) -> str:
+        return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+
+    def build_command_state(
+        self,
+        entity: Entity,
+        shadow: str,
+        values: Dict,
+        include_device: bool | None = None,
+        include_time: bool = True,
+        include_user: bool = True,
+    ):
+        """Return the app-style desired shadow payload for command helpers."""
+        station = self._station_for_entity(entity)
+        if include_device is None:
+            include_device = entity is not station
+
+        desired = {
+            "shadow": shadow,
+            "stationSN": station.sn,
+        }
+        if include_device:
+            desired["deviceSN"] = entity.sn
+        if include_time:
+            desired["time"] = self._utc_timestamp()
+        if include_user:
+            desired["userId"] = self.userid
+        desired.update({key: value for key, value in values.items() if value is not None})
+        return station, {"state": {"desired": desired}}
+
+    def build_config_state(self, entity: Entity, shadow: str, values: Dict):
+        """Return an app-style config shadow payload without time/user fields."""
+        return self.build_command_state(
+            entity, shadow, values, include_time=False, include_user=False
+        )
+
+    def build_desired_state(self, entity: Entity, shadow: str, definition: Dict):
+        """Return an app-style action payload for a mapped action definition."""
+        extra = definition.get("extra", {})
+        if callable(extra):
+            extra = extra(entity)
+        data = definition.get("data", {})
+        if callable(data):
+            data = data(entity)
+        values = {**extra, **data}
+        return self.build_command_state(entity, shadow, values)
+
+    async def set_device_config(self, entity: Entity, **values):
+        """Write raw device config values through the APK config shadow."""
+        shadow = "infoBase" if isinstance(entity, Station) else "infoDev"
+        station, data = self.build_config_state(entity, shadow, values)
+        return await self.do_thing(station, f"2nd_cfg_{entity.sn}", data)
+
+    async def set_alarm_volume(
+        self,
+        entity: Entity,
+        volume: int,
+        alarm_tone: str | None = None,
+        mute: str | None = None,
+    ):
+        """Write alarm volume/tone values through the APK config shadow."""
+        self._validate_volume(volume)
+        values = {"alarmVol": str(volume)}
+        if alarm_tone is not None:
+            values["alarmTone"] = alarm_tone
+        if mute is not None:
+            values["mute"] = mute
+        shadow = "infoBase" if isinstance(entity, Station) else "infoDev"
+        station, data = self.build_config_state(entity, shadow, values)
+        return await self.do_thing(station, f"2nd_cfg_{entity.sn}", data)
+
+    async def set_voice_volume(self, station: Station, volume: int):
+        """Write station voice volume through the APK config shadow."""
+        self._validate_volume(volume)
+        station, data = self.build_config_state(
+            station, "infoBase", {"voiceVol": str(volume)}
+        )
+        return await self.do_thing(station, f"2nd_cfg_{station.sn}", data)
+
+    async def set_station_mode(
+        self, station: Station, safe_mode: str, force_arm: str | None = None
+    ):
+        """Write station arm/disarm safe mode through the APK app-mode shadow."""
+        values = {
+            "userParam": "source=1",
+            "source": "1",
+            "safeMode": safe_mode,
+        }
+        if force_arm is not None:
+            values["forceArm"] = force_arm
+        station, data = self.build_command_state(
+            station,
+            "appMode",
+            values,
+            include_device=False,
+            include_time=False,
+        )
+        return await self.do_thing(station, "2nd_appmode", data)
+
+    async def trigger_sos(self, station: Station, sos_type: str = "1"):
+        """Trigger station SOS through the APK shadow command."""
+        station, data = self.build_command_state(
+            station,
+            "sosDown",
+            {"userParam": "source=1", "sosType": sos_type},
+            include_device=False,
+        )
+        return await self.do_thing(station, "2nd_sosdown", data)
+
+    async def cancel_sos(self, station: Station):
+        """Cancel station SOS through the APK shadow command."""
+        station, data = self.build_command_state(
+            station, "sosDown", {"sosStatus": "0"}, include_device=False
+        )
+        return await self.do_thing(station, "sosdown", data)
+
+    async def cancel_alarm(self, station: Station):
+        """Cancel an active station alarm through the APK shadow command."""
+        station, data = self.build_command_state(
+            station,
+            "alarmCancel",
+            {"cancelTime": self._utc_timestamp()},
+            include_device=False,
+            include_time=False,
+        )
+        return await self.do_thing(station, "alarmcancel", data)
+
+    async def set_fire_drill(
+        self,
+        entity: Entity,
+        drill: bool | str = True,
+        drill_time: str | None = None,
+        alarm_type: str | None = None,
+        alarm_vol: str | None = None,
+        alarm_tone: str | None = None,
+        location: str | None = None,
+        stop_reason: str | None = None,
+    ):
+        """Write fire-drill command values through the APK shadow."""
+        values = {
+            "drill": self._bool_value(drill),
+            "drillTime": drill_time,
+            "alarmType": alarm_type,
+            "alarmVol": alarm_vol,
+            "alarmTone": alarm_tone,
+            "location": location,
+            "stopReason": stop_reason,
+        }
+        if not isinstance(entity, Station):
+            values["deviceType"] = entity.type
+        station, data = self.build_command_state(
+            entity,
+            "appFireDrill",
+            values,
+            include_device=not isinstance(entity, Station),
+        )
+        return await self.do_thing(station, "2nd_firedrill", data)
+
+    async def set_sos_sound(self, station: Station, sos_sound: str):
+        """Write station SOS sound through the APK shadow command."""
+        station, data = self.build_command_state(
+            station,
+            "sosParam",
+            {"userParam": "source=1", "sosSound": sos_sound},
+            include_device=False,
+        )
+        return await self.do_thing(station, "2nd_sosparam", data)
+
+    async def activate_device(self, entity: Entity):
+        """Activate a device through the APK activation shadow."""
+        station, data = self.build_command_state(
+            entity, "app2ndActivate", {"activate": "1"}, include_device=True
+        )
+        return await self.do_thing(station, "2nd_appactivate", data)
+
+    async def set_install_guide_test(
+        self,
+        entity: Entity,
+        active: bool | str = True,
+        dev_type: str | None = None,
+        test_time: str = "180",
+        detc_sens: str | None = None,
+    ):
+        """Write install-guide test values through the APK shadow."""
+        values = {
+            "devType": dev_type or entity.type,
+            "test": self._bool_value(active),
+            "testTime": test_time,
+            "detcSens": detc_sens,
+        }
+        station, data = self.build_command_state(
+            entity, "appInstallGuide", values, include_device=True
+        )
+        return await self.do_thing(station, "2nd_appinstallguide", data)
+
+    async def signal_test(
+        self,
+        entity: Entity,
+        dev_type: str | None = None,
+        test: bool | str = True,
+        test_time: str = "5",
+    ):
+        """Write RF signal-test values through the APK shadow."""
+        station, data = self.build_command_state(
+            entity,
+            "signalTest",
+            {
+                "devType": dev_type or entity.type,
+                "test": self._bool_value(test),
+                "testTime": test_time,
+            },
+            include_device=True,
+        )
+        return await self.do_thing(station, f"2nd_signaltest_{entity.sn}", data)
+
+    async def set_motion_test(
+        self, entity: Entity, active: bool | str = True, dev_type: str = "SMS01"
+    ):
+        """Write motion-test values through the APK shadow."""
+        station, data = self.build_command_state(
+            entity,
+            "testIR",
+            {"devType": dev_type, "testIR": self._bool_value(active)},
+            include_device=True,
+            include_time=False,
+            include_user=False,
+        )
+        return await self.do_thing(station, "testir", data)
+
+    async def set_light_power(self, entity: Entity, on: bool | str):
+        """Compatibility wrapper for the APK light power command."""
+        return await self.update_light_power(entity, self._bool_value(on) == "1")
+
+    async def set_light_group_power(
+        self,
+        station: Station,
+        group_id: str,
+        device_sns: list[str],
+        on: bool | str,
+        timeout: str = "180",
+    ):
+        """Write light group power through the APK group shadow."""
+        station, data = self.build_command_state(
+            station,
+            "groupLampPower",
+            {
+                "userParam": "source=1",
+                "timeOut": timeout,
+                "groupId": group_id,
+                "devs": device_sns,
+                "isOn": self._bool_value(on),
+            },
+            include_device=False,
+        )
+        return await self.do_thing(station, "2nd_grouppower", data)
+
+    async def mute_water(
+        self,
+        entity: Entity,
+        set_type: str = "0",
+        silence_time: str = "",
+        trigger_source: str | None = None,
+    ):
+        """Write water-alarm mute values through the APK shadow."""
+        values = {
+            "setType": set_type,
+            "silenceTime": silence_time,
+            "triggerSource": trigger_source,
+        }
+        station, data = self.build_command_state(
+            entity, "appWater", values, include_device=True
+        )
+        return await self.do_thing(station, "2nd_appwater", data)
+
+    async def mute_temperature_humidity(
+        self, entity: Entity, mute_type: str = "1", sensor_type: str | None = None
+    ):
+        """Write temperature/humidity mute values through the APK shadow."""
+        station, data = self.build_command_state(
+            entity,
+            "extendMute",
+            {"muteType": mute_type, "type": sensor_type or entity.type},
+            include_device=True,
+        )
+        return await self.do_thing(station, "2nd_appmute", data)
+
+    async def mute_driveway(
+        self, entity: Entity, mute: bool | str = True, topic: str = "2nd_driveway"
+    ):
+        """Write driveway alarm mute values through the APK shadow."""
+        station, data = self.build_command_state(
+            entity,
+            "appDriveway",
+            {"mute": self._bool_value(mute)},
+            include_device=True,
+        )
+        return await self.do_thing(station, topic, data)
+
     async def update_light_power(self, entity: Entity, enabled: bool):
         """Write an SBS50 light power change through the app light shadows."""
         station = getattr(entity, "station", entity)
@@ -1337,11 +1957,12 @@ class AsyncXSense(XSenseBase):
     async def query_light_schedules(self, entity: Entity):
         """Query SBS50 light schedules through the same REST API as the APK."""
         station = getattr(entity, "station", entity)
-        return await self.api_call(
+        data = await self.api_call(
             "405105",
             stationId=station.entity_id,
             deviceId=entity.entity_id,
         )
+        return light_schedule_list(data)
 
     async def create_light_schedule(
         self,
@@ -1362,10 +1983,10 @@ class AsyncXSense(XSenseBase):
             schedName=name,
             deviceIds=[entity.entity_id],
             timeZone=time_zone,
-            startTime=start_time,
-            endTime=end_time,
+            startTime=schedule_time(start_time),
+            endTime=schedule_time(end_time),
             isEnable="1" if enabled else "0",
-            weekDays=week_days,
+            weekDays=schedule_week_days(week_days),
             newTimeZoneMode="1",
         )
 
@@ -1388,10 +2009,10 @@ class AsyncXSense(XSenseBase):
             schedId=schedule_id,
             deviceId=entity.entity_id,
             timeZone=time_zone,
-            startTime=start_time,
-            endTime=end_time,
+            startTime=schedule_time(start_time),
+            endTime=schedule_time(end_time),
             isEnable="1" if enabled else "0",
-            weekDays=week_days,
+            weekDays=schedule_week_days(week_days),
             newTimeZoneMode="1",
         )
 
@@ -1424,7 +2045,8 @@ class AsyncXSense(XSenseBase):
     async def query_light_groups(self, entity: Entity):
         """Query SBS50 light groups through the same REST API as the APK."""
         station = getattr(entity, "station", entity)
-        return await self.api_call("405001", stationId=station.entity_id)
+        data = await self.api_call("405001", stationId=station.entity_id)
+        return light_group_list(data)
 
     async def create_light_group(
         self,
@@ -1487,7 +2109,7 @@ class AsyncXSense(XSenseBase):
             "405005",
             stationId=station.entity_id,
             groupName=name,
-            deviceIds=device_ids,
+            deviceIds=non_empty_strings(device_ids, "group device list"),
         )
 
     async def delete_light_group(self, entity: Entity, *, group_id: str):
@@ -1510,7 +2132,7 @@ class AsyncXSense(XSenseBase):
         return await self.api_call(
             "405007",
             stationId=station.entity_id,
-            deviceIds=device_ids,
+            deviceIds=non_empty_strings(device_ids, "group device list"),
         )
 
     async def update_co_pre_alarm(
@@ -1650,10 +2272,6 @@ def _shadow_setting_includes_station_sn(entity: Entity, data_key: str) -> bool:
         data_key in {"tempUnit", "tAdjust", "hAdjust"}
         and getattr(entity, "entity_type", None) == EntityType.TEMPERATURE
     )
-
-
-def _shadow_update_body(data: Dict) -> str:
-    return json.dumps(data, ensure_ascii=False, separators=(",", ":"))
 
 
 def _action_timestamp(definition: Dict, entity: Entity) -> str | None:
@@ -1934,7 +2552,7 @@ def _enabled_option_values(options: Any) -> list[Any]:
     for option in options:
         if not isinstance(option, dict):
             continue
-        if option.get("enabled") is False:
+        if _addx_bool(option.get("enabled")) is not True:
             continue
         value = option.get("value")
         if value is not None:
@@ -1942,17 +2560,61 @@ def _enabled_option_values(options: Any) -> list[Any]:
     return values
 
 
+def _option_debug_values(options: Any) -> list[dict[str, Any]]:
+    """Return safe APK option metadata for debug/diagnostics."""
+    if not isinstance(options, list):
+        return []
+    values: list[dict[str, Any]] = []
+    for option in options:
+        if not isinstance(option, dict):
+            continue
+        value = option.get("value")
+        if value is None:
+            continue
+        values.append(
+            {
+                "value": value,
+                "enabled": _addx_bool(option.get("enabled")),
+            }
+        )
+    return values
+
+
 def _camera_settings_options_data(data: Dict) -> Dict:
     """Return APK camera form options from /user/getFormOptions."""
     form_options = data.get("deviceFormOptions") or {} if isinstance(data, dict) else {}
-    video_seconds = _enabled_option_values(form_options.get("videoSeconds"))
-    cooldown = _enabled_option_values(form_options.get("cooldown_in_s"))
+    video_seconds_options = form_options.get("videoSeconds")
+    cooldown_options = form_options.get("cooldown_in_s")
+    video_seconds = _enabled_option_values(video_seconds_options)
+    cooldown = _enabled_option_values(cooldown_options)
     result: Dict[str, Any] = {}
+    video_seconds_debug = _option_debug_values(video_seconds_options)
+    cooldown_debug = _option_debug_values(cooldown_options)
+    if video_seconds_debug:
+        result["videoSecondsOptions"] = video_seconds_debug
+    if cooldown_debug:
+        result["cooldownOptionDetails"] = cooldown_debug
     if video_seconds:
         result["videoSecondsValues"] = video_seconds
     if cooldown:
         result["cooldownOptions"] = cooldown
     return result
+
+
+def _camera_options_debug_context(camera: Entity) -> Dict:
+    """Return safe camera option-list diagnostics."""
+    return {
+        "camera": _short_id(getattr(camera, "sn", None)),
+        "model": camera.data.get("modelNo") or getattr(camera, "type", None),
+        "video_seconds": camera.data.get("videoSeconds"),
+        "video_seconds_values": camera.data.get("videoSecondsValues"),
+        "video_seconds_options": camera.data.get("videoSecondsOptions"),
+        "cooldown": camera.data.get("cooldownValue"),
+        "cooldown_options": camera.data.get("cooldownOptions"),
+        "cooldown_option_details": camera.data.get("cooldownOptionDetails"),
+        "recording_resolution": camera.data.get("recResolution"),
+        "recording_resolutions": camera.data.get("supportedRecordingResolutions"),
+    }
 
 
 def _camera_config_data(data: Dict) -> Dict:

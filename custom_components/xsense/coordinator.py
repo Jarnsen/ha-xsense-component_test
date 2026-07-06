@@ -10,17 +10,17 @@ import json
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.logging import catch_log_exception
 
-from .api import AsyncXSense, House
-from .api.async_xsense import is_camera_entity
-from .api.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
+from .python_xsense import AsyncXSense, House
+from .python_xsense.async_xsense import is_camera_entity
+from .python_xsense.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
 from .const import (
     CAMERA_AI_HISTORY_SCAN_INTERVAL,
     CAMERA_AI_SERVICE_AVAILABLE,
@@ -106,6 +106,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._camera_ai_history_seen: set[str] = set()
         self._camera_ai_history_unsub = None
         self._camera_ai_history_lock = asyncio.Lock()
+        self._startup_refresh_complete = False
+        self._deferred_refresh_unsub = None
         super().__init__(
             hass,
             LOGGER,
@@ -121,6 +123,10 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def async_shutdown(self) -> None:
         """Disconnect all MQTT clients owned by this coordinator."""
+        if self._deferred_refresh_unsub is not None:
+            self._deferred_refresh_unsub()
+            self._deferred_refresh_unsub = None
+
         if self._camera_ai_history_unsub is not None:
             self._camera_ai_history_unsub()
             self._camera_ai_history_unsub = None
@@ -137,7 +143,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self.xsense is not None:
             await self.xsense.close()
 
-    def async_start_camera_ai_history_polling(self) -> None:
+    def async_start_camera_ai_history_polling(self, *, immediate: bool = True) -> None:
         """Start the lightweight camera AI-history poller."""
         if self._camera_ai_history_unsub is not None:
             LOGGER.debug("X-Sense camera history polling already started")
@@ -152,8 +158,31 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "X-Sense camera history polling started: interval_s=%s",
             CAMERA_AI_HISTORY_SCAN_INTERVAL,
         )
-        if hasattr(self.hass, "async_create_task"):
+        if immediate and hasattr(self.hass, "async_create_task"):
             self.hass.async_create_task(self._async_poll_camera_ai_history(None))
+
+    def async_schedule_deferred_refresh(self) -> None:
+        """Schedule live cloud/MQTT refresh work after HA startup."""
+        if self._deferred_refresh_unsub is not None:
+            return
+
+        def _schedule_refresh(_event_or_now) -> None:
+            self._deferred_refresh_unsub = None
+            self._deferred_refresh_unsub = async_call_later(
+                self.hass, 30, _request_refresh
+            )
+
+        def _request_refresh(_now) -> None:
+            self._deferred_refresh_unsub = None
+            self.hass.async_create_task(self.async_request_refresh())
+
+        if getattr(self.hass, "is_running", False):
+            _schedule_refresh(None)
+        else:
+            self._deferred_refresh_unsub = self.hass.bus.async_listen_once(
+                EVENT_HOMEASSISTANT_STARTED,
+                _schedule_refresh,
+            )
 
     async def _async_poll_camera_ai_history(self, _now) -> None:
         """Poll camera AI history outside the heavy coordinator refresh."""
@@ -197,7 +226,17 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def _async_update_data(self) -> dict[str, Any]:
         if self.xsense is None:
             await self._connect()
-        devices = await self.get_devices()
+        startup_refresh = not self._startup_refresh_complete
+        devices = await self.get_devices(
+            include_camera_history=not startup_refresh,
+            include_camera_update=not startup_refresh,
+            include_state_update=not startup_refresh,
+        )
+        self._startup_refresh_complete = True
+
+        if startup_refresh:
+            LOGGER.debug("X-Sense startup refresh skipped MQTT live update request")
+            return devices
 
         if self.xsense and self.xsense.houses:
             for h in self.xsense.houses.values():
@@ -284,7 +323,13 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             return stations
 
-    async def get_devices(self, retry=False):
+    async def get_devices(
+        self,
+        retry=False,
+        include_camera_history=True,
+        include_camera_update=True,
+        include_state_update=True,
+    ):
         """Retrieve all devices from the xsense account.
 
         The expensive load_all() call is only needed on initial setup or after
@@ -300,22 +345,32 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self._initialized = True
                 LOGGER.debug("Initial XSense discovery complete")
 
-            camera_data_refreshed = await self._update_cameras()
+            camera_data_refreshed = False
+            if include_camera_update:
+                camera_data_refreshed = await self._update_cameras()
+            else:
+                LOGGER.debug("X-Sense camera metadata skipped during startup refresh")
             if camera_data_refreshed:
                 self._cache_camera_stations()
-            await self._update_camera_ai_history()
+            if include_camera_history:
+                await self._update_camera_ai_history()
+            else:
+                LOGGER.debug("X-Sense camera history skipped during startup refresh")
 
             for h in self.xsense.houses.values():
                 stations.update(h.stations.items())
-                with suppress(NotFoundError):
-                    await self.xsense.get_house_state(h)
+                if include_state_update:
+                    with suppress(NotFoundError):
+                        await self.xsense.get_house_state(h)
                 for s in h.stations.values():
-                    if not is_camera_entity(s):
+                    if include_state_update and not is_camera_entity(s):
                         await self.xsense.get_station_state(s)
                         await self.xsense.get_state(s)
-                    if s.type == "SBS50":
+                    if include_state_update and s.type == "SBS50":
                         await self._update_safe_mode(s)
                     devices.update(s.devices.items())
+            if not include_state_update:
+                LOGGER.debug("X-Sense device state polling skipped during startup refresh")
 
             self._merge_cached_camera_stations(stations)
             LOGGER.debug(
@@ -332,7 +387,12 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if not retry:
                 self._initialized = False
                 await self._connect()
-                return await self.get_devices(retry=True)
+                return await self.get_devices(
+                    retry=True,
+                    include_camera_history=include_camera_history,
+                    include_camera_update=include_camera_update,
+                    include_state_update=include_state_update,
+                )
             raise ConfigEntryAuthFailed(
                 "Could not update, session no longer valid"
             ) from ex

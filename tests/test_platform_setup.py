@@ -200,13 +200,57 @@ def test_ai_notification_blueprint_docs_use_github_file_import_url():
 
 
 def test_blueprint_maintenance_interval_callback_stays_event_loop_safe():
-    source = inspect.getsource(xsense_module.async_setup_entry)
+    setup_source = inspect.getsource(xsense_module.async_setup_entry)
+    maintenance_source = inspect.getsource(xsense_module._schedule_startup_maintenance)
 
-    assert "@callback" in source
-    assert "def _schedule_blueprint_maintenance_check" in source
-    assert "hass.create_task(async_check_stale_camera_blueprints(hass))" in source
-    assert "lambda _now: hass.async_create_task" not in source
-    assert "hass.async_create_task(async_check_stale_camera_blueprints(hass))" not in source
+    assert "@callback" in setup_source
+    assert "def _schedule_blueprint_maintenance_check" in setup_source
+    assert "hass.create_task(async_check_stale_camera_blueprints(hass))" in setup_source
+    assert "hass.async_create_task(async_check_stale_camera_blueprints(hass))" not in setup_source
+    assert "hass.create_task(_async_run_startup_maintenance" in maintenance_source
+    assert "lambda _now: hass.async_create_task" not in maintenance_source
+    assert "hass.async_create_task(_async_run_startup_maintenance" not in maintenance_source
+
+
+def test_startup_maintenance_waits_until_home_assistant_started(monkeypatch):
+    calls = []
+
+    def async_call_later(hass, delay, callback):
+        calls.append(("timer", delay, callback))
+        return lambda: calls.append(("cancel_timer",))
+
+    class Bus:
+        def async_listen_once(self, event, callback):
+            calls.append(("listen", event, callback))
+            return lambda: calls.append(("cancel_listen",))
+
+    class Hass:
+        is_running = False
+        bus = Bus()
+        data = {DOMAIN: {"entry-id": object()}}
+
+        def create_task(self, coro):
+            calls.append(("task", coro.cr_code.co_name))
+            coro.close()
+
+    class Entry:
+        entry_id = "entry-id"
+
+        def async_on_unload(self, unsub):
+            calls.append(("unload", unsub))
+
+    monkeypatch.setattr(xsense_module, "async_call_later", async_call_later)
+
+    coordinator = Hass.data[DOMAIN]["entry-id"]
+    xsense_module._schedule_startup_maintenance(Hass(), Entry(), coordinator)
+
+    assert calls[0][0:2] == ("listen", "homeassistant_started")
+    assert calls[1][0] == "unload"
+    calls[0][2](None)
+    assert calls[2][0:2] == ("timer", xsense_module.STARTUP_MAINTENANCE_DELAY)
+    assert calls[3][0] == "unload"
+    calls[2][2](None)
+    assert calls[4] == ("task", "_async_run_startup_maintenance")
 
 
 def test_ai_notification_blueprint_filters_by_selected_event_entity():

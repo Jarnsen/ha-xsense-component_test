@@ -3,6 +3,20 @@ import typing
 
 property_mapper = {
     "*": {"wifiRssi": "wifiRSSI"},
+    "SDS0A": {
+        "a": "isOpen",
+        "open": "isOpen",
+        "door": "isOpen",
+        "doorStatus": "isOpen",
+        "status": "isOpen",
+    },
+    "SES01": {
+        "a": "isOpen",
+        "open": "isOpen",
+        "door": "isOpen",
+        "doorStatus": "isOpen",
+        "status": "isOpen",
+    },
     "STH0A": {
         "a": "alarmStatus",
         "b": "temperature",
@@ -68,6 +82,20 @@ def bool_state(value: typing.Any) -> bool | None:
     return None
 
 
+def open_state(value: typing.Any) -> bool | None:
+    """Return door/opening state where true means open."""
+    result = bool_state(value)
+    if result is not None:
+        return result
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"open", "opened"}:
+            return True
+        if normalized in {"closed", "close", "shut"}:
+            return False
+    return None
+
+
 def safe_float(value: typing.Any) -> float | None:
     if value in (None, ""):
         return None
@@ -127,6 +155,8 @@ type_mapping: dict[str, Callable[[typing.Any], typing.Any]] = {
     "initiativeAlarm": bool_state,
     "isAlarm": bool_state,
     "isArmed": bool_state,
+    "isOpen": open_state,
+    "openRemind": bool_state,
     "isFireDrill": bool_state,
     "isMoved": bool_state,
     "keySound": bool_state,

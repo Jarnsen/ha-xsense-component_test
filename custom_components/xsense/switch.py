@@ -8,10 +8,10 @@ from datetime import datetime, timezone
 
 import voluptuous as vol
 
-from .api.device import Device
-from .api.entity import Entity
-from .api.entity_map import EntityType
-from .api.async_xsense import (
+from .python_xsense.device import Device
+from .python_xsense.entity import Entity
+from .python_xsense.entity_map import EntityType
+from .python_xsense.async_xsense import (
     CAMERA_AI_ASSISTANT_TYPES,
     CAMERA_AI_NOTIFICATION_TYPES,
     _camera_config_write_value,

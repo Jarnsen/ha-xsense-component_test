@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from custom_components.xsense.api.entity_map import EntityType
+from custom_components.xsense.python_xsense.entity_map import EntityType
 from custom_components.xsense.sensor import (
     battery_percentage,
     has_report_time,

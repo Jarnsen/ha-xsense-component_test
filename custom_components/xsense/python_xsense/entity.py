@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from .entity_map import entities
 from .mapping import bool_state, map_values
@@ -17,7 +17,9 @@ def _parse_xsense_time(value: str | None) -> datetime | None:
         return None
 
     try:
-        return datetime.strptime(str(value), "%Y%m%d%H%M%S").replace(tzinfo=UTC)
+        return datetime.strptime(str(value), "%Y%m%d%H%M%S").replace(
+            tzinfo=timezone.utc
+        )
     except ValueError:
         return None
 
@@ -31,7 +33,7 @@ def _online_from_report_time(data: dict, entity_type: str | None) -> bool | None
         return None
 
     reported = _parse_xsense_time(online_time)
-    utc_time = _parse_xsense_time(data.get("utcTime")) or datetime.now(UTC)
+    utc_time = _parse_xsense_time(data.get("utcTime")) or datetime.now(timezone.utc)
     if reported is None:
         return None
 
@@ -85,8 +87,9 @@ class Entity:
                 ):
                     self.online = online
                     self._online_from_explicit_flag = False
-        status_data = data.pop("status", {}) or {}
+        status_data = data.get("status")
         if isinstance(status_data, dict):
+            data.pop("status", None)
             data.update(status_data)
         for nested_key in ("lightShadowBean", "skp0aShadowBean"):
             nested_data = data.pop(nested_key, {})

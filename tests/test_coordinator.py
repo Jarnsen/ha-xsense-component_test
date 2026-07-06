@@ -98,6 +98,161 @@ async def test_camera_update_failure_does_not_suppress_next_retry():
     assert coordinator._last_camera_update_attempt is None
 
 
+@pytest.mark.asyncio
+async def test_startup_refresh_defers_mqtt_and_camera_history_work():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    calls = []
+
+    class FakeMQTT:
+        connected = True
+
+        async def async_connect(self):
+            calls.append(("mqtt_connect",))
+
+    house = SimpleNamespace(mqtt_server="mqtt.example")
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(houses={"house-id": house})
+    coordinator.mqtt_servers = {}
+    coordinator._startup_refresh_complete = False
+    coordinator.mqtt_server = lambda _host: None
+    coordinator.setup_mqtt = lambda _house: FakeMQTT()
+
+    async def get_devices(
+        retry=False,
+        include_camera_history=True,
+        include_camera_update=True,
+        include_state_update=True,
+    ):
+        calls.append(
+            (
+                "get_devices",
+                include_camera_history,
+                include_camera_update,
+                include_state_update,
+            )
+        )
+        return {"stations": {}, "devices": {}}
+
+    async def assure_subscriptions(_house):
+        calls.append(("assure_subscriptions",))
+
+    async def request_device_updates(_mqtt, _house):
+        calls.append(("request_device_updates",))
+
+    coordinator.get_devices = get_devices
+    coordinator.assure_subscriptions = assure_subscriptions
+    coordinator.request_device_updates = request_device_updates
+
+    assert await XSenseDataUpdateCoordinator._async_update_data(coordinator) == {
+        "stations": {},
+        "devices": {},
+    }
+
+    assert calls == [("get_devices", False, False, False)]
+    assert coordinator._startup_refresh_complete is True
+
+    await XSenseDataUpdateCoordinator._async_update_data(coordinator)
+
+    assert calls == [
+        ("get_devices", False, False, False),
+        ("get_devices", True, True, True),
+        ("mqtt_connect",),
+        ("assure_subscriptions",),
+        ("request_device_updates",),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_camera_startup_refresh_skips_camera_metadata_update():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+    from custom_components.xsense.python_xsense.entity_map import EntityType
+
+    calls = []
+    camera = SimpleNamespace(
+        entity_id="camera-id",
+        entity_type=EntityType.CAMERA,
+        type="SSC0A",
+        devices={},
+    )
+    house = SimpleNamespace(stations={"camera-id": camera})
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(houses={"house-id": house})
+    coordinator._initialized = False
+    coordinator._camera_initialized = False
+    coordinator._camera_station_cache = {}
+    coordinator._camera_ai_history_seen = set()
+    coordinator._camera_ai_history_lock = asyncio.Lock()
+    coordinator.mqtt_servers = {}
+
+    async def load_all():
+        calls.append(("load_all",))
+
+    async def update_cameras():
+        calls.append(("update_cameras",))
+        return True
+
+    async def get_house_state(_house):
+        calls.append(("get_house_state",))
+
+    coordinator.xsense.load_all = load_all
+    coordinator.xsense.get_house_state = get_house_state
+    coordinator._update_cameras = update_cameras
+    coordinator._cache_camera_stations = lambda: calls.append(("cache_cameras",))
+
+    assert await XSenseDataUpdateCoordinator.get_devices(
+        coordinator,
+        include_camera_history=False,
+        include_camera_update=False,
+        include_state_update=False,
+    ) == {"stations": {"camera-id": camera}, "devices": {}}
+
+    assert calls == [("load_all",)]
+
+
+def test_deferred_refresh_waits_until_home_assistant_started(monkeypatch):
+    from custom_components.xsense import coordinator as coordinator_module
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    calls = []
+
+    def async_call_later(hass, delay, callback):
+        calls.append(("timer", delay, callback))
+        return lambda: None
+
+    class Bus:
+        def async_listen_once(self, event, callback):
+            calls.append(("listen", event, callback))
+            return lambda: None
+
+    class Hass:
+        is_running = False
+        bus = Bus()
+
+        def async_create_task(self, coro):
+            calls.append(("task", coro.cr_code.co_name))
+            coro.close()
+
+    async def request_refresh():
+        calls.append(("request_refresh",))
+
+    monkeypatch.setattr(coordinator_module, "async_call_later", async_call_later)
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = Hass()
+    coordinator._deferred_refresh_unsub = None
+    coordinator.async_request_refresh = request_refresh
+
+    XSenseDataUpdateCoordinator.async_schedule_deferred_refresh(coordinator)
+
+    assert calls[0][0:2] == ("listen", "homeassistant_started")
+    calls[0][2](None)
+    assert calls[1][0:2] == ("timer", 30)
+    calls[1][2](None)
+    assert calls[2] == ("task", "request_refresh")
+
+
 class PresenceStation:
     sn = "station-sn"
     shadow_name = "XS01-WXstation-sn"
