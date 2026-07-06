@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from custom_components.xsense.coordinator import (
+    KEYPAD_CODE_EVENT_TYPE,
     _is_self_test_topic,
     _normalize_self_test_report,
 )
@@ -236,6 +237,132 @@ def test_mqtt_target_device_payload_is_routed_to_apk_state_parser():
             },
         )
     ]
+
+
+def test_mqtt_skp0a_safenotice_fires_keypad_code_event(caplog):
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Station:
+        sn = "15A9862E"
+        shadow_name = "SBS50-15A9862E"
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    class Bus:
+        def __init__(self):
+            self.events = []
+
+        def async_fire(self, event_type, payload):
+            self.events.append((event_type, payload))
+
+    station = Station()
+    parsed = []
+    bus = Bus()
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = SimpleNamespace(bus=bus)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    caplog.set_level(logging.INFO)
+    coordinator.async_event_received(
+        "$aws/things/SBS50-15A9862E/shadow/name/2nd_safenotice/update",
+        (
+            '{"state":{"reported":{"type":"SBS50","stationSN":"15A9862E",'
+            '"safeMode":"Home","time":"20260706163702",'
+            '"zoneName":"Europe/Berlin","notices":[{"type":"SKP0A",'
+            '"deviceSN":"C76494F1","eventId":"101",'
+            '"eventTime":"20260706163702","eventParam":{"alarmCancel":"0",'
+            '"safeModeAim":"Home","forceReason":[{}],"exitDelay":"0",'
+            '"pword":"1234"}}]}}}'
+        ).encode(),
+    )
+
+    assert bus.events == [
+        (
+            KEYPAD_CODE_EVENT_TYPE,
+            {
+                "station_sn": "15A9862E",
+                "device_sn": "C76494F1",
+                "keypad_code": "1234",
+                "safe_mode": "Home",
+                "safe_mode_aim": "Home",
+                "event_id": "101",
+                "event_time": "20260706163702",
+                "alarm_cancel": "0",
+            },
+        )
+    ]
+    assert parsed == [
+        (
+            station,
+            {
+                "type": "SBS50",
+                "stationSN": "15A9862E",
+                "safeMode": "Home",
+                "time": "20260706163702",
+                "zoneName": "Europe/Berlin",
+                "notices": [
+                    {
+                        "type": "SKP0A",
+                        "deviceSN": "C76494F1",
+                        "eventId": "101",
+                        "eventTime": "20260706163702",
+                        "eventParam": {
+                            "alarmCancel": "0",
+                            "safeModeAim": "Home",
+                            "forceReason": [{}],
+                            "exitDelay": "0",
+                            "pword": "1234",
+                        },
+                    }
+                ],
+                "devs": {},
+            },
+        )
+    ]
+    assert "code_present=True" in caplog.text
+    assert "1234" not in caplog.text
+
+
+def test_mqtt_safenotice_ignores_non_keypad_notices():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Station:
+        sn = "station-sn"
+        shadow_name = "station-sn"
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    class Bus:
+        def __init__(self):
+            self.events = []
+
+        def async_fire(self, event_type, payload):
+            self.events.append((event_type, payload))
+
+    station = Station()
+    bus = Bus()
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = SimpleNamespace(bus=bus)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)}, parse_get_state=lambda *_: None
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/station-sn/shadow/name/2nd_safenotice/update",
+        (
+            '{"state":{"reported":{"stationSN":"station-sn",'
+            '"notices":[{"type":"XS03-iWX","eventParam":{"pword":"1234"}}]}}}'
+        ).encode(),
+    )
+
+    assert bus.events == []
 
 
 def test_presence_topic_updates_station_online_like_apk():

@@ -82,6 +82,8 @@ _MQTT_IDENTIFIER_KEYS = {
     "stationserialnumber",
 }
 
+KEYPAD_CODE_EVENT_TYPE = "xsense_keypad_code"
+
 
 async def _async_init_and_login(xsense: AsyncXSense, email: str, password: str) -> None:
     """Initialize the X-Sense client and log in."""
@@ -716,6 +718,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if _is_self_test_topic(topic):
             _normalize_self_test_report(station_data)
+
+        if _is_keypad_notice_topic(topic):
+            _fire_keypad_code_events(self.hass, station_data)
 
         children = station_data.pop("devs", {}) or {}
         target_device_sn = (
@@ -1370,6 +1375,44 @@ def _is_self_test_topic(topic: str) -> bool:
             "selftestup_v2/update",
         )
     )
+
+
+def _is_keypad_notice_topic(topic: str) -> bool:
+    """Return if an MQTT update is an X-Sense keypad notice topic."""
+    return "/shadow/name/2nd_safenotice/update" in topic
+
+
+def _fire_keypad_code_events(hass: HomeAssistant, data: dict[str, Any]) -> None:
+    """Fire HA bus events for submitted SKP0A keypad codes."""
+    notices = data.get("notices")
+    if not isinstance(notices, list):
+        return
+
+    for notice in notices:
+        if not isinstance(notice, dict) or notice.get("type") != "SKP0A":
+            continue
+        event_param = notice.get("eventParam")
+        if not isinstance(event_param, dict):
+            event_param = {}
+        keypad_code = event_param.get("pword")
+        payload = {
+            "station_sn": data.get("stationSN"),
+            "device_sn": notice.get("deviceSN"),
+            "keypad_code": str(keypad_code) if keypad_code is not None else None,
+            "safe_mode": data.get("safeMode"),
+            "safe_mode_aim": event_param.get("safeModeAim"),
+            "event_id": notice.get("eventId"),
+            "event_time": notice.get("eventTime"),
+            "alarm_cancel": event_param.get("alarmCancel"),
+        }
+        hass.bus.async_fire(KEYPAD_CODE_EVENT_TYPE, payload)
+        LOGGER.info(
+            "X-Sense keypad code event: device=%s safeMode=%s aim=%s code_present=%s",
+            notice.get("deviceSN"),
+            data.get("safeMode"),
+            event_param.get("safeModeAim"),
+            keypad_code not in (None, ""),
+        )
 
 
 _SELF_TEST_RESULT_KEYS = (
