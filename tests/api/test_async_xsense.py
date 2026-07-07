@@ -544,6 +544,42 @@ def test_station_set_devices_matches_apk_child_device_normalization():
     assert device_obj.data["isActivate"] is True
 
 
+def test_station_set_devices_accepts_apk_serial_aliases():
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSN="station-sn",
+        deviceType="SBS50",
+    )
+
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "device-id",
+                    "deviceName": "Smoke",
+                    "deviceSN": "device-sn",
+                    "type": "XS01-M",
+                },
+                {
+                    "deviceId": "skipped",
+                    "deviceName": "No Serial",
+                    "deviceType": "XS01-M",
+                },
+            ],
+        }
+    )
+
+    device_obj = station_obj.get_device_by_sn("device-sn")
+    assert station_obj.sn == "station-sn"
+    assert station_obj.type == "SBS50"
+    assert device_obj is station_obj.devices["device-id"]
+    assert device_obj.sn == "device-sn"
+    assert device_obj.type == "XS01-M"
+    assert "skipped" not in station_obj.devices
+
+
 def test_station_set_devices_creates_apk_light_group_devices():
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
     station_obj = station.Station(
@@ -719,6 +755,38 @@ def test_parse_get_state_updates_child_from_apk_device_serial_field():
     )
 
     assert station_obj.devices["device-id"].online is True
+
+
+@pytest.mark.parametrize("serial_key", ["devSerialNumber", "serialNumber", "sn"])
+def test_parse_get_state_updates_child_from_apk_serial_aliases(serial_key):
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "device-id",
+                    "deviceName": "Smoke",
+                    "deviceSn": "child-sn",
+                    "deviceType": "XS01-M",
+                }
+            ]
+        }
+    )
+
+    client.parse_get_state(
+        station_obj,
+        {"devs": [{"deviceType": "XS01-M", serial_key: "child-sn", "isAlarm": "1"}]},
+    )
+
+    child = station_obj.devices["device-id"]
+    assert child.data["alarmStatus"] is True
 
 
 def test_parse_get_state_updates_child_when_apk_key_is_device_serial():

@@ -14,9 +14,9 @@ class Station(Entity):
         self.safe_mode = kwargs.get("safeMode")
         self.entity_id = kwargs.get("stationId")
         self.name = kwargs.get("stationName")
-        self.sn = kwargs.get("stationSn")
+        self.sn = _first_value(kwargs, "stationSn", "stationSN", "serialNumber", "sn")
         self.online = None
-        self.type = kwargs.get("category")
+        self.type = _first_value(kwargs, "category", "deviceType", "type")
 
         self.devices = {}
         self.device_order = []
@@ -32,6 +32,21 @@ class Station(Entity):
         source_devices = []
         for i in data.get("devices") or []:
             device_data = dict(i)
+            device_id = _first_value(device_data, "deviceId", "id")
+            device_sn = _first_value(
+                device_data,
+                "deviceSn",
+                "deviceSN",
+                "_deviceSN",
+                "_deviceSn",
+                "devSerialNumber",
+                "serialNumber",
+                "sn",
+            )
+            if device_id is None or device_sn is None:
+                continue
+            device_data.setdefault("deviceId", device_id)
+            device_data.setdefault("deviceSn", device_sn)
             device_data["stationId"] = self.entity_id
             if not device_data.get("roomName") and self.house is not None:
                 device_data["roomName"] = self.house.room_name(device_data.get("roomId"))
@@ -53,8 +68,8 @@ class Station(Entity):
                 )
             if data_updates:
                 d.set_data(data_updates)
-            result[device_data["deviceId"]] = d
-            result_sn[device_data["deviceSn"]] = device_data["deviceId"]
+            result[device_id] = d
+            result_sn[str(device_sn)] = device_id
 
         for i in data.get("groupList") or []:
             device_data = _light_group_device_data(self, data, i, source_devices)
@@ -66,7 +81,7 @@ class Station(Entity):
         self.device_by_sn = result_sn
 
     def get_device_by_sn(self, sn: str):
-        if device_id := self.device_by_sn.get(sn):
+        if device_id := self.device_by_sn.get(str(sn)):
             return self.devices.get(device_id)
         return None
 
@@ -146,3 +161,11 @@ def _light_group_device_sn(group_id) -> str:
 
 def _java_string(value) -> str:
     return "null" if value is None else str(value)
+
+
+def _first_value(data: Dict, *keys):
+    for key in keys:
+        value = data.get(key)
+        if value not in (None, ""):
+            return value
+    return None

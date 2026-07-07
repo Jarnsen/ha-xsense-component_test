@@ -648,16 +648,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         station_sn = None
         device_sn = None
         if isinstance(station_data, dict):
-            station_sn = (
-                station_data.get("stationSN")
-                or station_data.get("_stationSN")
-                or station_data.get("serialNumber")
-            )
-            device_sn = (
-                station_data.get("deviceSN")
-                or station_data.get("_deviceSN")
-                or station_data.get("serialNumber")
-            )
+            station_sn = _mqtt_target_station_sn(station_data)
+            device_sn = _mqtt_target_device_sn(station_data)
 
         station = self._get_station_by_id(station_sn)
         if station is None:
@@ -723,11 +715,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             _fire_keypad_code_events(self.hass, station_data)
 
         children = station_data.pop("devs", {}) or {}
-        target_device_sn = (
-            station_data.get("deviceSN")
-            or station_data.get("_deviceSN")
-            or station_data.get("serialNumber")
-        )
+        target_device_sn = _mqtt_target_device_sn(station_data)
         if (
             target_device_sn
             and target_device_sn != station.sn
@@ -928,6 +916,38 @@ def _mqtt_identifier_candidates(*values: Any) -> list[str]:
 def _mqtt_identifier_key_name(value: Any) -> str:
     """Return a normalized MQTT identifier key name."""
     return "".join(char for char in str(value).strip().lower() if char.isalnum())
+
+
+def _mqtt_target_device_sn(data: dict[str, Any]) -> str | None:
+    """Return the child device serial from APK MQTT payload variants."""
+    for key in (
+        "deviceSN",
+        "deviceSn",
+        "_deviceSN",
+        "_deviceSn",
+        "devSerialNumber",
+        "serialNumber",
+        "sn",
+    ):
+        value = data.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return None
+
+
+def _mqtt_target_station_sn(data: dict[str, Any]) -> str | None:
+    """Return the station serial from APK MQTT payload variants."""
+    for key in (
+        "stationSN",
+        "stationSn",
+        "_stationSN",
+        "_stationSn",
+        "stationSerialNumber",
+    ):
+        value = data.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return None
 
 
 def _mqtt_event_debug_context(
@@ -1182,9 +1202,9 @@ def _apply_apk_dispatch_aliases(data: dict[str, Any]) -> None:
     if dispatch_dev is None:
         return
 
-    if station_sn := dispatch_dev.get("stationSn"):
+    if station_sn := _mqtt_target_station_sn(dispatch_dev):
         data.setdefault("stationSN", station_sn)
-    if device_sn := dispatch_dev.get("deviceSn"):
+    if device_sn := _mqtt_target_device_sn(dispatch_dev):
         data.setdefault("deviceSN", device_sn)
         data.setdefault("serialNumber", device_sn)
     if event_time := dispatch_dev.get("eventTime"):

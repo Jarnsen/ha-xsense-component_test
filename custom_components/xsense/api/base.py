@@ -416,6 +416,9 @@ def _child_state_identifiers(child_key, child_state) -> tuple[str, ...]:
                 "deviceSn",
                 "_deviceSN",
                 "_deviceSn",
+                "devSerialNumber",
+                "serialNumber",
+                "sn",
             )
         )
     seen = set()
