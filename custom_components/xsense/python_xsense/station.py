@@ -43,6 +43,21 @@ class Station(Entity):
         source_devices = []
         for i in data.get("devices") or []:
             device_data = dict(i)
+            device_id = _first_value(device_data, "deviceId", "id")
+            device_sn = _first_value(
+                device_data,
+                "deviceSn",
+                "deviceSN",
+                "_deviceSN",
+                "_deviceSn",
+                "devSerialNumber",
+                "serialNumber",
+                "sn",
+            )
+            if device_id is None or device_sn is None:
+                continue
+            device_data.setdefault("deviceId", device_id)
+            device_data.setdefault("deviceSn", device_sn)
             device_data["stationId"] = self.entity_id
             device_sn = _device_serial(device_data)
             device_id = _first_value(device_data, ("deviceId",)) or device_sn
@@ -183,14 +198,6 @@ def _device_serial(data: Dict):
     )
 
 
-def _first_value(data: Dict, keys: tuple[str, ...]):
-    for key in keys:
-        value = data.get(key)
-        if value not in (None, ""):
-            return value
-    return None
-
-
 def _has_light_on(devices: List[Dict]) -> bool:
     return any(_is_not_reported_offline(i) and i.get("on") == "1" for i in devices)
 
@@ -209,3 +216,13 @@ def _light_group_device_sn(group_id) -> str:
 
 def _java_string(value) -> str:
     return "null" if value is None else str(value)
+
+
+def _first_value(data: Dict, *keys):
+    if len(keys) == 1 and isinstance(keys[0], (tuple, list)):
+        keys = tuple(keys[0])
+    for key in keys:
+        value = data.get(key)
+        if value not in (None, ""):
+            return value
+    return None

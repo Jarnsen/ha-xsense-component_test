@@ -444,13 +444,13 @@ def _child_state_identifiers(child_key, child_state) -> tuple[str, ...]:
         values.extend(
             child_state.get(key)
             for key in (
-                'deviceSN',
-                'deviceSn',
-                '_deviceSN',
-                '_deviceSn',
-                'devSerialNumber',
-                'serialNumber',
-                'sn',
+                "deviceSN",
+                "deviceSn",
+                "_deviceSN",
+                "_deviceSn",
+                "devSerialNumber",
+                "serialNumber",
+                "sn",
             )
         )
     seen = set()

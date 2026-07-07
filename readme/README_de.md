@@ -1,6 +1,6 @@
 # ha-xsense-component_test
 
-[Changelog](../CHANGELOG.md) - linked release notes for every published version.
+[Changelog](../CHANGELOG.md) - verlinkte Versionshinweise für jede veröffentlichte Version.
 
 <p align="center">
 <img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Image">
@@ -123,7 +123,7 @@ ____________________________________________________________
 ## Kamera-Liveansicht und KI-Benachrichtigungen
 Der einfachste Weg ist der enthaltene Blueprint. Importiere ihn mit der Schaltfläche unten, wähle die Kamera-Event-Entität `Motion` oder bei abonnierter Kamera `AI Detection`, und passe die Benachrichtigungsaktion bei Bedarf an.
 
-When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. With recording links enabled, the default camera-event blueprint waits until cached media is ready, then sends a mobile notification that opens the matching X-Sense Recordings clip. Turn recording links off if you want a plain motion notification without waiting for video. Manual automation runs use the selected event entity's latest recording data. Recording media sync can keep recent clips ready in the background. The integration updates older imported X-Sense camera-event blueprints automatically when Home Assistant starts or during the periodic blueprint maintenance check.
+Wenn ein Motion-Ereignis X-Sense-Wiedergabedaten enthält, kann die Integration den Clip zuerst zwischenspeichern und danach eine mobile Benachrichtigung senden, die den passenden Clip in X-Sense Recordings öffnet. Deaktivieren Sie Aufzeichnungslinks im Blueprint, wenn Sie nur eine einfache Bewegungsbenachrichtigung ohne Wartezeit auf Video möchten. Recording media sync kann aktuelle Clips im Hintergrund bereithalten, und ältere importierte X-Sense-Kamera-Blueprints werden automatisch aktualisiert.
 
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

@@ -1,6 +1,6 @@
 # ha-xsense-component_test
 
-[Changelog](../CHANGELOG.md) - linked release notes for every published version.
+[Changelog](../CHANGELOG.md) - یادداشت‌های انتشار لینک‌شده برای هر نسخه منتشرشده.
 
 
 <p align="center">
@@ -203,7 +203,7 @@ ____________________________________________________________
 ## نمای زنده دوربین و اعلان‌های AI
 ساده‌ترین راه، وارد کردن blueprint همراه با دکمه زیر، انتخاب `Motion` یا `AI Detection` موجود و تنظیم اقدام اعلان در صورت نیاز است.
 
-When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. With recording links enabled, the default camera-event blueprint waits until cached media is ready, then sends a mobile notification that opens the matching X-Sense Recordings clip. Turn recording links off if you want a plain motion notification without waiting for video. Manual automation runs use the selected event entity's latest recording data. Recording media sync can keep recent clips ready in the background. The integration updates older imported X-Sense camera-event blueprints automatically when Home Assistant starts or during the periodic blueprint maintenance check.
+وقتی یک رویداد Motion شامل داده پخش X-Sense باشد، یکپارچه‌سازی می‌تواند ابتدا کلیپ را در کش ذخیره کند و سپس اعلان موبایلی بفرستد که همان کلیپ را در X-Sense Recordings باز می‌کند. اگر یک اعلان ساده حرکت بدون انتظار برای ویدئو می‌خواهید، لینک‌های ضبط را در blueprint خاموش کنید. همگام‌سازی رسانه ضبط می‌تواند کلیپ‌های جدید را در پس‌زمینه آماده نگه دارد و blueprintهای قدیمی دوربین X-Sense به‌صورت خودکار به‌روزرسانی می‌شوند.
 
 [![وارد کردن blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
