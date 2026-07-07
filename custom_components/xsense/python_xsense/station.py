@@ -54,10 +54,12 @@ class Station(Entity):
                 "serialNumber",
                 "sn",
             )
-            if device_id is None or device_sn is None:
+            if device_sn in (None, ""):
                 continue
-            device_data.setdefault("deviceId", device_id)
-            device_data.setdefault("deviceSn", device_sn)
+            if device_id in (None, ""):
+                device_id = device_sn
+            device_data["deviceId"] = device_id
+            device_data["deviceSn"] = device_sn
             device_data["stationId"] = self.entity_id
             device_sn = _device_serial(device_data)
             device_id = _first_value(device_data, ("deviceId",)) or device_sn

@@ -478,6 +478,50 @@ def test_thing_request_uses_apk_sbs10_station_serial_thing_name():
     assert "SBS10station-sn" not in url
 
 
+def test_station_set_devices_accepts_child_identity_aliases():
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    station_obj = station.Station(
+        test_house,
+        stationId="station-id",
+        stationName="Base",
+        stationSn="BASE123",
+        category="SBS50",
+    )
+
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "devSerialNumber": 12345,
+                    "category": "XS01-M",
+                    "deviceName": "Smoke",
+                },
+                {
+                    "id": "alias-id",
+                    "serialNumber": "ALIAS123",
+                    "deviceType": "XS0B-MR",
+                    "deviceName": "Alias Sensor",
+                },
+                {
+                    "deviceId": "",
+                    "deviceName": "Malformed",
+                },
+            ]
+        }
+    )
+
+    smoke = station_obj.get_device_by_sn("12345")
+    alias = station_obj.get_device_by_sn("ALIAS123")
+
+    assert smoke is not None
+    assert smoke.entity_id == "12345"
+    assert smoke.sn == "12345"
+    assert alias is not None
+    assert alias.entity_id == "alias-id"
+    assert alias.sn == "ALIAS123"
+    assert len(station_obj.devices) == 2
+
+
 def test_entity_online_state_uses_online_time_report_without_explicit_status():
     device = entity.Entity()
 
