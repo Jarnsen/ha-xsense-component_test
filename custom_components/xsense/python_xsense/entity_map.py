@@ -193,6 +193,15 @@ def SATestAction(shadow="appSelfTest"):
     }
 
 
+def LegacySecondGenSelfTestAction(shadow="appSelfTest"):
+    """Older python-xsense self-test shape used by standalone Wi-Fi alarms."""
+    return {
+        "action": "test",
+        "topic": lambda x: f"2nd_selftest_{x.sn}",
+        "shadow": shadow,
+    }
+
+
 def _is_smoke_v9(entity) -> bool:
     try:
         return int(entity.data.get("smokeEdition", 0)) >= 9
@@ -297,7 +306,10 @@ entities = {
     "SC06-WX": {
         "identifier": lambda entity: f"SC06-WX-{entity.sn}",
         "type": EntityType.COMBI,
-        "actions": [WifiAlarmMuteAction()],
+        "actions": [
+            LegacySecondGenSelfTestAction(),
+            WifiAlarmMuteAction(),
+        ],
     },
     "SC07-MR": {
         "identifier": lambda entity: f"SC07-MR-{entity.sn}",
@@ -540,6 +552,7 @@ entities = {
     "XS01-WX": {
         "type": EntityType.SMOKE,
         "actions": [
+            LegacySecondGenSelfTestAction(),
             XS01WXMuteAction(),
         ],
     },
@@ -612,7 +625,10 @@ entities = {
     },
     "XS0B-iR": {
         "type": EntityType.SMOKE,
-        "actions": [WifiAlarmMuteAction()],
+        "actions": [
+            SATestAction(),
+            WifiAlarmMuteAction(),
+        ],
     },
     "XS0E-iR": {
         "type": EntityType.SMOKE,

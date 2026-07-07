@@ -1568,6 +1568,28 @@ async def _capture_action(client, target, action):
             13,
             "SBS50station-sn",
         ),
+        (
+            "SC06-WX",
+            entity_map.EntityType.COMBI,
+            {},
+            "SC06-WX",
+            "2nd_selftest_device-sn",
+            "appSelfTest",
+            None,
+            14,
+            "SC06-WX-station-sn",
+        ),
+        (
+            "XS01-WX",
+            entity_map.EntityType.SMOKE,
+            {},
+            "XS01-WX",
+            "2nd_selftest_device-sn",
+            "appSelfTest",
+            None,
+            14,
+            "XS01-WXstation-sn",
+        ),
     ],
 )
 async def test_self_test_uses_apk_payload_shape(
@@ -1612,12 +1634,12 @@ async def test_self_test_uses_apk_payload_shape(
         assert len(desired["time"]) == expected_time_len
 
 
-def test_xs01_wx_does_not_expose_manual_self_test_action():
+def test_xs01_wx_exposes_legacy_manual_self_test_action():
     client = async_xsense.AsyncXSense()
     station = FakeXSenseStation("XS01-WX", "ABC123")
     station.entity_type = entity_map.EntityType.SMOKE
 
-    assert client.has_action(station, "test") is False
+    assert client.has_action(station, "test") is True
 
 
 def test_actions_require_resolvable_apk_shadow_route():
@@ -1784,6 +1806,25 @@ async def test_standalone_wifi_self_test_uses_own_station_entity_path(
     assert desired["userParam"] == "source=1"
     assert desired["time"].isdigit()
     assert len(desired["time"]) == 13
+
+
+@pytest.mark.asyncio
+async def test_xs0b_ir_self_test_uses_standalone_appselftest_path():
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    station = FakeXSenseStation("XS0B-iR")
+    station.entity_type = entity_map.EntityType.SMOKE
+
+    station_arg, page, desired = await _capture_action(client, station, "test")
+
+    assert station_arg.shadow_name == "XS0B-iR-station-sn"
+    assert page == "appselftest_station-sn"
+    assert desired["shadow"] == "appSelfTest"
+    assert desired["stationSN"] == "station-sn"
+    assert desired["deviceSN"] == "station-sn"
+    assert desired["userId"] == "user-id"
+    assert "userParam" not in desired
+    assert "time" not in desired
 
 
 @pytest.mark.asyncio
