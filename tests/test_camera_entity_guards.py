@@ -628,6 +628,26 @@ def test_entity_descriptions_have_icon_or_device_class():
     assert missing == []
 
 
+@pytest.mark.parametrize("device_type", ["XS01-WX", "XS0B-iR", "SC06-WX"])
+def test_smoke_alarm_mute_status_exists_before_first_status_payload(device_type):
+    smoke = entity(device_type, {})
+    description = next(
+        item for item in binary_sensor.SENSORS if item.key == "mute_status"
+    )
+
+    assert description.exists_fn(smoke)
+    assert description.value_fn(smoke) is None
+
+
+@pytest.mark.parametrize("device_type", ["XS01-WX", "XS0B-iR", "SC06-WX"])
+def test_smoke_alarm_led_switch_exists_before_first_shadow_payload(device_type):
+    smoke = routed_entity(device_type, {})
+    description = next(item for item in switch.SWITCHES if item.key == "led_light")
+
+    assert description.exists_fn(smoke)
+    assert description.value_fn(smoke) is None
+
+
 def test_camera_entities_include_standalone_device_cameras():
     device_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
     device_camera.entity_id = "standalone-camera"

@@ -104,6 +104,43 @@ LIGHT_GROUP_REMOVE_DEVICES_SCHEMA = {
     vol.Required(ATTR_DEVICE_IDS): vol.All(cv.ensure_list, [cv.string]),
 }
 
+LED_LIGHT_SETTING_TYPES = {
+    "CB0Z-3S",
+    "LP/N-SA-0B",
+    "LP/N-SCA-0A",
+    "SC01-MN",
+    "SC01-MR",
+    "SC06-WX",
+    "SC07-MR",
+    "SC07-WX",
+    "SD11-MR",
+    "SD19-MN",
+    "SK0Z-3S",
+    "XC01-M",
+    "XC04-WX",
+    "XC0C-iA",
+    "XC0C-iR",
+    "XC0C-MR",
+    "XC0M-iR",
+    "XP02S-MR",
+    "XP0A-iR",
+    "XP0A-MR",
+    "XP0H-iR",
+    "XP0H-MR",
+    "XP0J-iA",
+    "XP0P-MR",
+    "XS01-M",
+    "XS01-WX",
+    "XS03-iWX",
+    "XS03-WX",
+    "XS0B-iR",
+    "XS0B-MR",
+    "XS0D-MR",
+    "XS0E-iR",
+    "XS0F-PMA",
+    "XS0R-iA",
+}
+
 
 def boolean_state(value) -> bool | None:
     """Return the normalized state for explicit X-Sense boolean payload values."""
@@ -137,6 +174,13 @@ def has_data(key: str) -> Callable[[Entity], bool]:
 def has_shadow_data(key: str) -> Callable[[Entity], bool]:
     """Return if a non-camera setting can be written through an app shadow."""
     return lambda entity: key in entity.data and _has_shadow_write_route(entity)
+
+
+def has_led_light(entity: Entity) -> bool:
+    """Return if an X-Sense entity should expose the LED light switch."""
+    return _has_shadow_write_route(entity) and (
+        "ledLight" in entity.data or entity.type in LED_LIGHT_SETTING_TYPES
+    )
 
 
 def _has_shadow_write_route(entity: Entity) -> bool:
@@ -285,8 +329,8 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         data_key="ledLight",
         name="LED Light",
         icon="mdi:led-on",
-        exists_fn=has_shadow_data("ledLight"),
-        value_fn=data_bool("ledLight"),
+        exists_fn=has_led_light,
+        value_fn=optional_data_bool("ledLight"),
     ),
     XSenseSwitchEntityDescription(
         key="light_power",
