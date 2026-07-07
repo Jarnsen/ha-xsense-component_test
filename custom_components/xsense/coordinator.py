@@ -11,7 +11,7 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, EVENT_HOMEASSISTANT_STARTED
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
@@ -166,12 +166,14 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._deferred_refresh_unsub is not None:
             return
 
+        @callback
         def _schedule_refresh(_event_or_now) -> None:
             self._deferred_refresh_unsub = None
             self._deferred_refresh_unsub = async_call_later(
                 self.hass, 30, _request_refresh
             )
 
+        @callback
         def _request_refresh(_now) -> None:
             self._deferred_refresh_unsub = None
             self.hass.async_create_task(self.async_request_refresh())

@@ -248,8 +248,10 @@ def test_deferred_refresh_waits_until_home_assistant_started(monkeypatch):
     XSenseDataUpdateCoordinator.async_schedule_deferred_refresh(coordinator)
 
     assert calls[0][0:2] == ("listen", "homeassistant_started")
+    assert getattr(calls[0][2], "_hass_callback", False)
     calls[0][2](None)
     assert calls[1][0:2] == ("timer", 30)
+    assert getattr(calls[1][2], "_hass_callback", False)
     calls[1][2](None)
     assert calls[2] == ("task", "request_refresh")
 
