@@ -14,9 +14,20 @@ class Station(Entity):
         self.safe_mode = kwargs.get("safeMode")
         self.entity_id = kwargs.get("stationId")
         self.name = kwargs.get("stationName")
-        self.sn = kwargs.get("stationSn")
+        self.sn = _first_value(
+            kwargs,
+            (
+                "stationSn",
+                "stationSN",
+                "_stationSN",
+                "_stationSn",
+                "stationSerialNumber",
+                "serialNumber",
+                "sn",
+            ),
+        )
         self.online = None
-        self.type = kwargs.get("category")
+        self.type = _first_value(kwargs, ("category", "deviceType", "type"))
 
         self.devices = {}
         self.device_order = []
@@ -33,6 +44,12 @@ class Station(Entity):
         for i in data.get("devices") or []:
             device_data = dict(i)
             device_data["stationId"] = self.entity_id
+            device_sn = _device_serial(device_data)
+            device_id = _first_value(device_data, ("deviceId",)) or device_sn
+            if device_id in (None, "") or device_sn in (None, ""):
+                continue
+            device_data["deviceId"] = str(device_id)
+            device_data["deviceSn"] = str(device_sn)
             if not device_data.get("roomName") and self.house is not None:
                 device_data["roomName"] = self.house.room_name(device_data.get("roomId"))
             if "isActivate" in device_data:
@@ -54,19 +71,19 @@ class Station(Entity):
             if data_updates:
                 d.set_data(data_updates)
             result[device_data["deviceId"]] = d
-            result_sn[device_data["deviceSn"]] = device_data["deviceId"]
+            result_sn[str(device_data["deviceSn"])] = device_data["deviceId"]
 
         for i in data.get("groupList") or []:
             device_data = _light_group_device_data(self, data, i, source_devices)
             d = Device(self, **device_data)
             d.set_data(device_data)
             result[device_data["deviceId"]] = d
-            result_sn[device_data["deviceSn"]] = device_data["deviceId"]
+            result_sn[str(device_data["deviceSn"])] = device_data["deviceId"]
         self.devices = result
         self.device_by_sn = result_sn
 
     def get_device_by_sn(self, sn: str):
-        if device_id := self.device_by_sn.get(sn):
+        if device_id := self.device_by_sn.get(str(sn)):
             return self.devices.get(device_id)
         return None
 
@@ -149,6 +166,29 @@ def _light_group_device_data(
         "devs": [i.get("deviceSn") for i in members if i.get("deviceSn")],
         "on": "1" if _has_light_on(members) else "0",
     }
+
+
+def _device_serial(data: Dict):
+    return _first_value(
+        data,
+        (
+            "deviceSn",
+            "deviceSN",
+            "_deviceSN",
+            "_deviceSn",
+            "devSerialNumber",
+            "serialNumber",
+            "sn",
+        ),
+    )
+
+
+def _first_value(data: Dict, keys: tuple[str, ...]):
+    for key in keys:
+        value = data.get(key)
+        if value not in (None, ""):
+            return value
+    return None
 
 
 def _has_light_on(devices: List[Dict]) -> bool:

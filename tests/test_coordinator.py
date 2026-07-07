@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import json
 import logging
 from types import SimpleNamespace
 
@@ -387,6 +388,62 @@ def test_mqtt_target_device_payload_is_routed_to_apk_state_parser():
                         "type": "XS03-iWX",
                         "isAlarm": "1",
                         "time": "20260701075100",
+                    },
+                },
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize("serial_key", ["deviceSn", "devSerialNumber"])
+def test_mqtt_xs01m_alarm_event_routes_apk_serial_alias_to_child(serial_key):
+    from types import SimpleNamespace
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Station:
+        sn = "station-sn"
+        shadow_name = "SBS50station-sn"
+
+        def get_device_by_sn(self, identifier):
+            return object() if identifier == "xs01m-sn" else None
+
+    station = Station()
+    parsed = []
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/SBS50station-sn/shadow/name/2nd_alarm/update",
+        json.dumps(
+            {
+                "state": {
+                    "reported": {
+                        "stationSN": "station-sn",
+                        serial_key: "xs01m-sn",
+                        "type": "XS01-M",
+                        "isAlarm": "1",
+                        "time": "20260707082221",
+                    }
+                }
+            }
+        ).encode(),
+    )
+
+    assert parsed == [
+        (
+            station,
+            {
+                "devs": {
+                    "xs01m-sn": {
+                        "stationSN": "station-sn",
+                        serial_key: "xs01m-sn",
+                        "type": "XS01-M",
+                        "isAlarm": "1",
+                        "time": "20260707082221",
                     },
                 },
             },
@@ -872,6 +929,30 @@ def test_mqtt_camera_ai_plan_event_uses_apk_dispatch_device_identity():
     assert data["serialNumber"] == "camera-sn"
     assert data["lastAiDetection"] == "person"
     assert data["lastPersonDetectionTime"] == "20260614230200"
+
+
+def test_mqtt_dispatch_event_accepts_apk_serial_aliases():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventType": "ai_event",
+            "eventTime": "20260707090000",
+            "eventData": {
+                "dispatchDevs": [
+                    {
+                        "stationSN": "station-sn",
+                        "devSerialNumber": "device-sn",
+                        "deviceType": "XS01-M",
+                    }
+                ],
+            },
+        }
+    )
+
+    assert data["stationSN"] == "station-sn"
+    assert data["deviceSN"] == "device-sn"
+    assert data["serialNumber"] == "device-sn"
 
 
 def test_mqtt_ai_plan_event_routes_by_nested_camera_identity():

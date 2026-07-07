@@ -49,7 +49,7 @@ def test_manifest_does_not_use_direct_wheel_requirement():
 
 
 def test_source_vendored_python_xsense_package_is_imported():
-    assert __version__ == "0.1.0rc1"
+    assert __version__ == "0.1.0"
 
 
 def test_python_xsense_package_exposes_current_integration_surface():

@@ -339,13 +339,43 @@ def apply_apk_dispatch_aliases(data: dict[str, Any]) -> None:
     if dispatch_dev is None:
         return
 
-    if station_sn := dispatch_dev.get("stationSn"):
+    if station_sn := _first_alias(
+        dispatch_dev,
+        (
+            "stationSn",
+            "stationSN",
+            "_stationSN",
+            "_stationSn",
+            "stationSerialNumber",
+            "serialNumber",
+            "sn",
+        ),
+    ):
         data.setdefault("stationSN", station_sn)
-    if device_sn := dispatch_dev.get("deviceSn"):
+    if device_sn := _first_alias(
+        dispatch_dev,
+        (
+            "deviceSn",
+            "deviceSN",
+            "_deviceSN",
+            "_deviceSn",
+            "devSerialNumber",
+            "serialNumber",
+            "sn",
+        ),
+    ):
         data.setdefault("deviceSN", device_sn)
         data.setdefault("serialNumber", device_sn)
     if event_time := dispatch_dev.get("eventTime"):
         data.setdefault("time", event_time)
+
+
+def _first_alias(data: dict[str, Any], keys: tuple[str, ...]) -> Any:
+    for key in keys:
+        value = data.get(key)
+        if value not in (None, ""):
+            return value
+    return None
 
 
 def apply_apk_event_aliases(data: dict[str, Any]) -> None:
