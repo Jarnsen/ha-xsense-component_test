@@ -15,6 +15,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import AsyncXSense
 from .api.exceptions import APIFailure, AuthFailed
+from .api.async_xsense import is_camera_entity
 from .const import (
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
     CONF_RECORDING_MEDIA_DAYS_ORDER,
@@ -53,9 +54,14 @@ def credentials_schema(default_email: str | None = None) -> vol.Schema:
     )
 
 
-def options_schema(options: dict[str, Any] | None = None) -> vol.Schema:
+def options_schema(
+    options: dict[str, Any] | None = None, *, include_recording_options: bool = True
+) -> vol.Schema:
     """Return the options schema."""
     options = _normalized_options(options or {})
+    if not include_recording_options:
+        return vol.Schema({})
+
     return vol.Schema(
         {
             vol.Optional(
@@ -351,6 +357,7 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Set up the options flow."""
         self._options = dict(config_entry.options)
+        self._entry_id = getattr(config_entry, "entry_id", "")
         self._pending_options: dict[str, Any] | None = None
 
     async def async_step_init(
@@ -358,6 +365,12 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Manage X-Sense options."""
         errors: dict[str, str] = {}
+        include_recording_options = _entry_has_cameras(
+            getattr(self, "hass", None), self._entry_id
+        )
+        if not include_recording_options:
+            return self.async_abort(reason="no_options")
+
         if user_input is not None:
             if not _recording_media_path_allowed(
                 user_input.get(CONF_RECORDING_MEDIA_STORAGE_PATH)
@@ -371,7 +384,9 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=options_schema(self._options),
+            data_schema=options_schema(
+                self._options, include_recording_options=include_recording_options
+            ),
             errors=errors,
         )
 
@@ -391,3 +406,25 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
                 "new_path": recording_media_storage_path(pending_options),
             },
         )
+
+
+def _entry_has_cameras(hass: HomeAssistant | None, entry_id: str) -> bool:
+    """Return whether the loaded config entry currently has X-Sense cameras."""
+    if hass is None:
+        return True
+
+    coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
+    data = getattr(coordinator, "data", None)
+    if not isinstance(data, dict):
+        return False
+
+    for entity in (
+        *data.get("stations", {}).values(),
+        *data.get("devices", {}).values(),
+    ):
+        try:
+            if is_camera_entity(entity):
+                return True
+        except AttributeError:
+            continue
+    return False

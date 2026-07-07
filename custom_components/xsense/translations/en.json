@@ -61,6 +61,9 @@
         },
         "error": {
             "invalid_recording_media_path": "Use a folder under /media."
+        },
+        "abort": {
+            "no_options": "There are no configurable options for this X-Sense account."
         }
     },
     "issues": {},

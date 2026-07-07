@@ -52,6 +52,13 @@ def test_options_schema_orders_recording_options_for_the_ui():
     ]
 
 
+def test_options_schema_can_hide_camera_recording_options():
+    schema = options_schema({}, include_recording_options=False)
+
+    assert schema.schema == {}
+    assert schema({}) == {}
+
+
 def test_options_schema_rejects_removed_camera_path_option():
     schema = options_schema({})
 
@@ -144,6 +151,70 @@ def test_options_flow_rejects_storage_path_outside_media_without_schema_crash():
     assert result["errors"] == {
         CONF_RECORDING_MEDIA_STORAGE_PATH: "invalid_recording_media_path"
     }
+
+
+def test_options_flow_aborts_without_cameras():
+    flow = XSenseOptionsFlow(
+        SimpleNamespace(
+            entry_id="entry-no-camera",
+            options={
+                CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_recordings",
+            },
+        )
+    )
+    flow.hass = SimpleNamespace(
+        data={
+            "xsense": {
+                "entry-no-camera": SimpleNamespace(
+                    data={
+                        "stations": {"station": SimpleNamespace(type="SBS50")},
+                        "devices": {"detector": SimpleNamespace(type="XS01-M")},
+                    }
+                )
+            }
+        }
+    )
+
+    result = asyncio.run(flow.async_step_init())
+
+    assert result["type"] == "abort"
+    assert result["reason"] == "no_options"
+
+
+def test_options_flow_keeps_recording_options_with_cameras():
+    flow = XSenseOptionsFlow(
+        SimpleNamespace(
+            entry_id="entry-camera",
+            options={
+                CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_recordings",
+            },
+        )
+    )
+    flow.hass = SimpleNamespace(
+        data={
+            "xsense": {
+                "entry-camera": SimpleNamespace(
+                    data={
+                        "stations": {},
+                        "devices": {"camera": SimpleNamespace(type="SSC0A")},
+                    }
+                )
+            }
+        }
+    )
+
+    result = asyncio.run(flow.async_step_init())
+
+    assert result["type"] == "form"
+    assert result["step_id"] == "init"
+    assert [field.schema for field in result["data_schema"].schema] == [
+        CONF_RECORDING_MEDIA_SYNC_ENABLED,
+        CONF_RECORDING_MEDIA_SYNC_HOURS,
+        CONF_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_NOTIFICATION_QUALITY,
+        CONF_RECORDING_MEDIA_DAYS_ORDER,
+        CONF_RECORDING_MEDIA_CLIPS_ORDER,
+    ]
 
 
 def test_recording_media_storage_path_change_detection():
