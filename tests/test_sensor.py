@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+import pytest
+
 from custom_components.xsense.python_xsense.entity_map import EntityType
 from custom_components.xsense.sensor import (
     battery_percentage,
@@ -52,8 +54,11 @@ def test_self_test_result_preserves_failure_code():
     assert self_test_result(entity) == "failed"
 
 
-def test_self_test_report_sensor_exists_for_testable_device_before_first_report():
-    entity = SimpleNamespace(data={}, type="XS01-WX")
+@pytest.mark.parametrize("device_type", ["XS0B-iR", "XS01-WX", "SC06-WX"])
+def test_self_test_report_sensor_exists_for_testable_device_before_first_report(
+    device_type,
+):
+    entity = SimpleNamespace(data={}, type=device_type)
 
     assert has_self_test_report(entity)
 
