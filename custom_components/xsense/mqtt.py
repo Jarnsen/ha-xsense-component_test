@@ -630,7 +630,7 @@ class XSenseMQTT:
                 mqtt.CONNACK_REFUSED_NOT_AUTHORIZED,
             ):
                 self._should_reconnect = False
-                self.hass.async_create_task(self.async_disconnect())
+                self.hass.create_task(self.async_disconnect())
             _LOGGER.error(
                 "Unable to connect to the MQTT broker: %s",
                 mqtt.connack_string(result_code),

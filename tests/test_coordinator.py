@@ -150,13 +150,13 @@ async def test_startup_refresh_defers_mqtt_and_camera_history_work():
         "devices": {},
     }
 
-    assert calls == [("get_devices", False, False, False)]
+    assert calls == [("get_devices", False, False, True)]
     assert coordinator._startup_refresh_complete is True
 
     await XSenseDataUpdateCoordinator._async_update_data(coordinator)
 
     assert calls == [
-        ("get_devices", False, False, False),
+        ("get_devices", False, False, True),
         ("get_devices", True, True, True),
         ("mqtt_connect",),
         ("assure_subscriptions",),
@@ -231,7 +231,7 @@ def test_deferred_refresh_waits_until_home_assistant_started(monkeypatch):
         is_running = False
         bus = Bus()
 
-        def async_create_task(self, coro):
+        def create_task(self, coro):
             calls.append(("task", coro.cr_code.co_name))
             coro.close()
 

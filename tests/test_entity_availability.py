@@ -115,6 +115,76 @@ def test_xs01_wx_shadow_data_entities_stay_available():
     assert connected.is_on is True
 
 
+def test_station_sensor_stays_available_when_station_id_alias_changes():
+    station = _xs01_wx_from_real_shadow()
+    station.entity_id = "old-station-id"
+    coordinator = Coordinator(station)
+    sensor = XSenseSensorEntity(
+        coordinator,
+        station,
+        XSenseSensorEntityDescription(
+            key="battery", value_fn=lambda current: current.data["batInfo"]
+        ),
+    )
+
+    refreshed_station = _xs01_wx_from_real_shadow()
+    refreshed_station.entity_id = "new-station-id"
+    refreshed_station.set_data({"batInfo": "2"})
+    coordinator.data = {
+        "stations": {refreshed_station.entity_id: refreshed_station},
+        "devices": {},
+    }
+
+    assert sensor.available
+    assert sensor.native_value == 2
+
+
+def test_child_sensor_stays_available_when_device_and_station_id_aliases_change():
+    station = _xs01_wx_from_real_shadow()
+    station.entity_id = "old-station-id"
+    child = Station(
+        station.house,
+        stationId="old-child-id",
+        stationName="Child Smoke",
+        stationSn="child-sn",
+        category="XS03-iWX",
+        online=1,
+    )
+    child.entity_id = "old-child-id"
+    child.station = station
+    child.set_data({"rfLevel": "2", "time": "20260705010101"})
+    coordinator = Coordinator(station, {child.entity_id: child})
+    rf_sensor = XSenseSensorEntity(
+        coordinator,
+        child,
+        XSenseSensorEntityDescription(
+            key="rf_level", value_fn=lambda current: current.data["rfLevel"]
+        ),
+        station_id=station.entity_id,
+    )
+
+    refreshed_station = _xs01_wx_from_real_shadow()
+    refreshed_station.entity_id = "new-station-id"
+    refreshed_child = Station(
+        refreshed_station.house,
+        stationId="new-child-id",
+        stationName="Child Smoke",
+        stationSn="child-sn",
+        category="XS03-iWX",
+        online=1,
+    )
+    refreshed_child.entity_id = "new-child-id"
+    refreshed_child.station = refreshed_station
+    refreshed_child.set_data({"rfLevel": "3", "time": "20260705020202"})
+    coordinator.data = {
+        "stations": {refreshed_station.entity_id: refreshed_station},
+        "devices": {refreshed_child.entity_id: refreshed_child},
+    }
+
+    assert rf_sensor.available
+    assert rf_sensor.native_value == 3
+
+
 def test_xs01_wx_controls_are_available_when_shadow_reports_online_time():
     station = _xs01_wx_from_real_shadow()
     coordinator = Coordinator(station)

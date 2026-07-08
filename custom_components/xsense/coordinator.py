@@ -176,7 +176,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         @callback
         def _request_refresh(_now) -> None:
             self._deferred_refresh_unsub = None
-            self.hass.async_create_task(self.async_request_refresh())
+            self.hass.create_task(self.async_request_refresh())
 
         if getattr(self.hass, "is_running", False):
             _schedule_refresh(None)
@@ -232,7 +232,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         devices = await self.get_devices(
             include_camera_history=not startup_refresh,
             include_camera_update=not startup_refresh,
-            include_state_update=not startup_refresh,
+            include_state_update=True,
         )
         self._startup_refresh_complete = True
 

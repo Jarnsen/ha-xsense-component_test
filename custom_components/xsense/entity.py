@@ -56,6 +56,9 @@ class XSenseEntity(CoordinatorEntity):
         super().__init__(coordinator)
         self._dev_id = entity.entity_id
         self._station_id = station_id
+        self._entity_serial = _entity_serial(entity)
+        station = getattr(entity, "station", None)
+        self._station_serial = _entity_serial(station)
 
         self._attr_unique_id = (
             f"{entity.entity_id}-{self.entity_description.key}".replace(
@@ -79,8 +82,12 @@ class XSenseEntity(CoordinatorEntity):
         """Return the current coordinator entity for this Home Assistant entity."""
         data = self.coordinator.data or {}
         if self._station_id is not None:
-            return data.get("devices", {}).get(self._dev_id)
-        return data.get("stations", {}).get(self._dev_id)
+            return _entity_by_id_or_serial(
+                data.get("devices", {}), self._dev_id, self._entity_serial
+            )
+        return _entity_by_id_or_serial(
+            data.get("stations", {}), self._dev_id, self._entity_serial
+        )
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to updates."""
@@ -94,8 +101,10 @@ class XSenseEntity(CoordinatorEntity):
             return False
 
         if self._station_id:
-            station = (self.coordinator.data or {}).get("stations", {}).get(
-                self._station_id
+            station = _entity_by_id_or_serial(
+                (self.coordinator.data or {}).get("stations", {}),
+                self._station_id,
+                self._station_serial,
             )
             return (
                 station is not None
@@ -119,6 +128,30 @@ def coordinator_stations(coordinator: XSenseDataUpdateCoordinator) -> dict:
 def coordinator_devices(coordinator: XSenseDataUpdateCoordinator) -> dict:
     """Return coordinator device records, tolerating partial refresh state."""
     return (coordinator.data or {}).get("devices", {})
+
+
+def _entity_by_id_or_serial(
+    entities: dict[str, Entity], entity_id: str | None, serial: str | None
+) -> Entity | None:
+    """Return an entity by stable ID, falling back to its physical serial."""
+    if entity_id is not None and (entity := entities.get(entity_id)):
+        return entity
+    if serial is None:
+        return None
+    return next(
+        (entity for entity in entities.values() if _entity_serial(entity) == serial),
+        None,
+    )
+
+
+def _entity_serial(entity: Entity | None) -> str | None:
+    """Return a normalized X-Sense entity serial."""
+    if entity is None:
+        return None
+    serial = getattr(entity, "sn", None)
+    if serial in (None, ""):
+        return None
+    return str(serial)
 
 
 def device_station_id(device: Entity) -> str:
