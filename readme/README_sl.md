@@ -17,6 +17,8 @@ Priporočamo, da ustvarite drugi račun X-Sense za Home Assistant in iz glavnega
 
 Ta integracija se namesti kot prilagojen HACS repozitorij. Če se posodobitev ne prikaže takoj, odprite HACS, izberite repozitorij X-Sense, zaženite **Update information**, nato posodobite ali ponovno prenesite integracijo in znova zaženite Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## Namestitev
 V HACS dodajte repozitorij po meri `https://github.com/Jarnsen/ha-xsense-component_test`, prenesite integracijo, sledite navodilom HACS za ponovni zagon in jo nato nastavite z računom X-Sense za Home Assistant.
 

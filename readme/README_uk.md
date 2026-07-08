@@ -17,6 +17,8 @@
 
 Ця інтеграція встановлюється як користувацький репозиторій HACS. Якщо оновлення не з’являється одразу, відкрийте HACS, виберіть репозиторій X-Sense, запустіть **Update information**, потім оновіть або повторно завантажте інтеграцію та перезапустіть Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## Встановлення
 У HACS додайте користувацький репозиторій `https://github.com/Jarnsen/ha-xsense-component_test`, завантажте інтеграцію, виконайте інструкції HACS щодо перезапуску й налаштуйте її з обліковим записом X-Sense для Home Assistant.
 

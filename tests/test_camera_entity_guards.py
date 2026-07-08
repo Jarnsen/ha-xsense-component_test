@@ -640,12 +640,58 @@ def test_smoke_alarm_mute_status_exists_before_first_status_payload(device_type)
 
 
 @pytest.mark.parametrize("device_type", ["XS01-WX", "XS0B-iR", "SC06-WX"])
-def test_smoke_alarm_led_switch_exists_before_first_shadow_payload(device_type):
+def test_smoke_alarm_led_switch_requires_reported_led_payload(device_type):
     smoke = routed_entity(device_type, {})
     description = next(item for item in switch.SWITCHES if item.key == "led_light")
 
+    assert not description.exists_fn(smoke)
+
+    smoke.data["ledLight"] = "1"
+
     assert description.exists_fn(smoke)
-    assert description.value_fn(smoke) is None
+    assert description.value_fn(smoke) is True
+
+
+def test_sbs50_alarm_volume_is_not_suppressed_when_reported():
+    station = routed_entity("SBS50", {"alarmVol": "75", "alarmTone": "2"})
+    description = next(item for item in number.NUMBERS if item.key == "alarm_volume")
+
+    assert description.exists_fn(station)
+
+
+async def test_smoke_alarm_led_switch_uses_apk_shadow_setting_writer():
+    calls = []
+    station = SimpleNamespace(
+        type="SBS50",
+        sn="station-sn",
+        shadow_name="SBS50station-sn",
+    )
+    smoke = SimpleNamespace(
+        type="XS01-M",
+        sn="device-sn",
+        station=station,
+        data={"ledLight": "0"},
+    )
+    xsense = SimpleNamespace(
+        update_shadow_setting=AsyncMock(side_effect=lambda *args: calls.append(args))
+    )
+    coordinator = SimpleNamespace(
+        xsense=xsense,
+        async_update_listeners=lambda: calls.append(("listeners",)),
+    )
+    entity = SimpleNamespace(
+        coordinator=coordinator,
+        entity_description=next(
+            item for item in switch.SWITCHES if item.key == "led_light"
+        ),
+        _current_entity=lambda: smoke,
+    )
+
+    await switch.XSenseSwitchEntity._async_set_state(entity, True)
+
+    xsense.update_shadow_setting.assert_awaited_once_with(smoke, "ledLight", "1")
+    assert smoke.data["ledLight"] is True
+    assert calls == [(smoke, "ledLight", "1"), ("listeners",)]
 
 
 def test_camera_entities_include_standalone_device_cameras():

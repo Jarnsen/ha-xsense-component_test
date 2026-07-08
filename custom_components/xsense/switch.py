@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 import voluptuous as vol
 
@@ -104,44 +103,6 @@ LIGHT_GROUP_REMOVE_DEVICES_SCHEMA = {
     vol.Required(ATTR_DEVICE_IDS): vol.All(cv.ensure_list, [cv.string]),
 }
 
-LED_LIGHT_SETTING_TYPES = {
-    "CB0Z-3S",
-    "LP/N-SA-0B",
-    "LP/N-SCA-0A",
-    "SC01-MN",
-    "SC01-MR",
-    "SC06-WX",
-    "SC07-MR",
-    "SC07-WX",
-    "SD11-MR",
-    "SD19-MN",
-    "SK0Z-3S",
-    "XC01-M",
-    "XC04-WX",
-    "XC0C-iA",
-    "XC0C-iR",
-    "XC0C-MR",
-    "XC0M-iR",
-    "XP02S-MR",
-    "XP0A-iR",
-    "XP0A-MR",
-    "XP0H-iR",
-    "XP0H-MR",
-    "XP0J-iA",
-    "XP0P-MR",
-    "XS01-M",
-    "XS01-WX",
-    "XS03-iWX",
-    "XS03-WX",
-    "XS0B-iR",
-    "XS0B-MR",
-    "XS0D-MR",
-    "XS0E-iR",
-    "XS0F-PMA",
-    "XS0R-iA",
-}
-
-
 def boolean_state(value) -> bool | None:
     """Return the normalized state for explicit X-Sense boolean payload values."""
     if isinstance(value, bool):
@@ -178,9 +139,7 @@ def has_shadow_data(key: str) -> Callable[[Entity], bool]:
 
 def has_led_light(entity: Entity) -> bool:
     """Return if an X-Sense entity should expose the LED light switch."""
-    return _has_shadow_write_route(entity) and (
-        "ledLight" in entity.data or entity.type in LED_LIGHT_SETTING_TYPES
-    )
+    return _has_shadow_write_route(entity) and "ledLight" in entity.data
 
 
 def _has_shadow_write_route(entity: Entity) -> bool:
@@ -267,14 +226,6 @@ def data_bool(key: str) -> Callable[[Entity], bool | None]:
 def optional_data_bool(key: str) -> Callable[[Entity], bool | None]:
     """Return a value function for optional X-Sense boolean data."""
     return lambda entity: boolean_state(entity.data.get(key))
-
-
-def entity_topic(entity: Entity) -> str:
-    """Return the settings shadow topic used by the X-Sense app."""
-    station = getattr(entity, "station", None)
-    if station and station.type == "SBS50":
-        return f"2nd_cfg_{entity.sn}"
-    return f"info_{entity.sn}"
 
 
 def _camel_suffix(value: str) -> str:
@@ -980,7 +931,6 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         if entity is None:
             raise HomeAssistantError("X-Sense entity is no longer available")
 
-        station = getattr(entity, "station", entity)
         if self.entity_description.data_key == "on":
             await xsense.update_light_power(entity, enabled)
             entity.data[self.entity_description.data_key] = enabled
@@ -1073,19 +1023,11 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
             self.coordinator.async_update_listeners()
             return
 
-        desired = {
-            "deviceSN": entity.sn,
-            "shadow": "infoDev",
-            "stationSN": station.sn,
-            "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
-            "userId": xsense.userid,
-            self.entity_description.data_key: self.entity_description.write_value_fn(
-                enabled
-            ),
-        }
-        topic = entity_topic(entity)
-
-        await xsense.do_thing(station, topic, {"state": {"desired": desired}})
+        await xsense.update_shadow_setting(
+            entity,
+            self.entity_description.data_key,
+            self.entity_description.write_value_fn(enabled),
+        )
         entity.data[self.entity_description.data_key] = enabled
         if self.entity_description.read_key:
             entity.data[self.entity_description.read_key] = enabled

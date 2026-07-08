@@ -271,6 +271,23 @@ def _obsolete_camera_motion_unique_ids(data) -> set[str]:
     return unique_ids
 
 
+def _unsupported_led_light_switch_unique_ids(data) -> set[str]:
+    """Return LED light switches created before a device reported LED support."""
+    unique_ids: set[str] = set()
+    supported_unique_ids: set[str] = set()
+    for entity in (
+        *data.get("stations", {}).values(),
+        *data.get("devices", {}).values(),
+    ):
+        entity_data = getattr(entity, "data", {})
+        unique_id = _sensor_unique_id(entity.entity_id, "led_light")
+        if isinstance(entity_data, dict) and "ledLight" in entity_data:
+            supported_unique_ids.add(unique_id)
+        else:
+            unique_ids.add(unique_id)
+    return unique_ids - supported_unique_ids
+
+
 def _disabled_camera_ai_detection_unique_ids(data) -> set[str]:
     """Return AI Detection event unique IDs for cameras without APK AI services."""
     disabled_unique_ids, _enabled_unique_ids = (
@@ -382,6 +399,9 @@ def _remove_obsolete_sensor_entities(
     checked_unique_ids = set()
     obsolete_action_unique_ids = _obsolete_action_unique_ids(data)
     obsolete_camera_motion_unique_ids = _obsolete_camera_motion_unique_ids(data)
+    unsupported_led_light_switch_unique_ids = _unsupported_led_light_switch_unique_ids(
+        data
+    )
     (
         disabled_camera_ai_detection_unique_ids,
         enabled_camera_ai_detection_unique_ids,
@@ -410,6 +430,11 @@ def _remove_obsolete_sensor_entities(
             and getattr(registry_entry, "platform", None) == DOMAIN
             and _registry_entry_unique_id(registry_entry)
             in obsolete_camera_motion_unique_ids
+        ) or (
+            _registry_entry_domain(registry_entry) == Platform.SWITCH
+            and getattr(registry_entry, "platform", None) == DOMAIN
+            and _registry_entry_unique_id(registry_entry)
+            in unsupported_led_light_switch_unique_ids
         ):
             entity_registry.async_remove(registry_entry.entity_id)
         elif (
@@ -453,6 +478,13 @@ def _remove_obsolete_sensor_entities(
     for unique_id in obsolete_camera_motion_unique_ids - checked_unique_ids:
         entity_id = entity_registry.async_get_entity_id(
             Platform.BINARY_SENSOR, DOMAIN, unique_id
+        )
+        if entity_id is not None:
+            entity_registry.async_remove(entity_id)
+
+    for unique_id in unsupported_led_light_switch_unique_ids - checked_unique_ids:
+        entity_id = entity_registry.async_get_entity_id(
+            Platform.SWITCH, DOMAIN, unique_id
         )
         if entity_id is not None:
             entity_registry.async_remove(entity_id)

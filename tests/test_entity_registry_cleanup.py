@@ -23,6 +23,7 @@ from custom_components.xsense import (
     _obsolete_action_unique_ids,
     _obsolete_camera_motion_unique_ids,
     _obsolete_sensor_unique_ids,
+    _unsupported_led_light_switch_unique_ids,
     _sensor_unique_id,
     _clear_visible_device_metadata,
     _remove_obsolete_device_metadata,
@@ -76,6 +77,20 @@ def test_obsolete_camera_motion_unique_ids_target_cameras_only():
     )
 
     assert unique_ids == {"garden-camera-moved"}
+
+
+def test_unsupported_led_light_switch_unique_ids_target_missing_led_payload_only():
+    reported_led = SimpleNamespace(entity_id="reported_led", data={"ledLight": "1"})
+    missing_led = SimpleNamespace(entity_id="missing_led", data={})
+
+    unique_ids = _unsupported_led_light_switch_unique_ids(
+        {
+            "stations": {"reported_led": reported_led},
+            "devices": {"missing_led": missing_led},
+        }
+    )
+
+    assert unique_ids == {"missing-led-led-light"}
 
 
 def test_software_version_is_device_info_not_sensor():
@@ -444,6 +459,18 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
             entity_id='binary_sensor.garden_camera_motion',
         ),
         SimpleNamespace(
+            domain='switch',
+            platform='xsense',
+            unique_id='kitchen-smoke-led-light',
+            entity_id='switch.kitchen_smoke_led_light',
+        ),
+        SimpleNamespace(
+            domain='switch',
+            platform='xsense',
+            unique_id='hall-smoke-led-light',
+            entity_id='switch.hall_smoke_led_light',
+        ),
+        SimpleNamespace(
             domain='binary_sensor',
             platform='xsense',
             unique_id='hall-motion-moved',
@@ -506,7 +533,16 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
                 'camera': SimpleNamespace(entity_id='garden_camera', type='SSC0A'),
                 'motion': SimpleNamespace(entity_id='hall_motion', type='SMS'),
                 'hall': SimpleNamespace(entity_id='hall_smoke', type='XS03-iWX'),
-                'kitchen': SimpleNamespace(entity_id='kitchen_smoke', type='XS01-WX'),
+                'kitchen': SimpleNamespace(
+                    entity_id='kitchen_smoke',
+                    type='XS01-WX',
+                    data={},
+                ),
+                'hall_led': SimpleNamespace(
+                    entity_id='hall_smoke',
+                    type='XS03-iWX',
+                    data={'ledLight': '1'},
+                ),
             },
         },
         SimpleNamespace(entry_id='entry-id'),
@@ -516,6 +552,7 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
         'sensor.missing_device_serial_number',
         'binary_sensor.kitchen_smoke_alarm_led_light',
         'binary_sensor.garden_camera_motion',
+        'switch.kitchen_smoke_led_light',
         'button.hall_smoke_mute',
     ]
 

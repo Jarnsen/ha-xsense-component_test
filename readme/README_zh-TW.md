@@ -17,6 +17,8 @@
 
 此整合是以 HACS 自訂儲存庫安裝。如果 Home Assistant 沒有立即顯示更新，請開啟 HACS，選擇 X-Sense 儲存庫，在三點選單執行 **Update information**，然後更新或重新下載整合並重新啟動 Home Assistant。
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## 功能
 - 將多種 X-Sense 裝置整合到 Home Assistant。
 - 支援以 X-Sense 感測資料建立自動化。

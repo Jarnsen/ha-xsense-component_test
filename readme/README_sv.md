@@ -17,6 +17,8 @@ Om du fortfarande använder en gammal `v1.2.6.x`-version, uppdatera till `v1.3.1
 
 Den här integrationen installeras som ett anpassat HACS-repository. Om uppdateringen inte visas direkt, öppna HACS, välj X-Sense-repositoriet, kör **Update information**, uppdatera eller ladda ned integrationen igen och starta om Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## Installation
 Lägg till `https://github.com/Jarnsen/ha-xsense-component_test` som anpassat repository i HACS, ladda ned integrationen, följ HACS anvisning för omstart och konfigurera sedan integrationen med X-Sense-kontot för Home Assistant.
 

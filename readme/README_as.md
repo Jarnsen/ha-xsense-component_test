@@ -17,6 +17,8 @@ If you are still using an old `v1.2.6.x` build, update to `v1.3.14` or newer bef
 
 This integration is installed as a HACS custom repository. If the update does not appear immediately, open HACS, select the X-Sense repository, run **Update information**, then update or redownload the integration and restart Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## বৈশিষ্ট্য
 - বিভিন্ন X-Sense ডিভাইচ Home Assistant-ত যোগ কৰে।
 - X-Sense চেন্সৰৰ তথ্য-ৰ ওপৰত automation সমৰ্থন কৰে।

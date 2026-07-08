@@ -35,7 +35,8 @@ jobs:
             exit 1
           fi
 
-          release_args=(--verify-tag --title "$title")
+          create_args=(--verify-tag --title "$title")
+          edit_args=(--title "$title" --draft=false)
           version="${tag#v}"
 
           manifest_version="$(jq -r '.version' custom_components/xsense/manifest.json)"
@@ -46,7 +47,11 @@ jobs:
 
           IFS='.' read -r -a version_parts <<< "$version"
           if (( ${#version_parts[@]} >= 4 )); then
-            release_args+=(--prerelease)
+            create_args+=(--prerelease --latest=false)
+            edit_args+=(--prerelease)
+          else
+            create_args+=(--latest)
+            edit_args+=(--latest)
           fi
 
           if [[ ! -f "$notes_file" && -f "$version_notes_file" ]]; then
@@ -54,7 +59,7 @@ jobs:
           fi
 
           if gh release view "$tag" >/dev/null 2>&1; then
-            args=("${release_args[@]}" --draft=false)
+            args=("${edit_args[@]}")
             if [[ -f "$notes_file" ]]; then
               args+=(--notes-file "$notes_file")
             fi
@@ -63,7 +68,7 @@ jobs:
           fi
 
           if [[ -f "$notes_file" ]]; then
-            gh release create "$tag" "${release_args[@]}" --notes-file "$notes_file"
+            gh release create "$tag" "${create_args[@]}" --notes-file "$notes_file"
           else
-            gh release create "$tag" "${release_args[@]}" --generate-notes
+            gh release create "$tag" "${create_args[@]}" --generate-notes
           fi

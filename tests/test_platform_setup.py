@@ -132,7 +132,7 @@ async def test_camera_controls_do_not_duplicate_station_backed_camera_devices():
         assert len(calls[0]) == len({entity.unique_id for entity in calls[0]})
 
 
-async def test_supported_smoke_status_and_led_entities_load_before_payload_keys():
+async def test_supported_smoke_status_loads_before_payload_keys():
     smoke = SimpleNamespace(
         data={},
         entity_id="kitchen-smoke",
@@ -152,10 +152,8 @@ async def test_supported_smoke_status_and_led_entities_load_before_payload_keys(
             return lambda: None
 
     binary_calls = await _setup_platform(binary_sensor, Coordinator())
-    switch_calls = await _setup_platform(switch, Coordinator())
 
     assert any(entity.entity_description.key == "mute_status" for entity in binary_calls[0])
-    assert any(entity.entity_description.key == "led_light" for entity in switch_calls[0])
 
 
 def test_ai_notification_blueprint_selector_lists_xsense_event_entities():

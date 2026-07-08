@@ -17,6 +17,9 @@
 
 Αυτή η ενσωμάτωση εγκαθίσταται ως προσαρμοσμένο αποθετήριο HACS. Αν η ενημέρωση δεν εμφανιστεί άμεσα, ανοίξτε το HACS, επιλέξτε το αποθετήριο X-Sense, εκτελέστε **Update information**, έπειτα ενημερώστε ή κατεβάστε ξανά την ενσωμάτωση και επανεκκινήστε το Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
+
 <p align="center">
  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>

@@ -24,6 +24,9 @@
 
 يتم تثبيت هذا التكامل كمستودع HACS مخصص. إذا لم يظهر التحديث فورًا، افتح HACS، اختر مستودع X-Sense، شغّل **Update information** من قائمة النقاط الثلاث، ثم حدّث التكامل أو أعد تنزيله وأعد تشغيل Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
+
 <p align="center">
  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>

@@ -17,6 +17,8 @@ Nếu bạn vẫn đang dùng bản cũ `v1.2.6.x`, hãy cập nhật lên `v1.3
 
 Tích hợp này được cài dưới dạng kho HACS tùy chỉnh. Nếu Home Assistant chưa hiển thị cập nhật ngay, mở HACS, chọn kho X-Sense, chạy **Update information**, sau đó cập nhật hoặc tải lại tích hợp và khởi động lại Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## Tính năng
 - Tích hợp nhiều thiết bị X-Sense vào Home Assistant.
 - Hỗ trợ tự động hóa dựa trên dữ liệu cảm biến X-Sense.

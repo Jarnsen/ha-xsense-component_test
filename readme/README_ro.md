@@ -17,6 +17,8 @@ Dacă încă folosiți o versiune veche `v1.2.6.x`, actualizați la `v1.3.14` sa
 
 Această integrare este instalată ca depozit HACS personalizat. Dacă actualizarea nu apare imediat, deschideți HACS, selectați depozitul X-Sense, rulați **Update information**, apoi actualizați sau descărcați din nou integrarea și reporniți Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## Instalare
 În HACS adăugați depozitul personalizat `https://github.com/Jarnsen/ha-xsense-component_test`, descărcați integrarea, urmați instrucțiunile HACS pentru repornire, apoi configurați integrarea cu acel cont X-Sense.
 

@@ -13,6 +13,8 @@
 此集成作为 HACS 自定义仓库安装。如果更新没有立即出现，请在 HACS 中选择 X-Sense 仓库，运行 **Update information**，然后更新或重新下载集成并重启 Home Assistant。
 
 
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
+
 ____________________________________________________________
 
 ## 摄像机实时预览和 AI 通知

@@ -215,7 +215,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="co_level",
         name="CO Level",
-        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:molecule-co",
         value_fn=data_value("coLevel"),
         exists_fn=has_data("coLevel"),

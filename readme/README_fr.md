@@ -17,6 +17,9 @@ Si vous utilisez encore une ancienne version `v1.2.6.x`, mettez à jour vers `v1
 
 Cette intégration est installée comme dépôt HACS personnalisé. Si Home Assistant n’affiche pas immédiatement la mise à jour, ouvrez HACS, sélectionnez le dépôt X-Sense, utilisez le menu à trois points pour lancer **Update information**, puis mettez à jour ou retéléchargez l’intégration et redémarrez Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
+
 <p align="center">
  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>

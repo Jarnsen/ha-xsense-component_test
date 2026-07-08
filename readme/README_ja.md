@@ -17,6 +17,9 @@
 
 この統合は HACS のカスタムリポジトリとしてインストールされます。Home Assistant に更新がすぐ表示されない場合は、HACS を開き、X-Sense リポジトリを選択し、三点メニューから **Update information** を実行してから、統合を更新または再ダウンロードし、Home Assistant を再起動してください。
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
+
 <p align="center">
  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>

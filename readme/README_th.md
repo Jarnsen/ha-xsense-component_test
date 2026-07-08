@@ -17,6 +17,8 @@
 
 อินทิเกรชันนี้ติดตั้งเป็น HACS custom repository หากยังไม่เห็นอัปเดตทันที ให้เปิด HACS เลือก repository X-Sense เรียกใช้ **Update information** จากนั้นอัปเดตหรือดาวน์โหลดอินทิเกรชันใหม่และรีสตาร์ต Home Assistant
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## คุณสมบัติ
 - รวมอุปกรณ์ X-Sense หลายประเภทเข้ากับ Home Assistant
 - รองรับการทำงานอัตโนมัติจากข้อมูลเซนเซอร์ X-Sense

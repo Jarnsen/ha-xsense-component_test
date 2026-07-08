@@ -2138,6 +2138,19 @@ async def _capture_shadow_setting_update(client, target, data_key, value):
             {"shadow": "infoBase", "stationSN": "station-sn", "voiceVol": "35"},
         ),
         (
+            "SBS50",
+            {"alarmTone": "2"},
+            "alarmVol",
+            75,
+            "2nd_cfg_station-sn",
+            {
+                "shadow": "infoBase",
+                "stationSN": "station-sn",
+                "alarmVol": "75",
+                "alarmTone": "2",
+            },
+        ),
+        (
             "SBS10",
             {"voiceVol": 45, "alarmTone": "3"},
             "alarmVol",
@@ -2180,6 +2193,20 @@ async def test_station_volume_uses_apk_station_payload_shape(
         "expected_desired",
     ),
     [
+        (
+            "XS01-M",
+            entity_map.EntityType.SMOKE,
+            {"alarmTone": "2"},
+            "alarmVol",
+            75,
+            {
+                "shadow": "infoDev",
+                "stationSN": "station-sn",
+                "alarmVol": "75",
+                "deviceSN": "device-sn",
+                "alarmTone": "2",
+            },
+        ),
         (
             "XS0B-MR",
             entity_map.EntityType.SMOKE,

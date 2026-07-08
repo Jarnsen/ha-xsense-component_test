@@ -17,6 +17,9 @@
 
 Эта интеграция устанавливается как пользовательский репозиторий HACS. Если Home Assistant не показывает обновление сразу, откройте HACS, выберите репозиторий X-Sense, в меню с тремя точками выполните **Update information**, затем обновите или повторно загрузите интеграцию и перезапустите Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
+
 <p align="center">
  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>

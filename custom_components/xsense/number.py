@@ -67,8 +67,6 @@ def has_shadow_volume(key: str) -> Callable[[Entity], bool]:
             or not _has_shadow_write_route(entity)
         ):
             return False
-        if key == "alarmVol" and entity.type == "SBS50":
-            return False
         return True
 
     return exists

@@ -17,6 +17,8 @@
 
 이 통합은 HACS 사용자 지정 저장소로 설치됩니다. Home Assistant에 업데이트가 바로 표시되지 않으면 HACS를 열고 X-Sense 저장소를 선택한 뒤 점 세 개 메뉴에서 **Update information**을 실행하고, 통합을 업데이트하거나 다시 다운로드한 다음 Home Assistant를 재시작하세요.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## 기능
 - 여러 X-Sense 장치를 Home Assistant에 통합합니다.
 - X-Sense 센서 데이터를 기반으로 자동화를 만들 수 있습니다.

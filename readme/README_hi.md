@@ -17,6 +17,9 @@
 
 यह इंटीग्रेशन HACS custom repository के रूप में इंस्टॉल होता है। यदि अपडेट तुरंत नहीं दिखता, तो HACS खोलें, X-Sense repository चुनें, **Update information** चलाएँ, फिर इंटीग्रेशन को अपडेट या फिर से डाउनलोड करें और Home Assistant restart करें.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
+
 <p align="center">
  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>

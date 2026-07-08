@@ -17,6 +17,8 @@ Kui kasutate veel vana `v1.2.6.x` versiooni, uuendage versioonile `v1.3.14` või
 
 See integratsioon paigaldatakse HACS-i kohandatud repositooriumina. Kui uuendus ei ilmu kohe, avage HACS, valige X-Sense repositoorium, käivitage **Update information**, seejärel uuendage või laadige integratsioon uuesti alla ja taaskäivitage Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## Paigaldamine
 Lisage HACS-is kohandatud repositoorium `https://github.com/Jarnsen/ha-xsense-component_test`, laadige integratsioon alla, järgige HACS-i taaskäivituse juhiseid ja seadistage integratsioon Home Assistanti jaoks loodud X-Sense kontoga.
 

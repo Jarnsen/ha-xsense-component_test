@@ -17,6 +17,8 @@ Jei vis dar naudojate seną `v1.2.6.x` versiją, atnaujinkite į `v1.3.14` arba 
 
 Ši integracija įdiegiama kaip pasirinktinis HACS saugyklos įrašas. Jei naujinimas nepasirodo iš karto, atidarykite HACS, pasirinkite X-Sense saugyklą, paleiskite **Update information**, tada atnaujinkite arba iš naujo atsisiųskite integraciją ir paleiskite Home Assistant iš naujo.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## Diegimas
 HACS pridėkite pasirinktinę saugyklą `https://github.com/Jarnsen/ha-xsense-component_test`, atsisiųskite integraciją, vykdykite HACS paleidimo iš naujo nurodymus ir sukonfigūruokite ją su Home Assistant skirta X-Sense paskyra.
 

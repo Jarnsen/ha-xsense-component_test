@@ -27,7 +27,11 @@ Wenn Sie noch eine alte `v1.2.6.x`-Version verwenden, aktualisieren Sie auf `v1.
 
 This integration is installed as a HACS custom repository. If Home Assistant does not show an update immediately, open HACS, select the X-Sense repository, use the three-dot menu to run **Update information**, then update or redownload the integration and restart Home Assistant.
 
+Entity changes that can affect dashboards or automations are tracked in [X-Sense Entity Changes](ENTITY_CHANGES.md).
+
 Diese Integration wird als benutzerdefiniertes HACS-Repository installiert. Wenn Home Assistant ein Update nicht sofort anzeigt, öffnen Sie HACS, wählen Sie das X-Sense-Repository, führen Sie im Drei-Punkte-Menü **Update information** / **Informationen aktualisieren** aus, aktualisieren oder laden Sie die Integration erneut herunter und starten Sie Home Assistant neu.
+
+Änderungen an Entitäten, die Dashboards oder Automationen beeinflussen können, werden in [X-Sense Entity Changes](ENTITY_CHANGES.md) dokumentiert.
 
 ### Recent Improvements / Aktuelle Verbesserungen
 

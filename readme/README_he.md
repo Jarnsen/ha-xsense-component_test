@@ -19,6 +19,8 @@
 
 האינטגרציה מותקנת כמאגר HACS מותאם אישית. אם העדכון לא מופיע מיד, פתח את HACS, בחר את מאגר X-Sense, הפעל **Update information**, ואז עדכן או הורד מחדש את האינטגרציה והפעל מחדש את Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## התקנה
 ב-HACS הוסיפו מאגר מותאם אישית `https://github.com/Jarnsen/ha-xsense-component_test`, הורידו את האינטגרציה, פעלו לפי הוראות ההפעלה מחדש של HACS והגדירו אותה עם חשבון X-Sense הייעודי ל-Home Assistant.
 

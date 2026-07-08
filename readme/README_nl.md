@@ -17,6 +17,9 @@ Als je nog een oude `v1.2.6.x`-versie gebruikt, werk dan bij naar `v1.3.14` of n
 
 Deze integratie wordt geïnstalleerd als een aangepast HACS-repository. Als Home Assistant de update niet direct toont, open HACS, selecteer het X-Sense-repository, gebruik het driepuntenmenu voor **Update information**, werk de integratie daarna bij of download deze opnieuw en herstart Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
+
 <p align="center">
  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
 </p>

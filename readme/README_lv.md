@@ -17,6 +17,8 @@ Ja joprojām izmantojat vecu `v1.2.6.x` versiju, atjauniniet uz `v1.3.14` vai ja
 
 Šī integrācija tiek instalēta kā pielāgots HACS repozitorijs. Ja atjauninājums neparādās uzreiz, atveriet HACS, izvēlieties X-Sense repozitoriju, palaidiet **Update information**, pēc tam atjauniniet vai atkārtoti lejupielādējiet integrāciju un restartējiet Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## Instalēšana
 HACS pievienojiet pielāgoto repozitoriju `https://github.com/Jarnsen/ha-xsense-component_test`, lejupielādējiet integrāciju, izpildiet HACS restartēšanas norādījumus un konfigurējiet to ar Home Assistant paredzēto X-Sense kontu.
 

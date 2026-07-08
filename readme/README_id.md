@@ -17,6 +17,8 @@ Jika masih menggunakan build lama `v1.2.6.x`, perbarui ke `v1.3.14` atau yang le
 
 Integrasi ini dipasang sebagai repositori kustom HACS. Jika pembaruan tidak langsung muncul, buka HACS, pilih repositori X-Sense, jalankan **Update information**, lalu perbarui atau unduh ulang integrasi dan mulai ulang Home Assistant.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## Fitur
 - Mengintegrasikan berbagai perangkat X-Sense ke Home Assistant.
 - Mendukung otomatisasi berdasarkan data sensor X-Sense.

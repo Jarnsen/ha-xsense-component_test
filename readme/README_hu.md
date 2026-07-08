@@ -17,6 +17,8 @@ Ha még régi `v1.2.6.x` verziót használ, frissítsen `v1.3.14` vagy újabb ve
 
 Ez az integráció egyéni HACS-tárolóként települ. Ha a frissítés nem jelenik meg azonnal, nyissa meg a HACS-t, válassza az X-Sense tárolót, futtassa az **Update information** műveletet, majd frissítse vagy töltse le újra az integrációt, és indítsa újra a Home Assistantot.
 
+
+Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 ## Telepítés
 A HACS-ben adja hozzá egyéni tárolóként a `https://github.com/Jarnsen/ha-xsense-component_test` címet, töltse le az integrációt, kövesse a HACS újraindítási utasítását, majd állítsa be a Home Assistant célú X-Sense fiókkal.
 
