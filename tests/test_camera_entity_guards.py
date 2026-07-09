@@ -4267,6 +4267,9 @@ async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkey
     async def get_camera_webrtc_ticket(entity, *, force_refresh=False):
         return {"signalServer": "signal"}
 
+    async def keep_camera_live_alive(entity):
+        return None
+
     class Coordinator:
         def __init__(self):
             self.data = {
@@ -4274,7 +4277,8 @@ async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkey
                 "devices": {},
             }
             self.xsense = SimpleNamespace(
-                get_camera_webrtc_ticket=get_camera_webrtc_ticket
+                get_camera_webrtc_ticket=get_camera_webrtc_ticket,
+                keep_camera_live_alive=keep_camera_live_alive,
             )
 
         def async_add_listener(self, *args, **kwargs):
@@ -4302,6 +4306,9 @@ async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkey
 
         async def async_add_import_executor_job(self, func, module):
             return fake_module
+
+        def async_create_task(self, coro):
+            return asyncio.create_task(coro)
 
     monkeypatch.setattr(
         camera_module, "async_get_clientsession", lambda hass: SimpleNamespace()
@@ -4391,6 +4398,9 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
             "iceServer": [],
         }
 
+    async def keep_camera_live_alive(entity):
+        return None
+
     class Coordinator:
         def __init__(self):
             self.data = {
@@ -4398,7 +4408,8 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
                 "devices": {},
             }
             self.xsense = SimpleNamespace(
-                get_camera_webrtc_ticket=get_camera_webrtc_ticket
+                get_camera_webrtc_ticket=get_camera_webrtc_ticket,
+                keep_camera_live_alive=keep_camera_live_alive,
             )
 
         def async_add_listener(self, *args, **kwargs):
@@ -4436,6 +4447,9 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
         async def async_add_import_executor_job(self, func, module):
             return fake_module
 
+        def async_create_task(self, coro):
+            return asyncio.create_task(coro)
+
     monkeypatch.setattr(
         camera_module, "async_get_clientsession", lambda hass: SimpleNamespace()
     )
@@ -4460,6 +4474,7 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
         "SSC0ATEST": 1
     }
     assert isinstance(messages[0], WebRTCAnswer)
+    camera._stop_webrtc_keepalive("session-1")
 
 
 async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
@@ -4494,6 +4509,9 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
     async def stop_camera_live(entity):
         stop_calls.append(entity.sn)
 
+    async def keep_camera_live_alive(entity):
+        return None
+
     class Coordinator:
         def __init__(self):
             self.data = {
@@ -4503,6 +4521,7 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
             self.xsense = SimpleNamespace(
                 get_camera_webrtc_ticket=get_camera_webrtc_ticket,
                 stop_camera_live=stop_camera_live,
+                keep_camera_live_alive=keep_camera_live_alive,
             )
 
         def async_add_listener(self, *args, **kwargs):
@@ -4543,6 +4562,9 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
         async def async_add_import_executor_job(self, func, module):
             return fake_module
 
+        def async_create_task(self, coro):
+            return asyncio.create_task(coro)
+
     monkeypatch.setattr(
         camera_module, "async_get_clientsession", lambda hass: SimpleNamespace()
     )
@@ -4567,6 +4589,7 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
     assert stop_calls == []
     assert isinstance(messages[0], WebRTCAnswer)
     assert messages[0].answer == "v=0\r\nanswer"
+    camera._stop_webrtc_keepalive("new-session")
 
 
 async def test_frontend_webrtc_close_closes_signal_session():
