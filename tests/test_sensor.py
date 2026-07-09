@@ -54,13 +54,22 @@ def test_self_test_result_preserves_failure_code():
     assert self_test_result(entity) == "failed"
 
 
-@pytest.mark.parametrize("device_type", ["XS0B-iR", "XS01-WX", "SC06-WX"])
+@pytest.mark.parametrize("device_type", ["XS01-WX"])
 def test_self_test_report_sensor_exists_for_testable_device_before_first_report(
     device_type,
 ):
     entity = SimpleNamespace(data={}, type=device_type)
 
     assert has_self_test_report(entity)
+
+
+@pytest.mark.parametrize("device_type", ["SC06-WX", "XS0B-iR"])
+def test_self_test_report_sensor_is_not_precreated_without_apk_test_path(
+    device_type,
+):
+    entity = SimpleNamespace(data={}, type=device_type)
+
+    assert not has_self_test_report(entity)
 
 
 def test_self_test_report_sensor_exists_after_report_even_without_action_map():

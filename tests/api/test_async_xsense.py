@@ -6,25 +6,12 @@ import json
 import logging
 import sys
 import types
-from pathlib import Path
 
 import pytest
 
-API_PATH = Path(__file__).resolve().parents[2] / "custom_components" / "xsense" / "python_xsense"
-
 
 def load_api_module(module_name: str):
-    """Import the embedded API package without importing the HA integration package."""
-    sys.modules.setdefault("custom_components", types.ModuleType("custom_components"))
-
-    xsense_pkg = types.ModuleType("custom_components.xsense")
-    xsense_pkg.__path__ = [str(API_PATH.parent)]
-    sys.modules["custom_components.xsense"] = xsense_pkg
-
-    api_pkg = types.ModuleType("custom_components.xsense.python_xsense")
-    api_pkg.__path__ = [str(API_PATH)]
-    sys.modules["custom_components.xsense.python_xsense"] = api_pkg
-
+    """Import the embedded API package through the real integration package."""
     return importlib.import_module(f"custom_components.xsense.python_xsense.{module_name}")
 
 
@@ -861,6 +848,173 @@ def test_parse_get_state_updates_child_when_apk_key_is_device_serial():
     assert station_obj.devices["device-id"].online is False
 
 
+def test_parse_get_state_updates_child_when_apk_key_is_device_id():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "00000007",
+                    "deviceName": "Smoke",
+                    "deviceSn": "xs01m-sn",
+                    "deviceType": "XS01-M",
+                }
+            ]
+        }
+    )
+
+    client.parse_get_state(
+        station_obj,
+        {"00000007": {"deviceType": "XS01-M", "isAlarm": "1"}},
+    )
+
+    child = station_obj.devices["00000007"]
+    assert child.data["alarmStatus"] is True
+    assert "00000007" not in station_obj.data
+
+
+def test_parse_get_state_updates_child_status_when_apk_key_is_device_id():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "00000007",
+                    "deviceName": "Smoke",
+                    "deviceSn": "xs01m-sn",
+                    "deviceType": "XS01-M",
+                }
+            ]
+        }
+    )
+
+    client.parse_get_state(
+        station_obj,
+        {"00000007": {"status": {"alarmStatus": "1", "muteStatus": "0"}}},
+    )
+
+    child = station_obj.devices["00000007"]
+    assert child.data["alarmStatus"] is True
+    assert child.data["muteStatus"] is False
+    assert "00000007" not in station_obj.data
+
+
+def test_parse_get_state_flattens_apk_co_peak_child_payload():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "co-id",
+                    "deviceName": "CO",
+                    "deviceSn": "co-sn",
+                    "deviceType": "XC01-M",
+                }
+            ]
+        }
+    )
+
+    client.parse_get_state(
+        station_obj,
+        {
+            "devs": {
+                "co-sn": {
+                    "coPpm": "0",
+                    "peak": {"coPpmPeak": "12", "time": "20260709010102"},
+                }
+            }
+        },
+    )
+
+    child = station_obj.devices["co-id"]
+    assert child.data["coPpm"] == 0
+    assert child.data["coPpmPeak"] == 12
+    assert child.data["coPpmPeakTime"] == "20260709010102"
+    assert "peak" not in child.data
+
+
+def test_parse_get_state_applies_apk_parent_co_level_to_co_child():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "co-id",
+                    "deviceName": "CO",
+                    "deviceSn": "co-sn",
+                    "deviceType": "XC01-M",
+                },
+                {
+                    "deviceId": "smoke-id",
+                    "deviceName": "Smoke",
+                    "deviceSn": "smoke-sn",
+                    "deviceType": "XS01-M",
+                },
+            ]
+        }
+    )
+
+    client.parse_get_state(
+        station_obj,
+        {
+            "coLevel": "2",
+            "devs": {
+                "co-sn": {"coPpm": "25"},
+                "smoke-sn": {"alarmStatus": "0"},
+            },
+        },
+    )
+
+    co_child = station_obj.devices["co-id"]
+    smoke_child = station_obj.devices["smoke-id"]
+    assert co_child.data["coPpm"] == 25
+    assert co_child.data["coLevel"] == 2
+    assert "coLevel" not in smoke_child.data
+
+
+def test_entity_set_data_applies_apk_alarm_and_peak_normalization():
+    device = device_module.Device(None, deviceType="XC04-WX", deviceSn="device-sn")
+
+    device.set_data(
+        {
+            "isAlarm": "1",
+            "peak": {"coPpmPeak": "19", "time": "20260709101011"},
+        }
+    )
+
+    assert device.data["alarmStatus"] is True
+    assert device.data["coPpmPeak"] == 19
+    assert device.data["coPpmPeakTime"] == "20260709101011"
+
+
 def test_parse_get_state_accepts_apk_reported_device_list():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(
@@ -1329,6 +1483,118 @@ async def test_get_state_reads_sws51_sbs50_child_info_like_apk():
 
 
 @pytest.mark.asyncio
+async def test_get_state_reads_xc01m_sbs50_child_info_like_apk():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    station_obj = station.Station(
+        test_house,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_devices(
+        {
+            "deviceSort": ["device-id"],
+            "devices": [
+                {
+                    "deviceId": "device-id",
+                    "deviceName": "CO",
+                    "deviceSn": "device-sn",
+                    "deviceType": "XC01-M",
+                }
+            ],
+        }
+    )
+    calls = []
+
+    async def get_thing(station_arg, page):
+        calls.append((station_arg.shadow_name, page))
+        client._lastres = FakeResponse(200)
+        if page == "2nd_mainpage":
+            return {"state": {"reported": {"devs": {}}}}
+        if page == "2nd_info_device-sn":
+            return {
+                "state": {
+                    "reported": {
+                        "batInfo": "3",
+                        "coPpm": "0",
+                        "coLevel": "0",
+                        "peak": {"coPpmPeak": "6", "time": "20260709111213"},
+                        "isLifeEnd": "0",
+                        "muteStatus": "0",
+                    }
+                }
+            }
+        raise AssertionError(page)
+
+    client.get_thing = get_thing
+
+    await client.get_state(station_obj)
+
+    device = station_obj.get_device_by_sn("device-sn")
+    assert calls == [
+        ("SBS50station-sn", "2nd_mainpage"),
+        ("SBS50station-sn", "2nd_info_device-sn"),
+    ]
+    assert device.data["batInfo"] == 3
+    assert device.data["coPpm"] == 0
+    assert device.data["coLevel"] == 0
+    assert device.data["coPpmPeak"] == 6
+    assert device.data["coPpmPeakTime"] == "20260709111213"
+    assert device.data["isLifeEnd"] is False
+    assert device.data["muteStatus"] is False
+
+
+@pytest.mark.asyncio
+async def test_get_state_reads_sbs50_child_info_without_model_allow_list():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    station_obj = station.Station(
+        test_house,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_devices(
+        {
+            "deviceSort": ["heat-id"],
+            "devices": [
+                {
+                    "deviceId": "heat-id",
+                    "deviceName": "Heat",
+                    "deviceSn": "heat-sn",
+                    "deviceType": "XH02-M",
+                }
+            ],
+        }
+    )
+    calls = []
+
+    async def get_thing(station_arg, page):
+        calls.append((station_arg.shadow_name, page))
+        client._lastres = FakeResponse(200)
+        if page == "2nd_mainpage":
+            return {"state": {"reported": {"devs": {}}}}
+        if page == "2nd_info_heat-sn":
+            return {"state": {"reported": {"temperature": "24.5", "alarmStatus": "0"}}}
+        raise AssertionError(page)
+
+    client.get_thing = get_thing
+
+    await client.get_state(station_obj)
+
+    device = station_obj.get_device_by_sn("heat-sn")
+    assert calls == [
+        ("SBS50station-sn", "2nd_mainpage"),
+        ("SBS50station-sn", "2nd_info_heat-sn"),
+    ]
+    assert device.data["temperature"] == 24.5
+    assert device.data["alarmStatus"] is False
+
+
+@pytest.mark.asyncio
 async def test_get_state_ignores_sws51_sbs50_child_info_failure():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
@@ -1569,17 +1835,6 @@ async def _capture_action(client, target, action):
             "SBS50station-sn",
         ),
         (
-            "SC06-WX",
-            entity_map.EntityType.COMBI,
-            {},
-            "SC06-WX",
-            "2nd_selftest_device-sn",
-            "appSelfTest",
-            None,
-            14,
-            "SC06-WX-station-sn",
-        ),
-        (
             "XS01-WX",
             entity_map.EntityType.SMOKE,
             {},
@@ -1662,6 +1917,16 @@ def test_wifi_action_requires_resolvable_target_context():
 
     del station.sn
     assert not client.has_action(device, "mute")
+
+
+@pytest.mark.parametrize("device_type", ["SC06-WX", "XS0B-iR"])
+def test_wifi_models_do_not_expose_test_without_apk_test_path(device_type):
+    client = async_xsense.AsyncXSense()
+    station = FakeXSenseStation(device_type)
+    station.entity_type = entity_map.EntityType.COMBI if device_type == "SC06-WX" else entity_map.EntityType.SMOKE
+
+    assert client.has_action(station, "mute")
+    assert not client.has_action(station, "test")
 
 
 def test_all_declared_model_actions_resolve_for_representative_entities():
@@ -1809,25 +2074,6 @@ async def test_standalone_wifi_self_test_uses_own_station_entity_path(
 
 
 @pytest.mark.asyncio
-async def test_xs0b_ir_self_test_uses_standalone_appselftest_path():
-    client = async_xsense.AsyncXSense()
-    client.userid = "user-id"
-    station = FakeXSenseStation("XS0B-iR")
-    station.entity_type = entity_map.EntityType.SMOKE
-
-    station_arg, page, desired = await _capture_action(client, station, "test")
-
-    assert station_arg.shadow_name == "XS0B-iR-station-sn"
-    assert page == "appselftest_station-sn"
-    assert desired["shadow"] == "appSelfTest"
-    assert desired["stationSN"] == "station-sn"
-    assert desired["deviceSN"] == "station-sn"
-    assert desired["userId"] == "user-id"
-    assert "userParam" not in desired
-    assert "time" not in desired
-
-
-@pytest.mark.asyncio
 async def test_xp0j_ia_self_test_uses_apk_device_test_v2_path():
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
@@ -1836,9 +2082,9 @@ async def test_xp0j_ia_self_test_uses_apk_device_test_v2_path():
 
     station_arg, page, desired = await _capture_action(client, station, "test")
 
-    assert station_arg.shadow_name == "SBS50station-sn"
+    assert station_arg.shadow_name == "XP0J-iA-station-sn"
     assert page == "2nd_selftest_station-sn"
-    assert desired["shadow"] == "app2ndSelfTest"
+    assert desired["shadow"] == "appSelfTest"
     assert desired["stationSN"] == "station-sn"
     assert desired["deviceSN"] == "station-sn"
     assert desired["userId"] == "user-id"

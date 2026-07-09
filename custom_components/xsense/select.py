@@ -49,9 +49,14 @@ def has_shadow_select(key: str) -> Callable[[Entity], bool]:
     """Return if a non-camera X-Sense shadow exposes a writable select field."""
     return lambda entity: (
         not is_camera_entity(entity)
-        and key in entity.data
+        and (key in entity.data or _sbs50_default_select(entity, key))
         and _has_shadow_write_route(entity)
     )
+
+
+def _sbs50_default_select(entity: Entity, key: str) -> bool:
+    """Return whether the APK exposes this SBS50 select before first shadow data."""
+    return entity.type == "SBS50" and key in {"alarmTone", "ledBrt"}
 
 
 def _has_shadow_write_route(entity: Entity) -> bool:

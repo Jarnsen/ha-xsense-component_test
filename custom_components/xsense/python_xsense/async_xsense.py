@@ -81,8 +81,6 @@ _CAMERA_AI_NOTIFICATION_PAYLOAD_KEYS = {
     "vehicle": "vehicle",
     "other": "other",
 }
-_SBS50_CHILD_INFO_DEVICE_TYPES = {"SWS51"}
-
 # The Android app reads these standalone Wi-Fi device categories from the
 # house-level mainpage/2nd_mainpage shadows, not from station-level mainpage
 # shadows. Querying a station-level mainpage for them returns 404 on accounts
@@ -1434,7 +1432,7 @@ class AsyncXSense(XSenseBase):
         if station.type != "SBS50":
             return
         for device in getattr(station, "devices", {}).values():
-            if device.type not in _SBS50_CHILD_INFO_DEVICE_TYPES:
+            if not getattr(device, "sn", None):
                 continue
             info_key = (station.sn, device.sn)
             if info_key in self._sbs50_child_info_loaded:

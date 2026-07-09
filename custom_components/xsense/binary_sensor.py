@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from .python_xsense.async_xsense import is_camera_entity
 from .python_xsense.device import Device
 from .python_xsense.entity import Entity
-from .python_xsense.entity_map import entities
+from .python_xsense.entity_map import EntityType, entities
 from .python_xsense.station import Station
 
 from homeassistant import config_entries
@@ -62,7 +62,11 @@ def alarm_device_class(entity: Entity) -> BinarySensorDeviceClass | None:
 
 def has_alarm_status(entity: Entity) -> bool:
     """Return if an XSense entity should expose an alarm status sensor."""
-    return "alarmStatus" in entity.data or alarm_device_class(entity) is not None
+    return (
+        "alarmStatus" in entity.data
+        or alarm_device_class(entity) is not None
+        or entity.type == "SBS50"
+    )
 
 
 def has_mute_status(entity: Entity) -> bool:
@@ -71,6 +75,18 @@ def has_mute_status(entity: Entity) -> bool:
     return "muteStatus" in entity.data or any(
         action.get("action") == "mute" for action in entity_def.get("actions", ())
     )
+
+
+def has_life_end_status(entity: Entity) -> bool:
+    """Return if an X-Sense entity should expose end-of-life status."""
+    if "isLifeEnd" in entity.data:
+        return True
+    entity_def = entities.get(entity.type) or {}
+    return entity_def.get("type") in {
+        EntityType.CO,
+        EntityType.COMBI,
+        EntityType.SMOKE,
+    }
 
 
 def alarm_status(entity: Entity) -> bool | None:
@@ -131,8 +147,8 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="is_life_end",
         translation_key="is_life_end",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        exists_fn=lambda entity: "isLifeEnd" in entity.data,
-        value_fn=data_bool("isLifeEnd"),
+        exists_fn=has_life_end_status,
+        value_fn=lambda entity: boolean_state(entity.data.get("isLifeEnd")),
     ),
     XSenseBinarySensorEntityDescription(
         key="alarm_status",

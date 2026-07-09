@@ -315,6 +315,8 @@ class XSenseBase:
             station_data = data.copy()
             children = station_data.pop('devs', {}) or {}
 
+        children = _merge_top_level_child_state(station, station_data, children)
+
         if _apply_group_light_state(station, station_data, children):
             return
 
@@ -331,6 +333,7 @@ class XSenseBase:
 
         for child_key, child_state in _child_state_items(children):
             if dev := _state_child_device(station, child_key, child_state):
+                _apply_apk_child_context(station_data, dev, child_state)
                 _normalize_apk_alarm_status(child_state)
                 dev.set_data(child_state)
 
@@ -422,9 +425,43 @@ def _resolve_action_value(value, entity: Entity):
 def _state_child_device(station: Station, child_key, child_state):
     """Return the child device targeted by an app shadow payload."""
     for value in _child_state_identifiers(child_key, child_state):
+        getter = getattr(station, "get_device_by_identifier", None)
+        if getter is not None:
+            if dev := getter(value):
+                return dev
         if dev := station.get_device_by_sn(value):
             return dev
     return None
+
+
+def _merge_top_level_child_state(station: Station, station_data: Dict, children):
+    """Move APK child-id keyed shadow records into the child update collection."""
+    if isinstance(children, dict):
+        child_updates = children.copy()
+    elif isinstance(children, list):
+        child_updates = list(children)
+    else:
+        child_updates = children
+    for key in list(station_data):
+        value = station_data[key]
+        if not isinstance(value, dict):
+            continue
+        getter = getattr(station, "get_device_by_identifier", None)
+        device = getter(key) if getter is not None else None
+        if device is None and station.get_device_by_sn(key):
+            device = station.get_device_by_sn(key)
+        if device is None:
+            continue
+        if isinstance(child_updates, list):
+            child_state = value.copy()
+            child_state.setdefault("_deviceSN", key)
+            child_updates.append(child_state)
+            station_data.pop(key)
+            continue
+        if not isinstance(child_updates, dict):
+            child_updates = {}
+        child_updates[key] = station_data.pop(key)
+    return child_updates
 
 
 def _child_state_items(children):
@@ -499,6 +536,15 @@ def _normalize_apk_alarm_status(data: Dict) -> None:
         return
     if "isAlarm" in data:
         data["alarmStatus"] = data["isAlarm"]
+
+
+def _apply_apk_child_context(station_data: Dict, child: Entity, child_state: Dict) -> None:
+    """Apply APK parent shadow fields that belong to specific child devices."""
+    if "coLevel" not in station_data or "coLevel" in child_state:
+        return
+    entity_def = entities.get(child.type, {})
+    if getattr(entity_def.get("type"), "value", None) == "co":
+        child_state["coLevel"] = station_data["coLevel"]
 
 
 def _thing_name(station: Station) -> str:

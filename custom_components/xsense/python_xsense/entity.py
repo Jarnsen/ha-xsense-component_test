@@ -91,6 +91,14 @@ class Entity:
         if isinstance(status_data, dict):
             data.pop("status", None)
             data.update(status_data)
+        if "alarmStatus" not in data and "a" not in data and "isAlarm" in data:
+            data["alarmStatus"] = data["isAlarm"]
+        peak_data = data.pop("peak", {})
+        if isinstance(peak_data, dict):
+            if "coPpmPeak" in peak_data:
+                data.setdefault("coPpmPeak", peak_data["coPpmPeak"])
+            if "time" in peak_data:
+                data.setdefault("coPpmPeakTime", peak_data["time"])
         for nested_key in ("lightShadowBean", "skp0aShadowBean"):
             nested_data = data.pop(nested_key, {})
             if isinstance(nested_data, dict):

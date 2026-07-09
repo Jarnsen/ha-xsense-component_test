@@ -104,6 +104,11 @@ class Station(Entity):
             return self.devices.get(device_id)
         return None
 
+    def get_device_by_identifier(self, identifier: str):
+        """Return a child device by app id or serial identifier."""
+        identifier = str(identifier)
+        return self.devices.get(identifier) or self.get_device_by_sn(identifier)
+
     def get_group_device(self, group_id):
         group_id = _java_string(group_id)
         for dev in self.devices.values():

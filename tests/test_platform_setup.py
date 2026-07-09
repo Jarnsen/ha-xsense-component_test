@@ -156,6 +156,111 @@ async def test_supported_smoke_status_loads_before_payload_keys():
     assert any(entity.entity_description.key == "mute_status" for entity in binary_calls[0])
 
 
+async def test_supported_co_status_loads_before_payload_keys():
+    co_detector = SimpleNamespace(
+        data={},
+        entity_id="co-detector",
+        name="CO Detector",
+        online=True,
+        shadow_name="XC04-WX-station-sn",
+        sn="station-sn",
+        type="XC04-WX",
+    )
+
+    class Coordinator:
+        data = {"stations": {co_detector.entity_id: co_detector}, "devices": {}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    binary_calls = await _setup_platform(binary_sensor, Coordinator())
+    sensor_calls = await _setup_platform(sensor, Coordinator())
+
+    binary_keys = {entity.entity_description.key for entity in binary_calls[0]}
+    sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
+
+    assert {"alarm_status", "is_life_end", "mute_status"} <= binary_keys
+    assert {"co", "co_level"} <= sensor_keys
+
+
+def test_supported_co_late_values_are_unknown_until_reported():
+    co_detector = SimpleNamespace(data={}, type="XC04-WX")
+    sensor_descriptions = {item.key: item for item in sensor.SENSORS}
+    binary_descriptions = {item.key: item for item in binary_sensor.SENSORS}
+
+    assert sensor_descriptions["co"].value_fn(co_detector) is None
+    assert sensor_descriptions["co_level"].value_fn(co_detector) is None
+    assert binary_descriptions["is_life_end"].value_fn(co_detector) is None
+    assert binary_descriptions["mute_status"].value_fn(co_detector) is None
+
+
+async def test_water_does_not_create_life_end_before_payload_key():
+    water = SimpleNamespace(
+        data={},
+        entity_id="water",
+        name="Water Sensor",
+        online=True,
+        shadow_name="SBS50station-sn",
+        sn="water-sn",
+        type="SWS51",
+    )
+
+    class Coordinator:
+        data = {"stations": {}, "devices": {water.entity_id: water}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    binary_calls = await _setup_platform(binary_sensor, Coordinator())
+    binary_keys = {entity.entity_description.key for entity in binary_calls[0]}
+
+    assert "is_life_end" not in binary_keys
+    assert "alarm_status" in binary_keys
+
+
+async def test_sbs50_station_entities_load_before_late_shadow_keys():
+    station = SimpleNamespace(
+        data={},
+        entity_id="base-station",
+        name="Stacja bazowa",
+        online=True,
+        shadow_name="SBS5015A96B8A",
+        sn="15A96B8A",
+        type="SBS50",
+    )
+
+    class Coordinator:
+        data = {"stations": {station.entity_id: station}, "devices": {}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    binary_calls = await _setup_platform(binary_sensor, Coordinator())
+    sensor_calls = await _setup_platform(sensor, Coordinator())
+    select_calls = await _setup_platform(select, Coordinator())
+
+    assert any(
+        entity.entity_description.key == "alarm_status" for entity in binary_calls[0]
+    )
+    sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
+    assert {"ip", "safe_mode", "wifi_rssi", "wifi_ssid", "zone_name"} <= sensor_keys
+    assert {
+        entity.entity_description.key for entity in select_calls[0]
+    } >= {"alarm_tone", "led_brightness"}
+
+
+def test_co_level_keeps_long_term_statistics_state_class():
+    description = next(item for item in sensor.SENSORS if item.key == "co_level")
+
+    assert description.state_class == sensor.SensorStateClass.MEASUREMENT
+
+
 def test_ai_notification_blueprint_selector_lists_xsense_event_entities():
     with open(
         "blueprints/automation/xsense/camera_ai_notification.yaml",

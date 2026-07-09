@@ -9,8 +9,8 @@ assignees: ''
 
 ### Voraussetzungen / Prerequisites
 
-- [ ] Ich bestätige, dass ich Home Assistant Version 2024.10.1 oder höher verwende.  
-      I confirm that I am using Home Assistant version 2024.10.1 or higher.
+- [ ] Ich bestätige, dass ich Home Assistant Version 2025.3.0 oder höher verwende.
+      I confirm that I am using Home Assistant version 2025.3.0 or higher.
 - [ ] Ich bestätige, dass ich die neueste Version der X-Sense-Integration installiert habe.  
       I confirm that I have installed the latest version of the X-Sense integration.
 - [ ] Ich bestätige, dass ich HACS Version 2.0 oder höher verwende.  
@@ -21,10 +21,10 @@ assignees: ''
 Bitte geben Sie die verwendeten Versionen an:  
 Please specify the versions used:
 
-- **Home Assistant Version** (z. B. 2024.10.1):  
-  (e.g., 2024.10.1)
-- **X-Sense-Integration Version** (z. B. 1.0.13):  
-  (e.g., 1.0.13)
+- **Home Assistant Version** (z. B. 2025.3.0):
+  (e.g., 2025.3.0)
+- **X-Sense-Integration Version** (z. B. 1.4.7):
+  (e.g., 1.4.7)
 - **HACS Version** (z. B. 2.0.0):  
   (e.g., 2.0.0)
 

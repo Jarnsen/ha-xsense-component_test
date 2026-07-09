@@ -66,9 +66,9 @@ def SBS50SecondGenTestAction():
 
 def XP0JTestAction():
     return TestAction(
-        "app2ndSelfTest",
+        "appSelfTest",
         extra={"userParam": "source=1"},
-        target=lambda entity: _ThingTarget(entity, f"SBS50{entity.sn}"),
+        target=_wifi_thing_target,
     )
 
 
@@ -306,10 +306,7 @@ entities = {
     "SC06-WX": {
         "identifier": lambda entity: f"SC06-WX-{entity.sn}",
         "type": EntityType.COMBI,
-        "actions": [
-            LegacySecondGenSelfTestAction(),
-            WifiAlarmMuteAction(),
-        ],
+        "actions": [WifiAlarmMuteAction()],
     },
     "SC07-MR": {
         "identifier": lambda entity: f"SC07-MR-{entity.sn}",
@@ -625,10 +622,7 @@ entities = {
     },
     "XS0B-iR": {
         "type": EntityType.SMOKE,
-        "actions": [
-            SATestAction(),
-            WifiAlarmMuteAction(),
-        ],
+        "actions": [WifiAlarmMuteAction()],
     },
     "XS0E-iR": {
         "type": EntityType.SMOKE,
