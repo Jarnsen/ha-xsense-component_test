@@ -116,6 +116,7 @@ OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
     "temperature_range",
     "humidity_range",
     "comfort_type",
+    "co_event_id",
     "alarm_tone",
     "chirp_tone",
     "reminder_tone",

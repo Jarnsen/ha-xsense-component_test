@@ -185,6 +185,31 @@ async def test_supported_co_status_loads_before_payload_keys():
     assert {"co", "co_level"} <= sensor_keys
 
 
+async def test_supported_combo_co_status_loads_before_payload_keys():
+    combo_detector = SimpleNamespace(
+        data={},
+        entity_id="combo-detector",
+        name="Smoke CO Detector",
+        online=True,
+        shadow_name="XP0A-MR-station-sn",
+        sn="station-sn",
+        type="XP0A-MR",
+    )
+
+    class Coordinator:
+        data = {"stations": {}, "devices": {combo_detector.entity_id: combo_detector}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    sensor_calls = await _setup_platform(sensor, Coordinator())
+    sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
+
+    assert {"co", "co_level"} <= sensor_keys
+
+
 def test_supported_co_late_values_are_unknown_until_reported():
     co_detector = SimpleNamespace(data={}, type="XC04-WX")
     sensor_descriptions = {item.key: item for item in sensor.SENSORS}

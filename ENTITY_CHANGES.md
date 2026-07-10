@@ -12,6 +12,8 @@ This file tracks user-visible entity changes that may affect dashboards, automat
 
 ### Unreleased
 
+- Combo smoke/CO detectors such as XP0A-MR are treated as CO-capable devices so CO and CO Level entities are created before late CO payload values arrive.
+- Older `co_event_id` registry entries are cleaned up because they are no longer provided as Home Assistant entities.
 - SBS50 alarm volume is exposed when X-Sense reports `alarmVol`; it uses the same settings shadow path as alarm tone.
 - LED light switches are created only when the device reports `ledLight`. Older LED switches created from model guessing are cleaned up when the device does not report that field.
 - `CO Level` is marked as diagnostic because it is a raw X-Sense level code, not a ppm concentration sensor.

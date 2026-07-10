@@ -422,6 +422,30 @@ def test_camera_setup_controls_are_not_obsolete_registry_entries():
     assert OBSOLETE_NUMBER_KEYS == ()
 
 
+def test_obsolete_entity_keys_do_not_remove_current_platform_entities():
+    from custom_components.xsense.binary_sensor import SENSORS as BINARY_SENSORS
+    from custom_components.xsense.number import NUMBERS
+    from custom_components.xsense.select import SELECTS
+    from custom_components.xsense.sensor import SENSORS
+    from custom_components.xsense.switch import SWITCHES
+
+    assert set(OBSOLETE_SENSOR_KEYS).isdisjoint(
+        {description.key for description in SENSORS}
+    )
+    assert set(OBSOLETE_BINARY_SENSOR_KEYS).isdisjoint(
+        {description.key for description in BINARY_SENSORS}
+    )
+    assert set(OBSOLETE_SWITCH_KEYS).isdisjoint(
+        {description.key for description in SWITCHES}
+    )
+    assert set(OBSOLETE_SELECT_KEYS).isdisjoint(
+        {description.key for description in SELECTS}
+    )
+    assert set(OBSOLETE_NUMBER_KEYS).isdisjoint(
+        {description.key for description in NUMBERS}
+    )
+
+
 def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
     removed = []
 
@@ -445,6 +469,12 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
             platform='xsense',
             unique_id='station-1-ip',
             entity_id='sensor.station_1_ip',
+        ),
+        SimpleNamespace(
+            domain='sensor',
+            platform='xsense',
+            unique_id='landing-smoke-co-detector-co-event-id',
+            entity_id='sensor.landing_landing_smoke_co_detector_co_event_id',
         ),
         SimpleNamespace(
             domain='binary_sensor',
@@ -550,6 +580,7 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
 
     assert removed == [
         'sensor.missing_device_serial_number',
+        'sensor.landing_landing_smoke_co_detector_co_event_id',
         'binary_sensor.kitchen_smoke_alarm_led_light',
         'binary_sensor.garden_camera_motion',
         'switch.kitchen_smoke_led_light',
