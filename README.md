@@ -1,4 +1,4 @@
-# ha-xsense-component_test
+# X-Sense Home Security for Home Assistant
 
 ![GitHub Release](https://img.shields.io/github/release/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![GitHub issues](https://img.shields.io/github/issues/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![GitHub Stars](https://img.shields.io/github/stars/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![GitHub Last Commit](https://img.shields.io/github/last-commit/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![Documentation](https://img.shields.io/badge/docs-excellent-brightgreen.svg?style=plastic) ![HACS Status](https://img.shields.io/badge/HACS-Custom-blue.svg?style=plastic) ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-%3E%3D%202025.3.0-brightgreen.svg?style=plastic) [![Discord](https://img.shields.io/discord/1118894710027731025.svg?style=plastic&logo=discord&label=Discord)](https://discord.com/invite/5phHHgGb3V) [![YouTube Channel](https://img.shields.io/youtube/channel/subscribers/UCXao3LZhkhYyGybSl3yCxwQ.svg?style=plastic&logo=youtube&label=Subscribers)](https://www.youtube.com/channel/UCXao3LZhkhYyGybSl3yCxwQ) [![YouTube Video](https://img.shields.io/badge/Watch%20on-YouTube-red.svg?style=plastic&logo=youtube)](https://www.youtube.com/watch?v=3CCKK-qX-YA)
 ---
@@ -15,23 +15,18 @@
 
 ## Overview (English) / Überblick (Deutsch)
 
-This repository contains the Home Assistant integration for X-Sense devices. This repository is available in multiple languages to help users worldwide understand and use the integration easily.
+This repository contains the Home Assistant integration for X-Sense devices. It supports X-Sense security, environmental, keypad, and camera devices through Home Assistant and is available in multiple languages for users worldwide.
 
-Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. Dieses Repository ist in mehreren Sprachen verfügbar, damit Nutzer weltweit die Integration einfach verstehen und nutzen können.
+Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. Es unterstützt X-Sense-Sicherheits-, Umwelt-, Tastenfeld- und Kamerageräte in Home Assistant und ist in mehreren Sprachen verfügbar.
 
-### Compatibility Note / Kompatibilitätshinweis
+### Documentation / Dokumentation
 
-If you are still using an old `v1.2.6.x` build, update to `v1.3.14` or newer before upgrading Home Assistant Core to 2026.7 or newer. The old `v1.2.6.x` builds required `aiortc`, which is not compatible with Home Assistant's Python 3.14 runtime. Current `v1.3.x` builds no longer require `aiortc`.
-
-Wenn Sie noch eine alte `v1.2.6.x`-Version verwenden, aktualisieren Sie auf `v1.3.14` oder neuer, bevor Sie Home Assistant Core auf 2026.7 oder neuer aktualisieren. Die alten `v1.2.6.x`-Versionen benötigten `aiortc`, das nicht mit der Python-3.14-Laufzeit von Home Assistant kompatibel ist. Aktuelle `v1.3.x`-Versionen benötigen `aiortc` nicht mehr.
-
-This integration is installed as a HACS custom repository. If Home Assistant does not show an update immediately, open HACS, select the X-Sense repository, use the three-dot menu to run **Update information**, then update or redownload the integration and restart Home Assistant.
-
-Entity changes that can affect dashboards or automations are tracked in [X-Sense Entity Changes](ENTITY_CHANGES.md).
-
-Diese Integration wird als benutzerdefiniertes HACS-Repository installiert. Wenn Home Assistant ein Update nicht sofort anzeigt, öffnen Sie HACS, wählen Sie das X-Sense-Repository, führen Sie im Drei-Punkte-Menü **Update information** / **Informationen aktualisieren** aus, aktualisieren oder laden Sie die Integration erneut herunter und starten Sie Home Assistant neu.
-
-Änderungen an Entitäten, die Dashboards oder Automationen beeinflussen können, werden in [X-Sense Entity Changes](ENTITY_CHANGES.md) dokumentiert.
+| Link | Description |
+|---|---|
+| [English documentation](readme/README_en.md) | Full setup, installation, and usage guide. |
+| [Updating and HACS notes](UPDATING.md) | Upgrade notes, HACS update refresh steps, and Home Assistant compatibility notes. |
+| [Entity changes](ENTITY_CHANGES.md) | Entity changes that may affect dashboards or automations. |
+| [Changelog](CHANGELOG.md) | Release notes for published versions. |
 
 ### Recent Improvements / Aktuelle Verbesserungen
 
@@ -64,7 +59,3 @@ Diese Integration wird als benutzerdefiniertes HACS-Repository installiert. Wenn
 If a language is missing, please let us know, and we will do our best to add it.
 
 Falls eine Sprache fehlt, lassen Sie es uns wissen, und wir bemühen uns, diese hinzuzufügen.
-
-### Release Notes / Versionshinweise
-
-[Changelog](CHANGELOG.md) - linked release notes for every published version.

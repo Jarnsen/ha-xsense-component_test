@@ -1837,12 +1837,23 @@ async def _capture_action(client, target, action):
         (
             "XS01-WX",
             entity_map.EntityType.SMOKE,
-            {},
+            {"smokeEdition": "8"},
+            "XS01-WX",
+            "appselftest_device-sn",
+            "appSelfTest",
+            None,
+            None,
+            "XS01-WXstation-sn",
+        ),
+        (
+            "XS01-WX",
+            entity_map.EntityType.SMOKE,
+            {"smokeEdition": "9"},
             "XS01-WX",
             "2nd_selftest_device-sn",
             "appSelfTest",
             None,
-            14,
+            13,
             "XS01-WXstation-sn",
         ),
     ],
@@ -1867,11 +1878,9 @@ async def test_self_test_uses_apk_payload_shape(
 
     station_arg, page, desired = await _capture_action(client, device, "test")
 
-    if station_type == "SBS10":
-        assert station_arg is not device.station
+    if station_arg is not device.station:
         assert station_arg.shadow_name == expected_station_shadow
     else:
-        assert station_arg is device.station
         assert device.station.shadow_name == expected_station_shadow
     assert page == expected_page
     assert desired["shadow"] == expected_shadow
@@ -2001,6 +2010,45 @@ async def test_xs01_wx_standalone_mute_uses_own_station_entity_path(
     assert desired["stationSN"] == station_sn
     assert desired["deviceSN"] == station_sn
     assert desired["muteType"] == "0"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "station_sn",
+        "smoke_edition",
+        "expected_topic",
+        "expected_thing",
+        "expected_time_len",
+    ),
+    [
+        ("ABC123", "8", "appselftest_ABC123", "XS01-WXABC123", None),
+        ("ABCEN123", "9", "2nd_selftest_ABCEN123", "XS01-WX-ABCEN123", 13),
+    ],
+)
+async def test_xs01_wx_standalone_self_test_uses_apk_path(
+    station_sn, smoke_edition, expected_topic, expected_thing, expected_time_len
+):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    station = FakeXSenseStation("XS01-WX", station_sn)
+    station.entity_type = entity_map.EntityType.SMOKE
+    station.data = {"smokeEdition": smoke_edition}
+
+    station_arg, page, desired = await _capture_action(client, station, "test")
+
+    assert station_arg.shadow_name == expected_thing
+    assert page == expected_topic
+    assert desired["shadow"] == "appSelfTest"
+    assert desired["stationSN"] == station_sn
+    assert desired["deviceSN"] == station_sn
+    assert desired["userId"] == "user-id"
+    assert "userParam" not in desired
+    if expected_time_len is None:
+        assert "time" not in desired
+    else:
+        assert desired["time"].isdigit()
+        assert len(desired["time"]) == expected_time_len
 
 
 @pytest.mark.asyncio
@@ -3708,7 +3756,7 @@ async def test_update_camera_data_loads_apk_form_options():
 
 
 @pytest.mark.asyncio
-async def test_update_camera_sleep_uses_apk_dormancy_switch_then_refreshes():
+async def test_update_camera_sleep_uses_apk_dormancy_switch_without_faking_status():
     client = async_xsense.AsyncXSense()
     camera = station.Station(
         None,
@@ -3741,7 +3789,7 @@ async def test_update_camera_sleep_uses_apk_dormancy_switch_then_refreshes():
         )
     ]
     assert refreshes == []
-    assert camera.data["deviceStatus"] == 3
+    assert camera.data["deviceStatus"] == 1001
 
 
 @pytest.mark.asyncio

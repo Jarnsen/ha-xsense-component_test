@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from functools import partial
 
 from .python_xsense.async_xsense import is_camera_entity
@@ -181,14 +180,6 @@ class XSenseButtonEntity(XSenseEntity, ButtonEntity):
                 ),
             )
             raise
-        if self.entity_description.key == "test":
-            device.set_data(
-                {
-                    "lastSelfTest": "0",
-                    "lastSelfTestTime": datetime.now(UTC).strftime("%Y%m%d%H%M%S"),
-                }
-            )
-            self.coordinator.async_update_listeners()
         LOGGER.debug(
             "X-Sense button action completed: %s",
             _button_debug_context(device, self.entity_description.key),

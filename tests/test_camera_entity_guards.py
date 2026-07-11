@@ -28,6 +28,7 @@ from custom_components.xsense import (
     switch,
 )
 from custom_components.xsense.python_xsense import mapping
+from custom_components.xsense.python_xsense.entity_map import EntityType
 from homeassistant.const import EntityCategory, Platform
 
 
@@ -47,6 +48,12 @@ def routed_entity(device_type, data, *, station_type="SBS50"):
         station=station,
         data=data,
     )
+
+
+def minimal_entity(device_type, entity_type, data=None, *, station_type="SBS50"):
+    device = routed_entity(device_type, data or {}, station_type=station_type)
+    device.entity_type = entity_type
+    return device
 
 
 def test_boolean_state_does_not_invent_unknown_values():
@@ -74,6 +81,28 @@ def test_is_life_end_uses_explicit_boolean_parser():
     assert description.value_fn(entity("XS01-WX", {"isLifeEnd": "1"})) is True
     assert description.value_fn(entity("XS01-WX", {"isLifeEnd": "0"})) is False
     assert description.value_fn(entity("XS01-WX", {"isLifeEnd": "unknown"})) is None
+
+
+def test_precreated_sensor_values_are_safe_before_first_payload():
+    station = SimpleNamespace(
+        type="SBS50",
+        sn="station-sn",
+        shadow_name="SBS50station-sn",
+        data={},
+        entity_type=EntityType.BASESTATION,
+    )
+    samples = [
+        station,
+        minimal_entity("XS01-WX", EntityType.SMOKE),
+        minimal_entity("XC04-WX", EntityType.CO),
+        minimal_entity("XP0A-MR", EntityType.COMBI),
+        minimal_entity("SDS0A", EntityType.DOOR),
+    ]
+
+    for description in (*sensor.SENSORS, *binary_sensor.SENSORS):
+        for sample in samples:
+            if description.exists_fn(sample):
+                description.value_fn(sample)
 
 
 def test_camera_setup_controls_are_exposed_for_automation_when_supported():

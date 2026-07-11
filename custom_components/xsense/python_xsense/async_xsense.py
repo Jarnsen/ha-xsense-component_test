@@ -1280,7 +1280,6 @@ class AsyncXSense(XSenseBase):
             serialNumber=camera.sn,
             dormancySwitch=1 if enabled else 0,
         )
-        camera.set_data({"deviceStatus": 3 if enabled else 1001})
 
     async def update_camera_doorbell_config(self, camera: Entity, **updates) -> None:
         """Write doorbell config through the Android app endpoint."""

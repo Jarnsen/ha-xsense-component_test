@@ -1,3 +1,5 @@
+import pytest
+
 from custom_components.xsense.alarm_control_panel import (
     XSenseAlarmControlPanel,
     station_supports_alarm_panel,
@@ -31,9 +33,13 @@ class Coordinator:
 
     def __init__(self, entity, devices=None):
         self.data = {"stations": {entity.entity_id: entity}, "devices": devices or {}}
+        self.update_listener_calls = 0
 
     def mqtt_server(self, host):
         return self.mqtt_servers.get(host)
+
+    def async_update_listeners(self):
+        self.update_listener_calls += 1
 
 
 class House:
@@ -207,6 +213,49 @@ def test_xs01_wx_controls_are_available_when_shadow_reports_online_time():
 
     assert button.available
     assert switch.available
+
+
+async def test_test_button_does_not_mark_self_test_success_locally():
+    station = _xs01_wx_from_real_shadow()
+    coordinator = Coordinator(station)
+    presses = []
+
+    async def _record_press(entity, xsense):
+        presses.append(entity.sn)
+
+    button = XSenseButtonEntity(
+        coordinator,
+        station,
+        XSenseButtonEntityDescription(key="test", press_fn=_record_press),
+    )
+
+    await button.async_press()
+
+    assert presses == [station.sn]
+    assert "lastSelfTest" not in station.data
+    assert "lastSelfTestTime" not in station.data
+    assert coordinator.update_listener_calls == 0
+
+
+async def test_failed_test_button_does_not_mark_self_test_success_locally():
+    station = _xs01_wx_from_real_shadow()
+    coordinator = Coordinator(station)
+
+    async def _fail_press(entity, xsense):
+        raise RuntimeError("command failed")
+
+    button = XSenseButtonEntity(
+        coordinator,
+        station,
+        XSenseButtonEntityDescription(key="test", press_fn=_fail_press),
+    )
+
+    with pytest.raises(RuntimeError):
+        await button.async_press()
+
+    assert "lastSelfTest" not in station.data
+    assert "lastSelfTestTime" not in station.data
+    assert coordinator.update_listener_calls == 0
 
 
 def test_child_controls_require_parent_station_online():
