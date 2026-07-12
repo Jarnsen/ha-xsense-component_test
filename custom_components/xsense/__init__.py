@@ -705,11 +705,9 @@ def _schedule_startup_maintenance(
         _schedule_delayed_startup_maintenance()
         return
 
-    entry.async_on_unload(
-        hass.bus.async_listen_once(
-            EVENT_HOMEASSISTANT_STARTED,
-            _schedule_delayed_startup_maintenance,
-        )
+    hass.bus.async_listen_once(
+        EVENT_HOMEASSISTANT_STARTED,
+        _schedule_delayed_startup_maintenance,
     )
 
 

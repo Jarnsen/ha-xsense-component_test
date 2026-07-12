@@ -927,6 +927,9 @@ class AsyncXSense(XSenseBase):
                     _debug_keys(result),
                     _debug_data_shape(result.get("data")),
                 )
+                if result.get("result") == -1024 and _retry:
+                    self._addx_session = await self.register_ipc()
+                    return await self.addx_call(endpoint, _retry=False, **kwargs)
                 raise APIFailure(
                     f"ADDX request for {endpoint} failed with error {result.get('result')}/{result.get('msg')}"
                 )

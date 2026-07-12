@@ -399,12 +399,11 @@ def test_startup_maintenance_waits_until_home_assistant_started(monkeypatch):
     xsense_module._schedule_startup_maintenance(Hass(), Entry(), coordinator)
 
     assert calls[0][0:2] == ("listen", "homeassistant_started")
-    assert calls[1][0] == "unload"
     calls[0][2](None)
-    assert calls[2][0:2] == ("timer", xsense_module.STARTUP_MAINTENANCE_DELAY)
-    assert calls[3][0] == "unload"
-    calls[2][2](None)
-    assert calls[4] == ("task", "_async_run_startup_maintenance")
+    assert calls[1][0:2] == ("timer", xsense_module.STARTUP_MAINTENANCE_DELAY)
+    assert calls[2][0] == "unload"
+    calls[1][2](None)
+    assert calls[3] == ("task", "_async_run_startup_maintenance")
 
 
 def test_ai_notification_blueprint_filters_by_selected_event_entity():

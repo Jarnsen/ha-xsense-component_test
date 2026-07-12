@@ -26,6 +26,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from webrtc_models import RTCIceCandidateInit
 
 from .python_xsense.async_xsense import camera_live_resolution, is_camera_entity
+from .python_xsense.exceptions import APIFailure, SessionExpired
 from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
@@ -264,9 +265,25 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             preserve_pending_session_id=session_id
         )
 
-        ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(
-            entity, force_refresh=True
-        )
+        try:
+            ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(
+                entity, force_refresh=True
+            )
+        except (APIFailure, SessionExpired) as err:
+            LOGGER.warning(
+                "X-Sense camera WebRTC ticket request failed: %s",
+                _camera_debug_context(
+                    entity, session_id, error=str(err), error_type=type(err).__name__
+                ),
+            )
+            send_message(
+                WebRTCError(
+                    "xsense_webrtc_ticket_failed",
+                    "Unable to get X-Sense WebRTC ticket",
+                )
+            )
+            self._pending_webrtc_candidates.pop(session_id, None)
+            return
         LOGGER.debug(
             "X-Sense camera WebRTC ticket response: %s",
             _ticket_data_debug_context(ticket_data),

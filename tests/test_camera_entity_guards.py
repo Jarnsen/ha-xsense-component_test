@@ -3909,6 +3909,49 @@ async def test_webrtc_offer_uses_ticket_without_direct_stream_keepalive():
     assert messages[0].code == "xsense_webrtc_ticket_failed"
 
 
+async def test_webrtc_offer_reports_ticket_api_failure_without_raising(caplog):
+    from custom_components.xsense.python_xsense.exceptions import APIFailure
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseWebRTCCameraEntity,
+    )
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc"})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+
+    class XSense:
+        async def get_camera_webrtc_ticket(self, entity, *, force_refresh=False):
+            raise APIFailure(
+                "ADDX request for /device/getWebrtcTicket failed with error -2002/DEVICE_NO_ACCESS"
+            )
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+            self.xsense = XSense()
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    messages = []
+
+    with caplog.at_level(logging.WARNING):
+        await camera.async_handle_async_webrtc_offer(
+            "v=0\r\n", "session-1", messages.append
+        )
+
+    assert messages[0].code == "xsense_webrtc_ticket_failed"
+    assert camera._pending_webrtc_candidates == {}
+    assert "X-Sense camera WebRTC ticket request failed" in caplog.text
+
+
 def test_camera_wake_button_follows_apk_admin_support_and_sleep_state():
     camera = entity(
         "SSC0A",

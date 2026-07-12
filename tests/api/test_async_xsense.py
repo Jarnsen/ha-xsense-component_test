@@ -4449,6 +4449,54 @@ async def test_addx_call_rejects_unknown_node_type():
 
 
 @pytest.mark.asyncio
+async def test_addx_call_reregisters_once_when_account_get_kicked():
+    class SequentialPostSession:
+        closed = False
+
+        def __init__(self):
+            self.posts = []
+            self.responses = [
+                {"result": -1024, "msg": "ACCOUNT_GET_KICKED"},
+                {"result": 0, "data": {"list": [{"device": "camera"}]}},
+            ]
+
+        def post(self, url, **kwargs):
+            self.posts.append((url, kwargs))
+            return CapturePostResponse(self.responses.pop(0))
+
+    session = SequentialPostSession()
+    client = async_xsense.AsyncXSense(session)
+    client._addx_session = {
+        "token": "old-token",
+        "nodeType": "US",
+        "countryNo": "US",
+        "language": "en",
+    }
+    registrations = []
+
+    async def register_ipc():
+        registrations.append("register")
+        return {
+            "token": "new-token",
+            "nodeType": "US",
+            "countryNo": "US",
+            "language": "en",
+        }
+
+    client.register_ipc = register_ipc
+
+    assert await client.addx_call("/device/listuserdevices") == {
+        "list": [{"device": "camera"}]
+    }
+
+    assert registrations == ["register"]
+    assert [post[1]["headers"]["Authorization"] for post in session.posts] == [
+        "old-token",
+        "new-token",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_register_ipc_uses_mqtt_region_and_app_language_like_apk():
     client = async_xsense.AsyncXSense(language="de-DE")
     client.username = "user@example.com"
