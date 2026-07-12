@@ -26,6 +26,7 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.helpers.storage import Store
 
 from .python_xsense.async_xsense import is_camera_entity
+from .pion_adapter import async_capture_sd_recording
 from .const import (
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
     CONF_RECORDING_MEDIA_DAYS_ORDER,
@@ -46,7 +47,6 @@ from .coordinator import (
     _camera_event_history_records,
 )
 from .playback import recording_media_url
-from .pion_adapter import async_capture_sd_recording
 
 MIME_TYPE = "video/mp4"
 HLS_MIME_TYPE = "application/vnd.apple.mpegurl"
@@ -631,6 +631,14 @@ class XSenseRecordingsMediaSource(MediaSource):
         if clip.get("source") != "video_url" or not direct_url:
             return await self._async_cached_sd_playback_url(clip)
 
+        return await self._async_cached_direct_playback_url(
+            clip, direct_url, allow_sd_fallback=True
+        )
+
+    async def _async_cached_direct_playback_url(
+        self, clip: dict[str, Any], direct_url: str, *, allow_sd_fallback: bool
+    ) -> str:
+        """Cache one APK-provided recording URL as HA-served media."""
         output_path = _clip_cache_path(clip)
         if await self._async_mp4_ready(output_path):
             return _local_media_url(output_path)
@@ -652,9 +660,11 @@ class XSenseRecordingsMediaSource(MediaSource):
                 "Could not cache X-Sense direct recording: %s",
                 {**_clip_log_context(clip), "error": str(exc)},
             )
-            return await self._async_cached_sd_playback_url(
-                _fallback_capture_clip(clip)
-            )
+            if allow_sd_fallback:
+                return await self._async_cached_sd_playback_url(
+                    _fallback_capture_clip(clip)
+                )
+            raise Unresolvable("X-Sense recording could not be cached as media") from exc
 
         if await self._async_mp4_ready(output_path):
             output_bytes = await self._async_file_size(output_path)
@@ -676,9 +686,13 @@ class XSenseRecordingsMediaSource(MediaSource):
                 hls = await self._async_cache_hls_clip(direct_url, clip)
             except Exception as exc:  # noqa: BLE001
                 LOGGER.debug(
-                    "Could not cache X-Sense HLS recording; using SD capture fallback: %s",
+                    "Could not cache X-Sense HLS recording: %s",
                     {**_clip_log_context(clip), "error": str(exc)},
                 )
+                if not allow_sd_fallback:
+                    raise Unresolvable(
+                        "X-Sense HLS recording could not be cached as media"
+                    ) from exc
             else:
                 LOGGER.debug(
                     "X-Sense HLS recording cache ready: %s",
@@ -696,7 +710,7 @@ class XSenseRecordingsMediaSource(MediaSource):
                 await self._async_file_job(_unlink_missing_ok, output_path)
                 return _local_media_url(_hls_playlist_cache_path(clip))
         LOGGER.debug(
-            "X-Sense direct recording download was not playable; using SD capture fallback: %s",
+            "X-Sense direct recording download was not playable: %s",
             {
                 **_clip_log_context(clip),
                 "content_type": download.get("content_type"),
@@ -706,13 +720,17 @@ class XSenseRecordingsMediaSource(MediaSource):
             },
         )
         await self._async_file_job(_unlink_missing_ok, output_path)
-        return await self._async_cached_sd_playback_url(_fallback_capture_clip(clip))
+        if allow_sd_fallback:
+            return await self._async_cached_sd_playback_url(_fallback_capture_clip(clip))
+        raise Unresolvable("X-Sense recording was not browser-playable media")
 
     async def _async_cached_sd_playback_url(self, clip: dict[str, Any]) -> str:
-        """Capture an SD-only X-Sense clip to cached MP4 media."""
+        """Cache an APK local-video playback URL as HA-served media."""
         output_path = _clip_cache_path(clip)
         if await self._async_mp4_ready(output_path):
             return _local_media_url(output_path)
+        if await self._async_hls_ready(clip):
+            return _local_media_url(_hls_playlist_cache_path(clip))
 
         entry_id = str(clip.get("entry_id") or "")
         serial = str(clip.get("serial") or "")
@@ -722,54 +740,145 @@ class XSenseRecordingsMediaSource(MediaSource):
         camera = _coordinator_camera_entity(coordinator, serial)
         if camera is None:
             raise Unresolvable("X-Sense recording camera is not loaded")
+        xsense = getattr(coordinator, "xsense", None)
+        if not hasattr(xsense, "play_camera_local_video"):
+            raise Unresolvable("X-Sense recording account cannot start local playback")
+        start_time = _clip_start_for_sort(clip)
+        end_time = int(clip.get("end") or (start_time + _clip_duration(clip)))
 
         LOGGER.debug(
-            "X-Sense SD recording cache starting: %s",
+            "X-Sense local recording cache starting: %s",
             {
                 "entry_id": entry_id,
                 "camera": _short_serial(serial),
-                "start": clip.get("start"),
-                "end": clip.get("end"),
+                "start": start_time,
+                "end": end_time,
                 "duration": _clip_duration(clip),
             },
         )
+        playback_url = ""
         try:
-            await async_capture_sd_recording(
-                self.hass,
-                coordinator=coordinator,
-                camera=camera,
-                start_time=_clip_start_for_sort(clip),
-                output_path=output_path,
-                duration_seconds=_clip_duration(clip),
-            )
+            playback_url = await xsense.play_camera_local_video(
+                camera, start_time, end_time
+            ) or ""
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug(
-                "Could not cache X-Sense SD recording through Pion: %s",
+                "Could not start X-Sense local recording playback: %s",
                 {
                     "entry_id": entry_id,
                     "camera": _short_serial(serial),
-                    "start": clip.get("start"),
-                    "end": clip.get("end"),
+                    "start": start_time,
+                    "end": end_time,
                     "error": str(exc),
                 },
             )
             raise Unresolvable(
-                "X-Sense SD recording could not be cached as media yet"
+                "X-Sense local recording playback could not be started"
             ) from exc
-        if await self._async_mp4_ready(output_path):
-            cached_url = _local_media_url(output_path)
-            output_bytes = await self._async_file_size(output_path)
-            LOGGER.debug(
-                "X-Sense SD recording cache ready: %s",
-                {
-                    "entry_id": entry_id,
-                    "camera": _short_serial(serial),
-                    "start": clip.get("start"),
-                    "bytes": output_bytes,
-                },
+        if not playback_url:
+            raise Unresolvable("X-Sense local recording playback URL was not returned")
+
+        local_clip = {
+            **clip,
+            "source": "video_url",
+            "requested_source": clip.get("requested_source") or clip.get("source"),
+            "playback_url": playback_url,
+        }
+        use_capture_fallback = not playback_url.startswith(("http://", "https://"))
+        try:
+            if use_capture_fallback:
+                LOGGER.debug(
+                    "X-Sense local recording playback returned player-only URL; "
+                    "using SD capture path: %s",
+                    {
+                        "entry_id": entry_id,
+                        "camera": _short_serial(serial),
+                        "start": start_time,
+                        "scheme": urlparse(playback_url).scheme,
+                    },
+                )
+            else:
+                try:
+                    cached_url = await self._async_cached_direct_playback_url(
+                        local_clip, playback_url, allow_sd_fallback=False
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    LOGGER.debug(
+                        "X-Sense local recording direct cache failed; "
+                        "using SD capture path: %s",
+                        {
+                            "entry_id": entry_id,
+                            "camera": _short_serial(serial),
+                            "start": start_time,
+                            "error": str(exc),
+                        },
+                    )
+                    use_capture_fallback = True
+        finally:
+            if hasattr(xsense, "stop_camera_local_video"):
+                try:
+                    await xsense.stop_camera_local_video(camera)
+                except Exception as exc:  # noqa: BLE001
+                    LOGGER.debug(
+                        "Could not stop X-Sense local recording playback: %s",
+                        {
+                            "entry_id": entry_id,
+                            "camera": _short_serial(serial),
+                            "start": start_time,
+                            "error": str(exc),
+                        },
+                    )
+        if use_capture_fallback:
+            cached_url = await self._async_capture_sd_recording_url(
+                clip,
+                coordinator=coordinator,
+                camera=camera,
+                serial=serial,
+                start_time=start_time,
             )
-            return cached_url
-        raise Unresolvable("X-Sense SD recording cache did not create media")
+        LOGGER.debug(
+            "X-Sense local recording cache ready: %s",
+            {
+                "entry_id": entry_id,
+                "camera": _short_serial(serial),
+                "start": start_time,
+                "format": await self._async_cached_media_format(local_clip),
+            },
+        )
+        return cached_url
+
+    async def _async_capture_sd_recording_url(
+        self,
+        clip: dict[str, Any],
+        *,
+        coordinator: Any,
+        camera: Any,
+        serial: str,
+        start_time: int,
+    ) -> str:
+        """Capture an APK SD-card recording playback session as local HA media."""
+        output_path = _clip_cache_path(clip)
+        await async_capture_sd_recording(
+            self.hass,
+            coordinator=coordinator,
+            camera=camera,
+            start_time=start_time,
+            output_path=output_path,
+            duration_seconds=_clip_duration(clip),
+        )
+        if not await self._async_mp4_ready(output_path):
+            raise Unresolvable("X-Sense local recording capture did not create media")
+        output_bytes = await self._async_file_size(output_path)
+        LOGGER.debug(
+            "X-Sense local recording capture cache ready: %s",
+            {
+                **_clip_log_context(clip),
+                "camera": _short_serial(serial),
+                "start": start_time,
+                "output_bytes": output_bytes,
+            },
+        )
+        return _local_media_url(output_path)
 
     async def _async_download_direct_clip(
         self, url: str, output_path: Path

@@ -20,7 +20,6 @@ from .const import (
 )
 from .python_xsense.async_xsense import is_camera_entity
 from .frontend import recordings_panel_url
-from .pion_adapter import async_capture_sd_recording
 from .webrtc_signal import (
     make_start_sd_playback_command_payload,
     make_stop_sd_playback_command_payload,
@@ -181,42 +180,46 @@ class XSenseRecordingMediaView(HomeAssistantView):
         except ValueError:
             end_time = sd_start_time
 
-        output_path = _recording_cache_path(
-            hass, entry_id, serial, sd_start_time, end_time
+        from .media_source import XSenseRecordingsMediaSource
+
+        LOGGER.debug(
+            "X-Sense recording media route caching local clip: %s",
+            {
+                "entry_id": entry_id,
+                "camera": _short_id(serial),
+                "start_time": sd_start_time,
+                "end_time": end_time,
+            },
         )
-        if not await _async_mp4_ready(hass, output_path):
+        try:
+            local_url = await XSenseRecordingsMediaSource(hass)._async_cached_sd_playback_url(
+                {
+                    "entry_id": entry_id,
+                    "serial": serial,
+                    "camera_entity_id": "",
+                    "start": sd_start_time,
+                    "end": end_time,
+                    "source": "sd_playback",
+                    "requested_source": "sd_playback",
+                    "playback_url": recording_media_url(
+                        entry_id, serial, sd_start_time, end_time=end_time
+                    ),
+                    "media_root": _recording_media_root(hass, entry_id).as_posix(),
+                }
+            )
+        except Exception as exc:  # noqa: BLE001
             LOGGER.debug(
-                "X-Sense recording media route caching SD clip: %s",
+                "X-Sense recording media route failed to cache local clip: %s",
                 {
                     "entry_id": entry_id,
                     "camera": _short_id(serial),
                     "start_time": sd_start_time,
+                    "error": str(exc),
                 },
             )
-            try:
-                await async_capture_sd_recording(
-                    hass,
-                    coordinator=coordinator,
-                    camera=camera,
-                    start_time=sd_start_time,
-                    output_path=output_path,
-                    duration_seconds=_recording_duration(sd_start_time, end_time),
-                )
-            except Exception as exc:  # noqa: BLE001
-                LOGGER.debug(
-                    "X-Sense recording media route failed to cache SD clip: %s",
-                    {
-                        "entry_id": entry_id,
-                        "camera": _short_id(serial),
-                        "start_time": sd_start_time,
-                        "error": str(exc),
-                    },
-                )
-                raise web.HTTPInternalServerError(
-                    text="Unable to prepare X-Sense recording"
-                ) from exc
-
-        local_url = _local_media_url(output_path)
+            raise web.HTTPInternalServerError(
+                text="Unable to prepare X-Sense recording"
+            ) from exc
         if not local_url:
             raise web.HTTPInternalServerError(text="Unable to serve X-Sense recording")
         raise web.HTTPFound(local_url)

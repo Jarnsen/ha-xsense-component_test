@@ -83,6 +83,7 @@ _MQTT_IDENTIFIER_KEYS = {
 }
 
 KEYPAD_CODE_EVENT_TYPE = "xsense_keypad_code"
+SELF_TEST_EVENT_TYPE = "xsense_self_test"
 
 
 async def _async_init_and_login(xsense: AsyncXSense, email: str, password: str) -> None:
@@ -426,6 +427,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except APIFailure as ex:
             self._camera_initialized = False
             self._last_camera_update_attempt = None
+            if _is_no_camera_ipc_registration_error(ex) and not (
+                _camera_entities(self) or self._camera_station_cache
+            ):
+                LOGGER.debug("X-Sense camera metadata skipped: no IPC camera account")
+                return False
             LOGGER.warning("Could not update X-Sense camera data: %s", ex)
             return False
         else:
@@ -772,6 +778,28 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if _is_self_test_topic(topic):
             _normalize_self_test_report(station_data)
+            self_test_report = _self_test_report_payload(station_data)
+            self_test_device_sn = _mqtt_target_device_sn(self_test_report)
+            _fire_self_test_event(
+                getattr(self, "hass", None),
+                topic=topic,
+                station=station,
+                report=self_test_report,
+            )
+            LOGGER.debug(
+                "X-Sense self-test report normalized: %s",
+                _mqtt_event_debug_context(
+                    topic, data, station_data, identifier_candidates
+                )
+                | {
+                    "has_last_self_test": self_test_report.get("lastSelfTest")
+                    not in (None, ""),
+                    "has_last_self_test_time": self_test_report.get("lastSelfTestTime")
+                    not in (None, ""),
+                    "target_is_station": self_test_device_sn in (None, "", station.sn),
+                    "target_device_present": self_test_device_sn not in (None, ""),
+                },
+            )
 
         if _is_keypad_notice_topic(topic):
             _fire_keypad_code_events(self.hass, station_data)
@@ -1069,6 +1097,16 @@ def _camera_entities(coordinator: XSenseDataUpdateCoordinator) -> list[Any]:
         for station in house.stations.values()
         if is_camera_entity(station)
     ]
+
+
+def _is_no_camera_ipc_registration_error(error: Exception) -> bool:
+    """Return if IPC registration failed because the account has no camera user."""
+    text = str(error)
+    return (
+        "IPC code C10101" in text
+        and "C1000001/500" in text
+        and "userName is invalid" in text
+    )
 
 
 def _set_camera_ai_service_available(cameras: list[Any], available: bool) -> None:
@@ -1453,6 +1491,7 @@ def _is_self_test_topic(topic: str) -> bool:
         marker in topic
         for marker in (
             "_testup/update",
+            "alarmtestup/update",
             "selftestup/update",
             "selftestup_v2/update",
         )
@@ -1497,6 +1536,51 @@ def _fire_keypad_code_events(hass: HomeAssistant, data: dict[str, Any]) -> None:
         )
 
 
+def _fire_self_test_event(
+    hass: HomeAssistant,
+    *,
+    topic: str,
+    station,
+    report: dict[str, Any],
+) -> None:
+    """Fire a HA bus event for a physical/app-reported self-test result."""
+    if hass is None:
+        return
+    result = report.get("lastSelfTest")
+    event_time = report.get("lastSelfTestTime")
+    if result in (None, "") and event_time in (None, ""):
+        return
+
+    device_sn = _mqtt_target_device_sn(report) or getattr(station, "sn", None)
+    result_text = _self_test_event_result(result)
+    payload = {
+        "station_sn": report.get("stationSN") or getattr(station, "sn", None),
+        "device_sn": device_sn,
+        "device_type": getattr(station.get_device_by_sn(device_sn), "type", None)
+        if device_sn and hasattr(station, "get_device_by_sn")
+        else getattr(station, "type", None),
+        "result": result_text,
+        "result_code": result,
+        "success": result_text == "success" if result_text is not None else None,
+        "event_time": event_time,
+        "topic": topic,
+    }
+    hass.bus.async_fire(SELF_TEST_EVENT_TYPE, payload)
+    LOGGER.info(
+        "X-Sense self-test event: device=%s result=%s time=%s",
+        device_sn,
+        result_text,
+        event_time,
+    )
+
+
+def _self_test_event_result(result: Any) -> str | None:
+    """Return a readable event result for normalized self-test report codes."""
+    if result in (None, ""):
+        return None
+    return "success" if str(result).strip().lower() == "0" else "failed"
+
+
 _SELF_TEST_RESULT_KEYS = (
     "lastSelfTest",
     "selfTest",
@@ -1516,20 +1600,54 @@ _SELF_TEST_TIME_KEYS = (
     "time",
 )
 
+_SELF_TEST_FAULT_KEYS = (
+    "selfTestCoFault",
+    "selfTestLifeEnd",
+    "selfTestLowPower",
+    "selfTestSmokeFault",
+)
+
 
 def _normalize_self_test_report(data: dict[str, Any]) -> None:
     """Normalize APK self-test report fields into HA sensor keys."""
+    report = _self_test_report_payload(data)
+    target = report if report is not data else data
     for key in _SELF_TEST_RESULT_KEYS:
-        value = data.get(key)
+        value = report.get(key)
         if value not in (None, ""):
-            data["lastSelfTest"] = _normalize_self_test_result(value)
+            target["lastSelfTest"] = _normalize_self_test_result(value)
             break
+    else:
+        fault_values = [report.get(key) for key in _SELF_TEST_FAULT_KEYS]
+        if any(value not in (None, "") for value in fault_values):
+            target["lastSelfTest"] = (
+                "1"
+                if any(_is_truthy_self_test_fault(value) for value in fault_values)
+                else "0"
+            )
 
     for key in _SELF_TEST_TIME_KEYS:
-        value = data.get(key)
+        value = report.get(key)
         if value not in (None, ""):
-            data["lastSelfTestTime"] = value
+            target["lastSelfTestTime"] = value
             break
+
+    for key in ("stationSN", "deviceSN", "userId"):
+        value = report.get(key)
+        if value not in (None, ""):
+            target.setdefault(key, value)
+
+
+def _self_test_report_payload(data: dict[str, Any]) -> dict[str, Any]:
+    """Return the APK SmokeCheckSelfUpShadowBean-style payload."""
+    if any(key in data for key in _SELF_TEST_RESULT_KEYS):
+        return data
+    for value in data.values():
+        if isinstance(value, dict) and any(
+            key in value for key in (*_SELF_TEST_RESULT_KEYS, *_SELF_TEST_FAULT_KEYS)
+        ):
+            return value
+    return data
 
 
 def _normalize_self_test_result(value: Any) -> Any:
@@ -1541,6 +1659,13 @@ def _normalize_self_test_result(value: Any) -> Any:
         if normalized in {"fail", "failed", "failure", "error"}:
             return "1"
     return value
+
+
+def _is_truthy_self_test_fault(value: Any) -> bool:
+    """Return whether an APK DeviceTestV2 fault flag is set."""
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "fault", "failed"}
+    return value is True or value == 1
 
 
 def _is_presence_topic(topic: str) -> bool:

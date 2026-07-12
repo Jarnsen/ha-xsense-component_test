@@ -72,7 +72,7 @@ def has_alarm_status(entity: Entity) -> bool:
 def has_mute_status(entity: Entity) -> bool:
     """Return if an X-Sense entity should expose mute status."""
     entity_def = entities.get(entity.type) or {}
-    return "muteStatus" in entity.data or any(
+    return entity.type == "XS01-WX" or "muteStatus" in entity.data or any(
         action.get("action") == "mute" for action in entity_def.get("actions", ())
     )
 

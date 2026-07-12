@@ -189,8 +189,10 @@ OBSOLETE_ENTITY_SUFFIXES_BY_DOMAIN = {
 }
 
 OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
+    "XS01-WX": ("mute", "test"),
     "XS03-iWX": ("mute",),
 }
+OBSOLETE_SENSOR_KEYS_BY_DEVICE_TYPE = {}
 BLUEPRINT_MAINTENANCE_CHECK_INTERVAL = timedelta(minutes=5)
 STARTUP_MAINTENANCE_DELAY = 30
 
@@ -239,6 +241,12 @@ def _obsolete_sensor_unique_ids(data) -> set[str]:
     ):
         unique_ids.update(
             _sensor_unique_id(entity.entity_id, key) for key in OBSOLETE_SENSOR_KEYS
+        )
+        unique_ids.update(
+            _sensor_unique_id(entity.entity_id, key)
+            for key in OBSOLETE_SENSOR_KEYS_BY_DEVICE_TYPE.get(
+                getattr(entity, "type", None), ()
+            )
         )
     return unique_ids
 

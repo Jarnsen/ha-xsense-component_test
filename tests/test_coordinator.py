@@ -8,6 +8,7 @@ import pytest
 
 from custom_components.xsense.coordinator import (
     KEYPAD_CODE_EVENT_TYPE,
+    SELF_TEST_EVENT_TYPE,
     _is_self_test_topic,
     _normalize_self_test_report,
 )
@@ -35,6 +36,9 @@ def test_self_test_topic_detection_matches_apk_markers():
         "$aws/things/SBS50sn/shadow/name/selftestup_v2/update"
     )
     assert _is_self_test_topic(
+        "$aws/things/SBS50sn/shadow/name/2nd_alarmtestup/update"
+    )
+    assert _is_self_test_topic(
         "$aws/things/SBS50sn/shadow/name/2nd_listener_testup/update"
     )
     assert not _is_self_test_topic(
@@ -49,6 +53,60 @@ def test_self_test_report_normalizes_apk_result_aliases():
 
     assert data["lastSelfTest"] == "0"
     assert data["lastSelfTestTime"] == "20260619120000"
+
+
+def test_self_test_report_normalizes_nested_apk_shadow_bean():
+    data = {
+        "device-sn": {
+            "stationSN": "station-sn",
+            "deviceSN": "device-sn",
+            "userId": "user-id",
+            "selfTest": "0",
+            "time": "20260711120000",
+        }
+    }
+
+    _normalize_self_test_report(data)
+
+    assert "lastSelfTest" not in data
+    assert data["device-sn"]["lastSelfTest"] == "0"
+    assert data["device-sn"]["lastSelfTestTime"] == "20260711120000"
+    assert data["device-sn"]["stationSN"] == "station-sn"
+    assert data["device-sn"]["deviceSN"] == "device-sn"
+
+
+def test_self_test_report_normalizes_apk_v2_fault_bean_success():
+    data = {
+        "stationSN": "station-sn",
+        "deviceSN": "device-sn",
+        "selfTestCoFault": "0",
+        "selfTestSmokeFault": "0",
+        "selfTestLowPower": "0",
+        "selfTestLifeEnd": "0",
+        "time": "20260711120500",
+    }
+
+    _normalize_self_test_report(data)
+
+    assert data["lastSelfTest"] == "0"
+    assert data["lastSelfTestTime"] == "20260711120500"
+
+
+def test_self_test_report_normalizes_apk_v2_fault_bean_failure():
+    data = {
+        "stationSN": "station-sn",
+        "deviceSN": "device-sn",
+        "selfTestCoFault": "0",
+        "selfTestSmokeFault": "1",
+        "selfTestLowPower": "0",
+        "selfTestLifeEnd": "0",
+        "time": "20260711120500",
+    }
+
+    _normalize_self_test_report(data)
+
+    assert data["lastSelfTest"] == "1"
+    assert data["lastSelfTestTime"] == "20260711120500"
 
 
 @pytest.mark.asyncio
@@ -82,6 +140,21 @@ class CameraUpdateFailureClient:
         raise coordinator.APIFailure("camera update failed")
 
 
+class NoCameraIpcClient:
+    def __init__(self, houses=None):
+        self.calls = 0
+        self.houses = houses or {}
+
+    async def update_camera_data(self):
+        self.calls += 1
+        from custom_components.xsense import coordinator
+
+        raise coordinator.APIFailure(
+            "Request for IPC code C10101 failed with error "
+            "C1000001/500 userName is invalid"
+        )
+
+
 @pytest.mark.asyncio
 async def test_camera_update_failure_does_not_suppress_next_retry():
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
@@ -97,6 +170,45 @@ async def test_camera_update_failure_does_not_suppress_next_retry():
     assert coordinator.xsense.calls == 2
     assert coordinator._camera_initialized is False
     assert coordinator._last_camera_update_attempt is None
+
+
+@pytest.mark.asyncio
+async def test_no_camera_ipc_registration_failure_is_debug_only(caplog):
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = NoCameraIpcClient()
+    coordinator._camera_initialized = False
+    coordinator._last_camera_update_attempt = None
+    coordinator._camera_station_cache = {}
+
+    with caplog.at_level(logging.DEBUG):
+        assert await coordinator._update_cameras() is False
+
+    assert coordinator.xsense.calls == 1
+    assert coordinator._camera_initialized is False
+    assert coordinator._last_camera_update_attempt is None
+    assert "X-Sense camera metadata skipped: no IPC camera account" in caplog.text
+    assert "Could not update X-Sense camera data" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_known_camera_ipc_registration_failure_still_warns(caplog):
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+    from custom_components.xsense.python_xsense.entity_map import EntityType
+
+    camera = SimpleNamespace(entity_type=EntityType.CAMERA, type="SSC0A")
+    house = SimpleNamespace(stations={"camera-id": camera})
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = NoCameraIpcClient(houses={"house-id": house})
+    coordinator._camera_initialized = False
+    coordinator._last_camera_update_attempt = None
+    coordinator._camera_station_cache = {}
+
+    with caplog.at_level(logging.WARNING):
+        assert await coordinator._update_cameras() is False
+
+    assert "Could not update X-Sense camera data" in caplog.text
 
 
 @pytest.mark.asyncio
@@ -603,6 +715,232 @@ def test_presence_topic_updates_station_online_like_apk():
     )
     assert station.online is False
     assert len(updates) == 2
+
+
+def test_standalone_wifi_smoke_physical_self_test_report_updates_station():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Bus:
+        def __init__(self):
+            self.events = []
+
+        def async_fire(self, event_type, payload):
+            self.events.append((event_type, payload))
+
+    station = PresenceStation()
+    station.type = "XS01-WX"
+    parsed = []
+    bus = Bus()
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = SimpleNamespace(bus=bus)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/XS01-WXstation-sn/shadow/name/2nd_selftestup/update",
+        (
+            '{"state":{"reported":{"stationSN":"station-sn",'
+            '"deviceSN":"station-sn","selfTest":"successful",'
+            '"eventTime":"20260711120000"}}}'
+        ).encode(),
+    )
+
+    assert parsed == [
+        (
+            station,
+            {
+                "stationSN": "station-sn",
+                "deviceSN": "station-sn",
+                "selfTest": "successful",
+                "eventTime": "20260711120000",
+                "lastSelfTest": "0",
+                "lastSelfTestTime": "20260711120000",
+                "devs": {},
+            },
+        )
+    ]
+    assert bus.events == [
+        (
+            SELF_TEST_EVENT_TYPE,
+            {
+                "station_sn": "station-sn",
+                "device_sn": "station-sn",
+                "device_type": "XS01-WX",
+                "result": "success",
+                "result_code": "0",
+                "success": True,
+                "event_time": "20260711120000",
+                "topic": "$aws/things/XS01-WXstation-sn/shadow/name/2nd_selftestup/update",
+            },
+        )
+    ]
+
+
+def test_standalone_wifi_smoke_alarmtestup_report_updates_station():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    station = PresenceStation()
+    station.type = "XS01-WX"
+    parsed = []
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/XS01-WXstation-sn/shadow/name/2nd_alarmtestup/update",
+        (
+            '{"state":{"reported":{"stationSN":"station-sn",'
+            '"deviceSN":"station-sn","selfTest":"0",'
+            '"time":"20260711120500"}}}'
+        ).encode(),
+    )
+
+    assert parsed == [
+        (
+            station,
+            {
+                "stationSN": "station-sn",
+                "deviceSN": "station-sn",
+                "selfTest": "0",
+                "time": "20260711120500",
+                "lastSelfTest": "0",
+                "lastSelfTestTime": "20260711120500",
+                "devs": {},
+            },
+        )
+    ]
+
+
+def test_sbs50_child_self_test_report_updates_child_payload():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Bus:
+        def __init__(self):
+            self.events = []
+
+        def async_fire(self, event_type, payload):
+            self.events.append((event_type, payload))
+
+    child = SimpleNamespace(sn="child-sn", type="XS01-M")
+    station = PresenceStation()
+    station.type = "SBS50"
+    station.shadow_name = "SBS50station-sn"
+    station.devices = {"00000007": child}
+    station.get_device_by_sn = lambda serial: child if serial == "child-sn" else None
+    station.get_device_by_identifier = (
+        lambda identifier: child if identifier == "00000007" else None
+    )
+    parsed = []
+    bus = Bus()
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = SimpleNamespace(bus=bus)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/SBS50station-sn/shadow/name/2nd_selftestup/update",
+        (
+            '{"state":{"reported":{"00000007":{'
+            '"stationSN":"station-sn",'
+            '"deviceSN":"child-sn",'
+            '"selfTest":"successful",'
+            '"time":"20260711121000"}}}}'
+        ).encode(),
+    )
+
+    assert parsed == [
+        (
+            station,
+            {
+                "00000007": {
+                    "stationSN": "station-sn",
+                    "deviceSN": "child-sn",
+                    "selfTest": "successful",
+                    "time": "20260711121000",
+                    "lastSelfTest": "0",
+                    "lastSelfTestTime": "20260711121000",
+                },
+                "devs": {},
+            },
+        )
+    ]
+    assert bus.events == [
+        (
+            SELF_TEST_EVENT_TYPE,
+            {
+                "station_sn": "station-sn",
+                "device_sn": "child-sn",
+                "device_type": "XS01-M",
+                "result": "success",
+                "result_code": "0",
+                "success": True,
+                "event_time": "20260711121000",
+                "topic": "$aws/things/SBS50station-sn/shadow/name/2nd_selftestup/update",
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize("device_type", ["SAL51", "SWS51", "XC0C-MR"])
+def test_sbs50_child_self_test_event_is_not_smoke_specific(device_type):
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Bus:
+        def __init__(self):
+            self.events = []
+
+        def async_fire(self, event_type, payload):
+            self.events.append((event_type, payload))
+
+    child = SimpleNamespace(sn="child-sn", type=device_type)
+    station = PresenceStation()
+    station.type = "SBS50"
+    station.shadow_name = "SBS50station-sn"
+    station.devices = {"00000007": child}
+    station.get_device_by_sn = lambda serial: child if serial == "child-sn" else None
+    bus = Bus()
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = SimpleNamespace(bus=bus)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)}, parse_get_state=lambda *_: None
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/SBS50station-sn/shadow/name/2nd_listener_testup/update",
+        (
+            '{"state":{"reported":{"00000007":{'
+            '"stationSN":"station-sn",'
+            '"deviceSN":"child-sn",'
+            '"selfTest":"failed",'
+            '"time":"20260711121500"}}}}'
+        ).encode(),
+    )
+
+    assert bus.events == [
+        (
+            SELF_TEST_EVENT_TYPE,
+            {
+                "station_sn": "station-sn",
+                "device_sn": "child-sn",
+                "device_type": device_type,
+                "result": "failed",
+                "result_code": "1",
+                "success": False,
+                "event_time": "20260711121500",
+                "topic": "$aws/things/SBS50station-sn/shadow/name/2nd_listener_testup/update",
+            },
+        )
+    ]
 
 
 @pytest.mark.asyncio

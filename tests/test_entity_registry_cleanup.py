@@ -51,6 +51,20 @@ def test_obsolete_sensor_cleanup_targets_static_identifier_entities_only():
     assert "device-1-bluetooth-mac" in unique_ids
     assert "station-1-ip" not in unique_ids
     assert "device-1-wifi-rssi" not in unique_ids
+    assert "station-1-last-self-test" not in unique_ids
+
+
+def test_obsolete_sensor_cleanup_targets_removed_model_sensors_only():
+    xs01_wx = SimpleNamespace(entity_id="kitchen_smoke", type="XS01-WX")
+    xs01_m = SimpleNamespace(entity_id="hall_smoke", type="XS01-M")
+
+    unique_ids = _obsolete_sensor_unique_ids(
+        {"stations": {"wifi": xs01_wx}, "devices": {"rf": xs01_m}}
+    )
+
+    assert "kitchen-smoke-last-self-test" not in unique_ids
+    assert "kitchen-smoke-last-self-test-time" not in unique_ids
+    assert "hall-smoke-last-self-test" not in unique_ids
 
 
 def test_obsolete_action_unique_ids_target_removed_model_actions_only():
@@ -62,7 +76,23 @@ def test_obsolete_action_unique_ids_target_removed_model_actions_only():
     )
 
     assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["XS03-iWX"] == ("mute",)
-    assert unique_ids == {"hall-smoke-mute"}
+    assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["XS01-WX"] == ("mute", "test")
+    assert unique_ids == {
+        "hall-smoke-mute",
+        "kitchen-smoke-mute",
+        "kitchen-smoke-test",
+    }
+
+
+def test_xs01_wx_self_test_report_entities_are_not_obsolete():
+    xs01_wx = SimpleNamespace(entity_id="kitchen_smoke", type="XS01-WX")
+
+    unique_ids = _obsolete_sensor_unique_ids(
+        {"stations": {"wifi": xs01_wx}, "devices": {}}
+    )
+
+    assert "kitchen-smoke-last-self-test" not in unique_ids
+    assert "kitchen-smoke-last-self-test-time" not in unique_ids
 
 
 def test_obsolete_camera_motion_unique_ids_target_cameras_only():
@@ -585,6 +615,7 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
         'binary_sensor.garden_camera_motion',
         'switch.kitchen_smoke_led_light',
         'button.hall_smoke_mute',
+        'button.kitchen_smoke_mute',
     ]
 
 def test_ai_detection_cleanup_disables_existing_entity_when_service_is_absent(

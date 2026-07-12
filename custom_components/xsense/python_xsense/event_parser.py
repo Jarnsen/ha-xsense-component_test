@@ -75,6 +75,13 @@ SELF_TEST_TIME_KEYS = (
     "time",
 )
 
+SELF_TEST_FAULT_KEYS = (
+    "selfTestCoFault",
+    "selfTestLifeEnd",
+    "selfTestLowPower",
+    "selfTestSmokeFault",
+)
+
 __all__ = [
     "APK_AI_DETECTION_DATA_KEYS",
     "APK_AI_DETECTION_GROUPS",
@@ -100,6 +107,7 @@ __all__ = [
     "mqtt_topic_kind",
     "normalize_self_test_report",
     "normalize_self_test_result",
+    "self_test_report_payload",
     "SELF_TEST_RESULT_KEYS",
     "SELF_TEST_TIME_KEYS",
 ]
@@ -220,6 +228,7 @@ def is_self_test_topic(topic: str) -> bool:
         marker in topic
         for marker in (
             "_testup/update",
+            "alarmtestup/update",
             "selftestup/update",
             "selftestup_v2/update",
         )
@@ -228,17 +237,44 @@ def is_self_test_topic(topic: str) -> bool:
 
 def normalize_self_test_report(data: dict[str, Any]) -> None:
     """Normalize APK self-test report fields into reusable state keys."""
+    report = self_test_report_payload(data)
+    target = report if report is not data else data
     for key in SELF_TEST_RESULT_KEYS:
-        value = data.get(key)
+        value = report.get(key)
         if value not in (None, ""):
-            data["lastSelfTest"] = normalize_self_test_result(value)
+            target["lastSelfTest"] = normalize_self_test_result(value)
             break
+    else:
+        fault_values = [report.get(key) for key in SELF_TEST_FAULT_KEYS]
+        if any(value not in (None, "") for value in fault_values):
+            target["lastSelfTest"] = (
+                "1"
+                if any(is_truthy_self_test_fault(value) for value in fault_values)
+                else "0"
+            )
 
     for key in SELF_TEST_TIME_KEYS:
-        value = data.get(key)
+        value = report.get(key)
         if value not in (None, ""):
-            data["lastSelfTestTime"] = value
+            target["lastSelfTestTime"] = value
             break
+
+    for key in ("stationSN", "deviceSN", "userId"):
+        value = report.get(key)
+        if value not in (None, ""):
+            target.setdefault(key, value)
+
+
+def self_test_report_payload(data: dict[str, Any]) -> dict[str, Any]:
+    """Return the APK SmokeCheckSelfUpShadowBean-style payload."""
+    if any(key in data for key in SELF_TEST_RESULT_KEYS):
+        return data
+    for value in data.values():
+        if isinstance(value, dict) and any(
+            key in value for key in (*SELF_TEST_RESULT_KEYS, *SELF_TEST_FAULT_KEYS)
+        ):
+            return value
+    return data
 
 
 def normalize_self_test_result(value: Any) -> Any:
@@ -250,6 +286,13 @@ def normalize_self_test_result(value: Any) -> Any:
         if normalized in {"fail", "failed", "failure", "error"}:
             return "1"
     return value
+
+
+def is_truthy_self_test_fault(value: Any) -> bool:
+    """Return whether an APK DeviceTestV2 fault flag is set."""
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "fault", "failed"}
+    return value is True or value == 1
 
 
 def camera_ai_history_event_key(server_id: str, alarm_item: dict[str, Any]) -> str:

@@ -139,7 +139,17 @@ def _wifi_thing_target(entity):
     return _ThingTarget(station, _wifi_thing_name(entity.type, station.sn))
 
 
-_WIFI_FIRE_DRILL_TYPES = {"XP0J-iA", "XS0R-iA"}
+_WIFI_FIRE_DRILL_TYPES = {
+    "SC07-iA",
+    "XP0J-iA",
+    "XP0S-iA",
+    "XP0T-iA",
+    "XP0V-iA",
+    "XP0W-iA",
+    "XS0AA-iA",
+    "XS0AB-iA",
+    "XS0R-iA",
+}
 
 
 def _fire_drill_target(entity):
@@ -193,11 +203,33 @@ def SATestAction(shadow="appSelfTest"):
     }
 
 
+def _smoke_edition(entity):
+    for source in (entity, getattr(entity, "station", None)):
+        data = getattr(source, "data", None) or {}
+        value = data.get("smokeEdition")
+        if value not in (None, ""):
+            return value
+    return None
+
+
 def _is_smoke_v9(entity) -> bool:
+    smoke_edition = _smoke_edition(entity)
     try:
-        return int(entity.data.get("smokeEdition", 0)) >= 9
+        return int(smoke_edition or 0) >= 9
     except (TypeError, ValueError):
         return False
+
+
+def _xs01_wx_serial_indicates_v9(entity) -> bool:
+    station = getattr(entity, "station", entity)
+    station_sn = str(getattr(station, "sn", "") or "")
+    return "EN" in station_sn.upper() or "UL" in station_sn.upper()
+
+
+def _is_xs01_wx_v9(entity) -> bool:
+    if _smoke_edition(entity) is not None:
+        return _is_smoke_v9(entity)
+    return _xs01_wx_serial_indicates_v9(entity)
 
 
 def _xs01_wx_target(entity):
@@ -205,29 +237,9 @@ def _xs01_wx_target(entity):
     return _ThingTarget(station, _xs01_wx_thing_name(station.sn))
 
 
-def _xs01_wx_test_topic(entity) -> str:
-    if _is_smoke_v9(entity):
-        return f"2nd_selftest_{entity.sn}"
-    return f"appselftest_{entity.sn}"
-
-
-def _xs01_wx_test_time_format(entity) -> str | None:
-    return "epoch_ms" if _is_smoke_v9(entity) else None
-
-
-def XS01WXSelfTestAction():
-    return {
-        "action": "test",
-        "topic": _xs01_wx_test_topic,
-        "shadow": "appSelfTest",
-        "target": _xs01_wx_target,
-        "time_format": _xs01_wx_test_time_format,
-    }
-
-
 def XS01WXMuteAction():
     return MuteAction(
-        topic=lambda entity: "2nd_appmute" if _is_smoke_v9(entity) else "appmute",
+        topic=lambda entity: "2nd_appmute" if _is_xs01_wx_v9(entity) else "appmute",
         target=_xs01_wx_target,
         mute_type="0",
     )
@@ -333,6 +345,14 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [WifiAlarmMuteAction()],
     },
+    "SC07-iA": {
+        "type": EntityType.COMBI,
+        "actions": [
+            XP0JTestAction(),
+            WifiAlarmMuteAction(),
+            FireDrillAction(),
+        ],
+    },
     "SD11-MR": {
         "type": EntityType.SMOKE,
         "actions": [
@@ -390,6 +410,12 @@ entities = {
         ],
     },
     "SMA51": {
+        "type": EntityType.MAILBOX,
+        "actions": [
+            MuteAction("appMailMute", "2nd_appmailmute", mute_type="1"),
+        ],
+    },
+    "SMA0A": {
         "type": EntityType.MAILBOX,
         "actions": [
             MuteAction("appMailMute", "2nd_appmailmute", mute_type="1"),
@@ -487,6 +513,14 @@ entities = {
             FireDrillAction(),
         ],
     },
+    "XS0X-MN": {
+        "type": EntityType.SMOKE,
+        "actions": [
+            SBS50SecondGenTestAction(),
+            SBS50SmokeMuteAction(),
+            FireDrillAction(),
+        ],
+    },
     "LP/N-SCA-0A": {
         "type": EntityType.COMBI,
         "actions": [
@@ -559,10 +593,6 @@ entities = {
     },
     "XS01-WX": {
         "type": EntityType.SMOKE,
-        "actions": [
-            XS01WXSelfTestAction(),
-            XS01WXMuteAction(),
-        ],
     },
     "XS0B-MR": {
         "type": EntityType.SMOKE,
@@ -623,6 +653,38 @@ entities = {
             FireDrillAction(),
         ],
     },
+    "XP0S-iA": {
+        "type": EntityType.COMBI,
+        "actions": [
+            XP0JTestAction(),
+            WifiAlarmMuteAction(),
+            FireDrillAction(),
+        ],
+    },
+    "XP0T-iA": {
+        "type": EntityType.COMBI,
+        "actions": [
+            XP0JTestAction(),
+            WifiAlarmMuteAction(),
+            FireDrillAction(),
+        ],
+    },
+    "XP0V-iA": {
+        "type": EntityType.COMBI,
+        "actions": [
+            XP0JTestAction(),
+            WifiAlarmMuteAction(),
+            FireDrillAction(),
+        ],
+    },
+    "XP0W-iA": {
+        "type": EntityType.COMBI,
+        "actions": [
+            XP0JTestAction(),
+            WifiAlarmMuteAction(),
+            FireDrillAction(),
+        ],
+    },
     "XP0P-MR": {
         "type": EntityType.COMBI,
         "actions": [
@@ -648,6 +710,22 @@ entities = {
         ],
     },
     "XS0R-iA": {
+        "type": EntityType.SMOKE,
+        "actions": [
+            WifiSelfTestAction(),
+            WifiAlarmMuteAction(),
+            FireDrillAction(),
+        ],
+    },
+    "XS0AA-iA": {
+        "type": EntityType.SMOKE,
+        "actions": [
+            WifiSelfTestAction(),
+            WifiAlarmMuteAction(),
+            FireDrillAction(),
+        ],
+    },
+    "XS0AB-iA": {
         "type": EntityType.SMOKE,
         "actions": [
             WifiSelfTestAction(),

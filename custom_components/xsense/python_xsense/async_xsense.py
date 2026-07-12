@@ -88,6 +88,7 @@ _CAMERA_AI_NOTIFICATION_PAYLOAD_KEYS = {
 _HOUSE_STATE_DEVICE_TYPES = {
     "SC06-WX",
     "SC07-WX",
+    "SC07-iA",
     "STH0C",
     "SWS0B",
     "XC04-WX",
@@ -97,10 +98,16 @@ _HOUSE_STATE_DEVICE_TYPES = {
     "XP0A-iR",
     "XP0H-iR",
     "XP0J-iA",
+    "XP0S-iA",
+    "XP0T-iA",
+    "XP0V-iA",
+    "XP0W-iA",
     "XR0A-iR",
     "XS01-WX",
     "XS03-WX",
     "XS0B-iR",
+    "XS0AA-iA",
+    "XS0AB-iA",
     "XS0E-iR",
     "XS0R-iA",
 }
@@ -111,6 +118,7 @@ _HOUSE_STATE_DEVICE_TYPES = {
 _SECOND_INFO_DEVICE_TYPES = {
     "SC06-WX",
     "SC07-WX",
+    "SC07-iA",
     "STH0C",
     "SWS0B",
     "XC04-WX",
@@ -120,6 +128,10 @@ _SECOND_INFO_DEVICE_TYPES = {
     "XP0A-iR",
     "XP0H-iR",
     "XP0J-iA",
+    "XP0S-iA",
+    "XP0T-iA",
+    "XP0V-iA",
+    "XP0W-iA",
     "XR0A-iR",
 }
 
@@ -536,6 +548,144 @@ class AsyncXSense(XSenseBase):
             _debug_data_shape(data),
         )
         return data if isinstance(data, dict) else {}
+
+    async def get_camera_event_record_history(
+        self,
+        serial_numbers: list[str],
+        start_timestamp: int,
+        end_timestamp: int,
+        *,
+        start: int = 0,
+        limit: int = 20,
+        tags: list[str] | None = None,
+        video_event: str | None = None,
+        doorbell_tags: list[str] | None = None,
+        device_call_event_tag: str | None = None,
+        serial_number_to_activity_zone: dict[str, list[int]] | None = None,
+        missing: int | None = None,
+        marked: int | None = 0,
+    ) -> dict:
+        """Return APK camera event-library records using the event filter path."""
+        serials = [str(serial) for serial in serial_numbers if serial]
+        if not serials:
+            return {}
+        payload: dict[str, Any] = {
+            "startTimestamp": start_timestamp,
+            "endTimestamp": end_timestamp,
+            "to": limit,
+            "serialNumber": serials,
+            "tags": tags or [],
+            "from": start,
+        }
+        if marked is not None:
+            payload["marked"] = marked
+        if missing is not None:
+            payload["missing"] = missing
+        if video_event:
+            payload["videoEvent"] = video_event
+        if doorbell_tags is not None:
+            payload["doorbellTags"] = doorbell_tags
+        if device_call_event_tag:
+            payload["deviceCallEventTag"] = device_call_event_tag
+        if serial_number_to_activity_zone:
+            payload["serialNumberToActivityZone"] = serial_number_to_activity_zone
+
+        data = await self.addx_call("/library/newselectlibrary/event", **payload)
+        LOGGER.debug(
+            "X-Sense camera event record history response: %s",
+            _debug_data_shape(data),
+        )
+        return data if isinstance(data, dict) else {}
+
+    async def get_camera_library_by_trace_id(self, trace_id: str) -> dict:
+        """Return one APK camera library record by trace id."""
+        if not trace_id:
+            return {}
+        data = await self.addx_call("/library/getLibraryByTraceId", traceId=trace_id)
+        LOGGER.debug(
+            "X-Sense camera trace record response: %s",
+            _debug_data_shape(data),
+        )
+        return data if isinstance(data, dict) else {}
+
+    async def get_camera_library_by_library_id(self, library_id: str) -> dict:
+        """Return one APK camera library record by library id."""
+        if not library_id:
+            return {}
+        data = await self.addx_call("/library/newselectsinglelibrary", traceId=library_id)
+        LOGGER.debug(
+            "X-Sense camera library record response: %s",
+            _debug_data_shape(data),
+        )
+        return data if isinstance(data, dict) else {}
+
+    async def retrieve_camera_local_videos(
+        self, camera: Entity, start_time: int, end_time: int
+    ) -> dict:
+        """Return APK SD-card video slices for a camera and time window."""
+        data = await self.addx_call(
+            "/device/retrieveLocalVideos",
+            serialNumber=camera.sn,
+            startTime=start_time,
+            endTime=end_time,
+        )
+        LOGGER.debug(
+            "X-Sense camera local video slices response: %s",
+            _debug_data_shape(data),
+        )
+        return data if isinstance(data, dict) else {}
+
+    async def play_camera_local_video(
+        self, camera: Entity, start_time: int, end_time: int
+    ) -> str | None:
+        """Return the APK local-video playback URL/string for a camera window."""
+        data = await self.addx_call(
+            "/device/playLocalVideo",
+            serialNumber=camera.sn,
+            startTime=start_time,
+            endTime=end_time,
+        )
+        if isinstance(data, str):
+            return data
+        if isinstance(data, dict):
+            value = data.get("data") or data.get("url") or data.get("videoUrl")
+            return str(value) if value else None
+        return None
+
+    async def stop_camera_local_video(self, camera: Entity) -> None:
+        """Stop APK local-video playback for a camera."""
+        await self.addx_call("/device/stopPlayLocalVideo", serialNumber=camera.sn)
+
+    async def query_camera_sd_card_format(self, camera: Entity) -> dict:
+        """Return the APK SD-card format status response for a camera."""
+        data = await self.addx_call(
+            "/device/querySdCardFormat",
+            serialNumber=camera.sn,
+            queueId=str(camera.sn or ""),
+        )
+        LOGGER.debug(
+            "X-Sense camera SD card format response: %s",
+            _debug_data_shape(data),
+        )
+        return data if isinstance(data, dict) else {}
+
+    async def get_camera_activity_zones(self, camera: Entity) -> dict:
+        """Return APK activity zones configured for one camera."""
+        data = await self.addx_call("/device/getactivityzone", serialNumber=camera.sn)
+        LOGGER.debug(
+            "X-Sense camera activity zone response: %s",
+            _debug_data_shape(data),
+        )
+        return data if isinstance(data, dict) else {}
+
+    async def query_user_camera_activity_zones(self) -> dict | list:
+        """Return APK account-level camera activity-zone data."""
+        data = await self.addx_call("/device/queryUserActivityZone")
+        LOGGER.debug(
+            "X-Sense camera user activity zone response: %s",
+            _debug_data_shape(data),
+        )
+        return data if isinstance(data, (dict, list)) else {}
 
     async def get_daily_history(
         self,
@@ -1204,7 +1354,6 @@ class AsyncXSense(XSenseBase):
         data = await self.addx_call(
             "/device/getWebrtcTicket",
             serialNumber=camera.sn,
-            verifyDormancyStatus=True,
         )
         if isinstance(data, dict):
             camera.set_data({"cameraWebrtcTicket": data})
@@ -2293,7 +2442,7 @@ def _short_id(value):
 def _action_debug_context(entity: Entity, action: str, target, topic, desired: Dict):
     """Return safe action metadata without full serials or payload values."""
     station = getattr(entity, "station", entity)
-    return {
+    context = {
         "action": action,
         "device": _short_id(getattr(entity, "sn", None)),
         "device_type": getattr(entity, "type", None),
@@ -2305,6 +2454,38 @@ def _action_debug_context(entity: Entity, action: str, target, topic, desired: D
         "has_time": "time" in desired,
         "has_user_param": "userParam" in desired,
     }
+    if getattr(entity, "type", None) == "XS01-WX":
+        smoke_edition = _action_smoke_edition(entity)
+        context.update(
+            {
+                "smoke_edition_present": smoke_edition is not None,
+                "smoke_edition_ge9": _action_smoke_edition_ge9(smoke_edition),
+                "xs01_wx_serial_v9": _action_xs01_wx_serial_v9(entity),
+            }
+        )
+    return context
+
+
+def _action_smoke_edition(entity: Entity):
+    for source in (entity, getattr(entity, "station", None)):
+        data = getattr(source, "data", None) or {}
+        value = data.get("smokeEdition")
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def _action_smoke_edition_ge9(smoke_edition) -> bool:
+    try:
+        return int(smoke_edition or 0) >= 9
+    except (TypeError, ValueError):
+        return False
+
+
+def _action_xs01_wx_serial_v9(entity: Entity) -> bool:
+    station = getattr(entity, "station", entity)
+    station_sn = str(getattr(station, "sn", "") or "")
+    return "EN" in station_sn.upper() or "UL" in station_sn.upper()
 
 
 def _camera_write_debug_context(camera: Entity, endpoint: str, updates: Dict):

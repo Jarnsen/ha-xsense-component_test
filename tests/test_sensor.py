@@ -54,7 +54,7 @@ def test_self_test_result_preserves_failure_code():
     assert self_test_result(entity) == "failed"
 
 
-@pytest.mark.parametrize("device_type", ["XS01-WX"])
+@pytest.mark.parametrize("device_type", ["XS01-M", "XS01-WX"])
 def test_self_test_report_sensor_exists_for_testable_device_before_first_report(
     device_type,
 ):
