@@ -262,13 +262,13 @@ async def test_startup_refresh_defers_mqtt_and_camera_history_work():
         "devices": {},
     }
 
-    assert calls == [("get_devices", False, False, True)]
+    assert calls == [("get_devices", False, True, True)]
     assert coordinator._startup_refresh_complete is True
 
     await XSenseDataUpdateCoordinator._async_update_data(coordinator)
 
     assert calls == [
-        ("get_devices", False, False, True),
+        ("get_devices", False, True, True),
         ("get_devices", True, True, True),
         ("mqtt_connect",),
         ("assure_subscriptions",),
@@ -277,7 +277,7 @@ async def test_startup_refresh_defers_mqtt_and_camera_history_work():
 
 
 @pytest.mark.asyncio
-async def test_camera_startup_refresh_skips_camera_metadata_update():
+async def test_camera_startup_refresh_loads_camera_metadata_before_platform_setup():
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
     from custom_components.xsense.python_xsense.entity_map import EntityType
 
@@ -317,11 +317,56 @@ async def test_camera_startup_refresh_skips_camera_metadata_update():
     assert await XSenseDataUpdateCoordinator.get_devices(
         coordinator,
         include_camera_history=False,
-        include_camera_update=False,
+        include_camera_update=True,
         include_state_update=False,
     ) == {"stations": {"camera-id": camera}, "devices": {}}
 
-    assert calls == [("load_all",)]
+    assert calls == [("load_all",), ("update_cameras",), ("cache_cameras",)]
+
+
+@pytest.mark.asyncio
+async def test_first_refresh_keeps_addx_only_camera_available_for_platform_setup():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+    from custom_components.xsense.python_xsense.entity_map import EntityType
+
+    camera = SimpleNamespace(
+        entity_id="camera-id",
+        entity_type=EntityType.CAMERA,
+        type="SSC0A",
+        devices={},
+    )
+    house = SimpleNamespace(stations={})
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(houses={"house-id": house})
+    coordinator._initialized = False
+    coordinator._camera_initialized = False
+    coordinator._last_camera_update_attempt = None
+    coordinator._camera_station_cache = {}
+    coordinator._camera_ai_history_seen = set()
+    coordinator._camera_ai_history_lock = asyncio.Lock()
+    coordinator.mqtt_servers = {}
+    coordinator._startup_refresh_complete = False
+
+    async def load_all():
+        return None
+
+    async def update_cameras():
+        house.stations["camera-id"] = camera
+        return True
+
+    async def get_house_state(_house):
+        return None
+
+    coordinator.xsense.load_all = load_all
+    coordinator.xsense.get_house_state = get_house_state
+    coordinator._update_cameras = update_cameras
+
+    data = await XSenseDataUpdateCoordinator._async_update_data(coordinator)
+
+    assert data["stations"] == {"camera-id": camera}
+    assert coordinator._camera_station_cache == {"camera-id": camera}
+    assert coordinator._startup_refresh_complete is True
 
 
 def test_deferred_refresh_waits_until_home_assistant_started(monkeypatch):

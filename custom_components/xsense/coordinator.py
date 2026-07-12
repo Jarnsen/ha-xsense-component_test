@@ -232,7 +232,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         startup_refresh = not self._startup_refresh_complete
         devices = await self.get_devices(
             include_camera_history=not startup_refresh,
-            include_camera_update=not startup_refresh,
+            include_camera_update=True,
             include_state_update=True,
         )
         self._startup_refresh_complete = True

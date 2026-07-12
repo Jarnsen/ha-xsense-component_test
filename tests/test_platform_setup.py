@@ -24,7 +24,7 @@ from custom_components.xsense import (
     sensor,
     switch,
 )
-from custom_components.xsense.const import DOMAIN
+from custom_components.xsense.const import CONF_RECORDING_MEDIA_SYNC_ENABLED, DOMAIN
 
 
 ENTITY_PLATFORMS = (
@@ -1087,6 +1087,231 @@ def test_recordings_runtime_cleanup_removes_stale_non_camera_runtime(monkeypatch
         "playback_panel",
         "recording_services",
     ]
+
+
+def test_setup_entry_removes_recordings_runtime_without_cameras(monkeypatch):
+    calls = []
+
+    def async_track_time_interval(hass, action, interval):
+        calls.append(("interval", interval))
+        return lambda: None
+
+    async def async_register_recordings_panel(hass):
+        calls.append("recordings_panel")
+
+    async def async_register_recordings_http_views(hass):
+        calls.append("recordings_http_views")
+
+    async def async_register_playback_view(hass):
+        calls.append("playback_view")
+
+    async def async_register_recording_services(hass):
+        calls.append("recording_services")
+
+    class Coordinator:
+        data = {
+            "stations": {"station": SimpleNamespace(type="SBS50")},
+            "devices": {"detector": SimpleNamespace(type="XS01-M")},
+        }
+
+        async def async_config_entry_first_refresh(self):
+            calls.append("first_refresh")
+
+        def async_start_camera_ai_history_polling(self, *, immediate=True):
+            calls.append(("camera_history_polling", immediate))
+
+        def async_schedule_deferred_refresh(self):
+            calls.append("deferred_refresh")
+
+    class ConfigEntries:
+        async def async_forward_entry_setups(self, entry, platforms):
+            calls.append(("forward_platforms", tuple(platforms)))
+
+    class Bus:
+        def async_listen_once(self, event, callback):
+            calls.append(("listen_once", event))
+            return lambda: None
+
+    class Entry:
+        entry_id = "entry-no-camera"
+
+        def add_update_listener(self, listener):
+            calls.append(("add_update_listener", listener.__name__))
+            return lambda: None
+
+        def async_on_unload(self, unload):
+            calls.append(("on_unload", callable(unload)))
+
+    monkeypatch.setattr(
+        xsense_module,
+        "XSenseDataUpdateCoordinator",
+        lambda hass, entry: Coordinator(),
+    )
+    monkeypatch.setattr(xsense_module, "async_track_time_interval", async_track_time_interval)
+    monkeypatch.setattr(
+        xsense_module,
+        "_cleanup_recordings_runtime",
+        lambda hass, entry_id=None: calls.append(("cleanup", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recordings_panel",
+        async_register_recordings_panel,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recordings_http_views",
+        async_register_recordings_http_views,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_playback_view",
+        async_register_playback_view,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recording_services",
+        async_register_recording_services,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_start_recording_media_sync",
+        lambda hass, entry: calls.append("recording_media_sync"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "_schedule_startup_maintenance",
+        lambda hass, entry, coordinator: calls.append("startup_maintenance"),
+    )
+
+    hass = SimpleNamespace(
+        data={},
+        config_entries=ConfigEntries(),
+        bus=Bus(),
+        is_running=True,
+    )
+
+    assert asyncio.run(xsense_module.async_setup_entry(hass, Entry()))
+
+    assert ("cleanup", "entry-no-camera") in calls
+    assert "recordings_panel" not in calls
+    assert "recordings_http_views" not in calls
+    assert "playback_view" not in calls
+    assert "recording_services" not in calls
+    assert "recording_media_sync" not in calls
+
+
+def test_setup_entry_registers_recordings_runtime_with_cameras(monkeypatch):
+    calls = []
+
+    def async_track_time_interval(hass, action, interval):
+        calls.append(("interval", interval))
+        return lambda: None
+
+    async def async_register_recordings_panel(hass):
+        calls.append("recordings_panel")
+
+    async def async_register_recordings_http_views(hass):
+        calls.append("recordings_http_views")
+
+    async def async_register_playback_view(hass):
+        calls.append("playback_view")
+
+    async def async_register_recording_services(hass):
+        calls.append("recording_services")
+
+    class Coordinator:
+        data = {
+            "stations": {},
+            "devices": {"camera": SimpleNamespace(type="SSC0A")},
+        }
+
+        async def async_config_entry_first_refresh(self):
+            calls.append("first_refresh")
+
+        def async_start_camera_ai_history_polling(self, *, immediate=True):
+            calls.append(("camera_history_polling", immediate))
+
+        def async_schedule_deferred_refresh(self):
+            calls.append("deferred_refresh")
+
+    class ConfigEntries:
+        async def async_forward_entry_setups(self, entry, platforms):
+            calls.append(("forward_platforms", tuple(platforms)))
+
+    class Bus:
+        def async_listen_once(self, event, callback):
+            calls.append(("listen_once", event))
+            return lambda: None
+
+    class Entry:
+        entry_id = "entry-camera"
+        options = {CONF_RECORDING_MEDIA_SYNC_ENABLED: True}
+
+        def add_update_listener(self, listener):
+            calls.append(("add_update_listener", listener.__name__))
+            return lambda: None
+
+        def async_on_unload(self, unload):
+            calls.append(("on_unload", callable(unload)))
+
+    monkeypatch.setattr(
+        xsense_module,
+        "XSenseDataUpdateCoordinator",
+        lambda hass, entry: Coordinator(),
+    )
+    monkeypatch.setattr(xsense_module, "async_track_time_interval", async_track_time_interval)
+    monkeypatch.setattr(
+        xsense_module,
+        "_cleanup_recordings_runtime",
+        lambda hass, entry_id=None: calls.append(("cleanup", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recordings_panel",
+        async_register_recordings_panel,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recordings_http_views",
+        async_register_recordings_http_views,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_playback_view",
+        async_register_playback_view,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recording_services",
+        async_register_recording_services,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_start_recording_media_sync",
+        lambda hass, entry: calls.append("recording_media_sync"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "_schedule_startup_maintenance",
+        lambda hass, entry, coordinator: calls.append("startup_maintenance"),
+    )
+
+    hass = SimpleNamespace(
+        data={},
+        config_entries=ConfigEntries(),
+        bus=Bus(),
+        is_running=True,
+    )
+
+    assert asyncio.run(xsense_module.async_setup_entry(hass, Entry()))
+
+    assert ("cleanup", "entry-camera") not in calls
+    assert "recordings_panel" in calls
+    assert "recordings_http_views" in calls
+    assert "playback_view" in calls
+    assert "recording_services" in calls
+    assert "recording_media_sync" in calls
 
 
 def test_recordings_runtime_unload_unregisters_after_last_camera(monkeypatch):
