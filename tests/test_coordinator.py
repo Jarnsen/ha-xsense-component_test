@@ -155,6 +155,35 @@ class NoCameraIpcClient:
         )
 
 
+class AddxKickedThenSuccessClient:
+    def __init__(self):
+        self.calls = 0
+        self._addx_session = {"token": "stale-token"}
+
+    async def update_camera_data(self):
+        self.calls += 1
+        from custom_components.xsense import coordinator
+
+        if self.calls == 1:
+            raise coordinator.APIFailure(
+                "ADDX request for /device/listuserdevices failed with error -1024/ACCOUNT_GET_KICKED"
+            )
+
+
+class AddxKickedAlwaysClient:
+    def __init__(self):
+        self.calls = 0
+        self._addx_session = {"token": "stale-token"}
+
+    async def update_camera_data(self):
+        self.calls += 1
+        from custom_components.xsense import coordinator
+
+        raise coordinator.APIFailure(
+            "ADDX request for /device/listuserdevices failed with error -1024/ACCOUNT_GET_KICKED"
+        )
+
+
 @pytest.mark.asyncio
 async def test_camera_update_failure_does_not_suppress_next_retry():
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
@@ -168,6 +197,43 @@ async def test_camera_update_failure_does_not_suppress_next_retry():
     await coordinator._update_cameras()
 
     assert coordinator.xsense.calls == 2
+    assert coordinator._camera_initialized is False
+    assert coordinator._last_camera_update_attempt is None
+
+
+@pytest.mark.asyncio
+async def test_camera_update_recovers_once_after_addx_account_get_kicked():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = AddxKickedThenSuccessClient()
+    coordinator._camera_initialized = False
+    coordinator._last_camera_update_attempt = None
+
+    assert await coordinator._update_cameras() is True
+
+    assert coordinator.xsense.calls == 2
+    assert coordinator.xsense._addx_session is None
+    assert coordinator._camera_initialized is True
+    assert coordinator._last_camera_update_attempt is not None
+
+
+@pytest.mark.asyncio
+async def test_camera_update_preserves_cache_when_addx_account_kick_recovery_fails():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    camera = SimpleNamespace(entity_id="camera-id", sn="camera-sn", type="SSC0A")
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = AddxKickedAlwaysClient()
+    coordinator._camera_initialized = True
+    coordinator._last_camera_update_attempt = None
+    coordinator._camera_station_cache = {"camera-id": camera}
+
+    assert await coordinator._update_cameras() is False
+
+    assert coordinator.xsense.calls == 2
+    assert coordinator.xsense._addx_session is None
+    assert coordinator._camera_station_cache == {"camera-id": camera}
     assert coordinator._camera_initialized is False
     assert coordinator._last_camera_update_attempt is None
 

@@ -4138,9 +4138,17 @@ def test_calculate_mac_string_led_lists_use_java_scalar_text():
     assert client._calculate_mac(data) == hashlib.md5(b"atruenullzsecret").hexdigest()
 
 
+def test_decode_secret_uses_app_code_prefix_length():
+    client = async_xsense.AsyncXSense()
+    client.APPCODE = "12345"
+    encoded_secret = base64.b64encode(b"12345secretx").decode()
+
+    assert client._decode_secret(encoded_secret) == b"secret"
+
+
 @pytest.mark.asyncio
-async def test_get_client_info_uses_apk_1360_client_metadata():
-    encoded_secret = base64.b64encode(b"1360secretx").decode()
+async def test_get_client_info_uses_apk_1400_client_metadata():
+    encoded_secret = base64.b64encode(b"1400secretx").decode()
     session = CapturePostSession(
         {
             "reCode": 200,
@@ -4158,15 +4166,15 @@ async def test_get_client_info_uses_apk_1360_client_metadata():
 
     body = session.posts[0][1]["json"]
     assert body["bizCode"] == "101001"
-    assert body["appCode"] == "1360"
-    assert body["appVersion"] == "v1.36.0_20260130"
+    assert body["appCode"] == "1400"
+    assert body["appVersion"] == "v1.40.0_20260612"
     assert body["clientType"] == "2"
     assert client.clientid == "client-id"
     assert client.clientsecret == b"secret"
 
 
 @pytest.mark.asyncio
-async def test_authenticated_app_call_uses_apk_1360_client_metadata():
+async def test_authenticated_app_call_uses_apk_1400_client_metadata():
     session = CapturePostSession({"reCode": 200, "reData": {"ok": True}})
     client = async_xsense.AsyncXSense(session)
     client.access_token = "access-token"
@@ -4179,8 +4187,8 @@ async def test_authenticated_app_call_uses_apk_1360_client_metadata():
 
     body = session.posts[0][1]["json"]
     assert body["bizCode"] == "102007"
-    assert body["appCode"] == "1360"
-    assert body["appVersion"] == "v1.36.0_20260130"
+    assert body["appCode"] == "1400"
+    assert body["appVersion"] == "v1.40.0_20260612"
     assert body["clientType"] == "2"
     assert body["houseId"] == "house-id"
     assert session.posts[0][1]["headers"] == {"Authorization": "access-token"}
@@ -4205,7 +4213,7 @@ async def test_ai_service_list_uses_apk_701001_user_id_code():
     body = session.posts[0][1]["json"]
     assert body["bizCode"] == "701001"
     assert body["userId"] == "user-id-code"
-    assert body["appCode"] == "1360"
+    assert body["appCode"] == "1400"
     assert session.posts[0][1]["headers"] == {"Authorization": "access-token"}
 
 
@@ -4415,7 +4423,7 @@ async def test_camera_activity_zone_helpers_use_apk_read_endpoints():
 
 
 @pytest.mark.asyncio
-async def test_ipc_call_uses_same_apk_1360_client_metadata():
+async def test_ipc_call_uses_same_apk_1400_client_metadata():
     session = CapturePostSession({"reCode": 200, "reData": {"token": "token"}})
     client = async_xsense.AsyncXSense(session)
     client.access_token = "access-token"
@@ -4430,8 +4438,8 @@ async def test_ipc_call_uses_same_apk_1360_client_metadata():
 
     body = session.posts[0][1]["json"]
     assert body["bizCode"] == "C10101"
-    assert body["appCode"] == "1360"
-    assert body["appVersion"] == "v1.36.0_20260130"
+    assert body["appCode"] == "1400"
+    assert body["appVersion"] == "v1.40.0_20260612"
     assert body["clientType"] == "2"
     assert body["userName"] == "user@example.com"
     assert body["nodeType"] == "US"
@@ -4494,6 +4502,34 @@ async def test_addx_call_reregisters_once_when_account_get_kicked():
         "old-token",
         "new-token",
     ]
+
+
+@pytest.mark.asyncio
+async def test_addx_call_clears_cached_session_when_reregister_after_kick_fails():
+    class KickedPostSession:
+        closed = False
+
+        def post(self, url, **kwargs):
+            return CapturePostResponse({"result": -1024, "msg": "ACCOUNT_GET_KICKED"})
+
+    session = KickedPostSession()
+    client = async_xsense.AsyncXSense(session)
+    client._addx_session = {
+        "token": "old-token",
+        "nodeType": "US",
+        "countryNo": "US",
+        "language": "en",
+    }
+
+    async def register_ipc():
+        raise exceptions.APIFailure("IPC registration failed")
+
+    client.register_ipc = register_ipc
+
+    with pytest.raises(exceptions.APIFailure, match="IPC registration failed"):
+        await client.addx_call("/device/listuserdevices")
+
+    assert client._addx_session is None
 
 
 @pytest.mark.asyncio

@@ -66,8 +66,8 @@ _COGNITO_CLIENT_CONFIG = Config(
 
 class XSenseBase:
     API = 'https://api.x-sense-iot.com'
-    VERSION = "v1.36.0_20260130"
-    APPCODE = "1360"
+    VERSION = "v1.40.0_20260612"
+    APPCODE = "1400"
     CLIENTYPE = "2"
     IPC_API = 'https://ipc.x-sense-iot.com'
     ADDX_API_BY_NODE = {
@@ -198,7 +198,8 @@ class XSenseBase:
 
     def _decode_secret(self, encoded):
         value = base64.b64decode(encoded)
-        return value[4:-1]
+        prefix_len = len(str(self.APPCODE))
+        return value[prefix_len:-1]
 
     def _calculate_mac(self, data):
         values = []

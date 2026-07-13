@@ -913,6 +913,7 @@ class AsyncXSense(XSenseBase):
                     _debug_data_shape(result.get("data")),
                 )
                 if response.status in (401, 403) and _retry:
+                    self._addx_session = None
                     self._addx_session = await self.register_ipc()
                     return await self.addx_call(endpoint, _retry=False, **kwargs)
                 message = result.get("msg") or result.get("message") or "unknown error"
@@ -928,6 +929,7 @@ class AsyncXSense(XSenseBase):
                     _debug_data_shape(result.get("data")),
                 )
                 if result.get("result") == -1024 and _retry:
+                    self._addx_session = None
                     self._addx_session = await self.register_ipc()
                     return await self.addx_call(endpoint, _retry=False, **kwargs)
                 raise APIFailure(

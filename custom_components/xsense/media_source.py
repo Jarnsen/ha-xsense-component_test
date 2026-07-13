@@ -42,9 +42,9 @@ from .const import (
     DOMAIN,
     LOGGER,
 )
-from .coordinator import (
-    _camera_event_history_playback_data,
-    _camera_event_history_records,
+from .python_xsense.event_parser import (
+    camera_event_history_playback_data,
+    camera_event_history_records,
 )
 from .playback import recording_media_url
 
@@ -1437,7 +1437,7 @@ class XSenseRecordingIndex:
             int(end.timestamp()),
             limit=RECORDING_PAGE_LIMIT,
         )
-        records = _camera_event_history_records(history)
+        records = camera_event_history_records(history)
         clips_by_serial: dict[str, list[dict[str, Any]]] = {serial: [] for serial in serials}
         media_root = _recording_media_root(self.hass, self.entry_id)
         for record in records:
@@ -1553,7 +1553,7 @@ def _recording_clip_from_record(
         return None
     media_root = media_root or _recording_media_root_from_value(None)
 
-    playback = _camera_event_history_playback_data(record)
+    playback = camera_event_history_playback_data(record)
     start = playback.get("start_time_s") or playback.get("timestamp_s")
     if not start:
         return None

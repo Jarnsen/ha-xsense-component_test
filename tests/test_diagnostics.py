@@ -131,11 +131,11 @@ def test_local_communication_diagnostics_marks_lan_fields_as_unproven():
 
 def test_api_client_diagnostics_keeps_session_state_without_tokens():
     xsense = SimpleNamespace(
-        VERSION="v1.36.0_20260130",
-        APPCODE="1360",
+        VERSION="v1.40.0_20260612",
+        APPCODE="1400",
         CLIENTYPE="2",
-        IPC_VERSION="v1.36.0_20260130",
-        IPC_APPCODE="1360",
+        IPC_VERSION="v1.40.0_20260612",
+        IPC_APPCODE="1400",
         IPC_CLIENTTYPE="2",
         region="us-east-1",
         userid="user-id",
@@ -155,7 +155,7 @@ def test_api_client_diagnostics_keeps_session_state_without_tokens():
     diagnostics = api_client_diagnostics(xsense)
 
     assert diagnostics["connected"] is True
-    assert diagnostics["app_version"] == "v1.36.0_20260130"
+    assert diagnostics["app_version"] == "v1.40.0_20260612"
     assert diagnostics["user_id_present"] is True
     assert diagnostics["user_id_code_present"] is True
     assert diagnostics["aws_signer_present"] is True
