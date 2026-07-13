@@ -629,6 +629,90 @@ def test_camera_entities_include_device_cameras():
     assert entities[1].available is True
 
 
+async def test_camera_platform_adds_cameras_discovered_after_setup():
+    added_entities = []
+    listeners = []
+
+    class Coordinator:
+        last_update_success = True
+
+        def __init__(self):
+            self.data = {"stations": {}, "devices": {}}
+
+        def async_add_listener(self, listener):
+            listeners.append(listener)
+            return lambda: None
+
+    class Entry:
+        entry_id = "entry-id"
+
+        def async_on_unload(self, unload):
+            assert callable(unload)
+
+    coordinator = Coordinator()
+    hass = SimpleNamespace(data={"xsense": {Entry.entry_id: coordinator}})
+
+    def async_add_entities(entities):
+        added_entities.append(list(entities))
+
+    await camera.async_setup_entry(hass, Entry(), async_add_entities)
+
+    discovered_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
+    discovered_camera.entity_id = "camera-id"
+    discovered_camera.name = "Camera"
+    discovered_camera.online = True
+    coordinator.data["stations"][discovered_camera.entity_id] = discovered_camera
+
+    listeners[0]()
+    listeners[0]()
+
+    assert len(added_entities) == 2
+    assert added_entities[0] == []
+    assert [entity._dev_id for entity in added_entities[1]] == ["camera-id"]
+
+
+async def test_camera_platform_does_not_duplicate_camera_when_serial_appears_later():
+    added_entities = []
+    listeners = []
+    discovered_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
+    discovered_camera.entity_id = "camera-id"
+    discovered_camera.name = "Camera"
+    discovered_camera.online = True
+
+    class Coordinator:
+        last_update_success = True
+
+        def __init__(self):
+            self.data = {
+                "stations": {discovered_camera.entity_id: discovered_camera},
+                "devices": {},
+            }
+
+        def async_add_listener(self, listener):
+            listeners.append(listener)
+            return lambda: None
+
+    class Entry:
+        entry_id = "entry-id"
+
+        def async_on_unload(self, unload):
+            assert callable(unload)
+
+    coordinator = Coordinator()
+    hass = SimpleNamespace(data={"xsense": {Entry.entry_id: coordinator}})
+
+    def async_add_entities(entities):
+        added_entities.append(list(entities))
+
+    await camera.async_setup_entry(hass, Entry(), async_add_entities)
+
+    discovered_camera.sn = "CAMERA-SN"
+    listeners[0]()
+
+    assert len(added_entities) == 1
+    assert [entity._dev_id for entity in added_entities[0]] == ["camera-id"]
+
+
 def test_camera_entity_description_has_icon():
     assert camera.CAMERA_DESCRIPTION.icon == "mdi:video"
 
@@ -4311,7 +4395,7 @@ async def test_plain_stream_source_entity_does_not_start_webrtc_camera_live_url(
     assert calls == []
 
 
-async def test_default_camera_returns_live_url_from_stream_endpoint():
+async def test_default_camera_rejects_webrtc_url_from_direct_stream_endpoint(caplog):
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseCameraEntity,
@@ -4348,8 +4432,11 @@ async def test_default_camera_returns_live_url_from_stream_endpoint():
     camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
     camera.entity_id = "camera.camera_test"
 
-    assert await camera.stream_source() == "webrtc://3.65.49.157/live/camera_live"
+    with caplog.at_level(logging.WARNING):
+        assert await camera.stream_source() is None
+
     assert calls == ["start"]
+    assert "unsupported URL for HA stream" in caplog.text
 
 
 async def test_default_camera_raises_when_stream_endpoint_no_response():

@@ -57,7 +57,32 @@ async def async_setup_entry(
     """Set up X-Sense camera entities."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(_camera_entities(coordinator))
+    entities = _camera_entities(coordinator)
+    added_camera_keys = set().union(
+        *(_camera_entity_keys(entity) for entity in entities)
+    )
+    async_add_entities(entities)
+
+    @callback
+    def _async_add_new_cameras() -> None:
+        """Add cameras discovered after the platform was first set up."""
+        new_entities: list[XSenseCameraEntity] = []
+        for entity in _camera_entities(coordinator):
+            keys = _camera_entity_keys(entity)
+            if keys & added_camera_keys:
+                continue
+            added_camera_keys.update(keys)
+            new_entities.append(entity)
+
+        if new_entities:
+            LOGGER.debug(
+                "X-Sense camera platform adding newly discovered cameras: %s",
+                {"count": len(new_entities)},
+            )
+            async_add_entities(new_entities)
+
+    if hasattr(entry, "async_on_unload") and hasattr(coordinator, "async_add_listener"):
+        entry.async_on_unload(coordinator.async_add_listener(_async_add_new_cameras))
 
 
 def _camera_entities(
@@ -111,6 +136,15 @@ def _camera_serial(entity) -> str | None:
         serial = entity.data.get("serialNumber") if isinstance(entity.data, dict) else None
     normalized = str(serial or "").strip().upper()
     return normalized or None
+
+
+def _camera_entity_keys(entity: XSenseCameraEntity) -> set[str]:
+    """Return stable keys used to avoid duplicate camera entity adds."""
+    keys = {str(entity._dev_id).upper()}
+    serial = getattr(entity, "_entity_serial", None)
+    if serial:
+        keys.add(str(serial).upper())
+    return keys
 
 
 class XSenseCameraEntity(XSenseEntity, Camera):
@@ -182,6 +216,16 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         if entity is None or not _is_native_stream_camera(entity):
             return None
         source = await self.coordinator.xsense.start_camera_live(entity)
+        if source and not _is_ha_native_stream_url(source):
+            LOGGER.warning(
+                "X-Sense camera direct stream returned unsupported URL for HA stream: %s",
+                _camera_debug_context(
+                    entity,
+                    None,
+                    source_protocol=_url_scheme(source),
+                ),
+            )
+            return None
         return source
 
     async def async_will_remove_from_hass(self) -> None:
@@ -570,6 +614,19 @@ def _is_webrtc_camera(entity) -> bool:
     if protocol is None:
         return True
     return "rtsp" not in protocol and "rtmp" not in protocol
+
+
+def _is_ha_native_stream_url(source: str) -> bool:
+    """Return whether Home Assistant's stream worker can open this URL directly."""
+    scheme = _url_scheme(source)
+    return scheme in {"rtsp", "rtmp"}
+
+
+def _url_scheme(source: str | None) -> str | None:
+    """Return a lower-case URL scheme without logging the full URL."""
+    if not source or ":" not in str(source):
+        return None
+    return str(source).split(":", 1)[0].lower()
 
 
 def _camera_live_resolution(entity) -> str:

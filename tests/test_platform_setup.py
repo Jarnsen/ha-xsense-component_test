@@ -1314,6 +1314,135 @@ def test_setup_entry_registers_recordings_runtime_with_cameras(monkeypatch):
     assert "recording_media_sync" in calls
 
 
+def test_setup_entry_registers_recordings_runtime_when_camera_appears_later(
+    monkeypatch,
+):
+    calls = []
+    listeners = []
+    pending_tasks = []
+
+    def async_track_time_interval(hass, action, interval):
+        calls.append(("interval", interval))
+        return lambda: None
+
+    async def async_register_recordings_panel(hass):
+        calls.append("recordings_panel")
+
+    async def async_register_recordings_http_views(hass):
+        calls.append("recordings_http_views")
+
+    async def async_register_playback_view(hass):
+        calls.append("playback_view")
+
+    async def async_register_recording_services(hass):
+        calls.append("recording_services")
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {"stations": {}, "devices": {}}
+
+        async def async_config_entry_first_refresh(self):
+            calls.append("first_refresh")
+
+        def async_add_listener(self, listener):
+            listeners.append(listener)
+            return lambda: None
+
+        def async_start_camera_ai_history_polling(self, *, immediate=True):
+            calls.append(("camera_history_polling", immediate))
+
+        def async_schedule_deferred_refresh(self):
+            calls.append("deferred_refresh")
+
+    coordinator = Coordinator()
+
+    class ConfigEntries:
+        async def async_forward_entry_setups(self, entry, platforms):
+            calls.append(("forward_platforms", tuple(platforms)))
+
+    class Entry:
+        entry_id = "entry-delayed-camera"
+        options = {CONF_RECORDING_MEDIA_SYNC_ENABLED: True}
+
+        def add_update_listener(self, listener):
+            calls.append(("add_update_listener", listener.__name__))
+            return lambda: None
+
+        def async_on_unload(self, unload):
+            calls.append(("on_unload", callable(unload)))
+
+    class Hass:
+        is_running = True
+        data = {}
+        config_entries = ConfigEntries()
+
+        def create_task(self, coro):
+            task = asyncio.create_task(coro)
+            pending_tasks.append(task)
+            return task
+
+    monkeypatch.setattr(
+        xsense_module,
+        "XSenseDataUpdateCoordinator",
+        lambda hass, entry: coordinator,
+    )
+    monkeypatch.setattr(xsense_module, "async_track_time_interval", async_track_time_interval)
+    monkeypatch.setattr(
+        xsense_module,
+        "_cleanup_recordings_runtime",
+        lambda hass, entry_id=None: calls.append(("cleanup", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recordings_panel",
+        async_register_recordings_panel,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recordings_http_views",
+        async_register_recordings_http_views,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_playback_view",
+        async_register_playback_view,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recording_services",
+        async_register_recording_services,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_start_recording_media_sync",
+        lambda hass, entry: calls.append("recording_media_sync"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "_schedule_startup_maintenance",
+        lambda hass, entry, coordinator: calls.append("startup_maintenance"),
+    )
+
+    async def run_test():
+        hass = Hass()
+
+        assert await xsense_module.async_setup_entry(hass, Entry())
+        assert ("cleanup", "entry-delayed-camera") in calls
+        assert "recordings_panel" not in calls
+
+        coordinator.data["stations"]["camera"] = SimpleNamespace(type="SSC0A")
+        listeners[0]()
+        await asyncio.gather(*pending_tasks)
+
+    asyncio.run(run_test())
+
+    assert "recordings_panel" in calls
+    assert "recordings_http_views" in calls
+    assert "playback_view" in calls
+    assert "recording_services" in calls
+    assert "recording_media_sync" in calls
+
+
 def test_recordings_runtime_unload_unregisters_after_last_camera(monkeypatch):
     calls = []
 
