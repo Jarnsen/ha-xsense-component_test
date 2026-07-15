@@ -1582,6 +1582,18 @@ def test_recordings_panel_video_uses_authenticated_blob_playback():
     assert "video_${eventName}" in panel
     assert 'this._hass.callApi("POST", "xsense/recordings/panel/debug"' in panel
     assert 'src="${this.escape(playbackUrl)}"' in panel
+    assert 'data-hls-url="${this.escape(playbackUrl)}"' in panel
+    assert 'playbackType === "hls"' in panel
+    assert 'const HLS_JS_URL = "/xsense_recordings_static/vendor/hls.light.min.js"' in panel
+    assert "async loadHlsLibrary()" in panel
+    assert "new Hls({" in panel
+    assert "enableWorker: false" in panel
+    assert "setPlaybackUrl(key, url, type)" in panel
+    assert "clearPlaybackUrl(key)" in panel
+    assert "disposePlaybackResources()" in panel
+    assert 'this.logPanelEvent("playback_hls_js_attached"' in panel
+    assert 'this.logPanelEvent("playback_hls_js_error"' in panel
+    assert 'this.logPanelEvent("playback_hls_native_attached"' in panel
     assert 'this.logPanelEvent("playback_hls_ready"' in panel
     assert "isHlsResponse(contentType, response.url || signedPath)" in panel
     assert "Preparing recording..." in panel
@@ -1612,6 +1624,31 @@ def test_recordings_http_registration_adds_panel_views():
     assert isinstance(views[4], http.XSenseRecordingsHlsSegmentView)
 
 
+def test_recordings_hls_playlist_rewrites_segments_to_token_route(tmp_path):
+    from custom_components.xsense import http
+
+    playlist = tmp_path / "index.m3u8"
+    playlist.write_text(
+        "#EXTM3U\n"
+        "#EXT-X-TARGETDURATION:4\n"
+        "segment_0001.ts\n"
+        "nested/index.m3u8\n"
+        "#EXT-X-ENDLIST\n",
+        encoding="utf-8",
+    )
+
+    assert http._hls_playlist_for_response(
+        playlist,
+        "/api/xsense/recordings/hls/token",
+    ) == (
+        "#EXTM3U\n"
+        "#EXT-X-TARGETDURATION:4\n"
+        "/api/xsense/recordings/hls/token/segment_0001.ts\n"
+        "/api/xsense/recordings/hls/token/nested/index.m3u8\n"
+        "#EXT-X-ENDLIST\n"
+    )
+
+
 def test_recordings_panel_debug_view_logs_sanitized_payload(caplog):
     from custom_components.xsense import http
 
@@ -1634,6 +1671,9 @@ def test_recordings_panel_debug_view_logs_sanitized_payload(caplog):
                 "network_state": 3,
                 "error_code": 4,
                 "message": "Recording is not ready (404)",
+                "type": "mediaError",
+                "details": "bufferStalledError",
+                "fatal": True,
             }
 
     caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
@@ -1648,6 +1688,9 @@ def test_recordings_panel_debug_view_logs_sanitized_payload(caplog):
     assert "'ready_state': 0" in caplog.text
     assert "'network_state': 3" in caplog.text
     assert "'error_code': 4" in caplog.text
+    assert "'hls_type': 'mediaError'" in caplog.text
+    assert "'hls_details': 'bufferStalledError'" in caplog.text
+    assert "'hls_fatal': True" in caplog.text
     assert "CAMERA-SERIAL-123456" not in caplog.text
 
 

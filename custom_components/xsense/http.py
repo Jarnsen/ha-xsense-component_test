@@ -448,6 +448,9 @@ class XSenseRecordingsPanelDebugView(http.HomeAssistantView):
                 "network_state": _safe_int(payload.get("network_state")),
                 "error_code": _safe_int(payload.get("error_code")),
                 "message": str(payload.get("message") or "")[:240],
+                "hls_type": str(payload.get("type") or "")[:80],
+                "hls_details": str(payload.get("details") or "")[:160],
+                "hls_fatal": _safe_bool(payload.get("fatal")),
             },
         )
         return web.json_response({"ok": True})

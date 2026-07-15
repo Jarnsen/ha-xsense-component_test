@@ -1,3 +1,5 @@
+const HLS_JS_URL = "/xsense_recordings_static/vendor/hls.light.min.js";
+
 class XSenseRecordingsPanel extends HTMLElement {
   constructor() {
     super();
@@ -10,8 +12,11 @@ class XSenseRecordingsPanel extends HTMLElement {
     this.error = "";
     this.signedPaths = new Map();
     this.playbackUrls = new Map();
+    this.playbackTypes = new Map();
     this.playbackErrors = new Map();
     this.playbackLoadingKey = "";
+    this.hlsInstances = new Map();
+    this.hlsLibraryPromise = null;
     this.handleRouteChange = async () => {
       this.syncRouteFromHash();
       if (this.selectedClip) {
@@ -38,10 +43,7 @@ class XSenseRecordingsPanel extends HTMLElement {
   disconnectedCallback() {
     window.removeEventListener("hashchange", this.handleRouteChange);
     window.removeEventListener("popstate", this.handleRouteChange);
-    for (const url of this.playbackUrls.values()) {
-      URL.revokeObjectURL(url);
-    }
-    this.playbackUrls.clear();
+    this.disposePlaybackResources();
   }
 
   async loadData() {
@@ -412,8 +414,12 @@ class XSenseRecordingsPanel extends HTMLElement {
   renderViewer(clip) {
     const clipKey = this.playbackKey(clip);
     const playbackUrl = this.playbackUrls.get(clipKey) || "";
+    const playbackType = this.playbackTypes.get(clipKey) || "";
     const playbackError = this.playbackErrors.get(clipKey) || "";
     const preparing = this.playbackLoadingKey === clipKey;
+    const videoSourceAttrs = playbackType === "hls"
+      ? `data-hls-url="${this.escape(playbackUrl)}" data-playback-key="${this.escape(clipKey)}"`
+      : `src="${this.escape(playbackUrl)}"`;
     return `
       <div class="viewer">
         <div class="viewer-bar">
@@ -421,7 +427,7 @@ class XSenseRecordingsPanel extends HTMLElement {
           <div class="viewer-title"></div>
         </div>
         <div class="viewer-frame">
-          ${playbackUrl ? `<video id="viewer-video" controls autoplay playsinline disablepictureinpicture disableremoteplayback controlsList="nodownload noplaybackrate noremoteplayback" preload="auto" src="${this.escape(playbackUrl)}"></video>` : `<div class="no-video">${this.escape(playbackError || (preparing ? "Preparing recording..." : "Select a recording to play"))}</div>`}
+          ${playbackUrl ? `<video id="viewer-video" controls autoplay playsinline disablepictureinpicture disableremoteplayback controlsList="nodownload noplaybackrate noremoteplayback" preload="auto" ${videoSourceAttrs}></video>` : `<div class="no-video">${this.escape(playbackError || (preparing ? "Preparing recording..." : "Select a recording to play"))}</div>`}
         </div>
         <div class="viewer-details">
           <div class="title">${this.escape(this.cameraName(clip.entry_id, clip.serial))} - ${this.escape(this.formatClipTime(clip))}</div>
@@ -487,7 +493,7 @@ class XSenseRecordingsPanel extends HTMLElement {
     const video = this.shadowRoot.getElementById("viewer-video");
     if (!video) return;
     this.bindVideoDiagnostics(video);
-    video.play?.().catch((err) => {
+    this.attachVideoSource(video).then(() => video.play?.()).catch((err) => {
       if (this.selectedClip) {
         this.logPanelEvent("video_autoplay_error", this.clipDebugPayload(this.selectedClip, {
           message: err?.message || String(err),
@@ -628,7 +634,7 @@ class XSenseRecordingsPanel extends HTMLElement {
       }
       const contentType = response.headers.get("content-type") || "";
       if (this.isHlsResponse(contentType, response.url || signedPath)) {
-        this.playbackUrls.set(key, signedPath);
+        this.setPlaybackUrl(key, signedPath, "hls");
         this.logPanelEvent("playback_hls_ready", this.clipDebugPayload(clip, {
           playback_url: playbackPath,
           content_type: contentType,
@@ -641,11 +647,7 @@ class XSenseRecordingsPanel extends HTMLElement {
       if (!blob.size) {
         throw new Error("Recording is empty");
       }
-      const previousUrl = this.playbackUrls.get(key);
-      if (previousUrl) {
-        URL.revokeObjectURL(previousUrl);
-      }
-      this.playbackUrls.set(key, URL.createObjectURL(blob));
+      this.setPlaybackUrl(key, URL.createObjectURL(blob), "blob");
       this.logPanelEvent("playback_blob_ready", this.clipDebugPayload(clip, {
         playback_url: playbackPath,
         bytes: blob.size,
@@ -666,6 +668,46 @@ class XSenseRecordingsPanel extends HTMLElement {
     }
   }
 
+  setPlaybackUrl(key, url, type) {
+    const previousUrl = this.playbackUrls.get(key);
+    const previousType = this.playbackTypes.get(key);
+    if (previousType === "blob" && previousUrl && previousUrl !== url) {
+      URL.revokeObjectURL(previousUrl);
+    }
+    if (previousType === "hls") {
+      this.hlsInstances.get(key)?.destroy?.();
+      this.hlsInstances.delete(key);
+    }
+    this.playbackUrls.set(key, url);
+    this.playbackTypes.set(key, type);
+  }
+
+  clearPlaybackUrl(key) {
+    const previousUrl = this.playbackUrls.get(key);
+    const previousType = this.playbackTypes.get(key);
+    if (previousType === "blob" && previousUrl) {
+      URL.revokeObjectURL(previousUrl);
+    }
+    this.hlsInstances.get(key)?.destroy?.();
+    this.hlsInstances.delete(key);
+    this.playbackUrls.delete(key);
+    this.playbackTypes.delete(key);
+  }
+
+  disposePlaybackResources() {
+    for (const hls of this.hlsInstances.values()) {
+      hls.destroy?.();
+    }
+    this.hlsInstances.clear();
+    for (const [key, url] of this.playbackUrls.entries()) {
+      if (this.playbackTypes.get(key) === "blob") {
+        URL.revokeObjectURL(url);
+      }
+    }
+    this.playbackUrls.clear();
+    this.playbackTypes.clear();
+  }
+
   isHlsResponse(contentType, url) {
     const text = `${contentType || ""} ${url || ""}`.toLowerCase();
     return text.includes("mpegurl") || text.includes(".m3u8") || text.includes(".m3u");
@@ -676,7 +718,72 @@ class XSenseRecordingsPanel extends HTMLElement {
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
       return "native_hls";
     }
-    return "native_hls_not_reported";
+    if (window.Hls?.isSupported?.()) {
+      return "hls_js";
+    }
+    return "hls_js_loader";
+  }
+
+  async attachVideoSource(video) {
+    const hlsUrl = video.dataset.hlsUrl || "";
+    if (!hlsUrl) return;
+    const key = video.dataset.playbackKey || "";
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = hlsUrl;
+      this.logPanelEvent("playback_hls_native_attached", this.clipDebugPayload(this.selectedClip, {
+        playback_url: hlsUrl,
+      }));
+      return;
+    }
+    const Hls = await this.loadHlsLibrary();
+    if (!Hls?.isSupported?.()) {
+      throw new Error("HLS playback is not supported by this browser");
+    }
+    for (const [instanceKey, instance] of this.hlsInstances.entries()) {
+      if (instanceKey !== key) {
+        instance.destroy?.();
+        this.hlsInstances.delete(instanceKey);
+      }
+    }
+    this.hlsInstances.get(key)?.destroy?.();
+    const hls = new Hls({
+      enableWorker: false,
+      lowLatencyMode: false,
+    });
+    hls.on(Hls.Events.ERROR, (_event, data) => {
+      this.logPanelEvent("playback_hls_js_error", this.clipDebugPayload(this.selectedClip, {
+        playback_url: hlsUrl,
+        type: data?.type || "",
+        details: data?.details || "",
+        fatal: Boolean(data?.fatal),
+      }));
+      if (data?.fatal) {
+        this.clearPlaybackUrl(key);
+        this.playbackErrors.set(key, data?.details || "HLS playback failed");
+        this.render();
+      }
+    });
+    this.hlsInstances.set(key, hls);
+    hls.attachMedia(video);
+    hls.loadSource(hlsUrl);
+    this.logPanelEvent("playback_hls_js_attached", this.clipDebugPayload(this.selectedClip, {
+      playback_url: hlsUrl,
+    }));
+  }
+
+  async loadHlsLibrary() {
+    if (window.Hls) return window.Hls;
+    if (!this.hlsLibraryPromise) {
+      this.hlsLibraryPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = HLS_JS_URL;
+        script.async = true;
+        script.onload = () => resolve(window.Hls);
+        script.onerror = () => reject(new Error("Could not load HLS player"));
+        document.head.appendChild(script);
+      });
+    }
+    return this.hlsLibraryPromise;
   }
 
   clipDebugPayload(clip, extra = {}) {
