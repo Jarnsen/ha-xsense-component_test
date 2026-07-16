@@ -1771,6 +1771,55 @@ def test_recordings_panel_data_exposes_cache_backed_clips(monkeypatch):
     )
 
 
+def test_recordings_panel_data_prefers_hls_over_legacy_mp4(monkeypatch):
+    from custom_components.xsense import http
+
+    monkeypatch.setattr(http, "_path_ready", lambda path: False)
+    monkeypatch.setattr(http, "_mp4_ready", lambda path: True)
+    monkeypatch.setattr(http, "_hls_ready", lambda clip: True)
+    monkeypatch.setattr(http, "_file_size", lambda path: 123)
+    monkeypatch.setattr(http, "_directory_size", lambda path: 777)
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+        )
+    )
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "date": "2026-06-30",
+        "start": 1782049304,
+        "end": 1782049334,
+        "title": "Motion",
+        "source": "video_url",
+        "playback_url": "https://example.invalid/index.m3u8",
+        "media_root": "/media/xsense_recordings",
+    }
+
+    data = http.build_panel_data(
+        hass,
+        {
+            "generated_at": "2026-06-30T00:00:00+00:00",
+            "cameras": [
+                {
+                    "entry_id": "entry-id",
+                    "serial": "CAMERA-SN",
+                    "name": "Garden",
+                    "online": True,
+                    "clips": [clip],
+                }
+            ],
+        },
+    )
+
+    camera = data["cameras"][0]
+    assert data["stats"]["ready_clips"] == 1
+    assert data["stats"]["video_bytes"] == 777
+    assert camera["clips"][0]["playback_url"].startswith(
+        "/api/xsense/recordings/play/entry-id/1782049304/1782049334"
+    )
+
+
 def test_recordings_panel_data_omits_missing_thumbnail_url(monkeypatch):
     from custom_components.xsense import http
 
@@ -1948,6 +1997,84 @@ def test_recordings_panel_playback_serves_cached_file(monkeypatch, tmp_path):
     )
 
     assert isinstance(response, web.FileResponse)
+
+
+def test_recordings_panel_playback_serves_hls_before_legacy_mp4(
+    monkeypatch,
+    tmp_path,
+):
+    from aiohttp import web
+
+    from custom_components.xsense import http, media_source
+    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
+
+    clip_path = tmp_path / "clip.mp4"
+    clip_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00legacy")
+    playlist = tmp_path / "hls" / "index.m3u8"
+    playlist.parent.mkdir(parents=True)
+    playlist.write_text("#EXTM3U\n#EXT-X-TARGETDURATION:4\nsegment_0001.ts\n")
+    (playlist.parent / "segment_0001.ts").write_bytes(b"segment")
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+    }
+
+    async def load_index(self):
+        return {
+            "cameras": [
+                {
+                    "entry_id": "entry-id",
+                    "serial": "CAMERA-SN",
+                    "clips": [clip],
+                }
+            ]
+        }
+
+    async def cached_url(self, current_clip):
+        return "/media/local/xsense_recordings/hls/index.m3u8"
+
+    monkeypatch.setattr(XSenseRecordingsMediaSource, "_async_load_index", load_index)
+    monkeypatch.setattr(
+        XSenseRecordingsMediaSource,
+        "_async_cached_playback_url",
+        cached_url,
+    )
+    monkeypatch.setattr(http, "_clip_cache_path", lambda current_clip: clip_path)
+    monkeypatch.setattr(media_source, "_clip_cache_path", lambda current_clip: clip_path)
+    monkeypatch.setattr(
+        http,
+        "_hls_playlist_cache_path",
+        lambda current_clip: playlist,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: playlist,
+    )
+    hass = SimpleNamespace(
+        data={},
+        config_entries=SimpleNamespace(
+            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+        ),
+    )
+
+    import asyncio
+
+    response = asyncio.run(
+        http.XSenseRecordingsPanelPlaybackView(hass).get(
+            SimpleNamespace(query={"serial": "CAMERA-SN"}),
+            "entry-id",
+            "1782049304",
+            "1782049334",
+        )
+    )
+
+    assert isinstance(response, web.Response)
+    assert not isinstance(response, web.FileResponse)
+    assert response.content_type == http.HLS_MIME_TYPE
+    assert b"/api/xsense/recordings/hls/" in response.body
 
 
 def test_recordings_panel_playback_capture_fallback_forces_camera_capture(

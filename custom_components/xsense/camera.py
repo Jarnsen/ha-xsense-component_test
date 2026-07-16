@@ -23,7 +23,7 @@ from homeassistant.components.camera.webrtc import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from webrtc_models import RTCIceCandidateInit
+from webrtc_models import RTCConfiguration, RTCIceCandidateInit, RTCIceServer
 
 from .python_xsense.async_xsense import camera_live_resolution, is_camera_entity
 from .python_xsense.exceptions import APIFailure, SessionExpired
@@ -254,6 +254,18 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         self._webrtc_sessions: dict[str, object] = {}
         self._pending_webrtc_candidates: dict[str, list[object]] = {}
         self._webrtc_keepalive_tasks: dict[str, asyncio.Task] = {}
+        self._webrtc_ticket_prime_task: asyncio.Task | None = None
+
+    async def async_added_to_hass(self) -> None:
+        """Start background WebRTC ticket warmup after HA adds the camera."""
+        await super().async_added_to_hass()
+        self._schedule_webrtc_ticket_prime()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Refresh camera state and keep the browser WebRTC config warm."""
+        super()._handle_coordinator_update()
+        self._schedule_webrtc_ticket_prime()
 
     @property
     def supported_features(self) -> CameraEntityFeature:
@@ -282,7 +294,55 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
     @callback
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         """Return the Home Assistant browser WebRTC client configuration."""
-        return WebRTCClientConfiguration(data_channel="data-channel-of-")
+        ice_servers = _webrtc_ticket_ice_servers(self._current_entity())
+        if not ice_servers:
+            return WebRTCClientConfiguration(data_channel="data-channel-of-")
+        return WebRTCClientConfiguration(
+            configuration=RTCConfiguration(ice_servers=ice_servers),
+            data_channel="data-channel-of-",
+        )
+
+    @callback
+    def _schedule_webrtc_ticket_prime(self) -> None:
+        """Warm the X-Sense ticket used by HA's synchronous client config call."""
+        entity = self._current_entity()
+        if entity is None or not _is_webrtc_camera(entity):
+            return
+        if not hasattr(self, "hass") or not hasattr(self.hass, "async_create_task"):
+            return
+        if _webrtc_ticket_ice_servers(entity):
+            return
+        if (
+            self._webrtc_ticket_prime_task is not None
+            and not self._webrtc_ticket_prime_task.done()
+        ):
+            return
+        self._webrtc_ticket_prime_task = self.hass.async_create_task(
+            self._async_prime_webrtc_ticket()
+        )
+
+    async def _async_prime_webrtc_ticket(self) -> None:
+        """Fetch a WebRTC ticket so the HA browser config can include ICE servers."""
+        entity = self._current_entity()
+        if entity is None or not _is_webrtc_camera(entity):
+            return
+        try:
+            ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(
+                entity, force_refresh=False
+            )
+        except (APIFailure, SessionExpired) as err:
+            LOGGER.debug(
+                "X-Sense camera WebRTC ticket warmup failed: %s",
+                _camera_debug_context(
+                    entity, None, error=str(err), error_type=type(err).__name__
+                ),
+            )
+            return
+        if isinstance(ticket_data, dict):
+            LOGGER.debug(
+                "X-Sense camera WebRTC ticket warmed for client config: %s",
+                _ticket_data_debug_context(ticket_data),
+            )
 
     async def async_handle_async_webrtc_offer(
         self, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage
@@ -729,6 +789,34 @@ def _ticket_data_debug_context(ticket_data):
         "ticket_id": _short_id(ticket_data.get("id")),
         "real_camera": _short_id(ticket_data.get("realCxSerialNumber")),
     }
+
+
+def _webrtc_ticket_ice_servers(entity) -> list[RTCIceServer]:
+    """Return browser ICE servers from the latest X-Sense WebRTC ticket."""
+    if entity is None:
+        return []
+    data = getattr(entity, "data", None)
+    if not isinstance(data, dict):
+        return []
+    ticket = data.get("cameraWebrtcTicket")
+    if not isinstance(ticket, dict):
+        return []
+
+    servers: list[RTCIceServer] = []
+    for server in ticket.get("iceServer") or []:
+        if not isinstance(server, dict):
+            continue
+        urls = server.get("urls") or server.get("url")
+        if not urls:
+            continue
+        servers.append(
+            RTCIceServer(
+                urls=urls,
+                username=server.get("username") or None,
+                credential=server.get("credential") or None,
+            )
+        )
+    return servers
 
 
 def _send_remote_candidate(send_message, entity, session_id, candidate) -> None:

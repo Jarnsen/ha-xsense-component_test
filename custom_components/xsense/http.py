@@ -114,19 +114,22 @@ async def _async_build_panel_data_from_index(
             thumb_path = _clip_thumbnail_cache_path(clip)
             mp4_cached = await source._async_mp4_ready(clip_path)
             hls_cached = await source._async_hls_ready(clip)
+            if hls_cached and mp4_cached:
+                await source._async_cleanup_legacy_mp4_cache(clip)
+                mp4_cached = False
             clip_cached = mp4_cached or hls_cached
             thumb_cached = await source._async_path_ready(thumb_path)
             if clip_cached:
                 stats["cached_videos"] += 1
                 camera_stats["cached_videos"] += 1
-                if mp4_cached:
-                    camera_stats["video_bytes"] += await source._async_file_size(
-                        clip_path
-                    )
-                elif hls_cached:
+                if hls_cached:
                     camera_stats["video_bytes"] += await source._async_file_job(
                         _directory_size,
                         _hls_playlist_cache_path(clip).parent,
+                    )
+                elif mp4_cached:
+                    camera_stats["video_bytes"] += await source._async_file_size(
+                        clip_path
                     )
             if thumb_cached:
                 stats["cached_thumbnails"] += 1
@@ -167,7 +170,9 @@ async def _async_build_panel_data_from_index(
                     "thumbnail_cached": thumb_cached,
                     "playable": playable,
                     "sync_enabled": sync_enabled,
-                    "playback_url": _local_media_url(clip_path)
+                    "playback_url": _playback_api_url(entry_id, serial, start, end)
+                    if hls_cached
+                    else _local_media_url(clip_path)
                     if mp4_cached
                     else _playback_api_url(entry_id, serial, start, end),
                     "thumbnail_url": _panel_thumbnail_url(
@@ -281,12 +286,12 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
             if clip_cached:
                 stats["cached_videos"] += 1
                 camera_stats["cached_videos"] += 1
-                if mp4_cached:
-                    camera_stats["video_bytes"] += _file_size(clip_path)
-                elif hls_cached:
+                if hls_cached:
                     camera_stats["video_bytes"] += _directory_size(
                         _hls_playlist_cache_path(clip).parent
                     )
+                elif mp4_cached:
+                    camera_stats["video_bytes"] += _file_size(clip_path)
             if thumb_cached:
                 stats["cached_thumbnails"] += 1
                 camera_stats["cached_thumbnails"] += 1
@@ -317,7 +322,9 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
                     "thumbnail_cached": thumb_cached,
                     "playable": playable,
                     "sync_enabled": sync_enabled,
-                    "playback_url": _local_media_url(clip_path)
+                    "playback_url": _playback_api_url(entry_id, serial, start, end)
+                    if hls_cached
+                    else _local_media_url(clip_path)
                     if mp4_cached
                     else _playback_api_url(entry_id, serial, start, end),
                     "thumbnail_url": _panel_thumbnail_url(
@@ -512,20 +519,6 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
             )
             raise web.HTTPNotFound(reason="X-Sense recording is not ready") from exc
         output_path = _clip_cache_path(clip)
-        if await source._async_mp4_ready(output_path):
-            output_bytes = await source._async_file_size(output_path)
-            LOGGER.debug(
-                "X-Sense recordings panel playback served cached file: %s",
-                {
-                    **context,
-                    "elapsed_ms": int((monotonic() - started_at) * 1000),
-                    "bytes": output_bytes,
-                },
-            )
-            return web.FileResponse(
-                output_path,
-                headers={"Cache-Control": "private, max-age=3600"},
-            )
         if await source._async_hls_ready(clip):
             playlist_path = _hls_playlist_cache_path(clip)
             token = _create_hls_segment_token(self.hass, playlist_path.parent)
@@ -546,6 +539,20 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
                 text=playlist,
                 content_type=HLS_MIME_TYPE,
                 headers={"Cache-Control": "private, max-age=300"},
+            )
+        if await source._async_mp4_ready(output_path):
+            output_bytes = await source._async_file_size(output_path)
+            LOGGER.debug(
+                "X-Sense recordings panel playback served cached file: %s",
+                {
+                    **context,
+                    "elapsed_ms": int((monotonic() - started_at) * 1000),
+                    "bytes": output_bytes,
+                },
+            )
+            return web.FileResponse(
+                output_path,
+                headers={"Cache-Control": "private, max-age=3600"},
             )
         if not url:
             LOGGER.debug(

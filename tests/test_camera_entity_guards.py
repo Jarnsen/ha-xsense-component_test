@@ -2723,6 +2723,56 @@ def test_recording_media_source_caches_hd_hls_without_sd_fallback(
     assert not (playlist.parent / "segment_0004.ts").exists()
 
 
+def test_recording_media_source_prefers_hls_cache_over_legacy_mp4(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import media_source
+
+    source = media_source.XSenseRecordingsMediaSource(SimpleNamespace())
+    output_path = tmp_path / "clip.mp4"
+    output_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00legacy")
+    playlist = tmp_path / "hls" / "index.m3u8"
+    playlist.parent.mkdir(parents=True)
+    playlist.write_text("#EXTM3U\n#EXT-X-TARGETDURATION:4\nsegment_0001.ts\n")
+    (playlist.parent / "segment_0001.ts").write_bytes(b"segment")
+    clip = {
+        "source": "video_url",
+        "quality": "HD",
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "playback_url": "https://example.invalid/index.m3u8",
+        "media_root": tmp_path.as_posix(),
+    }
+
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: playlist,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_clip_cache_path",
+        lambda current_clip: output_path,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_local_media_url",
+        lambda path: f"/media/local/test/{path.name}",
+    )
+
+    result = asyncio.run(source._async_cached_playback_url(clip))
+    media_url = asyncio.run(source._async_cached_media_url(clip))
+    media_format = asyncio.run(source._async_cached_media_format(clip))
+
+    assert result == "/media/local/test/index.m3u8"
+    assert media_url == "/media/local/test/index.m3u8"
+    assert media_format == "hls"
+    assert not output_path.exists()
+
+
 def test_recording_media_source_hls_master_ready_with_one_buffered_variant(
     monkeypatch,
     tmp_path,
@@ -4232,7 +4282,7 @@ def test_webrtc_client_config_uses_data_channel_only():
     assert "iceServers" not in config["configuration"]
 
 
-def test_webrtc_client_config_ignores_cached_ticket_ice_servers():
+def test_webrtc_client_config_uses_cached_ticket_ice_servers():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseWebRTCCameraEntity,
@@ -4245,7 +4295,15 @@ def test_webrtc_client_config_ignores_cached_ticket_ice_servers():
             "supportWebrtc": True,
             "cameraWebrtcTicket": {
                 "expirationTime": 9999999999999,
-                "iceServer": [{"url": "turn:turn.example.com"}],
+                "iceServer": [
+                    {
+                        "url": "turn:turn.example.com",
+                        "username": "user",
+                        "credential": "pass",
+                    },
+                    {"urls": ["stun:stun.example.com"]},
+                    {"credential": "ignored-without-url"},
+                ],
             },
         },
     )
@@ -4270,7 +4328,63 @@ def test_webrtc_client_config_ignores_cached_ticket_ice_servers():
 
     config = camera._async_get_webrtc_client_configuration().to_frontend_dict()
 
-    assert "iceServers" not in config["configuration"]
+    assert config["dataChannel"] == "data-channel-of-"
+    assert config["configuration"]["iceServers"] == [
+        {
+            "urls": "turn:turn.example.com",
+            "username": "user",
+            "credential": "pass",
+        },
+        {"urls": ["stun:stun.example.com"]},
+    ]
+
+
+async def test_webrtc_ticket_warmup_populates_client_config_ice_servers():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseWebRTCCameraEntity,
+    )
+
+    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+    calls = []
+
+    class XSense:
+        async def get_camera_webrtc_ticket(self, current_entity, *, force_refresh=False):
+            calls.append((current_entity.sn, force_refresh))
+            ticket = {
+                "expirationTime": 9999999999999,
+                "iceServer": [{"url": "turn:turn.example.com"}],
+            }
+            current_entity.data["cameraWebrtcTicket"] = ticket
+            return ticket
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
+            self.xsense = XSense()
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    class Hass:
+        def async_create_task(self, coro):
+            return asyncio.create_task(coro)
+
+    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.hass = Hass()
+
+    camera._schedule_webrtc_ticket_prime()
+    await camera._webrtc_ticket_prime_task
+    config = camera._async_get_webrtc_client_configuration().to_frontend_dict()
+
+    assert calls == [("SSC0ATEST", False)]
+    assert config["configuration"]["iceServers"] == [
+        {"urls": "turn:turn.example.com"}
+    ]
 
 
 def test_camera_entity_webrtc_protocol_default_matches_apk():
