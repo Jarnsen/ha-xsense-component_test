@@ -727,6 +727,8 @@ def test_mqtt_skp0a_safenotice_fires_keypad_code_event(caplog):
                 "keypad_code": "1234",
                 "safe_mode": "Home",
                 "safe_mode_aim": "Home",
+                "mode_button": "Home",
+                "submit_button": "Home",
                 "event_id": "101",
                 "event_time": "20260706163702",
                 "alarm_cancel": "0",
@@ -763,6 +765,50 @@ def test_mqtt_skp0a_safenotice_fires_keypad_code_event(caplog):
     ]
     assert "code_present=True" in caplog.text
     assert "1234" not in caplog.text
+
+
+def test_mqtt_skp0a_safenotice_skips_keypad_notice_without_code(caplog):
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Station:
+        sn = "15A9862E"
+        shadow_name = "SBS50-15A9862E"
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    class Bus:
+        def __init__(self):
+            self.events = []
+
+        def async_fire(self, event_type, payload):
+            self.events.append((event_type, payload))
+
+    station = Station()
+    parsed = []
+    bus = Bus()
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = SimpleNamespace(bus=bus)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    caplog.set_level(logging.DEBUG)
+    coordinator.async_event_received(
+        "$aws/things/SBS50-15A9862E/shadow/name/2nd_safenotice/update",
+        (
+            '{"state":{"reported":{"type":"SBS50","stationSN":"15A9862E",'
+            '"safeMode":"Home","notices":[{"type":"SKP0A",'
+            '"deviceSN":"C76494F1","eventId":"101",'
+            '"eventParam":{"safeModeAim":"Home"}}]}}}'
+        ).encode(),
+    )
+
+    assert bus.events == []
+    assert parsed
+    assert "keypad notice skipped without code" in caplog.text
 
 
 def test_mqtt_safenotice_ignores_non_keypad_notices():

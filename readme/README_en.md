@@ -142,26 +142,15 @@ ____________________________________________________________
 ## SKP0A Keypad Code Automations
 The SKP0A keypad does not publish every individual key press. It publishes a keypad event after a valid X-Sense app-created code is submitted with Home, Away, or Disarmed. The integration exposes that submitted-code event as `xsense_keypad_code`.
 
-Use the included blueprint to run Home Assistant actions for a selected code. You can optionally require the Home, Away, or Disarmed mode button used to submit the code, and optionally limit the automation to one keypad serial number.
+Use the included single-code blueprint to run Home Assistant actions for one selected code. You can optionally require the Home, Away, or Disarmed mode button used to submit the code, and optionally limit the automation to one keypad serial number.
 
 [![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
 
-Example automation:
+Use the router blueprint when you want one automation to map several keypad codes to different Home Assistant actions.
 
-```yaml
-alias: "Notify when X-Sense detects a person"
-triggers:
-  - trigger: event.received
-    target:
-      entity_id: event.front_camera_ai_detection
-    options:
-      event_type:
-        - person
-actions:
-  - action: notify.mobile_app_phone
-    data:
-      message: "X-Sense camera detected a person."
-```
+[![Import Router Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+The keypad mode buttons act as submit buttons. If the selected mode is already active, X-Sense may not publish a new event, so choose one of the currently inactive mode buttons when submitting a code.
 
 ____________________________________________________________
 ## Automation Examples

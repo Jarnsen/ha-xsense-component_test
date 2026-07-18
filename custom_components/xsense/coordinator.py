@@ -1045,12 +1045,22 @@ def _fire_keypad_code_events(hass: HomeAssistant, data: dict[str, Any]) -> None:
         if not isinstance(event_param, dict):
             event_param = {}
         keypad_code = event_param.get("pword")
+        if keypad_code in (None, ""):
+            LOGGER.debug(
+                "X-Sense keypad notice skipped without code: device=%s aim=%s",
+                notice.get("deviceSN"),
+                event_param.get("safeModeAim"),
+            )
+            continue
+        mode_button = event_param.get("safeModeAim")
         payload = {
             "station_sn": data.get("stationSN"),
             "device_sn": notice.get("deviceSN"),
-            "keypad_code": str(keypad_code) if keypad_code is not None else None,
+            "keypad_code": str(keypad_code),
             "safe_mode": data.get("safeMode"),
-            "safe_mode_aim": event_param.get("safeModeAim"),
+            "safe_mode_aim": mode_button,
+            "mode_button": mode_button,
+            "submit_button": mode_button,
             "event_id": notice.get("eventId"),
             "event_time": notice.get("eventTime"),
             "alarm_cancel": event_param.get("alarmCancel"),

@@ -367,6 +367,32 @@ def test_packaged_keypad_code_blueprint_matches_import_blueprint():
     assert package_path.read_text(encoding="utf-8") == import_blueprint
 
 
+def test_keypad_code_router_blueprint_has_import_source_metadata():
+    with open(
+        "blueprints/automation/xsense/keypad_code_router.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    source_url = blueprint["blueprint"]["source_url"]
+
+    assert source_url == (
+        "https://github.com/Jarnsen/ha-xsense-component_test/blob/main/"
+        "blueprints/automation/xsense/keypad_code_router.yaml"
+    )
+
+
+def test_packaged_keypad_code_router_blueprint_matches_import_blueprint():
+    package_path = Path("custom_components/xsense/blueprints/keypad_code_router.yaml")
+    with open(
+        "blueprints/automation/xsense/keypad_code_router.yaml",
+        encoding="utf-8",
+    ) as file:
+        import_blueprint = file.read()
+
+    assert package_path.read_text(encoding="utf-8") == import_blueprint
+
+
 def test_keypad_code_blueprint_uses_submitted_code_event():
     with open(
         "blueprints/automation/xsense/keypad_code_action.yaml",
@@ -430,6 +456,35 @@ def test_keypad_code_blueprint_exposes_safe_filters_and_action_input():
     ]
 
 
+def test_keypad_code_router_blueprint_maps_multiple_codes_to_actions():
+    with open(
+        "blueprints/automation/xsense/keypad_code_router.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    inputs = blueprint["blueprint"]["input"]
+    variables = blueprint["variables"]
+    choose = blueprint["actions"][0]["choose"]
+
+    assert blueprint["triggers"] == [
+        {"trigger": "event", "event_type": "xsense_keypad_code"}
+    ]
+    assert blueprint["mode"] == "queued"
+    assert blueprint["max"] == 10
+    assert inputs["keypad_device_sn"]["default"] == ""
+    for index in range(1, 6):
+        assert inputs[f"code_{index}"]["default"] == ""
+        assert inputs[f"mode_button_{index}"]["default"] == "Any"
+        assert inputs[f"actions_{index}"]["default"] == []
+        assert inputs[f"actions_{index}"]["selector"] == {"action": None}
+        assert variables[f"xsense_code_{index}"] == f"code_{index}"
+        assert variables[f"xsense_mode_{index}"] == f"mode_button_{index}"
+        assert choose[index - 1]["sequence"] == f"actions_{index}"
+    assert "mode_button" in variables["xsense_mode_button"]
+    assert "safe_mode_aim" in variables["xsense_mode_button"]
+
+
 def test_ai_notification_blueprint_docs_use_github_file_import_url():
     with open("readme/README_en.md", encoding="utf-8") as file:
         readme = file.read()
@@ -443,6 +498,10 @@ def test_ai_notification_blueprint_docs_use_github_file_import_url():
     assert (
         "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
         "automation%2Fxsense%2Fkeypad_code_action.yaml"
+    ) in readme
+    assert (
+        "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
+        "automation%2Fxsense%2Fkeypad_code_router.yaml"
     ) in readme
 
 
