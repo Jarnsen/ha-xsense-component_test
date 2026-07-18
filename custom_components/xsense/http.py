@@ -29,7 +29,6 @@ from .media_source import (
     _clip_media_playable,
     _clip_start_for_sort,
     _clip_thumbnail_cache_path,
-    _fallback_capture_clip,
     _hls_playlist_cache_path,
     _hls_ready,
     _local_media_url,
@@ -487,19 +486,11 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
         clip = await self._clip(entry_id, serial, start, end)
         started_at = monotonic()
         source = XSenseRecordingsMediaSource(self.hass)
-        capture_requested = str(request.query.get("capture") or "") == "1"
-        if capture_requested:
-            replacing_direct_cache = clip.get("source") == "video_url"
-            clip = _fallback_capture_clip(clip)
-            output_path = _clip_cache_path(clip)
-            if replacing_direct_cache and await source._async_path_ready(output_path):
-                await source._async_file_job(_unlink_missing_ok, output_path)
         cached = await source._async_cached_media_ready(clip)
         context = {
             **_clip_debug_context(entry_id, serial, start, end),
             "source": clip.get("source"),
             "quality": clip.get("quality"),
-            "capture_requested": capture_requested,
             "cached": cached,
             "format": await source._async_cached_media_format(clip),
         }
@@ -757,16 +748,11 @@ def _playback_api_url(
     serial: str,
     start: int,
     end: int,
-    *,
-    capture: bool = False,
 ) -> str:
-    url = (
+    return (
         f"/api/{DOMAIN}/recordings/play/"
         f"{quote(entry_id, safe='')}/{start}/{end}?serial={quote(serial, safe='')}"
     )
-    if capture:
-        url = f"{url}&capture=1"
-    return url
 
 
 def _thumbnail_api_url(entry_id: str, serial: str, start: int, end: int) -> str:

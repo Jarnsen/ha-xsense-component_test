@@ -1617,7 +1617,6 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
         "timestamp": 1781478300,
         "timestamp_s": 1781478300,
         "tags": "motion",
-        "source": "sd_playback",
     }
     assert house.stations["camera-id"].data[CAMERA_AI_SERVICE_AVAILABLE] is False
     assert "isMoved" not in parsed[0][1]

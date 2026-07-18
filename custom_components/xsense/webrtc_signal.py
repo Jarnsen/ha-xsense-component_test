@@ -492,9 +492,10 @@ class XSenseWebRTCSignalSession:
         )
         for candidate in candidates:
             await self._send_candidate(candidate)
+        await self._flush_pending_remote_candidates()
 
     async def _flush_pending_remote_candidates(self) -> None:
-        """Send any HA candidates that arrived before the X-Sense answer."""
+        """Send any HA candidates that arrived before the X-Sense offer was sent."""
         while self._pending_remote_candidates and not self._closed:
             await self._send_candidate(self._pending_remote_candidates.pop(0))
 
@@ -623,34 +624,6 @@ def make_sd_video_list_command_payload(
     return make_data_channel_command_payload(
         "getSdVideoList",
         {"startTime": int(start_time), "stopTime": int(stop_time)},
-        request_id=request_id,
-        timestamp=timestamp,
-    )
-
-
-def make_start_sd_playback_command_payload(
-    start_time: int,
-    *,
-    request_id: str | None = None,
-    timestamp: int | None = None,
-) -> str:
-    """Return the APK startPlaySdVideo data-channel command."""
-    return make_data_channel_command_payload(
-        "startPlaySdVideo",
-        {"startTime": int(start_time)},
-        request_id=request_id,
-        timestamp=timestamp,
-    )
-
-
-def make_stop_sd_playback_command_payload(
-    *,
-    request_id: str | None = None,
-    timestamp: int | None = None,
-) -> str:
-    """Return the APK stopPlaySdVideo data-channel command."""
-    return make_data_channel_command_payload(
-        "stopPlaySdVideo",
         request_id=request_id,
         timestamp=timestamp,
     )
@@ -1151,8 +1124,6 @@ def _candidate_queue_reason(session: XSenseWebRTCSignalSession) -> str:
         return "signal_closed"
     if not session._offer_sent:
         return "waiting_for_peer_offer"
-    if not _future_has_result(session._answer):
-        return "waiting_for_sdp_answer"
     return "unknown"
 
 
@@ -1237,7 +1208,7 @@ def _future_has_result(future: asyncio.Future[Any]) -> bool:
 
 def _should_log_count(count: int) -> bool:
     """Return whether a repeated ICE/candidate count should emit debug."""
-    return count in {1, 2, 3, 5, 10, 25, 50, 100}
+    return count in {1, 10, 25, 50, 100}
 
 
 def _exception_debug(err: BaseException) -> dict[str, Any]:

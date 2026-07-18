@@ -423,11 +423,6 @@ def camera_event_history_playback_source(record: dict[str, Any]) -> str | None:
     """Return how the APK can play a camera history record."""
     if record.get("videoUrl"):
         return "video_url"
-    if record.get("startTime") not in (None, "") or record.get("timestamp") not in (
-        None,
-        "",
-    ):
-        return "sd_playback"
     return None
 
 

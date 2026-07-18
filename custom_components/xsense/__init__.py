@@ -31,7 +31,6 @@ from .media_source import (
     async_start_recording_media_sync,
     async_unregister_recording_services,
 )
-from .playback import async_register_playback_view, async_unregister_playback_panel
 from .repairs import async_check_stale_camera_blueprints
 
 PLATFORMS: list[Platform] = [
@@ -223,7 +222,6 @@ def _cleanup_recordings_runtime(hass: HomeAssistant, entry_id: str | None = None
     if entry_id:
         async_remove_recording_index(hass, entry_id)
     async_unregister_recordings_panel(hass)
-    async_unregister_playback_panel(hass)
     async_unregister_recording_services(hass)
 
 
@@ -233,7 +231,6 @@ async def _async_register_recordings_runtime(
     """Register recordings UI/runtime pieces once cameras are present."""
     await async_register_recordings_panel(hass)
     await async_register_recordings_http_views(hass)
-    await async_register_playback_view(hass)
     await async_register_recording_services(hass)
     async_start_recording_media_sync(hass, entry)
 

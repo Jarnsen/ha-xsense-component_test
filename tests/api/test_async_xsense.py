@@ -1876,12 +1876,12 @@ async def test_self_test_uses_apk_payload_shape(
         assert len(desired["time"]) == expected_time_len
 
 
-def test_xs01_wx_standalone_does_not_expose_manual_self_test_action():
+def test_xs01_wx_standalone_exposes_legacy_manual_self_test_action():
     client = async_xsense.AsyncXSense()
     station = FakeXSenseStation("XS01-WX", "ABC123")
     station.entity_type = entity_map.EntityType.SMOKE
 
-    assert client.has_action(station, "test") is False
+    assert client.has_action(station, "test") is True
 
 
 def test_actions_require_resolvable_apk_shadow_route():
@@ -1983,7 +1983,7 @@ def test_entity_map_covers_current_apk_router_models():
 
 
 @pytest.mark.parametrize("device_type", ["SC06-WX", "XS0B-iR"])
-def test_wifi_models_do_not_expose_test_without_apk_test_path(device_type):
+def test_wifi_models_expose_legacy_test_path(device_type):
     client = async_xsense.AsyncXSense()
     station = FakeXSenseStation(device_type)
     station.entity_type = (
@@ -1993,7 +1993,7 @@ def test_wifi_models_do_not_expose_test_without_apk_test_path(device_type):
     )
 
     assert client.has_action(station, "mute")
-    assert not client.has_action(station, "test")
+    assert client.has_action(station, "test")
 
 
 def test_all_declared_model_actions_resolve_for_representative_entities():
@@ -2019,47 +2019,84 @@ def test_all_declared_model_actions_resolve_for_representative_entities():
 
 
 @pytest.mark.asyncio
-async def test_xs01_wx_mute_is_not_exposed_without_confirmed_app_control():
+async def test_xs01_wx_mute_uses_station_as_its_own_target():
     client = async_xsense.AsyncXSense()
-    station = FakeXSenseStation("XS01-WX", "ABC123")
+    station = FakeXSenseStation("XS01-WX", "EN123")
     station.entity_type = entity_map.EntityType.SMOKE
+    station.data["smokeEdition"] = "9"
 
-    assert not client.has_action(station, "mute")
-    with pytest.raises(async_xsense.XSenseError):
-        await client.action(station, "mute")
+    station_arg, page, desired = await _capture_action(client, station, "mute")
+
+    assert station_arg.shadow_name == "XS01-WX-EN123"
+    assert page == "2nd_appmute"
+    assert desired["stationSN"] == "EN123"
+    assert desired["deviceSN"] == "EN123"
+    assert desired["shadow"] == "appMute"
+    assert desired["muteType"] == "0"
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("device_type", "expected_shadow", "expected_topic", "expected_thing"),
+    ("device_type", "station_sn", "expected_page"),
     [
-        ("SC06-WX", "appMute", "2nd_appmute", "SC06-WX-station-sn"),
-        ("SC07-WX", "appMute", "2nd_appmute", "SC07-WX-station-sn"),
-        ("SC07-iA", "appMute", "2nd_appmute", "SC07-iA-station-sn"),
-        ("XP0H-iR", "appMute", "2nd_appmute", "XP0H-iR-station-sn"),
-        ("XP0A-iR", "appMute", "2nd_appmute", "XP0A-iR-station-sn"),
-        ("XP0J-iA", "appMute", "2nd_appmute", "XP0J-iA-station-sn"),
-        ("XP0S-iA", "appMute", "2nd_appmute", "XP0S-iA-station-sn"),
-        ("XP0T-iA", "appMute", "2nd_appmute", "XP0T-iA-station-sn"),
-        ("XP0V-iA", "appMute", "2nd_appmute", "XP0V-iA-station-sn"),
-        ("XP0W-iA", "appMute", "2nd_appmute", "XP0W-iA-station-sn"),
-        ("XS0B-iR", "appMute", "2nd_appmute", "XS0B-iR-station-sn"),
-        ("XS0E-iR", "appMute", "2nd_appmute", "XS0E-iRstation-sn"),
-        ("XS03-WX", "appMute", "2nd_appmute", "XS03-WXstation-sn"),
-        ("XS0AA-iA", "appMute", "2nd_appmute", "XS0AA-iA-station-sn"),
-        ("XS0AB-iA", "appMute", "2nd_appmute", "XS0AB-iA-station-sn"),
-        ("XS0R-iA", "appMute", "2nd_appmute", "XS0R-iA-station-sn"),
-        ("XC04-WX", "appMute", "2nd_appmute", "XC04-WX-station-sn"),
-        ("XC0C-iA", "appMute", "2nd_appmute", "XC0C-iA-station-sn"),
-        ("XC0C-iR", "appMute", "2nd_appmute", "XC0C-iR-station-sn"),
-        ("STH0C", "extendMute", "2nd_appmute", "STH0C-station-sn"),
-        ("XC0M-iR", "appMute", "2nd_appmute", "XC0M-iR-station-sn"),
-        ("XR0A-iR", "extendMute", "2nd_appmute", "XR0A-iR-station-sn"),
-        ("SWS0B", "appWater", "2nd_appwater", "SWS0B-station-sn"),
+        ("XS01-WX", "EN123", "2nd_selftest_EN123"),
+        ("SC06-WX", "SC06123", "2nd_selftest_SC06123"),
+        ("XS0B-iR", "XS0B123", "appselftest_XS0B123"),
+    ],
+)
+async def test_standalone_smoke_test_actions_use_package_paths(
+    device_type, station_sn, expected_page
+):
+    client = async_xsense.AsyncXSense()
+    station = FakeXSenseStation(device_type, station_sn)
+    station.entity_type = entity_map.entities[device_type]["type"]
+
+    station_arg, page, desired = await _capture_action(client, station, "test")
+
+    assert station_arg is station
+    assert page == expected_page
+    assert desired["stationSN"] == station_sn
+    assert desired["deviceSN"] == station_sn
+    assert desired["shadow"] == "appSelfTest"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "device_type",
+        "expected_shadow",
+        "expected_topic",
+        "expected_thing",
+        "expected_mute_type",
+    ),
+    [
+        ("SC06-WX", "appMute", "2nd_appmute", "SC06-WX-station-sn", "0"),
+        ("SC07-WX", "appMute", "2nd_appmute", "SC07-WX-station-sn", "0"),
+        ("SC07-iA", "appMute", "2nd_appmute", "SC07-iA-station-sn", "0"),
+        ("XP0H-iR", "appMute", "2nd_appmute", "XP0H-iR-station-sn", "0"),
+        ("XP0A-iR", "appMute", "2nd_appmute", "XP0A-iR-station-sn", "0"),
+        ("XP0J-iA", "appMute", "2nd_appmute", "XP0J-iA-station-sn", "0"),
+        ("XP0S-iA", "appMute", "2nd_appmute", "XP0S-iA-station-sn", "0"),
+        ("XP0T-iA", "appMute", "2nd_appmute", "XP0T-iA-station-sn", "0"),
+        ("XP0V-iA", "appMute", "2nd_appmute", "XP0V-iA-station-sn", "0"),
+        ("XP0W-iA", "appMute", "2nd_appmute", "XP0W-iA-station-sn", "0"),
+        ("XS0B-iR", "appMute", "2nd_appmute", "XS0B-iR-station-sn", "0"),
+        ("XS0E-iR", "appMute", "2nd_appmute", "XS0E-iRstation-sn", "0"),
+        ("XS03-WX", "appMute", "2nd_appmute", "XS03-WXstation-sn", "0"),
+        ("XS0AA-iA", "appMute", "2nd_appmute", "XS0AA-iA-station-sn", "0"),
+        ("XS0AB-iA", "appMute", "2nd_appmute", "XS0AB-iA-station-sn", "0"),
+        ("XS0R-iA", "appMute", "2nd_appmute", "XS0R-iA-station-sn", "0"),
+        ("XC04-WX", "appMute", "2nd_appmute", "XC04-WX-station-sn", "0"),
+        ("XC0C-iA", "appMute", "2nd_appmute", "XC0C-iA-station-sn", "0"),
+        ("XC0C-iR", "appMute", "2nd_appmute", "XC0C-iR-station-sn", "0"),
+        ("STH0C", "extendMute", "2nd_appmute", "STH0C-station-sn", "1"),
+        ("XC0M-iR", "appMute", "2nd_appmute", "XC0M-iR-station-sn", "0"),
+        ("XR0A-iR", "extendMute", "2nd_appmute", "XR0A-iR-station-sn", "1"),
+        ("SWS0B", "appWater", "2nd_appwater", "SWS0B-station-sn", "1"),
     ],
 )
 async def test_wifi_device_mute_uses_apk_factory_payload_shape(
-    device_type, expected_shadow, expected_topic, expected_thing
+    device_type, expected_shadow, expected_topic, expected_thing, expected_mute_type
 ):
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
@@ -2073,7 +2110,7 @@ async def test_wifi_device_mute_uses_apk_factory_payload_shape(
     assert desired["stationSN"] == "station-sn"
     assert desired["deviceSN"] == "station-sn"
     assert desired["userId"] == "user-id"
-    assert desired["muteType"] == "1"
+    assert desired["muteType"] == expected_mute_type
     assert desired["time"].isdigit()
     assert len(desired["time"]) == 14
 
@@ -2159,10 +2196,10 @@ async def test_mailbox_mute_uses_apk_payload_shape(device_type):
     ("device_type", "expected_shadow"),
     [
         ("SD11-MR", "appMute"),
-        ("SD19-MN", "appMute"),
-        ("SK0Z-3S", "appMute"),
-        ("LP/N-SA-0B", "appMute"),
-        ("XS0X-MN", "appMute"),
+        ("SD19-MN", "app2ndMute"),
+        ("SK0Z-3S", "app2ndMute"),
+        ("LP/N-SA-0B", "app2ndMute"),
+        ("XS0X-MN", "app2ndMute"),
         ("XP02S-MR", "appMute"),
         ("XS0D-MR", "appMute"),
         ("XC0C-MR", "app2ndMute"),
@@ -2184,7 +2221,41 @@ async def test_sbs50_child_mute_uses_apk_payload_shape(device_type, expected_sha
     assert desired["stationSN"] == "station-sn"
     assert desired["deviceSN"] == "device-sn"
     assert desired["userId"] == "user-id"
+    assert desired["muteType"] == "0"
+    assert desired["time"].isdigit()
+    assert len(desired["time"]) == 14
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("device_type", ["XC0C-MR", "XC01-M"])
+async def test_co_alarm_mute_uses_apk_high_co_mute_type(device_type):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    device = fake_child_device(device_type, station=FakeXSenseStation("SBS50"))
+    device.data.update({"standard": "0", "coPpm": "211"})
+
+    _station_arg, _page, desired = await _capture_action(client, device, "mute")
+
     assert desired["muteType"] == "1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("device_type", ["XS0B-MR", "XS0F-PMA"])
+async def test_sbs50_voice_smoke_mute_targets_alarm_origin_like_apk(device_type):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    device = fake_child_device(device_type, station=FakeXSenseStation("SBS50"))
+
+    station_arg, page, desired = await _capture_action(client, device, "mute")
+
+    assert station_arg is device.station
+    assert page == "2nd_appmute"
+    assert desired["shadow"] == "app2ndMute"
+    assert desired["stationSN"] == "station-sn"
+    assert desired["deviceSN"] == "device-sn"
+    assert desired["userId"] == "user-id"
+    assert desired["userParam"] == "source=1"
+    assert desired["muteType"] == "0"
     assert desired["time"].isdigit()
     assert len(desired["time"]) == 14
 
@@ -4001,11 +4072,11 @@ async def test_get_camera_webrtc_ticket_fetches_on_demand_and_reuses_cache():
     assert calls == [
         (
             "/device/getWebrtcTicket",
-            {"serialNumber": "cam-sn"},
+            {"serialNumber": "cam-sn", "verifyDormancyStatus": True},
         ),
         (
             "/device/getWebrtcTicket",
-            {"serialNumber": "cam-sn"},
+            {"serialNumber": "cam-sn", "verifyDormancyStatus": True},
         ),
     ]
 
@@ -4041,7 +4112,7 @@ async def test_get_camera_webrtc_ticket_refetches_missing_expiration_like_apk():
     assert calls == [
         (
             "/device/getWebrtcTicket",
-            {"serialNumber": "cam-sn"},
+            {"serialNumber": "cam-sn", "verifyDormancyStatus": True},
         )
     ]
 

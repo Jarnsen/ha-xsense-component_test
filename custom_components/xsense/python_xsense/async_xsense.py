@@ -1359,6 +1359,7 @@ class AsyncXSense(XSenseBase):
         data = await self.addx_call(
             "/device/getWebrtcTicket",
             serialNumber=camera.sn,
+            verifyDormancyStatus=True,
         )
         if isinstance(data, dict):
             camera.set_data({"cameraWebrtcTicket": data})
@@ -1644,6 +1645,10 @@ class AsyncXSense(XSenseBase):
         extra = definition.get("extra", {})
         if callable(extra):
             extra = extra(entity)
+        extra = {
+            key: value(entity) if callable(value) else value
+            for key, value in extra.items()
+        }
         desired.update(extra)
         action_data = definition.get("data", {})
         if callable(action_data):

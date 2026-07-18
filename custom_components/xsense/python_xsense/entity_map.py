@@ -203,6 +203,15 @@ def SATestAction(shadow="appSelfTest"):
     }
 
 
+def LegacySecondGenSelfTestAction(shadow="appSelfTest"):
+    """Older python-xsense self-test shape used by standalone Wi-Fi alarms."""
+    return {
+        "action": "test",
+        "topic": lambda x: f"2nd_selftest_{x.sn}",
+        "shadow": shadow,
+    }
+
+
 def _smoke_edition(entity):
     for source in (entity, getattr(entity, "station", None)):
         data = getattr(source, "data", None) or {}
@@ -248,13 +257,13 @@ def XS01WXMuteAction():
 def SC07MRMuteAction():
     return MuteAction(
         shadow=lambda entity: "app2ndMute" if _is_smoke_v9(entity) else "appSc07mrMute",
-        mute_type="1",
+        mute_type=_co_sensitive_alarm_mute_type,
         extra={"userParam": "source=1"},
     )
 
 
 def WifiAlarmMuteAction():
-    return MuteAction(mute_type="1", target=_wifi_thing_target)
+    return MuteAction(mute_type=_co_sensitive_alarm_mute_type, target=_wifi_thing_target)
 
 
 def WifiExtendedMuteAction():
@@ -266,11 +275,24 @@ def WifiWaterMuteAction():
 
 
 def SBS50SmokeMuteAction():
-    return MuteAction("appMute", "2nd_appmute", mute_type="1")
+    return MuteAction("appMute", "2nd_appmute", mute_type="0")
 
 
 def SBS50CoMuteAction():
-    return MuteAction("app2ndMute", "2nd_appmute", mute_type="1")
+    return MuteAction(
+        "app2ndMute",
+        "2nd_appmute",
+        mute_type=_co_sensitive_alarm_mute_type,
+    )
+
+
+def SBS50VoiceSmokeMuteAction():
+    return MuteAction(
+        "app2ndMute",
+        "2nd_appmute",
+        mute_type="0",
+        extra={"userParam": "source=1"},
+    )
 
 
 def _station_serial_target(entity):
@@ -279,7 +301,27 @@ def _station_serial_target(entity):
 
 
 def SmokeRFAppMuteAction():
-    return MuteAction("appMute", "appmute", target=_station_serial_target, mute_type="1")
+    return MuteAction("appMute", "appmute", target=_station_serial_target, mute_type="0")
+
+
+def SBS50SecondGenAlarmMuteAction(shadow: str = "app2ndMute"):
+    return MuteAction(
+        shadow,
+        "2nd_appmute",
+        mute_type=_co_sensitive_alarm_mute_type,
+        extra={"userParam": "source=1"},
+    )
+
+
+def _co_sensitive_alarm_mute_type(entity) -> str:
+    data = getattr(entity, "data", {}) or {}
+    try:
+        co_ppm = int(data.get("coPpm") or data.get("coLevel") or 0)
+    except (TypeError, ValueError):
+        co_ppm = 0
+    if str(data.get("standard")) == "0" and co_ppm > 210:
+        return "1"
+    return "0"
 
 
 entities = {
@@ -287,14 +329,14 @@ entities = {
         "type": EntityType.LISTENER,
         "actions": [
             TestAction("listenerSelfTest"),
-            MuteAction("appListener", mute_type="1"),
+            MuteAction("appListener", mute_type="0"),
         ],
     },
     "SAL100": {
         "type": EntityType.LISTENER,
         "actions": [
             TestAction("listenerSelfTest"),
-            MuteAction("appListener", mute_type="1"),
+            MuteAction("appListener", mute_type="0"),
         ],
     },
     "SBS10": {
@@ -314,7 +356,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            SBS50SecondGenAlarmMuteAction(),
             FireDrillAction(),
         ],
     },
@@ -322,14 +364,17 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("appSc07mrMute", mute_type="1", extra={"userParam": "source=1"}),
+            SBS50SecondGenAlarmMuteAction("appSc07mrMute"),
             FireDrillAction(),
         ],
     },
     "SC06-WX": {
         "identifier": lambda entity: f"SC06-WX-{entity.sn}",
         "type": EntityType.COMBI,
-        "actions": [WifiAlarmMuteAction()],
+        "actions": [
+            LegacySecondGenSelfTestAction(),
+            WifiAlarmMuteAction(),
+        ],
     },
     "SC07-MR": {
         "identifier": lambda entity: f"SC07-MR-{entity.sn}",
@@ -365,7 +410,7 @@ entities = {
         "type": EntityType.SMOKE,
         "actions": [
             SBS50SecondGenTestAction(),
-            SBS50SmokeMuteAction(),
+            SBS50SecondGenAlarmMuteAction(),
             FireDrillAction(),
         ],
     },
@@ -396,7 +441,7 @@ entities = {
         "type": EntityType.SMOKE,
         "actions": [
             SBS50SecondGenTestAction(),
-            SBS50SmokeMuteAction(),
+            SBS50SecondGenAlarmMuteAction(),
             FireDrillAction(),
         ],
     },
@@ -501,7 +546,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            SBS50SecondGenAlarmMuteAction(),
             FireDrillAction(),
         ],
     },
@@ -509,7 +554,7 @@ entities = {
         "type": EntityType.SMOKE,
         "actions": [
             SBS50SecondGenTestAction(),
-            SBS50SmokeMuteAction(),
+            SBS50SecondGenAlarmMuteAction(),
             FireDrillAction(),
         ],
     },
@@ -517,7 +562,7 @@ entities = {
         "type": EntityType.SMOKE,
         "actions": [
             SBS50SecondGenTestAction(),
-            SBS50SmokeMuteAction(),
+            SBS50SecondGenAlarmMuteAction(),
             FireDrillAction(),
         ],
     },
@@ -525,7 +570,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            SBS50SecondGenAlarmMuteAction(),
             FireDrillAction(),
         ],
     },
@@ -546,7 +591,7 @@ entities = {
         "type": EntityType.CO,
         "actions": [
             TestAction(shadow="appCoSelfTest"),
-            MuteAction("appCoMute", mute_type="1"),
+            MuteAction("appCoMute", mute_type=_co_sensitive_alarm_mute_type),
             FireDrillAction(),
         ],
     },
@@ -559,7 +604,7 @@ entities = {
         "type": EntityType.HEAT,
         "actions": [
             TestAction(shadow="appXh02mSelfTest", extra={"userParam": "source=1"}),
-            MuteAction("appXh02mMute", mute_type="1", extra={"userParam": "source=1"}),
+            SBS50SecondGenAlarmMuteAction("appXh02mMute"),
             FireDrillAction(),
         ],
     },
@@ -567,7 +612,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("appXp0amrMute", mute_type="1", extra={"userParam": "source=1"}),
+            SBS50SecondGenAlarmMuteAction("appXp0amrMute"),
             FireDrillAction(),
         ],
     },
@@ -587,18 +632,22 @@ entities = {
         "type": EntityType.SMOKE,
         "actions": [
             SmokeRFTestAction(),
-            MuteAction(),
+            MuteAction(mute_type="0"),
             FireDrillAction(),
         ],
     },
     "XS01-WX": {
         "type": EntityType.SMOKE,
+        "actions": [
+            LegacySecondGenSelfTestAction(),
+            XS01WXMuteAction(),
+        ],
     },
     "XS0B-MR": {
         "type": EntityType.SMOKE,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            SBS50VoiceSmokeMuteAction(),
             FireDrillAction(),
         ],
     },
@@ -637,7 +686,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("appSc07mrMute", mute_type="1", extra={"userParam": "source=1"}),
+            SBS50SecondGenAlarmMuteAction("appSc07mrMute"),
             FireDrillAction(),
         ],
     },
@@ -689,13 +738,16 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("appSc07mrMute", mute_type="1", extra={"userParam": "source=1"}),
+            SBS50SecondGenAlarmMuteAction("appSc07mrMute"),
             FireDrillAction(),
         ],
     },
     "XS0B-iR": {
         "type": EntityType.SMOKE,
-        "actions": [WifiAlarmMuteAction()],
+        "actions": [
+            SATestAction(),
+            WifiAlarmMuteAction(),
+        ],
     },
     "XS0E-iR": {
         "type": EntityType.SMOKE,
@@ -705,7 +757,7 @@ entities = {
         "type": EntityType.SMOKE,
         "actions": [
             SBS50SecondGenTestAction(),
-            MuteAction("app2ndMute", mute_type="1", extra={"userParam": "source=1"}),
+            SBS50VoiceSmokeMuteAction(),
             FireDrillAction(),
         ],
     },

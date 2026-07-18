@@ -1558,502 +1558,7 @@ def test_recordings_panel_url_detection_rejects_lookalikes():
     assert not event._is_recordings_panel_url("https://example.invalid/clip.mp4")
 
 
-def test_playback_page_uses_ha_webrtc_answer_and_sd_command():
-    from custom_components.xsense import playback
-
-    html = playback._playback_html(
-        "camera.garden",
-        '{"action":"startPlaySdVideo"}',
-        '{"action":"stopPlaySdVideo"}',
-    )
-
-    assert 'type: "camera/webrtc/offer"' in html
-    assert 'type: "camera/webrtc/candidate", entity_id: cameraEntityId' in html
-    assert "payload.answer" in html
-    assert "payload.sdp" not in html
-    assert "pendingCandidates" in html
-    assert "startPlaySdVideo" in html
-    assert "stopPlaySdVideo" in html
-
-
-def test_playback_url_uses_recordings_sidebar_panel():
-    from custom_components.xsense import playback
-
-    url = playback.playback_url(
-        "entry-id",
-        "CAMERA/SN",
-        1782049304,
-        "camera.garden",
-        end_time=1782049334,
-    )
-
-    assert url == (
-        "/xsense-recordings#entry_id=entry-id&serial=CAMERA%2FSN"
-        "&start=1782049304&end=1782049334"
-    )
-
-
-def test_recording_media_url_uses_backend_recording_route():
-    from custom_components.xsense import playback
-
-    url = playback.recording_media_url(
-        "entry-id",
-        "CAMERA/SN",
-        1782049304,
-        end_time=1782049334,
-    )
-
-    assert url == (
-        "/xsense/recording/entry-id/1782049304"
-        "?serial=CAMERA%2FSN&end_time=1782049334"
-    )
-
-
-def test_frontend_playback_panel_has_recording_mode():
-    from pathlib import Path
-
-    panel = Path(
-        "custom_components/xsense/frontend/xsense-playback-panel.js"
-    ).read_text(encoding="utf-8")
-
-    assert 'params.get("mode") || "webrtc"' in panel
-    assert 'mode === "recording"' in panel
-    assert "renderRecordingPlayer" in panel
-    assert "<video" in panel
-    assert "/xsense/recording/" in panel
-
-
-def test_recording_media_view_redirects_cached_clip(monkeypatch, tmp_path):
-    from custom_components.xsense import playback
-    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
-
-    camera_entity = entity("SSC0A", {})
-    camera_entity.sn = "CAMERA-SN"
-    clips = []
-    coordinator = SimpleNamespace(
-        xsense=object(),
-        data={"devices": {"camera": camera_entity}, "stations": {}},
-    )
-    hass = SimpleNamespace(
-        config_entries=SimpleNamespace(
-            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
-        ),
-        data={playback.DOMAIN: {"entry-id": coordinator}},
-    )
-    request = SimpleNamespace(
-        app={"hass": hass},
-        query={"serial": "CAMERA-SN", "end_time": "1782049334"},
-    )
-
-    async def cached_url(self, clip):
-        clips.append(clip)
-        return "/media/local/xsense_recordings/videos/clip.mp4"
-
-    monkeypatch.setattr(
-        XSenseRecordingsMediaSource, "_async_cached_sd_playback_url", cached_url
-    )
-
-    with pytest.raises(playback.web.HTTPFound) as err:
-        asyncio.run(
-            playback.XSenseRecordingMediaView().get(
-                request,
-                "entry-id",
-                "1782049304",
-            )
-        )
-
-    assert err.value.location == "/media/local/xsense_recordings/videos/clip.mp4"
-    assert clips[0]["source"] == "sd_playback"
-    assert clips[0]["serial"] == "CAMERA-SN"
-    assert clips[0]["start"] == 1782049304
-    assert clips[0]["end"] == 1782049334
-
-
-def test_recording_media_view_caches_local_playback_before_redirect(
-    monkeypatch, tmp_path
-):
-    from custom_components.xsense import playback
-    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
-
-    camera_entity = entity("SSC0A", {})
-    camera_entity.sn = "CAMERA-SN"
-    clips = []
-    coordinator = SimpleNamespace(
-        xsense=object(),
-        data={"devices": {"camera": camera_entity}, "stations": {}},
-    )
-    hass = SimpleNamespace(
-        config_entries=SimpleNamespace(
-            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
-        ),
-        data={playback.DOMAIN: {"entry-id": coordinator}},
-    )
-    request = SimpleNamespace(
-        app={"hass": hass},
-        query={"serial": "CAMERA-SN", "end_time": "1782049334"},
-    )
-
-    async def cached_url(self, clip):
-        clips.append(clip)
-        return "/media/local/xsense_recordings/videos/clip.mp4"
-
-    monkeypatch.setattr(
-        XSenseRecordingsMediaSource, "_async_cached_sd_playback_url", cached_url
-    )
-
-    with pytest.raises(playback.web.HTTPFound) as err:
-        asyncio.run(
-            playback.XSenseRecordingMediaView().get(
-                request,
-                "entry-id",
-                "1782049304",
-            )
-        )
-
-    assert err.value.location == "/media/local/xsense_recordings/videos/clip.mp4"
-    assert clips == [
-        {
-            "entry_id": "entry-id",
-            "serial": "CAMERA-SN",
-            "camera_entity_id": "",
-            "start": 1782049304,
-            "end": 1782049334,
-            "source": "sd_playback",
-            "requested_source": "sd_playback",
-            "playback_url": "/xsense/recording/entry-id/1782049304?serial=CAMERA-SN&end_time=1782049334",
-            "media_root": playback._recording_media_root(hass, "entry-id").as_posix(),
-        }
-    ]
-
-
-def test_pion_capture_skips_ready_output(monkeypatch, tmp_path):
-    from custom_components.xsense import pion_adapter
-
-    output_path = tmp_path / "ready.mp4"
-    output_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00ready")
-    captures = []
-    hass = SimpleNamespace(data={pion_adapter.DOMAIN: {}})
-
-    async def fake_capture(*args, **kwargs):
-        captures.append((args, kwargs))
-
-    monkeypatch.setattr(
-        pion_adapter,
-        "_async_capture_sd_recording_unlocked",
-        fake_capture,
-    )
-
-    result = asyncio.run(
-        pion_adapter.async_capture_sd_recording(
-            hass,
-            coordinator=object(),
-            camera=object(),
-            start_time=1782049304,
-            output_path=output_path,
-        )
-    )
-
-    assert result == output_path
-    assert captures == []
-
-
-def test_pion_capture_refuses_sd_capture_while_live_webrtc_active(monkeypatch, tmp_path):
-    from custom_components.xsense import pion_adapter
-
-    output_path = tmp_path / "clip.mp4"
-    captures = []
-    hass = SimpleNamespace(
-        data={
-            pion_adapter.DOMAIN: {
-                "_active_webrtc_camera_counts": {"SSC0ATEST": 1},
-            }
-        }
-    )
-    camera_entity = SimpleNamespace(sn="SSC0ATEST")
-
-    async def fake_capture(*args, **kwargs):
-        captures.append((args, kwargs))
-
-    monkeypatch.setattr(
-        pion_adapter,
-        "_async_capture_sd_recording_unlocked",
-        fake_capture,
-    )
-
-    with pytest.raises(RuntimeError, match="live stream is active"):
-        asyncio.run(
-            pion_adapter.async_capture_sd_recording(
-                hass,
-                coordinator=object(),
-                camera=camera_entity,
-                start_time=1782049304,
-                output_path=output_path,
-            )
-        )
-
-    assert captures == []
-
-
-def test_pion_capture_passes_duration_timeout_to_helper_wait(monkeypatch, tmp_path):
-    from custom_components.xsense import pion_adapter
-
-    output_path = tmp_path / "clip.mp4"
-    h264_path = output_path.with_name(f"{output_path.name}.h264")
-    temp_output_path = output_path.with_suffix(".tmp.mp4")
-    wait_calls = []
-
-    class Stdin:
-        def is_closing(self):
-            return False
-
-        def write(self, value):
-            self.value = value
-
-        async def drain(self):
-            pass
-
-    class Proc:
-        returncode = 0
-        stdin = Stdin()
-
-        async def wait(self):
-            return 0
-
-    class SignalSession:
-        def __init__(self, **kwargs):
-            pass
-
-        async def start(self):
-            return "v=0"
-
-        def start_forwarding_remote_candidates(self):
-            pass
-
-        async def close(self):
-            pass
-
-    async def start_helper(helper_path, raw_path, start_time, ticket, timeout):
-        wait_calls.append(("start", timeout))
-        raw_path.write_bytes(b"raw h264")
-        return Proc()
-
-    async def wait_for_helper(proc, timeout):
-        wait_calls.append(("wait", timeout))
-        return {"packets": 1, "bytes": 10, "h264Samples": 1, "h264Bytes": 10}
-
-    async def remux(ffmpeg_binary, raw_path, final_path):
-        assert final_path == temp_output_path
-        final_path.write_bytes(
-            b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00final-video"
-        )
-
-    ticket_factory = SimpleNamespace(
-        from_api=lambda serial, data: SimpleNamespace(ice_servers=[])
-    )
-    monkeypatch.setattr(pion_adapter, "_pion_helper_path", lambda: tmp_path / "helper")
-    monkeypatch.setattr(pion_adapter, "_ffmpeg_binary", lambda hass: "ffmpeg")
-    monkeypatch.setattr(pion_adapter, "_start_helper", start_helper)
-    monkeypatch.setattr(pion_adapter, "_read_helper_offer", AsyncMock(return_value="v=0"))
-    monkeypatch.setattr(pion_adapter, "_wait_for_helper", wait_for_helper)
-    monkeypatch.setattr(pion_adapter, "_remux_h264_to_mp4", remux)
-    monkeypatch.setattr(pion_adapter, "async_get_clientsession", lambda hass: object())
-    monkeypatch.setattr(pion_adapter, "XSenseWebRTCTicket", ticket_factory)
-    monkeypatch.setattr(pion_adapter, "XSenseWebRTCSignalSession", SignalSession)
-
-    hass = SimpleNamespace(
-        data={pion_adapter.DOMAIN: {}},
-        async_create_task=lambda coro: asyncio.create_task(coro),
-    )
-    coordinator = SimpleNamespace(
-        xsense=SimpleNamespace(
-            get_camera_webrtc_ticket=AsyncMock(return_value={"ticket": "data"})
-        )
-    )
-    camera_entity = SimpleNamespace(sn="CAMERA-SN", online=True, data={})
-
-    result = asyncio.run(
-        pion_adapter.async_capture_sd_recording(
-            hass,
-            coordinator=coordinator,
-            camera=camera_entity,
-            start_time=1782049304,
-            output_path=output_path,
-            duration_seconds=60,
-        )
-    )
-
-    assert result == output_path
-    assert output_path.exists()
-    assert not h264_path.exists()
-    assert not temp_output_path.exists()
-    assert wait_calls == [("start", 70), ("wait", 70)]
-
-
-def test_pion_capture_does_not_promote_invalid_remux_output(monkeypatch, tmp_path):
-    from custom_components.xsense import pion_adapter
-
-    output_path = tmp_path / "clip.mp4"
-
-    class Stdin:
-        def is_closing(self):
-            return False
-
-        def write(self, value):
-            self.value = value
-
-        async def drain(self):
-            pass
-
-    class Proc:
-        returncode = 0
-        stdin = Stdin()
-
-        async def wait(self):
-            return 0
-
-    class SignalSession:
-        def __init__(self, **kwargs):
-            pass
-
-        async def start(self):
-            return "v=0"
-
-        def start_forwarding_remote_candidates(self):
-            pass
-
-        async def close(self):
-            pass
-
-    async def start_helper(helper_path, raw_path, start_time, ticket, timeout):
-        raw_path.write_bytes(b"raw h264")
-        return Proc()
-
-    async def remux(ffmpeg_binary, raw_path, final_path):
-        final_path.write_bytes(b"not an mp4")
-
-    ticket_factory = SimpleNamespace(
-        from_api=lambda serial, data: SimpleNamespace(ice_servers=[])
-    )
-    monkeypatch.setattr(pion_adapter, "_pion_helper_path", lambda: tmp_path / "helper")
-    monkeypatch.setattr(pion_adapter, "_ffmpeg_binary", lambda hass: "ffmpeg")
-    monkeypatch.setattr(pion_adapter, "_start_helper", start_helper)
-    monkeypatch.setattr(pion_adapter, "_read_helper_offer", AsyncMock(return_value="v=0"))
-    monkeypatch.setattr(
-        pion_adapter,
-        "_wait_for_helper",
-        AsyncMock(return_value={"packets": 1, "bytes": 10, "h264Samples": 1}),
-    )
-    monkeypatch.setattr(pion_adapter, "_remux_h264_to_mp4", remux)
-    monkeypatch.setattr(pion_adapter, "async_get_clientsession", lambda hass: object())
-    monkeypatch.setattr(pion_adapter, "XSenseWebRTCTicket", ticket_factory)
-    monkeypatch.setattr(pion_adapter, "XSenseWebRTCSignalSession", SignalSession)
-
-    hass = SimpleNamespace(
-        data={pion_adapter.DOMAIN: {}},
-        async_create_task=lambda coro: asyncio.create_task(coro),
-    )
-    coordinator = SimpleNamespace(
-        xsense=SimpleNamespace(
-            get_camera_webrtc_ticket=AsyncMock(return_value={"ticket": "data"})
-        )
-    )
-    camera_entity = SimpleNamespace(sn="CAMERA-SN", online=True, data={})
-
-    with pytest.raises(RuntimeError, match="did not create a playable MP4"):
-        asyncio.run(
-            pion_adapter.async_capture_sd_recording(
-                hass,
-                coordinator=coordinator,
-                camera=camera_entity,
-                start_time=1782049304,
-                output_path=output_path,
-                duration_seconds=60,
-            )
-        )
-
-    assert not output_path.exists()
-    assert not output_path.with_suffix(".tmp.mp4").exists()
-    assert not output_path.with_name(f"{output_path.name}.h264").exists()
-
-
-def test_pion_ice_servers_env_normalizes_xsense_ticket_shape():
-    from custom_components.xsense import pion_adapter
-
-    ticket = SimpleNamespace(
-        ice_servers=[
-            {"url": "turn:one.example", "username": "user", "password": "pass"},
-            {"urls": ["stun:two.example", "turn:two.example"], "credential": "cred"},
-            {"unexpected": "ignored"},
-        ]
-    )
-
-    assert pion_adapter.json.loads(pion_adapter._ice_servers_env(ticket)) == [
-        {
-            "urls": "turn:one.example",
-            "username": "user",
-            "credential": "pass",
-        },
-        {
-            "urls": ["stun:two.example", "turn:two.example"],
-            "credential": "cred",
-        },
-    ]
-
-
-def test_pion_capture_timeout_uses_clip_duration():
-    from custom_components.xsense import pion_adapter
-
-    assert pion_adapter._capture_timeout(None) == pion_adapter.HELPER_TIMEOUT
-    assert pion_adapter._capture_timeout(5) == pion_adapter.HELPER_TIMEOUT
-    assert pion_adapter._capture_timeout(60) == 70
-    assert pion_adapter._capture_timeout(600) == 180
-
-
-def test_pion_start_helper_passes_ice_servers(monkeypatch, tmp_path):
-    from custom_components.xsense import pion_adapter
-
-    captured = {}
-
-    async def fake_create_subprocess_exec(*args, **kwargs):
-        captured["args"] = args
-        captured["kwargs"] = kwargs
-        return object()
-
-    monkeypatch.setattr(
-        pion_adapter.asyncio,
-        "create_subprocess_exec",
-        fake_create_subprocess_exec,
-    )
-    ticket = SimpleNamespace(ice_servers=[{"url": "turn:example"}])
-
-    result = asyncio.run(
-        pion_adapter._start_helper(
-            tmp_path / "helper",
-            tmp_path / "clip.h264",
-            1782049304,
-            ticket,
-            70,
-        )
-    )
-
-    assert result is not None
-    assert "--timeout" in captured["args"]
-    assert captured["args"][captured["args"].index("--timeout") + 1] == "70s"
-    env = captured["kwargs"]["env"]
-    assert env["XSENSE_RECORDINGS_ICE_SERVERS"] == (
-        '[{"urls":"turn:example"}]'
-    )
-    assert env["XSENSE_RECORDINGS_DATA_CHANNEL"] == "1"
-    assert env["XSENSE_RECORDINGS_DATA_CHANNEL_LABEL"] == "data-channel-of-"
-    assert env["XSENSE_RECORDINGS_CHROME_SDP"] == "1"
-    assert env["XSENSE_RECORDINGS_REMOTE_SDP_TYPE"] == "answer"
-    assert env["XSENSE_RECORDINGS_H264_OUTPUT"] == str(tmp_path / "clip.h264")
-    assert '"action":"startPlaySdVideo"' in env[
-        "XSENSE_RECORDINGS_DATA_CHANNEL_START_PAYLOAD"
-    ]
-
-
-def test_recording_media_source_builds_sd_playback_clip_url():
+def test_recording_media_source_ignores_time_only_record_without_direct_video_url():
     from custom_components.xsense import media_source
 
     cameras = [
@@ -2075,29 +1580,7 @@ def test_recording_media_source_builds_sd_playback_clip_url():
         },
     )
 
-    assert clip == {
-        "entry_id": "entry-id",
-        "serial": "CAMERA-SN",
-        "camera_entity_id": "camera.garden",
-        "start": 1782049304,
-        "end": 1782049334,
-        "date": "2026-06-21",
-        "title": "13:41:44 - 13:42:14",
-        "source": "sd_playback",
-        "requested_source": "sd_playback",
-        "quality": "HD",
-        "playback_url": (
-            "/xsense/recording/entry-id/1782049304"
-            "?serial=CAMERA-SN&end_time=1782049334"
-        ),
-        "thumbnail_url": "https://example.invalid/snap.jpg",
-        "cached_thumbnail_url": (
-            "/media/local/xsense_recordings/thumbs/"
-            "CAMERA-SN_1782049304_1782049334.jpg"
-        ),
-        "cached_url": "",
-        "media_root": "/media/xsense_recordings",
-    }
+    assert clip is None
 
 
 def test_recording_clip_from_playback_accepts_raw_apk_time_fields():
@@ -2108,19 +1591,17 @@ def test_recording_clip_from_playback_accepts_raw_apk_time_fields():
         "CAMERA-SN",
         "camera.garden",
         {
-            "source": "sd_playback",
+            "source": "video_url",
             "start_time": 1782049304,
             "period": 30,
+            "video_url": "https://example.invalid/clip.m3u8",
         },
     )
 
     assert clip["start"] == 1782049304
     assert clip["end"] == 1782049334
-    assert clip["playback_url"] == (
-        "/xsense/recording/entry-id/1782049304"
-        "?serial=CAMERA-SN&end_time=1782049334"
-    )
-    assert clip["cached_url"] == ""
+    assert clip["playback_url"] == "https://example.invalid/clip.m3u8"
+    assert clip["source"] == "video_url"
 
 
 def test_recording_clip_from_playback_normalizes_ms_time_fields():
@@ -2131,18 +1612,16 @@ def test_recording_clip_from_playback_normalizes_ms_time_fields():
         "CAMERA-SN",
         "camera.garden",
         {
-            "source": "sd_playback",
+            "source": "video_url",
             "start_time": 1782049304000,
             "end_time": 1782049334000,
+            "video_url": "https://example.invalid/clip.m3u8",
         },
     )
 
     assert clip["start"] == 1782049304
     assert clip["end"] == 1782049334
-    assert clip["playback_url"] == (
-        "/xsense/recording/entry-id/1782049304"
-        "?serial=CAMERA-SN&end_time=1782049334"
-    )
+    assert clip["playback_url"] == "https://example.invalid/clip.m3u8"
 
 
 def test_recording_media_source_preserves_direct_video_url():
@@ -2202,7 +1681,7 @@ def test_recording_media_source_prefers_hd_direct_video_candidate():
     assert clip["playback_url"] == "https://example.invalid/hd.mp4"
 
 
-def test_recording_media_source_uses_sd_capture_when_requested():
+def test_recording_media_source_prefers_sd_direct_video_candidate_when_requested():
     from custom_components.xsense import media_source
 
     clip = media_source._recording_clip_from_playback(
@@ -2214,26 +1693,33 @@ def test_recording_media_source_uses_sd_capture_when_requested():
             "start_time_s": 1782049304,
             "end_time_s": 1782049334,
             "video_url": "https://example.invalid/hd.mp4",
+            "multi_resolution_videos": [
+                {
+                    "resolution": "640x360",
+                    "url": "https://example.invalid/sd.mp4",
+                },
+                {
+                    "resolution": "1920x1080",
+                    "url": "https://example.invalid/hd.mp4",
+                },
+            ],
         },
         quality="SD",
     )
 
     assert clip["quality"] == "SD"
-    assert clip["source"] == "sd_playback"
+    assert clip["source"] == "video_url"
     assert clip["requested_source"] == "video_url"
-    assert clip["playback_url"] == (
-        "/xsense/recording/entry-id/1782049304"
-        "?serial=CAMERA-SN&end_time=1782049334"
-    )
+    assert clip["playback_url"] == "https://example.invalid/sd.mp4"
 
 
-def test_recording_media_source_marks_sd_playback_as_playable():
+def test_recording_media_source_requires_direct_url_for_playable_clip():
     from custom_components.xsense import media_source
 
     assert media_source._clip_media_playable(
         {"source": "video_url", "playback_url": "https://example.invalid/clip.mp4"}
     )
-    assert media_source._clip_media_playable(
+    assert not media_source._clip_media_playable(
         {"source": "sd_playback", "playback_url": "/xsense/recording/entry/sn/1"}
     )
 
@@ -2280,9 +1766,10 @@ def test_cache_recording_playback_returns_cached_media_url(monkeypatch, tmp_path
             entry_id="entry-id",
             entity=SimpleNamespace(sn="CAMERA-SN"),
             playback={
-                "source": "sd_playback",
+                "source": "video_url",
                 "start_time_s": 1782049304,
                 "end_time_s": 1782049334,
+                "video_url": "https://example.invalid/clip.m3u8",
             },
             camera_entity_id="camera.garden",
         )
@@ -2466,10 +1953,12 @@ def test_recording_media_source_rejects_non_mp4_direct_cache(tmp_path):
     assert media_source._mp4_ready(mp4_path)
 
 
-def test_recording_media_source_falls_back_to_sd_when_direct_download_not_mp4(
+def test_recording_media_source_does_not_fall_back_to_sd_when_direct_download_not_media(
     monkeypatch,
     tmp_path,
 ):
+    from homeassistant.components.media_source.error import Unresolvable
+
     from custom_components.xsense import media_source
 
     source = media_source.XSenseRecordingsMediaSource(SimpleNamespace())
@@ -2484,16 +1973,6 @@ def test_recording_media_source_falls_back_to_sd_when_direct_download_not_mp4(
         "playback_url": "https://example.invalid/clip.mp4",
         "media_root": tmp_path.as_posix(),
     }
-    seen = {}
-
-    async def cached_sd_playback_url(current_clip):
-        seen.update(current_clip)
-        assert not output_path.exists()
-        output_path.write_bytes(
-            b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00fallback"
-        )
-        return "/media/local/xsense_recordings/videos/fallback.mp4"
-
     class Response:
         headers = {"content-type": "text/html"}
 
@@ -2539,83 +2018,10 @@ def test_recording_media_source_falls_back_to_sd_when_direct_download_not_mp4(
         "async_get_clientsession",
         lambda hass: Session(),
     )
-    monkeypatch.setattr(source, "_async_cached_sd_playback_url", cached_sd_playback_url)
+    with pytest.raises(Unresolvable):
+        asyncio.run(source._async_cached_playback_url(clip))
 
-    result = asyncio.run(source._async_cached_playback_url(clip))
-
-    assert result == "/media/local/xsense_recordings/videos/fallback.mp4"
-    assert seen["source"] == "sd_playback"
-    assert seen["quality"] == "HD"
-    assert media_source._mp4_ready(output_path)
-
-
-def test_recording_media_source_uses_capture_for_player_only_local_url(
-    monkeypatch,
-    tmp_path,
-):
-    from custom_components.xsense import media_source
-
-    output_path = tmp_path / "clip.mp4"
-    camera = entity("SSC0A", {})
-    camera.sn = "CAMERA-SN"
-    xsense = SimpleNamespace(
-        play_camera_local_video=AsyncMock(
-            return_value="rtmps://example.invalid/live/local"
-        ),
-        stop_camera_local_video=AsyncMock(),
-    )
-    coordinator = SimpleNamespace(
-        xsense=xsense,
-        data={"stations": {}, "devices": {"camera": camera}},
-    )
-    hass = SimpleNamespace(
-        data={media_source.DOMAIN: {"entry-id": coordinator}},
-        config_entries=SimpleNamespace(async_get_entry=lambda entry_id: None),
-    )
-    source = media_source.XSenseRecordingsMediaSource(hass)
-    clip = {
-        "source": "sd_playback",
-        "entry_id": "entry-id",
-        "serial": "CAMERA-SN",
-        "start": 1782049304,
-        "end": 1782049334,
-        "media_root": tmp_path.as_posix(),
-    }
-    captured = {}
-
-    async def capture_sd_recording(*args, **kwargs):
-        captured.update(kwargs)
-        output_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00capture")
-        return output_path
-
-    monkeypatch.setattr(
-        media_source,
-        "_clip_cache_path",
-        lambda current_clip: output_path,
-    )
-    monkeypatch.setattr(
-        media_source,
-        "_local_media_url",
-        lambda path: f"/media/local/test/{path.name}",
-    )
-    monkeypatch.setattr(
-        media_source,
-        "async_capture_sd_recording",
-        capture_sd_recording,
-    )
-
-    result = asyncio.run(source._async_cached_sd_playback_url(clip))
-
-    assert result == "/media/local/test/clip.mp4"
-    xsense.play_camera_local_video.assert_awaited_once_with(
-        camera, 1782049304, 1782049334
-    )
-    xsense.stop_camera_local_video.assert_awaited_once_with(camera)
-    assert captured["coordinator"] is coordinator
-    assert captured["camera"] is camera
-    assert captured["start_time"] == 1782049304
-    assert captured["output_path"] == output_path
-    assert captured["duration_seconds"] == 30
+    assert not output_path.exists()
 
 
 def test_recording_media_source_caches_hd_hls_without_sd_fallback(
@@ -2674,9 +2080,6 @@ def test_recording_media_source_caches_hd_hls_without_sd_fallback(
         async def async_add_executor_job(self, func, *args):
             return func(*args)
 
-    async def cached_sd_playback_url(current_clip):
-        raise AssertionError("HD HLS should not use SD capture fallback")
-
     source.hass = Hass()
     monkeypatch.setattr(
         media_source,
@@ -2703,8 +2106,6 @@ def test_recording_media_source_caches_hd_hls_without_sd_fallback(
         "async_get_clientsession",
         lambda hass: Session(),
     )
-    monkeypatch.setattr(source, "_async_cached_sd_playback_url", cached_sd_playback_url)
-
     result = asyncio.run(source._async_cached_playback_url(clip))
 
     playlist = media_source._hls_playlist_cache_path(clip)
@@ -2817,7 +2218,7 @@ def test_recording_media_source_hls_master_ready_with_one_buffered_variant(
     assert media_source._hls_ready(clip)
 
 
-def test_recording_media_source_lazy_shows_uncached_clips_when_sync_disabled(
+def test_recording_media_source_lazy_shows_uncached_direct_clips_when_sync_disabled(
     monkeypatch,
     tmp_path,
 ):
@@ -2829,7 +2230,8 @@ def test_recording_media_source_lazy_shows_uncached_clips_when_sync_disabled(
         "date": "2026-06-25",
         "start": 1782049304,
         "end": 1782049334,
-        "playback_url": "/xsense/recording/entry-id/1782049304?serial=CAMERA-SN",
+        "source": "video_url",
+        "playback_url": "https://example.invalid/clip.m3u8",
         "media_root": tmp_path.as_posix(),
     }
     source = media_source.XSenseRecordingsMediaSource(
@@ -3095,7 +2497,7 @@ def test_recording_media_source_cache_path_uses_safe_filename():
 
 
 def test_recording_media_root_rejects_media_prefix_lookalikes():
-    from custom_components.xsense import media_source, playback
+    from custom_components.xsense import media_source
 
     assert media_source._recording_media_root_from_value("/media").as_posix() == "/media"
     assert (
@@ -3109,13 +2511,13 @@ def test_recording_media_root_rejects_media_prefix_lookalikes():
 
     entry = SimpleNamespace(
         data={},
-        options={playback.CONF_RECORDING_MEDIA_STORAGE_PATH: "/mediaevil"},
+        options={media_source.CONF_RECORDING_MEDIA_STORAGE_PATH: "/mediaevil"},
     )
     hass = SimpleNamespace(
         config_entries=SimpleNamespace(async_get_entry=lambda entry_id: entry)
     )
 
-    assert playback._recording_media_root(hass, "entry-id").as_posix() == (
+    assert media_source._recording_media_root(hass, "entry-id").as_posix() == (
         "/media/xsense_recordings"
     )
 
@@ -3171,7 +2573,7 @@ def test_remove_recording_index_cleans_empty_manager_store():
     assert "_recording_indexes" not in hass.data[media_source.DOMAIN]
 
 
-def test_cache_recording_media_counts_direct_and_sd_playback(monkeypatch):
+def test_cache_recording_media_caches_direct_and_skips_sd_capture(monkeypatch):
     from custom_components.xsense import media_source
 
     async def refresh_indexes(hass, *, entry_id=None, force_refresh=False):
@@ -3240,12 +2642,12 @@ def test_cache_recording_media_counts_direct_and_sd_playback(monkeypatch):
 
     summary = asyncio.run(media_source.async_cache_recording_media(hass))
 
-    assert summary == {"downloaded": 2, "thumbnails": 1, "skipped": 0, "failed": 0}
-    assert cached == [3, 1]
+    assert summary == {"downloaded": 1, "thumbnails": 1, "skipped": 1, "failed": 0}
+    assert cached == [1]
     assert thumbs == [1]
 
 
-def test_cache_recording_media_prefers_newest_clips(monkeypatch):
+def test_cache_recording_media_does_not_start_sd_capture_for_background_sync(monkeypatch):
     from custom_components.xsense import media_source
 
     async def refresh_indexes(hass, *, entry_id=None, force_refresh=False):
@@ -3307,10 +2709,10 @@ def test_cache_recording_media_prefers_newest_clips(monkeypatch):
 
     asyncio.run(media_source.async_cache_recording_media(hass))
 
-    assert cached == [300, 200, 100]
+    assert cached == []
 
 
-def test_cache_recent_recording_media_force_refreshes_and_skips_old_clips(monkeypatch):
+def test_cache_recent_recording_media_force_refreshes_without_sd_capture(monkeypatch):
     from custom_components.xsense import media_source
 
     now = 1_782_049_400
@@ -3380,8 +2782,8 @@ def test_cache_recent_recording_media_force_refreshes_and_skips_old_clips(monkey
     )
 
     assert calls == [("entry-id", True)]
-    assert cached == [now - 60]
-    assert summary == {"downloaded": 1, "thumbnails": 0, "skipped": 1, "failed": 0}
+    assert cached == []
+    assert summary == {"downloaded": 0, "thumbnails": 0, "skipped": 2, "failed": 0}
 
 
 def test_event_recording_clip_merges_into_recording_index():
@@ -3709,86 +3111,6 @@ def test_recording_media_sync_starts_only_when_enabled(monkeypatch):
     assert calls[2][0] == "interval"
     assert calls[2][1].total_seconds() == 120
     assert unloads == ["unsub-later", "unsub-interval", "unsub-interval"]
-
-
-def test_register_playback_routes_adds_hidden_frontend_panel(monkeypatch):
-    from custom_components.xsense import playback
-
-    static_paths = []
-    registered_views = []
-    panels = []
-
-    class Http:
-        async def async_register_static_paths(self, configs):
-            static_paths.extend(configs)
-
-        def register_view(self, view):
-            registered_views.append(view)
-
-    hass = SimpleNamespace(data={}, http=Http())
-    monkeypatch.setattr(
-        playback.frontend,
-        "async_register_built_in_panel",
-        lambda *args, **kwargs: panels.append((args, kwargs)),
-    )
-
-    asyncio.run(playback.async_register_playback_view(hass))
-    asyncio.run(playback.async_register_playback_view(hass))
-
-    assert len(static_paths) == 1
-    assert static_paths[0].url_path == "/xsense_static"
-    assert len(registered_views) == 2
-    assert isinstance(registered_views[0], playback.XSensePlaybackView)
-    assert isinstance(registered_views[1], playback.XSenseRecordingMediaView)
-    assert len(panels) == 1
-    panel_args, panel_kwargs = panels[0]
-    assert panel_args == (hass,)
-    assert panel_kwargs["component_name"] == "custom"
-    assert panel_kwargs["frontend_url_path"] == "xsense-playback"
-    assert panel_kwargs["show_in_sidebar"] is False
-    assert panel_kwargs["config"]["_panel_custom"]["name"] == "xsense-playback-panel"
-    assert panel_kwargs["config"]["_panel_custom"]["module_url"] == (
-        "/xsense_static/xsense-playback-panel.js"
-    )
-
-
-def test_register_playback_routes_adds_recording_view_after_legacy_upgrade(
-    monkeypatch,
-):
-    from custom_components.xsense import playback
-
-    registered_views = []
-
-    class Http:
-        async def async_register_static_paths(self, configs):
-            raise AssertionError("static path should already be registered")
-
-        def register_view(self, view):
-            registered_views.append(view)
-
-    hass = SimpleNamespace(
-        data={
-            playback.DOMAIN: {
-                "_playback_static_registered": True,
-                "_playback_panel_registered": True,
-                "_playback_view_registered": True,
-            }
-        },
-        http=Http(),
-    )
-    monkeypatch.setattr(
-        playback.frontend,
-        "async_register_built_in_panel",
-        lambda *args, **kwargs: (_ for _ in ()).throw(
-            AssertionError("panel should already be registered")
-        ),
-    )
-
-    asyncio.run(playback.async_register_playback_view(hass))
-
-    assert len(registered_views) == 1
-    assert isinstance(registered_views[0], playback.XSenseRecordingMediaView)
-    assert hass.data[playback.DOMAIN]["_recording_media_view_registered"] is True
 
 
 def test_motion_event_data_exposes_direct_recording_url_aliases():
@@ -4282,109 +3604,45 @@ def test_webrtc_client_config_uses_data_channel_only():
     assert "iceServers" not in config["configuration"]
 
 
-def test_webrtc_client_config_uses_cached_ticket_ice_servers():
-    from custom_components.xsense.camera import (
-        CAMERA_DESCRIPTION,
-        XSenseWebRTCCameraEntity,
+def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
+    """Lock the live camera path to the v1.2.6.61 success baseline."""
+    import inspect
+    from pathlib import Path
+
+    from custom_components.xsense import camera, webrtc_signal
+    from custom_components.xsense.python_xsense.async_xsense import AsyncXSense
+
+    camera_source = Path(camera.__file__).read_text(encoding="utf-8")
+    camera_entity_source = inspect.getsource(camera.XSenseWebRTCCameraEntity)
+    add_candidate_source = inspect.getsource(
+        webrtc_signal.XSenseWebRTCSignalSession.add_candidate
     )
+    ticket_source = inspect.getsource(AsyncXSense.get_camera_webrtc_ticket)
 
-    camera_entity = entity(
-        "SSC0A",
-        {
-            "streamProtocol": "webrtc",
-            "supportWebrtc": True,
-            "cameraWebrtcTicket": {
-                "expirationTime": 9999999999999,
-                "iceServer": [
-                    {
-                        "url": "turn:turn.example.com",
-                        "username": "user",
-                        "credential": "pass",
-                    },
-                    {"urls": ["stun:stun.example.com"]},
-                    {"credential": "ignored-without-url"},
-                ],
-            },
-        },
+    forbidden_camera_patterns = {
+        "RTCConfiguration": "browser ICE-server injection",
+        "RTCIceServer": "browser ICE-server injection",
+        "_webrtc_ticket_prime_task": "ticket prewarm",
+        "_schedule_webrtc_ticket_prime": "ticket prewarm",
+        "_async_prime_webrtc_ticket": "ticket prewarm",
+        "_webrtc_ticket_ice_servers": "ticket prewarm",
+        "_webrtc_keepalive_tasks": "live WebRTC keepalive loop",
+        "_start_webrtc_keepalive": "live WebRTC keepalive loop",
+        "_async_webrtc_keepalive_loop": "live WebRTC keepalive loop",
+        "_mark_camera_webrtc_live": "active live marker",
+        "_unmark_camera_webrtc_live": "active live marker",
+        "_active_webrtc_camera_counts": "active live marker",
+        "_async_stop_webrtc_camera_live": "extra stoplive layer",
+    }
+
+    for pattern, reason in forbidden_camera_patterns.items():
+        assert pattern not in camera_source, f"Do not reintroduce {reason}: {pattern}"
+
+    assert "WebRTCClientConfiguration(data_channel=\"data-channel-of-\")" in (
+        camera_entity_source
     )
-    camera_entity.entity_id = "camera-test"
-    camera_entity.sn = "SSC0ATEST"
-    camera_entity.name = "Camera"
-    camera_entity.online = True
-
-    class Coordinator:
-        data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
-
-        def async_add_listener(self, *args, **kwargs):
-            return lambda: None
-
-    class FakeHass:
-        def async_create_task(self, coro):
-            coro.close()
-            return SimpleNamespace(done=lambda: True)
-
-    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
-    camera.hass = FakeHass()
-
-    config = camera._async_get_webrtc_client_configuration().to_frontend_dict()
-
-    assert config["dataChannel"] == "data-channel-of-"
-    assert config["configuration"]["iceServers"] == [
-        {
-            "urls": "turn:turn.example.com",
-            "username": "user",
-            "credential": "pass",
-        },
-        {"urls": ["stun:stun.example.com"]},
-    ]
-
-
-async def test_webrtc_ticket_warmup_populates_client_config_ice_servers():
-    from custom_components.xsense.camera import (
-        CAMERA_DESCRIPTION,
-        XSenseWebRTCCameraEntity,
-    )
-
-    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
-    camera_entity.entity_id = "camera-test"
-    camera_entity.sn = "SSC0ATEST"
-    camera_entity.name = "Camera"
-    camera_entity.online = True
-    calls = []
-
-    class XSense:
-        async def get_camera_webrtc_ticket(self, current_entity, *, force_refresh=False):
-            calls.append((current_entity.sn, force_refresh))
-            ticket = {
-                "expirationTime": 9999999999999,
-                "iceServer": [{"url": "turn:turn.example.com"}],
-            }
-            current_entity.data["cameraWebrtcTicket"] = ticket
-            return ticket
-
-    class Coordinator:
-        def __init__(self):
-            self.data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
-            self.xsense = XSense()
-
-        def async_add_listener(self, *args, **kwargs):
-            return lambda: None
-
-    class Hass:
-        def async_create_task(self, coro):
-            return asyncio.create_task(coro)
-
-    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
-    camera.hass = Hass()
-
-    camera._schedule_webrtc_ticket_prime()
-    await camera._webrtc_ticket_prime_task
-    config = camera._async_get_webrtc_client_configuration().to_frontend_dict()
-
-    assert calls == [("SSC0ATEST", False)]
-    assert config["configuration"]["iceServers"] == [
-        {"urls": "turn:turn.example.com"}
-    ]
+    assert "_future_has_result" in add_candidate_source
+    assert "verifyDormancyStatus=True" in ticket_source
 
 
 def test_camera_entity_webrtc_protocol_default_matches_apk():
@@ -4591,7 +3849,7 @@ async def test_default_camera_raises_when_stream_endpoint_no_response():
         await camera.stream_source()
 
 
-async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkeypatch):
+async def test_failed_webrtc_signal_start_is_removed_from_sessions(monkeypatch):
     from custom_components.xsense import camera as camera_module
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
@@ -4607,9 +3865,6 @@ async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkey
     async def get_camera_webrtc_ticket(entity, *, force_refresh=False):
         return {"signalServer": "signal"}
 
-    async def keep_camera_live_alive(entity):
-        return None
-
     class Coordinator:
         def __init__(self):
             self.data = {
@@ -4618,7 +3873,6 @@ async def test_failed_webrtc_signal_start_is_removed_from_active_sessions(monkey
             }
             self.xsense = SimpleNamespace(
                 get_camera_webrtc_ticket=get_camera_webrtc_ticket,
-                keep_camera_live_alive=keep_camera_live_alive,
             )
 
         def async_add_listener(self, *args, **kwargs):
@@ -4738,9 +3992,6 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
             "iceServer": [],
         }
 
-    async def keep_camera_live_alive(entity):
-        return None
-
     class Coordinator:
         def __init__(self):
             self.data = {
@@ -4749,7 +4000,6 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
             }
             self.xsense = SimpleNamespace(
                 get_camera_webrtc_ticket=get_camera_webrtc_ticket,
-                keep_camera_live_alive=keep_camera_live_alive,
             )
 
         def async_add_listener(self, *args, **kwargs):
@@ -4810,11 +4060,7 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
     assert len(created_sessions) == 1
     assert created_sessions[0].candidates == [candidate]
     assert camera._pending_webrtc_candidates == {}
-    assert camera.hass.data[camera_module.DOMAIN]["_active_webrtc_camera_counts"] == {
-        "SSC0ATEST": 1
-    }
     assert isinstance(messages[0], WebRTCAnswer)
-    camera._stop_webrtc_keepalive("session-1")
 
 
 async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
@@ -4844,14 +4090,6 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
             "iceServer": [],
         }
 
-    stop_calls = []
-
-    async def stop_camera_live(entity):
-        stop_calls.append(entity.sn)
-
-    async def keep_camera_live_alive(entity):
-        return None
-
     class Coordinator:
         def __init__(self):
             self.data = {
@@ -4860,8 +4098,6 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
             }
             self.xsense = SimpleNamespace(
                 get_camera_webrtc_ticket=get_camera_webrtc_ticket,
-                stop_camera_live=stop_camera_live,
-                keep_camera_live_alive=keep_camera_live_alive,
             )
 
         def async_add_listener(self, *args, **kwargs):
@@ -4913,7 +4149,6 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
     camera.hass = FakeHass()
     old_session = ExistingSession()
     camera._webrtc_sessions["old-session"] = old_session
-    camera_module._mark_camera_webrtc_live(camera.hass, camera_entity.sn)
     messages = []
 
     await camera.async_handle_async_webrtc_offer(
@@ -4922,14 +4157,9 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
 
     assert old_session.closed is True
     assert list(camera._webrtc_sessions) == ["new-session"]
-    assert camera.hass.data[camera_module.DOMAIN]["_active_webrtc_camera_counts"] == {
-        "SSC0ATEST": 1
-    }
     assert len(created_sessions) == 1
-    assert stop_calls == []
     assert isinstance(messages[0], WebRTCAnswer)
     assert messages[0].answer == "v=0\r\nanswer"
-    camera._stop_webrtc_keepalive("new-session")
 
 
 async def test_frontend_webrtc_close_closes_signal_session():
@@ -4946,7 +4176,11 @@ async def test_frontend_webrtc_close_closes_signal_session():
     camera_entity.data["cameraWebrtcTicket"] = {"id": "ticket-id"}
 
     class Coordinator:
-        data = {"stations": {camera_entity.entity_id: camera_entity}, "devices": {}}
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
 
         def async_add_listener(self, *args, **kwargs):
             return lambda: None
@@ -4972,9 +4206,6 @@ async def test_frontend_webrtc_close_closes_signal_session():
     camera.hass = FakeHass()
     session = Session()
     camera._webrtc_sessions["session-1"] = session
-    from custom_components.xsense import camera as camera_module
-
-    camera_module._mark_camera_webrtc_live(camera.hass, camera_entity.sn)
     camera._pending_webrtc_candidates["session-1"] = [object()]
 
     camera.close_webrtc_session("session-1")
@@ -4984,9 +4215,6 @@ async def test_frontend_webrtc_close_closes_signal_session():
     assert camera_entity.data["cameraWebrtcTicket"] == {"id": "ticket-id"}
     assert camera._webrtc_sessions == {}
     assert camera._pending_webrtc_candidates == {}
-    assert camera.hass.data.get(camera_module.DOMAIN, {}).get(
-        "_active_webrtc_camera_counts"
-    ) is None
 
 
 async def test_frontend_webrtc_close_keeps_live_when_other_session_exists():
@@ -5027,10 +4255,6 @@ async def test_frontend_webrtc_close_keeps_live_when_other_session_exists():
 
     camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
     camera.hass = FakeHass()
-    from custom_components.xsense import camera as camera_module
-
-    camera_module._mark_camera_webrtc_live(camera.hass, camera_entity.sn)
-    camera_module._mark_camera_webrtc_live(camera.hass, camera_entity.sn)
     old_session = Session()
     active_session = Session()
     camera._webrtc_sessions["old-session"] = old_session
@@ -5043,9 +4267,6 @@ async def test_frontend_webrtc_close_keeps_live_when_other_session_exists():
     assert active_session.closed is False
     assert camera_entity.data["cameraWebrtcTicket"] == {"id": "ticket-id"}
     assert list(camera._webrtc_sessions) == ["active-session"]
-    assert camera.hass.data[camera_module.DOMAIN]["_active_webrtc_camera_counts"] == {
-        "SSC0ATEST": 1
-    }
 
 
 def test_camera_online_uses_parsed_entity_online_state_like_apk():

@@ -2,6 +2,7 @@
 
 Release notes for each published X-Sense Home Security version.
 
+- [1.4.10.7](.github/release-notes/1.4.10.7.md)
 - [1.4.10.6](.github/release-notes/1.4.10.6.md)
 - [1.4.10.5](.github/release-notes/1.4.10.5.md)
 - [1.4.10.4](.github/release-notes/1.4.10.4.md)

@@ -1070,11 +1070,6 @@ def test_recordings_runtime_cleanup_removes_stale_non_camera_runtime(monkeypatch
     )
     monkeypatch.setattr(
         xsense_module,
-        "async_unregister_playback_panel",
-        lambda hass: calls.append("playback_panel"),
-    )
-    monkeypatch.setattr(
-        xsense_module,
         "async_unregister_recording_services",
         lambda hass: calls.append("recording_services"),
     )
@@ -1084,7 +1079,7 @@ def test_recordings_runtime_cleanup_removes_stale_non_camera_runtime(monkeypatch
     assert calls == [
         ("remove_index", "xcom-entry"),
         "recordings_panel",
-        "playback_panel",
+
         "recording_services",
     ]
 
@@ -1102,8 +1097,6 @@ def test_setup_entry_removes_recordings_runtime_without_cameras(monkeypatch):
     async def async_register_recordings_http_views(hass):
         calls.append("recordings_http_views")
 
-    async def async_register_playback_view(hass):
-        calls.append("playback_view")
 
     async def async_register_recording_services(hass):
         calls.append("recording_services")
@@ -1163,11 +1156,7 @@ def test_setup_entry_removes_recordings_runtime_without_cameras(monkeypatch):
         "async_register_recordings_http_views",
         async_register_recordings_http_views,
     )
-    monkeypatch.setattr(
-        xsense_module,
-        "async_register_playback_view",
-        async_register_playback_view,
-    )
+
     monkeypatch.setattr(
         xsense_module,
         "async_register_recording_services",
@@ -1196,7 +1185,7 @@ def test_setup_entry_removes_recordings_runtime_without_cameras(monkeypatch):
     assert ("cleanup", "entry-no-camera") in calls
     assert "recordings_panel" not in calls
     assert "recordings_http_views" not in calls
-    assert "playback_view" not in calls
+
     assert "recording_services" not in calls
     assert "recording_media_sync" not in calls
 
@@ -1214,8 +1203,6 @@ def test_setup_entry_registers_recordings_runtime_with_cameras(monkeypatch):
     async def async_register_recordings_http_views(hass):
         calls.append("recordings_http_views")
 
-    async def async_register_playback_view(hass):
-        calls.append("playback_view")
 
     async def async_register_recording_services(hass):
         calls.append("recording_services")
@@ -1276,11 +1263,7 @@ def test_setup_entry_registers_recordings_runtime_with_cameras(monkeypatch):
         "async_register_recordings_http_views",
         async_register_recordings_http_views,
     )
-    monkeypatch.setattr(
-        xsense_module,
-        "async_register_playback_view",
-        async_register_playback_view,
-    )
+
     monkeypatch.setattr(
         xsense_module,
         "async_register_recording_services",
@@ -1309,7 +1292,7 @@ def test_setup_entry_registers_recordings_runtime_with_cameras(monkeypatch):
     assert ("cleanup", "entry-camera") not in calls
     assert "recordings_panel" in calls
     assert "recordings_http_views" in calls
-    assert "playback_view" in calls
+
     assert "recording_services" in calls
     assert "recording_media_sync" in calls
 
@@ -1331,8 +1314,6 @@ def test_setup_entry_registers_recordings_runtime_when_camera_appears_later(
     async def async_register_recordings_http_views(hass):
         calls.append("recordings_http_views")
 
-    async def async_register_playback_view(hass):
-        calls.append("playback_view")
 
     async def async_register_recording_services(hass):
         calls.append("recording_services")
@@ -1402,11 +1383,7 @@ def test_setup_entry_registers_recordings_runtime_when_camera_appears_later(
         "async_register_recordings_http_views",
         async_register_recordings_http_views,
     )
-    monkeypatch.setattr(
-        xsense_module,
-        "async_register_playback_view",
-        async_register_playback_view,
-    )
+
     monkeypatch.setattr(
         xsense_module,
         "async_register_recording_services",
@@ -1438,7 +1415,7 @@ def test_setup_entry_registers_recordings_runtime_when_camera_appears_later(
 
     assert "recordings_panel" in calls
     assert "recordings_http_views" in calls
-    assert "playback_view" in calls
+
     assert "recording_services" in calls
     assert "recording_media_sync" in calls
 
@@ -1465,11 +1442,6 @@ def test_recordings_runtime_unload_unregisters_after_last_camera(monkeypatch):
     )
     monkeypatch.setattr(
         xsense_module,
-        "async_unregister_playback_panel",
-        lambda hass: calls.append("playback_panel"),
-    )
-    monkeypatch.setattr(
-        xsense_module,
         "async_unregister_recording_services",
         lambda hass: calls.append("recording_services"),
     )
@@ -1492,24 +1464,14 @@ def test_recordings_runtime_unload_unregisters_after_last_camera(monkeypatch):
         ("remove_index", "camera-entry"),
         "shutdown",
         "recordings_panel",
-        "playback_panel",
         "recording_services",
     ]
 
 
 def test_recordings_runtime_unregister_helpers(monkeypatch):
-    from custom_components.xsense import media_source, playback
+    from custom_components.xsense import media_source
 
-    removed_panels = []
     removed_services = []
-
-    monkeypatch.setattr(
-        playback.frontend,
-        "async_remove_panel",
-        lambda hass, path, *, warn_if_unknown=True: removed_panels.append(
-            (path, warn_if_unknown)
-        ),
-    )
 
     class Services:
         def has_service(self, domain, service):
@@ -1521,18 +1483,14 @@ def test_recordings_runtime_unregister_helpers(monkeypatch):
     hass = SimpleNamespace(
         data={
             DOMAIN: {
-                "_playback_panel_registered": True,
                 "_recording_services_registered": True,
             }
         },
         services=Services(),
     )
 
-    playback.async_unregister_playback_panel(hass)
     media_source.async_unregister_recording_services(hass)
 
-    assert removed_panels == [("xsense-playback", False)]
-    assert "_playback_panel_registered" not in hass.data[DOMAIN]
     assert removed_services == [
         (DOMAIN, "refresh_recordings"),
         (DOMAIN, "cache_recordings"),
@@ -1727,8 +1685,8 @@ def test_recordings_panel_data_exposes_cache_backed_clips(monkeypatch):
         "start": 1782049304,
         "end": 1782049334,
         "title": "Motion",
-        "source": "sd_playback",
-        "playback_url": "/xsense-recordings#entry_id=entry-id",
+        "source": "video_url",
+        "playback_url": "https://example.invalid/clip.mp4",
         "thumbnail_url": "https://example.invalid/thumb.jpg",
         "media_root": "/media/xsense_recordings",
     }
@@ -1845,8 +1803,8 @@ def test_recordings_panel_data_omits_missing_thumbnail_url(monkeypatch):
                             "date": "2026-06-30",
                             "start": 1782049304,
                             "end": 1782049334,
-                            "source": "sd_playback",
-                            "playback_url": "/xsense-recordings#entry_id=entry-id",
+                            "source": "video_url",
+                            "playback_url": "https://example.invalid/clip.mp4",
                             "media_root": "/media/xsense_recordings",
                         }
                     ],
@@ -1885,8 +1843,8 @@ def test_recordings_panel_data_counts_video_ready_without_thumbnail(monkeypatch)
                             "date": "2026-06-30",
                             "start": 1782049304,
                             "end": 1782049334,
-                            "source": "sd_playback",
-                            "playback_url": "/xsense-recordings#entry_id=entry-id",
+                            "source": "video_url",
+                            "playback_url": "https://example.invalid/clip.mp4",
                             "thumbnail_url": "https://example.invalid/thumb.jpg",
                             "media_root": "/media/xsense_recordings",
                         }
@@ -2077,7 +2035,7 @@ def test_recordings_panel_playback_serves_hls_before_legacy_mp4(
     assert b"/api/xsense/recordings/hls/" in response.body
 
 
-def test_recordings_panel_playback_capture_fallback_forces_camera_capture(
+def test_recordings_panel_playback_ignores_capture_query_and_uses_direct_media(
     monkeypatch,
     tmp_path,
 ):
@@ -2095,6 +2053,7 @@ def test_recordings_panel_playback_capture_fallback_forces_camera_capture(
         "end": 1782049334,
         "source": "video_url",
         "quality": "HD",
+        "playback_url": "https://example.invalid/clip.m3u8",
     }
     seen = {}
 
@@ -2140,9 +2099,9 @@ def test_recordings_panel_playback_capture_fallback_forces_camera_capture(
     )
 
     assert isinstance(response, web.FileResponse)
-    assert seen["source"] == "sd_playback"
+    assert seen["source"] == "video_url"
     assert seen["quality"] == "HD"
-    assert seen["playback_url"].startswith("/xsense/recording/entry-id/")
+    assert seen["playback_url"] == "https://example.invalid/clip.m3u8"
     assert clip_path.read_bytes() == b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00sd"
 
 

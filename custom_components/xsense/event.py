@@ -25,7 +25,7 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN, LOGGER
 from .entity import XSenseEntity, coordinator_devices
-from .playback import playback_url
+from .frontend import recordings_panel_url
 
 if TYPE_CHECKING:
     from .coordinator import XSenseDataUpdateCoordinator
@@ -464,11 +464,10 @@ def _add_recording_panel_url(
     if end_time in (None, ""):
         end_time = _recording_end_from_period(start_time, playback.get("period"))
     if not _is_recordings_panel_url(event_data.get("recording_url")):
-        event_data["recording_url"] = playback_url(
+        event_data["recording_url"] = recordings_panel_url(
             entry_id,
             str(entity.sn),
             int(start_time),
-            str(event_data.get("camera_entity_id") or ""),
             end_time=end_time,
         )
     if recording_source := playback.get("source"):
