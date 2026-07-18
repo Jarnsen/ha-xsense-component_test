@@ -1,0 +1,70 @@
+blueprint:
+  name: X-Sense Keypad Code
+  description: >
+    Run actions when an X-Sense SKP0A keypad submits a code through the
+    X-Sense safe-notice event path. The keypad sends a code only after a valid
+    app-created code is submitted with Home, Away, or Disarmed. Individual key
+    presses are not published by X-Sense.
+  domain: automation
+  author: X-Sense Home Security
+  source_url: https://github.com/Jarnsen/ha-xsense-component_test/blob/main/blueprints/automation/xsense/keypad_code_action.yaml
+  homeassistant:
+    min_version: 2025.3.0
+  input:
+    keypad_code:
+      name: Keypad code
+      description: Enter the X-Sense guest/user code that should trigger this automation.
+      selector:
+        text:
+    mode_button:
+      name: Mode button
+      description: Optionally require the Home, Away, or Disarmed button used to submit the code.
+      default: Any
+      selector:
+        select:
+          options:
+            - Any
+            - Home
+            - Away
+            - Disarmed
+    keypad_device_sn:
+      name: Keypad device serial
+      description: Optional. Leave empty to accept this code from any SKP0A keypad.
+      default: ""
+      selector:
+        text:
+    actions:
+      name: Actions
+      description: Actions to run when the submitted keypad code and optional mode button match.
+      selector:
+        action:
+
+triggers:
+  - trigger: event
+    event_type: xsense_keypad_code
+
+variables:
+  xsense_blueprint_version: 1
+  xsense_expected_code: !input keypad_code
+  xsense_expected_mode: !input mode_button
+  xsense_expected_keypad: !input keypad_device_sn
+  xsense_event_data: "{{ trigger.event.data if trigger is defined and trigger.event is defined and trigger.event.data is mapping else {} }}"
+  xsense_keypad_code: "{{ xsense_event_data.get('keypad_code') if xsense_event_data is mapping else none }}"
+  xsense_safe_mode_aim: "{{ xsense_event_data.get('safe_mode_aim') if xsense_event_data is mapping else none }}"
+  xsense_keypad_device_sn: "{{ xsense_event_data.get('device_sn') if xsense_event_data is mapping else none }}"
+  xsense_station_sn: "{{ xsense_event_data.get('station_sn') if xsense_event_data is mapping else none }}"
+  xsense_event_id: "{{ xsense_event_data.get('event_id') if xsense_event_data is mapping else none }}"
+  xsense_event_time: "{{ xsense_event_data.get('event_time') if xsense_event_data is mapping else none }}"
+
+conditions:
+  - condition: template
+    value_template: "{{ xsense_keypad_code | string == xsense_expected_code | string }}"
+  - condition: template
+    value_template: "{{ xsense_expected_mode == 'Any' or xsense_safe_mode_aim == xsense_expected_mode }}"
+  - condition: template
+    value_template: "{{ not xsense_expected_keypad or xsense_keypad_device_sn == xsense_expected_keypad }}"
+
+actions: !input actions
+
+mode: queued
+max: 10

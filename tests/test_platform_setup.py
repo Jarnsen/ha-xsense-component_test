@@ -341,6 +341,95 @@ def test_packaged_ai_notification_blueprint_matches_import_blueprint():
     assert package_path.read_text(encoding="utf-8") == import_blueprint
 
 
+def test_keypad_code_blueprint_has_import_source_metadata():
+    with open(
+        "blueprints/automation/xsense/keypad_code_action.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    source_url = blueprint["blueprint"]["source_url"]
+
+    assert source_url == (
+        "https://github.com/Jarnsen/ha-xsense-component_test/blob/main/"
+        "blueprints/automation/xsense/keypad_code_action.yaml"
+    )
+
+
+def test_packaged_keypad_code_blueprint_matches_import_blueprint():
+    package_path = Path("custom_components/xsense/blueprints/keypad_code_action.yaml")
+    with open(
+        "blueprints/automation/xsense/keypad_code_action.yaml",
+        encoding="utf-8",
+    ) as file:
+        import_blueprint = file.read()
+
+    assert package_path.read_text(encoding="utf-8") == import_blueprint
+
+
+def test_keypad_code_blueprint_uses_submitted_code_event():
+    with open(
+        "blueprints/automation/xsense/keypad_code_action.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    assert blueprint["triggers"] == [
+        {"trigger": "event", "event_type": "xsense_keypad_code"}
+    ]
+    assert blueprint["actions"] == "actions"
+    assert blueprint["mode"] == "queued"
+    assert blueprint["max"] == 10
+
+
+def test_keypad_code_blueprint_exposes_safe_filters_and_action_input():
+    with open(
+        "blueprints/automation/xsense/keypad_code_action.yaml",
+        encoding="utf-8",
+    ) as file:
+        blueprint = yaml.load(file, Loader=BlueprintLoader)
+
+    inputs = blueprint["blueprint"]["input"]
+    variables = blueprint["variables"]
+    conditions = blueprint["conditions"]
+
+    assert inputs["keypad_code"]["selector"] == {"text": None}
+    assert inputs["mode_button"]["default"] == "Any"
+    assert inputs["mode_button"]["selector"]["select"]["options"] == [
+        "Any",
+        "Home",
+        "Away",
+        "Disarmed",
+    ]
+    assert inputs["keypad_device_sn"]["default"] == ""
+    assert inputs["actions"]["selector"] == {"action": None}
+    assert variables["xsense_blueprint_version"] == 1
+    assert variables["xsense_expected_code"] == "keypad_code"
+    assert variables["xsense_expected_mode"] == "mode_button"
+    assert variables["xsense_expected_keypad"] == "keypad_device_sn"
+    assert "trigger.event.data is mapping" in variables["xsense_event_data"]
+    assert "keypad_code" in variables["xsense_keypad_code"]
+    assert "safe_mode_aim" in variables["xsense_safe_mode_aim"]
+    assert "device_sn" in variables["xsense_keypad_device_sn"]
+    assert "station_sn" in variables["xsense_station_sn"]
+    assert "event_id" in variables["xsense_event_id"]
+    assert "event_time" in variables["xsense_event_time"]
+    assert conditions == [
+        {
+            "condition": "template",
+            "value_template": "{{ xsense_keypad_code | string == xsense_expected_code | string }}",
+        },
+        {
+            "condition": "template",
+            "value_template": "{{ xsense_expected_mode == 'Any' or xsense_safe_mode_aim == xsense_expected_mode }}",
+        },
+        {
+            "condition": "template",
+            "value_template": "{{ not xsense_expected_keypad or xsense_keypad_device_sn == xsense_expected_keypad }}",
+        },
+    ]
+
+
 def test_ai_notification_blueprint_docs_use_github_file_import_url():
     with open("readme/README_en.md", encoding="utf-8") as file:
         readme = file.read()
@@ -350,6 +439,10 @@ def test_ai_notification_blueprint_docs_use_github_file_import_url():
         "blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2F"
         "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
         "automation%2Fxsense%2Fcamera_ai_notification.yaml"
+    ) in readme
+    assert (
+        "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
+        "automation%2Fxsense%2Fkeypad_code_action.yaml"
     ) in readme
 
 
@@ -399,11 +492,81 @@ def test_startup_maintenance_waits_until_home_assistant_started(monkeypatch):
     xsense_module._schedule_startup_maintenance(Hass(), Entry(), coordinator)
 
     assert calls[0][0:2] == ("listen", "homeassistant_started")
+    assert calls[1][0] == "unload"
     calls[0][2](None)
-    assert calls[1][0:2] == ("timer", xsense_module.STARTUP_MAINTENANCE_DELAY)
-    assert calls[2][0] == "unload"
-    calls[1][2](None)
-    assert calls[3] == ("task", "_async_run_startup_maintenance")
+    assert calls[2][0:2] == ("timer", xsense_module.STARTUP_MAINTENANCE_DELAY)
+    assert calls[3][0] == "unload"
+    calls[2][2](None)
+    assert calls[4] == ("task", "_async_run_startup_maintenance")
+
+
+def test_async_reload_entry_unloads_then_sets_up(monkeypatch):
+    calls = []
+
+    async def async_unload_entry(hass, entry):
+        calls.append(("unload", entry.entry_id))
+        return True
+
+    async def async_setup_entry(hass, entry):
+        calls.append(("setup", entry.entry_id))
+        return True
+
+    monkeypatch.setattr(xsense_module, "async_unload_entry", async_unload_entry)
+    monkeypatch.setattr(xsense_module, "async_setup_entry", async_setup_entry)
+
+    entry = SimpleNamespace(entry_id="entry-id")
+
+    assert asyncio.run(xsense_module.async_reload_entry(object(), entry)) is True
+    assert calls == [("unload", "entry-id"), ("setup", "entry-id")]
+
+
+def test_unload_cancels_pending_recording_cache_tasks(monkeypatch):
+    calls = []
+
+    class Task:
+        def __init__(self, name):
+            self.name = name
+            self.cancelled = False
+
+        def done(self):
+            return False
+
+        def cancel(self):
+            self.cancelled = True
+            calls.append(("cancel", self.name))
+
+    task = Task("cache")
+    coordinator = SimpleNamespace(async_shutdown=lambda: None)
+    hass = SimpleNamespace(
+        data={
+            DOMAIN: {
+                "entry-id": coordinator,
+                event.RECORDING_CACHE_TASKS: {"entry-id": {task}},
+            }
+        },
+        config_entries=SimpleNamespace(
+            async_unload_platforms=lambda entry, platforms: asyncio.sleep(
+                0, result=True
+            )
+        ),
+    )
+    entry = SimpleNamespace(entry_id="entry-id")
+
+    async def async_shutdown():
+        calls.append(("shutdown",))
+
+    coordinator.async_shutdown = async_shutdown
+
+    monkeypatch.setattr(xsense_module, "_has_any_camera_entities", lambda hass: True)
+    monkeypatch.setattr(
+        xsense_module,
+        "async_remove_recording_index",
+        lambda hass, entry_id: calls.append(("remove_index", entry_id)),
+    )
+
+    assert asyncio.run(xsense_module.async_unload_entry(hass, entry)) is True
+    assert ("cancel", "cache") in calls
+    assert event.RECORDING_CACHE_TASKS not in hass.data[DOMAIN]
 
 
 def test_ai_notification_blueprint_filters_by_selected_event_entity():

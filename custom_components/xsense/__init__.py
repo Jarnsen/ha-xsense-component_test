@@ -23,6 +23,7 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import XSenseDataUpdateCoordinator
+from .event import async_cancel_recording_cache_tasks
 from .frontend import async_register_recordings_panel, async_unregister_recordings_panel
 from .http import async_register_recordings_http_views
 from .media_source import (
@@ -713,9 +714,11 @@ def _schedule_startup_maintenance(
         _schedule_delayed_startup_maintenance()
         return
 
-    hass.bus.async_listen_once(
-        EVENT_HOMEASSISTANT_STARTED,
-        _schedule_delayed_startup_maintenance,
+    entry.async_on_unload(
+        hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_STARTED,
+            _schedule_delayed_startup_maintenance,
+        )
     )
 
 
@@ -776,6 +779,13 @@ async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> Non
     await hass.config_entries.async_reload(entry.entry_id)
 
 
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Reload a config entry."""
+    if not await async_unload_entry(hass, entry):
+        return False
+    return await async_setup_entry(hass, entry)
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
@@ -784,6 +794,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator: XSenseDataUpdateCoordinator | None = hass.data[DOMAIN].pop(
             entry.entry_id, None
         )
+        async_cancel_recording_cache_tasks(hass, entry.entry_id)
         async_remove_recording_index(hass, entry.entry_id)
         if coordinator is not None:
             await coordinator.async_shutdown()

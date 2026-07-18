@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 AI_DETECTION_EVENT_TYPE = "ai_detection"
 MOTION_EVENT_TYPE = "motion"
 CAMERA_EVENT_BUS_TYPE = "xsense_camera_event"
+RECORDING_CACHE_TASKS = "_recording_cache_tasks"
 AI_DETECTION_TYPES: tuple[str, ...] = (
     "person",
     "pet",
@@ -490,6 +491,19 @@ def _event_entity_entry_id(event_entity: EventEntity) -> str:
     return str(getattr(entry, "entry_id", "") or "")
 
 
+def async_cancel_recording_cache_tasks(hass: HomeAssistant, entry_id: str) -> None:
+    """Cancel pending recording-cache tasks for one config entry."""
+    task_map = hass.data.get(DOMAIN, {}).get(RECORDING_CACHE_TASKS)
+    if not isinstance(task_map, dict):
+        return
+    tasks = task_map.pop(entry_id, set())
+    for task in tuple(tasks):
+        if not task.done():
+            task.cancel()
+    if not task_map:
+        hass.data.get(DOMAIN, {}).pop(RECORDING_CACHE_TASKS, None)
+
+
 def motion_fingerprint(
     event_data: dict[str, Any] | None,
 ) -> tuple[Any, ...] | None:
@@ -599,7 +613,24 @@ def _trigger_event_after_recording_cache(
         _trigger_camera_event(event_entity, event_type, event_data)
         _write_event_state(event_entity)
 
-    hass.async_create_task(_async_cache_then_trigger())
+    task = hass.async_create_task(_async_cache_then_trigger())
+    if task is None or not hasattr(task, "add_done_callback"):
+        return True
+    hass_data = getattr(hass, "data", None)
+    if not isinstance(hass_data, dict):
+        return True
+    task_map = hass_data.setdefault(DOMAIN, {}).setdefault(RECORDING_CACHE_TASKS, {})
+    tasks = task_map.setdefault(entry_id, set())
+    tasks.add(task)
+
+    def _cleanup_task(done_task) -> None:
+        tasks.discard(done_task)
+        if not tasks:
+            task_map.pop(entry_id, None)
+        if not task_map:
+            hass.data.get(DOMAIN, {}).pop(RECORDING_CACHE_TASKS, None)
+
+    task.add_done_callback(_cleanup_task)
     return True
 
 

@@ -120,6 +120,7 @@ The integration creates Home Assistant entities only for fields that are present
 - Supported camera setup and tuning controls such as recording, night vision, audio, cooldown, codec, motion sensitivity, and doorbell settings are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - Test, mute, fire-drill, and camera wake buttons for device models where the X-Sense app exposes the matching action.
 - SKP0A keypad code submissions fire the `xsense_keypad_code` Home Assistant event with the submitted code, keypad device serial, station serial, selected mode, event ID, event time, and alarm-cancel value.
+- The included SKP0A keypad-code blueprint can run selected Home Assistant actions when a chosen keypad code and optional mode button match.
 
 Some entities are diagnostic or configuration-related and are grouped that way in Home Assistant. If a device does not report a specific field, or the X-Sense app marks the feature unsupported for that device/account, the matching entity is not created. Device binding, removal, sharing, account, payment, firmware update, SD-card format, and other management actions remain in the X-Sense app.
 
@@ -135,6 +136,15 @@ When a Motion event includes X-Sense playback metadata, the integration immediat
 Camera Motion and AI Detection updates are one-time events, not on/off states. Motion events can include APK record playback metadata when X-Sense reports it; the integration uses that metadata to cache the clip before emitting the notification-ready event when possible. The event data includes `recording_url`, `recording_media_url` when cached, `snapshot_url`, and the full `playback` block. This is separate from AI Detection and does not require the AI service to be available. The blueprint listens to the selected event entity directly and exposes `xsense_event_type`, `xsense_recording_url`, `xsense_recording_media_url`, and `xsense_snapshot_url` for custom actions. For manual automations, use Home Assistant's `event.received` trigger with the camera `Motion` or `AI Detection` event entity; only add an `event_type` filter if you want to narrow a subscribed AI Detection entity to object types such as `person`, `pet`, `vehicle`, `package`, `other`, or `ai_detection`.
 
 Camera SD-card recordings appear in the X-Sense Recordings sidebar and under Media Browser > X-Sense Recordings after the integration has refreshed the APK recording history. The list is grouped by camera and date and uses a short local cache for faster browsing. Clips are cached under `/media/xsense_recordings` on first play by default; the cache folder can be changed in the integration options, but move the existing `videos` and `thumbs` contents to the new folder before changing it if you want old cached recordings to remain available. Direct X-Sense video URLs are downloaded directly, while SD-only clips are captured through the bundled no-transcode Pion adapter and remuxed to MP4. Recording media sync processes newest clips first, keeps older clips catching up in the normal background sweep, and uses the motion or AI event playback metadata as the priority path for fresh notification clips.
+
+____________________________________________________________
+
+## SKP0A Keypad Code Automations
+The SKP0A keypad does not publish every individual key press. It publishes a keypad event after a valid X-Sense app-created code is submitted with Home, Away, or Disarmed. The integration exposes that submitted-code event as `xsense_keypad_code`.
+
+Use the included blueprint to run Home Assistant actions for a selected code. You can optionally require the Home, Away, or Disarmed mode button used to submit the code, and optionally limit the automation to one keypad serial number.
+
+[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
 
 Example automation:
 
