@@ -27,6 +27,7 @@ TO_REDACT = {
     "title",
     "unique_id",
     "userId",
+    "wiredMacAddress",
 }
 
 DIAGNOSTIC_DATA_KEYS = {
@@ -37,6 +38,7 @@ DIAGNOSTIC_DATA_KEYS = {
     "alarmSeconds",
     "alarmSource",
     "alarmStatus",
+    "alarmSound",
     "alarmTone",
     "alarmVol",
     "antiflicker",
@@ -46,7 +48,9 @@ DIAGNOSTIC_DATA_KEYS = {
     "cameraAudioUrl",
     "cameraLiveProtocol",
     "cameraLiveUrl",
+    "cameraStatusCode",
     "category",
+    "checkType",
     "chargeAutoPowerOnSwitch",
     "chirpToneEnable",
     "continueAlarm",
@@ -61,10 +65,13 @@ DIAGNOSTIC_DATA_KEYS = {
     "deviceDormancyWakeTime",
     "devicePersonDetect",
     "deviceStatus",
+    "deviceType",
+    "devType",
     "firmwareStatus",
     "firmwareVersion",
     "ip",
     "ipAddress",
+    "location",
     "keySound",
     "lastSelfTest",
     "lastSelfTestTime",
@@ -84,6 +91,8 @@ DIAGNOSTIC_DATA_KEYS = {
     "needVideo",
     "on",
     "pirEnable",
+    "pirInterval",
+    "pirSensitivity",
     "recLamp",
     "recResolution",
     "recordingAudioToggleOn",
@@ -91,8 +100,11 @@ DIAGNOSTIC_DATA_KEYS = {
     "remindToneEnable",
     "rfLevel",
     "safeMode",
+    "scheduleTip",
     "signalStrength",
     "ssid",
+    "smokeEdition",
+    "standard",
     "supportAlarm",
     "supportAlarmVolume",
     "supportAntiFlicker",
@@ -114,13 +126,34 @@ DIAGNOSTIC_DATA_KEYS = {
     "supportWebrtc",
     "supportedRecordingResolutions",
     "temperature",
+    "test",
+    "testTime",
     "time",
+    "timeZone",
+    "timeZoneArea",
+    "timeZoneEnabled",
+    "timeZoneValid",
+    "utcTime",
     "voiceVol",
     "voiceVolumeSwitch",
     "waterAlarmStatus",
     "waterMuteStatus",
     "whiteLightScintillation",
     "wifiRSSI",
+    "wifiChannel",
+    "wifiRssiLevel",
+    "wiredMacAddress",
+    "zoneName",
+    "activatedTime",
+    "offlineTime",
+    "thumbImgTime",
+    "appTip",
+    "color",
+    "onEvent",
+    "reAlarm",
+    "sw",
+    "warnLong",
+    "warnShort",
 }
 
 LOCAL_ADDRESS_KEYS = ("ip", "ipAddress")
@@ -129,11 +162,10 @@ LOCAL_MAC_KEYS = ("mac", "macBT", "wiredMacAddress")
 
 def _diagnostic_data(data: dict[str, Any]) -> dict[str, Any]:
     """Return compact functional state data for diagnostics."""
-    return {
-        key: async_redact_data(value, TO_REDACT)
-        for key, value in data.items()
-        if key in DIAGNOSTIC_DATA_KEYS
+    filtered = {
+        key: value for key, value in data.items() if key in DIAGNOSTIC_DATA_KEYS
     }
+    return async_redact_data(filtered, TO_REDACT)
 
 
 def _first_present(data: dict[str, Any], keys: tuple[str, ...]) -> Any:

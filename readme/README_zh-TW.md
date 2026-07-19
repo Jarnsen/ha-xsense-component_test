@@ -13,7 +13,7 @@
 在官方 Home Assistant 整合可用之前，這個 HACS 整合會持續更新，以加入新功能並修正問題。
 
 ## 相容性與 HACS 更新
-如果你仍在使用舊的 `v1.2.6.x` 版本，請先更新到 `v1.3.14` 或更新版本，再將 Home Assistant Core 升級到 2026.7 或更新版本。舊的 `v1.2.6.x` 版本需要 `aiortc`，它與 Home Assistant 的 Python 3.14 執行環境不相容。目前的 `v1.3.x` 版本不再需要 `aiortc`。
+如果你仍在使用舊的 `v1.2.6.x` 版本，請先更新到 `v1.3.14` 或更新版本，再將 Home Assistant Core 升級到 2026.7 或更新版本。舊的 `v1.2.6.x` 版本需要 `aiortc`，它與 Home Assistant 的 Python 3.14 執行環境不相容。目前的 `v1.4.x` 版本不再需要 `aiortc`。
 
 此整合是以 HACS 自訂儲存庫安裝。如果 Home Assistant 沒有立即顯示更新，請開啟 HACS，選擇 X-Sense 儲存庫，在三點選單執行 **Update information**，然後更新或重新下載整合並重新啟動 Home Assistant。
 

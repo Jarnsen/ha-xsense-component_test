@@ -14,7 +14,7 @@ Diese Integration für Home Assistant ermöglicht die Verwendung von X-Sense-Ger
 Diese HACS-Integration wird aktiv gepflegt, damit Nutzer eine breitere X-Sense-Geräteunterstützung in Home Assistant erhalten. Sie wird regelmäßig mit neuen Funktionen, zusätzlicher Geräteabdeckung und Korrekturen für gemeldete Probleme aktualisiert.
 
 ## Kompatibilität und HACS-Updates
-Wenn Sie noch eine alte `v1.2.6.x`-Version verwenden, aktualisieren Sie auf `v1.3.14` oder neuer, bevor Sie Home Assistant Core auf 2026.7 oder neuer aktualisieren. Die alten `v1.2.6.x`-Versionen benötigten `aiortc`, das nicht mit der Python-3.14-Laufzeit von Home Assistant kompatibel ist. Aktuelle `v1.3.x`-Versionen benötigen `aiortc` nicht mehr.
+Wenn Sie noch eine alte `v1.2.6.x`-Version verwenden, aktualisieren Sie auf `v1.3.14` oder neuer, bevor Sie Home Assistant Core auf 2026.7 oder neuer aktualisieren. Die alten `v1.2.6.x`-Versionen benötigten `aiortc`, das nicht mit der Python-3.14-Laufzeit von Home Assistant kompatibel ist. Aktuelle `v1.4.x`-Versionen benötigen `aiortc` nicht mehr.
 
 Diese Integration wird als benutzerdefiniertes HACS-Repository installiert. Wenn Home Assistant das Update nicht sofort anzeigt, öffnen Sie HACS, wählen Sie das X-Sense-Repository, führen Sie im Drei-Punkte-Menü **Update information** / **Informationen aktualisieren** aus, aktualisieren oder laden Sie die Integration erneut herunter und starten Sie Home Assistant neu.
 

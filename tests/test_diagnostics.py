@@ -58,6 +58,32 @@ def test_entity_diagnostics_keeps_only_functional_state_data():
         "ipAddress": "192.0.2.11",
         "wifiRSSI": -55,
         "safeMode": 1,
+        "wiredMacAddress": "**REDACTED**",
+    }
+
+
+def test_entity_diagnostics_retains_metadata_removed_from_entities():
+    entity = SimpleNamespace(
+        type="XS01-WX",
+        entity_type="DEVICE",
+        online=True,
+        data={
+            "appTip": 1,
+            "category": "XS01-WX",
+            "safeMode": "Disarmed",
+            "timeZoneEnabled": 0,
+            "zoneName": "Kitchen",
+        },
+    )
+
+    diagnostics = entity_diagnostics(entity)
+
+    assert diagnostics["data"] == {
+        "appTip": 1,
+        "category": "XS01-WX",
+        "safeMode": "Disarmed",
+        "timeZoneEnabled": 0,
+        "zoneName": "Kitchen",
     }
 
 

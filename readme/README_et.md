@@ -13,7 +13,7 @@ See Home Assistanti integratsioon teeb X-Sense seadmed nutikodus kasutatavaks. S
 Soovitame luua Home Assistanti jaoks eraldi X-Sense konto ning jagada põhikontolt ainult toetatud seadmeid.
 
 ## Ühilduvus ja HACS-i uuendused
-Kui kasutate veel vana `v1.2.6.x` versiooni, uuendage versioonile `v1.3.14` või uuemale enne Home Assistant Core 2026.7 või uuemale versioonile uuendamist. Vanad versioonid vajasid `aiortc`, mis ei ühildu Home Assistanti Python 3.14 käituskeskkonnaga. Praegused `v1.3.x` versioonid ei vaja enam `aiortc`-d.
+Kui kasutate veel vana `v1.2.6.x` versiooni, uuendage versioonile `v1.3.14` või uuemale enne Home Assistant Core 2026.7 või uuemale versioonile uuendamist. Vanad versioonid vajasid `aiortc`, mis ei ühildu Home Assistanti Python 3.14 käituskeskkonnaga. Praegused `v1.4.x` versioonid ei vaja enam `aiortc`-d.
 
 See integratsioon paigaldatakse HACS-i kohandatud repositooriumina. Kui uuendus ei ilmu kohe, avage HACS, valige X-Sense repositoorium, käivitage **Update information**, seejärel uuendage või laadige integratsioon uuesti alla ja taaskäivitage Home Assistant.
 

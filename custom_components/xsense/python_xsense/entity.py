@@ -108,8 +108,13 @@ class Entity:
         if isinstance(peak_data, dict):
             if "coPpmPeak" in peak_data:
                 data.setdefault("coPpmPeak", peak_data["coPpmPeak"])
+            if "radonPeak" in peak_data:
+                data.setdefault("radonPeak", peak_data["radonPeak"])
             if "time" in peak_data:
-                data.setdefault("coPpmPeakTime", peak_data["time"])
+                if "coPpmPeak" in peak_data:
+                    data.setdefault("coPpmPeakTime", peak_data["time"])
+                if "radonPeak" in peak_data:
+                    data.setdefault("radonPeakTime", peak_data["time"])
         for nested_key in ("lightShadowBean", "skp0aShadowBean"):
             nested_data = data.pop(nested_key, {})
             if isinstance(nested_data, dict):

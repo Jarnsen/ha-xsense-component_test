@@ -298,7 +298,7 @@ class XSenseConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id(email)
                 self._abort_if_unique_id_mismatch()
-                return self.async_update_reload_and_abort(
+                return self.async_update_and_abort(
                     entry,
                     data_updates={CONF_EMAIL: email, CONF_PASSWORD: password},
                 )
@@ -331,7 +331,7 @@ class XSenseConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id(email)
                 self._abort_if_unique_id_mismatch()
-                return self.async_update_reload_and_abort(
+                return self.async_update_and_abort(
                     entry,
                     data_updates={CONF_EMAIL: email, CONF_PASSWORD: password},
                 )

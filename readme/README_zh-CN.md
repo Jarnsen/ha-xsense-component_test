@@ -13,7 +13,7 @@
 此 HACS 集成会持续维护，面向希望在 Home Assistant 中获得更广泛 X-Sense 设备支持的用户。它会定期更新，加入新功能、扩大设备覆盖范围，并修复用户反馈的问题。
 
 ## 兼容性和 HACS 更新
-如果你仍在使用旧的 `v1.2.6.x` 版本，请先更新到 `v1.3.14` 或更新版本，再将 Home Assistant Core 升级到 2026.7 或更新版本。旧的 `v1.2.6.x` 版本需要 `aiortc`，它与 Home Assistant 的 Python 3.14 运行环境不兼容。当前的 `v1.3.x` 版本不再需要 `aiortc`。
+如果你仍在使用旧的 `v1.2.6.x` 版本，请先更新到 `v1.3.14` 或更新版本，再将 Home Assistant Core 升级到 2026.7 或更新版本。旧的 `v1.2.6.x` 版本需要 `aiortc`，它与 Home Assistant 的 Python 3.14 运行环境不兼容。当前的 `v1.4.x` 版本不再需要 `aiortc`。
 
 此集成作为 HACS 自定义仓库安装。如果 Home Assistant 没有立即显示更新，请打开 HACS，选择 X-Sense 仓库，在三点菜单中运行 **Update information**，然后更新或重新下载集成并重启 Home Assistant。
 

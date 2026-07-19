@@ -6,6 +6,7 @@ import json
 import logging
 import sys
 import types
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -576,6 +577,40 @@ def test_station_set_devices_matches_apk_child_device_normalization():
     assert device_obj.data["isActivate"] is True
 
 
+def test_station_set_devices_preserves_server_backed_device_fields():
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+
+    station_obj.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "radon-id",
+                    "deviceName": "Radon",
+                    "deviceSn": "radon-sn",
+                    "deviceType": "XR0A-iR",
+                    "radonUnit": "2",
+                    "minRadon": "75",
+                    "maxRadon": "150",
+                    "day30Value": "82.5",
+                }
+            ]
+        }
+    )
+
+    radon = station_obj.devices["radon-id"]
+    assert radon.data["stationId"] == "station-id"
+    assert radon.data["radonUnit"] == "2"
+    assert radon.data["minRadon"] == "75"
+    assert radon.data["maxRadon"] == "150"
+    assert radon.data["day30Value"] == "82.5"
+
+
 def test_station_set_devices_accepts_apk_serial_aliases():
     station_obj = station.Station(
         None,
@@ -1013,6 +1048,19 @@ def test_entity_set_data_applies_apk_alarm_and_peak_normalization():
     assert device.data["alarmStatus"] is True
     assert device.data["coPpmPeak"] == 19
     assert device.data["coPpmPeakTime"] == "20260709101011"
+
+
+def test_entity_set_data_applies_apk_radon_peak_normalization():
+    device = device_module.Device(None, deviceType="XR0A-iR", deviceSn="device-sn")
+
+    device.set_data(
+        {"peak": {"radonPeak": "148.5", "time": "20260719101011"}}
+    )
+
+    assert device.data["radonPeak"] == 148.5
+    assert device.data["radonPeakTime"] == "20260719101011"
+    assert "coPpmPeakTime" not in device.data
+    assert "peak" not in device.data
 
 
 def test_parse_get_state_accepts_apk_reported_device_list():
@@ -1876,12 +1924,13 @@ async def test_self_test_uses_apk_payload_shape(
         assert len(desired["time"]) == expected_time_len
 
 
-def test_xs01_wx_standalone_exposes_legacy_manual_self_test_action():
+def test_xs01_wx_exposes_apk_mute_without_remote_self_test_command():
     client = async_xsense.AsyncXSense()
     station = FakeXSenseStation("XS01-WX", "ABC123")
     station.entity_type = entity_map.EntityType.SMOKE
 
-    assert client.has_action(station, "test") is True
+    assert client.has_action(station, "test") is False
+    assert client.has_action(station, "mute") is True
 
 
 def test_actions_require_resolvable_apk_shadow_route():
@@ -1909,6 +1958,8 @@ def test_wifi_action_requires_resolvable_target_context():
 def test_entity_map_covers_current_apk_router_models():
     apk_models = {
         "CB0Z-3S",
+        "LP/N-SA-0B",
+        "LP/N-SCA-0A",
         "SAL100",
         "SAL51",
         "SBS10",
@@ -1979,11 +2030,180 @@ def test_entity_map_covers_current_apk_router_models():
         "XS0X-MN",
     }
 
-    assert apk_models - set(entity_map.entities) == set()
+    assert set(entity_map.entities) == apk_models | {"group-L"}
+
+
+def test_entity_map_matches_current_apk_model_families():
+    expected_families = {
+        entity_map.EntityType.ALARM: {"SDA51"},
+        entity_map.EntityType.BASESTATION: {"SBS10", "SBS50"},
+        entity_map.EntityType.CAMERA: {"SSC0A", "SSC0B"},
+        entity_map.EntityType.CO: {
+            "XC01-M",
+            "XC04-WX",
+            "XC0C-MR",
+            "XC0C-iA",
+            "XC0C-iR",
+            "XC0M-iR",
+        },
+        entity_map.EntityType.COMBI: {
+            "CB0Z-3S",
+            "LP/N-SCA-0A",
+            "SC01-MN",
+            "SC01-MR",
+            "SC06-WX",
+            "SC07-MR",
+            "SC07-WX",
+            "SC07-iA",
+            "XP0A-MR",
+            "XP0A-iR",
+            "XP0H-MR",
+            "XP0H-iR",
+            "XP0J-iA",
+            "XP0P-MR",
+            "XP0S-iA",
+            "XP0T-iA",
+            "XP0V-iA",
+            "XP0W-iA",
+        },
+        entity_map.EntityType.DOOR: {"SDS0A", "SES01"},
+        entity_map.EntityType.HEAT: {"XH02-M"},
+        entity_map.EntityType.KEYPAD: {"SKP01", "SKP0A"},
+        entity_map.EntityType.LIGHT: {"SPL51", "SSL51", "SWL51", "group-L"},
+        entity_map.EntityType.LISTENER: {"SAL100", "SAL51"},
+        entity_map.EntityType.MAILBOX: {"SMA0A", "SMA51"},
+        entity_map.EntityType.MOTION: {"SMS01", "SMS0A"},
+        entity_map.EntityType.RADON: {"XR0A-iR"},
+        entity_map.EntityType.REMOTE: {"SKF01"},
+        entity_map.EntityType.SMARTDROP: {"SSD01"},
+        entity_map.EntityType.SMOKE: {
+            "LP/N-SA-0B",
+            "SD11-MR",
+            "SD19-MN",
+            "SK0Z-3S",
+            "XP02S-MR",
+            "XS01-M",
+            "XS01-WX",
+            "XS03-WX",
+            "XS03-iWX",
+            "XS0AA-iA",
+            "XS0AB-iA",
+            "XS0B-MR",
+            "XS0B-iR",
+            "XS0D-MR",
+            "XS0E-iR",
+            "XS0F-PMA",
+            "XS0R-iA",
+            "XS0X-MN",
+        },
+        entity_map.EntityType.TEMPERATURE: {"STH0A", "STH0B", "STH0C", "STH51"},
+        entity_map.EntityType.WATER: {"SWS0A", "SWS0B", "SWS51"},
+    }
+
+    actual_families = {
+        family: {
+            model
+            for model, definition in entity_map.entities.items()
+            if definition["type"] == family
+        }
+        for family in expected_families
+    }
+
+    assert actual_families == expected_families
+
+
+def test_entity_actions_match_supported_integration_action_matrix():
+    expected_actions = {
+        "CB0Z-3S": {"test", "mute", "firedrill"},
+        "LP/N-SA-0B": {"test", "mute", "firedrill"},
+        "LP/N-SCA-0A": {"test", "mute", "firedrill"},
+        "SAL100": {"test", "mute"},
+        "SAL51": {"test", "mute"},
+        "SC01-MN": {"test", "mute", "firedrill"},
+        "SC01-MR": {"test", "mute", "firedrill"},
+        "SC06-WX": {"mute"},
+        "SC07-MR": {"test", "mute", "firedrill"},
+        "SC07-WX": {"mute"},
+        "SC07-iA": {"test", "mute", "firedrill"},
+        "SD11-MR": {"test", "mute", "firedrill"},
+        "SD19-MN": {"test", "mute", "firedrill"},
+        "SDA51": {"mute"},
+        "SDS0A": {"test"},
+        "SK0Z-3S": {"test", "mute", "firedrill"},
+        "SKP0A": {"test"},
+        "SMA0A": {"mute"},
+        "SMA51": {"mute"},
+        "SMS0A": {"test"},
+        "STH0A": {"test", "mute"},
+        "STH0B": {"test", "mute"},
+        "STH0C": {"mute"},
+        "STH51": {"test", "mute"},
+        "SWS0A": {"test"},
+        "SWS0B": {"mute"},
+        "SWS51": {"test", "mute"},
+        "XC01-M": {"test", "mute", "firedrill"},
+        "XC04-WX": {"mute"},
+        "XC0C-MR": {"test", "mute", "firedrill"},
+        "XC0C-iA": {"mute"},
+        "XC0C-iR": {"mute"},
+        "XC0M-iR": {"mute"},
+        "XH02-M": {"test", "mute", "firedrill"},
+        "XP02S-MR": {"test", "mute", "firedrill"},
+        "XP0A-MR": {"test", "mute", "firedrill"},
+        "XP0A-iR": {"mute"},
+        "XP0H-MR": {"test", "mute", "firedrill"},
+        "XP0H-iR": {"mute"},
+        "XP0J-iA": {"test", "mute", "firedrill"},
+        "XP0P-MR": {"test", "mute", "firedrill"},
+        "XP0S-iA": {"test", "mute", "firedrill"},
+        "XP0T-iA": {"test", "mute", "firedrill"},
+        "XP0V-iA": {"test", "mute", "firedrill"},
+        "XP0W-iA": {"test", "mute", "firedrill"},
+        "XR0A-iR": {"mute"},
+        "XS01-M": {"test", "mute", "firedrill"},
+        "XS01-WX": {"mute"},
+        "XS03-WX": {"mute"},
+        "XS03-iWX": {"test"},
+        "XS0AA-iA": {"test", "mute", "firedrill"},
+        "XS0AB-iA": {"test", "mute", "firedrill"},
+        "XS0B-MR": {"test", "mute", "firedrill"},
+        "XS0B-iR": {"mute"},
+        "XS0D-MR": {"test", "mute", "firedrill"},
+        "XS0E-iR": {"mute"},
+        "XS0F-PMA": {"test", "mute", "firedrill"},
+        "XS0R-iA": {"test", "mute", "firedrill"},
+        "XS0X-MN": {"test", "mute", "firedrill"},
+    }
+    actual_actions = {
+        model: {action["action"] for action in definition.get("actions", [])}
+        for model, definition in entity_map.entities.items()
+        if definition.get("actions")
+    }
+
+    assert actual_actions == expected_actions
+
+
+@pytest.mark.asyncio
+async def test_xs01_wx_apk_active_alarm_mute_uses_real_command_path():
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    station = FakeXSenseStation("XS01-WX", "EN123")
+    station.entity_type = entity_map.EntityType.SMOKE
+    station.data["smokeEdition"] = "9"
+
+    station_arg, page, desired = await _capture_action(client, station, "mute")
+
+    assert station_arg.shadow_name == "XS01-WX-EN123"
+    assert page == "2nd_appmute"
+    assert desired["stationSN"] == "EN123"
+    assert desired["deviceSN"] == "EN123"
+    assert desired["shadow"] == "appMute"
+    assert desired["muteType"] == "0"
+    assert not client.has_action(station, "test")
 
 
 @pytest.mark.parametrize("device_type", ["SC06-WX", "XS0B-iR"])
-def test_wifi_models_expose_legacy_test_path(device_type):
+def test_wifi_models_expose_mute_without_remote_self_test_command(device_type):
     client = async_xsense.AsyncXSense()
     station = FakeXSenseStation(device_type)
     station.entity_type = (
@@ -1993,7 +2213,7 @@ def test_wifi_models_expose_legacy_test_path(device_type):
     )
 
     assert client.has_action(station, "mute")
-    assert client.has_action(station, "test")
+    assert not client.has_action(station, "test")
 
 
 def test_all_declared_model_actions_resolve_for_representative_entities():
@@ -2016,48 +2236,6 @@ def test_all_declared_model_actions_resolve_for_representative_entities():
                 device_type,
                 action_def["action"],
             )
-
-
-@pytest.mark.asyncio
-async def test_xs01_wx_mute_uses_station_as_its_own_target():
-    client = async_xsense.AsyncXSense()
-    station = FakeXSenseStation("XS01-WX", "EN123")
-    station.entity_type = entity_map.EntityType.SMOKE
-    station.data["smokeEdition"] = "9"
-
-    station_arg, page, desired = await _capture_action(client, station, "mute")
-
-    assert station_arg.shadow_name == "XS01-WX-EN123"
-    assert page == "2nd_appmute"
-    assert desired["stationSN"] == "EN123"
-    assert desired["deviceSN"] == "EN123"
-    assert desired["shadow"] == "appMute"
-    assert desired["muteType"] == "0"
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ("device_type", "station_sn", "expected_page"),
-    [
-        ("XS01-WX", "EN123", "2nd_selftest_EN123"),
-        ("SC06-WX", "SC06123", "2nd_selftest_SC06123"),
-        ("XS0B-iR", "XS0B123", "appselftest_XS0B123"),
-    ],
-)
-async def test_standalone_smoke_test_actions_use_package_paths(
-    device_type, station_sn, expected_page
-):
-    client = async_xsense.AsyncXSense()
-    station = FakeXSenseStation(device_type, station_sn)
-    station.entity_type = entity_map.entities[device_type]["type"]
-
-    station_arg, page, desired = await _capture_action(client, station, "test")
-
-    assert station_arg is station
-    assert page == expected_page
-    assert desired["stationSN"] == station_sn
-    assert desired["deviceSN"] == station_sn
-    assert desired["shadow"] == "appSelfTest"
 
 
 @pytest.mark.asyncio
@@ -2491,6 +2669,84 @@ async def _capture_shadow_setting_update(client, target, data_key, value):
 
 
 @pytest.mark.asyncio
+async def test_update_radon_unit_uses_apk_104115_payload():
+    client = async_xsense.AsyncXSense()
+    calls = []
+    radon = types.SimpleNamespace(
+        type="XR0A-iR",
+        sn="radon-sn",
+        entity_id="station-id",
+        data={"tempUnit": "2", "radonUnit": "1"},
+    )
+
+    async def api_call(code, **payload):
+        calls.append((code, payload))
+        return {"ok": True}
+
+    client.api_call = api_call
+
+    await client.update_radon_unit(radon, "2")
+
+    assert calls == [
+        (
+            "104115",
+            {
+                "stationId": "station-id",
+                "stationSn": "radon-sn",
+                "tempUnit": "2",
+                "radonUnit": "2",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_update_radon_thresholds_uses_apk_104118_payload():
+    client = async_xsense.AsyncXSense()
+    calls = []
+    radon = types.SimpleNamespace(
+        type="XR0A-iR",
+        sn="radon-sn",
+        entity_id="station-id",
+        data={"minRadon": "75", "maxRadon": "150"},
+    )
+
+    async def api_call(code, **payload):
+        calls.append((code, payload))
+        return {"ok": True}
+
+    client.api_call = api_call
+
+    await client.update_radon_thresholds(radon, min_radon=80, max_radon=160)
+
+    assert calls == [
+        (
+            "104118",
+            {
+                "stationId": "station-id",
+                "stationSn": "radon-sn",
+                "minRadon": "80",
+                "maxRadon": "160",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_update_radon_thresholds_rejects_invalid_pair_before_api_call():
+    client = async_xsense.AsyncXSense()
+    client.api_call = AsyncMock()
+    radon = types.SimpleNamespace(
+        type="XR0A-iR", sn="radon-sn", entity_id="station-id", data={}
+    )
+
+    with pytest.raises(ValueError, match="minimum < maximum"):
+        await client.update_radon_thresholds(radon, min_radon=150, max_radon=75)
+
+    client.api_call.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     (
         "station_type",
@@ -2841,6 +3097,30 @@ async def test_station_led_brightness_uses_apk_station_payload_shape():
                 "tAdjust": "0.5",
                 "deviceSN": "device-sn",
                 "stationSN": "station-sn",
+            },
+        ),
+        (
+            "SMA0A",
+            entity_map.EntityType.MAILBOX,
+            {},
+            "reportInterval",
+            "60",
+            {
+                "shadow": "infoDev",
+                "reportInterval": "60",
+                "deviceSN": "device-sn",
+            },
+        ),
+        (
+            "SMA51",
+            entity_map.EntityType.MAILBOX,
+            {},
+            "mailNotice",
+            "1",
+            {
+                "shadow": "infoDev",
+                "mailNotice": "1",
+                "deviceSN": "device-sn",
             },
         ),
     ],
@@ -3321,6 +3601,35 @@ def test_house_set_stations_maps_apk_camera_list():
     assert camera.online is True
     assert camera.devices == {}
     assert test_house.station_order == []
+
+
+def test_house_set_stations_preserves_server_backed_station_fields():
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+
+    test_house.set_stations(
+        {
+            "stationSort": ["station-id"],
+            "stations": [
+                {
+                    "stationId": "station-id",
+                    "stationSn": "radon-sn",
+                    "stationName": "Radon",
+                    "category": "XR0A-iR",
+                    "radonUnit": "2",
+                    "minRadon": "75",
+                    "maxRadon": "150",
+                    "devices": [],
+                }
+            ],
+        }
+    )
+
+    radon = test_house.stations["station-id"]
+    assert radon.data["stationId"] == "station-id"
+    assert radon.data["radonUnit"] == "2"
+    assert radon.data["minRadon"] == "75"
+    assert radon.data["maxRadon"] == "150"
+    assert "devices" not in radon.data
 
 
 def test_house_set_stations_preserves_all_apk_camera_entries_before_model_checks():

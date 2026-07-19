@@ -13,7 +13,7 @@ Bu Home Assistant entegrasyonu, X-Sense cihazlarının akıllı ev sistemine ent
 Bu HACS entegrasyonu, Home Assistant içinde daha geniş X-Sense cihaz desteği isteyen kullanıcılar için aktif olarak sürdürülür. Yeni işlevler, ek cihaz kapsamı ve bildirilen sorunlara yönelik düzeltmelerle düzenli olarak güncellenir.
 
 ## Uyumluluk ve HACS güncellemeleri
-Hâlâ eski bir `v1.2.6.x` sürümü kullanıyorsanız, Home Assistant Core’u 2026.7 veya daha yeni bir sürüme yükseltmeden önce `v1.3.14` veya daha yeni bir sürüme güncelleyin. Eski sürümler `aiortc` gerektiriyordu ve bu Home Assistant’ın Python 3.14 çalışma ortamıyla uyumlu değildir. Güncel `v1.3.x` sürümleri artık `aiortc` gerektirmez.
+Hâlâ eski bir `v1.2.6.x` sürümü kullanıyorsanız, Home Assistant Core’u 2026.7 veya daha yeni bir sürüme yükseltmeden önce `v1.3.14` veya daha yeni bir sürüme güncelleyin. Eski sürümler `aiortc` gerektiriyordu ve bu Home Assistant’ın Python 3.14 çalışma ortamıyla uyumlu değildir. Güncel `v1.4.x` sürümleri artık `aiortc` gerektirmez.
 
 Bu entegrasyon HACS özel deposu olarak kurulur. Güncelleme hemen görünmezse HACS’i açın, X-Sense deposunu seçin, üç nokta menüsünden **Update information** çalıştırın, ardından entegrasyonu güncelleyin veya yeniden indirin ve Home Assistant’ı yeniden başlatın.
 

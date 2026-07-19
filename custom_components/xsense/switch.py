@@ -278,7 +278,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="led_light",
         data_key="ledLight",
-        name="LED Light",
+        name="LED Indicator",
         icon="mdi:led-on",
         exists_fn=has_led_light,
         value_fn=optional_data_bool("ledLight"),
@@ -286,7 +286,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="light_power",
         data_key="on",
-        name="Light Power",
+        name="Light",
         icon="mdi:lightbulb",
         entity_category=None,
         exists_fn=lambda entity: (
@@ -323,6 +323,18 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         value_fn=lambda entity: boolean_state(
             entity.data.get("continueAlarm", entity.data.get("continuedAlarm"))
         ),
+    ),
+    XSenseSwitchEntityDescription(
+        key="mail_notice",
+        data_key="mailNotice",
+        name="Mail Reminder",
+        icon="mdi:mailbox-up",
+        exists_fn=lambda entity: (
+            _has_shadow_write_route(entity)
+            and getattr(entity, "entity_type", None) == EntityType.MAILBOX
+            and "mailNotice" in entity.data
+        ),
+        value_fn=data_bool("mailNotice"),
     ),
     XSenseSwitchEntityDescription(
         key="chirp_tone_enabled",
@@ -413,7 +425,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_video_recording",
         data_key="needVideo",
         addx_key="needVideo",
-        name="Video Recording",
+        name="Record Video",
         icon="mdi:video-check",
         exists_fn=has_camera_data("needVideo"),
         value_fn=data_bool("needVideo"),
@@ -422,7 +434,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_night_vision",
         data_key="needNightVision",
         addx_key="needNightVision",
-        name="Night Vision",
+        name="Auto Night Vision",
         icon="mdi:weather-night",
         exists_fn=has_camera_data("needNightVision"),
         value_fn=data_bool("needNightVision"),
@@ -431,7 +443,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_recording_light",
         data_key="recLamp",
         addx_key="recLamp",
-        name="Recording Light",
+        name="Status LED",
         icon="mdi:led-on",
         exists_fn=has_supported_data("recLamp", "supportRecLamp"),
         value_fn=data_bool("recLamp"),
@@ -449,7 +461,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_mirror_flip",
         data_key="mirrorFlip",
         addx_key="mirrorFlip",
-        name="Mirror Flip",
+        name="Rotate Image",
         icon="mdi:flip-horizontal",
         exists_fn=has_supported_data("mirrorFlip", "supportMirrorFlip"),
         value_fn=data_bool("mirrorFlip"),
@@ -501,7 +513,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_ding_dong",
         data_key="mechanicalDingDongSwitch",
         addx_key="mechanicalDingDongSwitch",
-        name="Mechanical Ding-Dong",
+        name="Mechanical Chime",
         icon="mdi:bell-ring",
         exists_fn=has_supported_data(
             "mechanicalDingDongSwitch", "supportMechanicalDingDong"
@@ -581,7 +593,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_sleep",
         data_key="deviceStatus",
         addx_key="sleep.dormancySwitch",
-        name="Camera Sleep",
+        name="Sleep Mode",
         icon="mdi:power-sleep",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity: (

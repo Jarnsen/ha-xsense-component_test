@@ -72,28 +72,28 @@
       "connected": {
         "name": "Connected"
       },
-      "is_life_end": {
-        "name": "Is life end"
-      },
       "mute_status": {
-        "name": "Mute Status"
+        "name": "Device Silenced"
       },
       "activate": {
-        "name": "Activate"
+        "name": "Activated"
       },
       "alarm_status": {
         "name": "Alarm Status"
       },
       "door": {
         "name": "Door"
+      },
+      "mailbox_schedule_active": {
+        "name": "Mailbox Schedule Active"
       }
     },
     "button": {
       "fire_drill": {
-        "name": "Fire Drill"
+        "name": "Alarm Drill"
       },
       "test": {
-        "name": "Test"
+        "name": "Device Test"
       },
       "mute": {
         "name": "Mute"
@@ -108,20 +108,41 @@
       }
     },
     "sensor": {
+      "device_status": {
+        "name": "Device Status",
+        "state": {
+          "normal": "Normal",
+          "low_battery": "Low Battery",
+          "malfunction": "Malfunction",
+          "end_of_life": "End-of-Life"
+        }
+      },
       "alarm_vol": {
         "name": "Alarm Volume"
       },
       "wifi_rssi": {
-        "name": "Wi-Fi RSSI"
+        "name": "Wi-Fi Signal Strength"
       },
       "ip_address": {
         "name": "IP Address"
+      },
+      "co_reading": {
+        "name": "CO Reading"
+      },
+      "co_level": {
+        "name": "CO Level"
+      },
+      "peak_co_level": {
+        "name": "Peak CO Level"
+      },
+      "peak_co_level_time": {
+        "name": "Peak CO Level Time"
       },
       "mcu_sw_version": {
         "name": "MCU Software Version"
       },
       "rf_level": {
-        "name": "RF Level",
+        "name": "Signal Strength",
         "state": {
           "no_signal": "No Signal",
           "weak": "Weak",
@@ -139,10 +160,10 @@
         "name": "SSID"
       },
       "wifi_sw": {
-        "name": "Wifi Module Firmware"
+        "name": "Wi-Fi Module Firmware Version"
       },
       "last_self_test": {
-        "name": "Last Self Test",
+        "name": "Device Test Result",
         "state": {
           "not_run": "Not Run",
           "success": "Success",
@@ -150,10 +171,22 @@
         }
       },
       "last_self_test_time": {
-        "name": "Last Self Test Time"
+        "name": "Device Test Time"
+      },
+      "radon_peak": {
+        "name": "Peak Radon Level"
+      },
+      "radon_peak_time": {
+        "name": "Peak Radon Level Time"
       }
     },
     "number": {
+      "radon_minimum_threshold": {
+        "name": "Green Line Threshold"
+      },
+      "radon_maximum_threshold": {
+        "name": "Red Line Threshold"
+      },
       "alarm_volume": {
         "name": "Alarm Volume"
       },
@@ -167,25 +200,25 @@
         "name": "Reminder Volume"
       },
       "temperature_adjustment": {
-        "name": "Temperature Adjustment"
+        "name": "Temperature Calibration"
       },
       "humidity_adjustment": {
-        "name": "Humidity Adjustment"
+        "name": "Relative Humidity Calibration"
       },
       "warning_period": {
         "name": "Warning Period"
       },
       "temperature_min": {
-        "name": "Temperature Minimum"
+        "name": "Temperature Range Minimum"
       },
       "temperature_max": {
-        "name": "Temperature Maximum"
+        "name": "Temperature Range Maximum"
       },
       "humidity_min": {
-        "name": "Humidity Minimum"
+        "name": "Relative Humidity Range Minimum"
       },
       "humidity_max": {
-        "name": "Humidity Maximum"
+        "name": "Relative Humidity Range Maximum"
       },
       "temperature_comfort_min": {
         "name": "Comfort Temperature Minimum"
@@ -203,7 +236,7 @@
         "name": "Detection Sensitivity"
       },
       "driveway_sensitivity": {
-        "name": "Driveway Sensitivity"
+        "name": "Sensor Sensitivity"
       },
       "trigger_brightness": {
         "name": "Trigger Brightness"
@@ -228,17 +261,23 @@
       "reminder_time": {
         "name": "Reminder Time"
       },
+      "mailbox_report_interval": {
+        "name": "Data Reporting Interval"
+      },
       "temperature_unit": {
         "name": "Temperature Unit"
       },
+      "radon_unit": {
+        "name": "Radon Unit"
+      },
       "comfort_type": {
-        "name": "Comfort Type"
+        "name": "Customize Comfort Levels"
       },
       "led_brightness": {
         "name": "LED Brightness"
       },
       "light_motion_on_time": {
-        "name": "Motion On Time"
+        "name": "Automatic Light Duration"
       },
       "light_scene": {
         "name": "Light Scene"

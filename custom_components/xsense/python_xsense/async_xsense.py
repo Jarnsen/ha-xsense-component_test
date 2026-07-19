@@ -2020,6 +2020,39 @@ class AsyncXSense(XSenseBase):
         """Write a volume value through the same settings shadow as the app."""
         return await self.update_shadow_setting(entity, data_key, value)
 
+    async def update_radon_unit(self, entity: Entity, radon_unit: str):
+        """Write the XR0A-iR display units through the APK REST operation."""
+        station = getattr(entity, "station", entity)
+        if not getattr(station, "entity_id", None) or not getattr(station, "sn", None):
+            raise APIFailure("X-Sense radon unit update requires station identity")
+        return await self.api_call(
+            "104115",
+            stationId=station.entity_id,
+            stationSn=station.sn,
+            tempUnit=str(entity.data.get("tempUnit", "1")),
+            radonUnit=str(radon_unit),
+        )
+
+    async def update_radon_thresholds(
+        self, entity: Entity, *, min_radon: int, max_radon: int
+    ):
+        """Write the paired XR0A-iR thresholds through the APK REST operation."""
+        station = getattr(entity, "station", entity)
+        if not getattr(station, "entity_id", None) or not getattr(station, "sn", None):
+            raise APIFailure("X-Sense radon threshold update requires station identity")
+        if min_radon < 1 or max_radon > 9999 or min_radon >= max_radon:
+            raise ValueError(
+                "X-Sense radon thresholds require "
+                "1 <= minimum < maximum <= 9999"
+            )
+        return await self.api_call(
+            "104118",
+            stationId=station.entity_id,
+            stationSn=station.sn,
+            minRadon=str(min_radon),
+            maxRadon=str(max_radon),
+        )
+
     async def update_shadow_setting(self, entity: Entity, data_key: str, value):
         """Write a non-camera setting through the same settings shadow as the app."""
         station = getattr(entity, "station", entity)

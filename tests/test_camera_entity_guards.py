@@ -3,7 +3,7 @@ import importlib
 import logging
 import sys
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from homeassistant.exceptions import HomeAssistantError
@@ -73,14 +73,39 @@ def test_boolean_state_does_not_invent_unknown_values():
     assert mapping.map_type("tComfort", ["bad", 26]) is None
 
 
-def test_is_life_end_uses_explicit_boolean_parser():
-    description = next(
-        item for item in binary_sensor.SENSORS if item.key == "is_life_end"
+def test_device_status_matches_apk_current_status_precedence():
+    description = next(item for item in sensor.SENSORS if item.key == "device_status")
+
+    assert description.value_fn(entity("XS01-WX", {"batInfo": "3"})) == "normal"
+    assert description.value_fn(entity("XS01-WX", {"batInfo": "1"})) == "low_battery"
+    assert (
+        description.value_fn(
+            entity("XS01-WX", {"sensorStatus": "1", "batInfo": "1"})
+        )
+        == "malfunction"
+    )
+    assert (
+        description.value_fn(
+            entity(
+                "XS01-WX",
+                {"isLifeEnd": "1", "sensorStatus": "1", "batInfo": "1"},
+            )
+        )
+        == "end_of_life"
     )
 
-    assert description.value_fn(entity("XS01-WX", {"isLifeEnd": "1"})) is True
-    assert description.value_fn(entity("XS01-WX", {"isLifeEnd": "0"})) is False
-    assert description.value_fn(entity("XS01-WX", {"isLifeEnd": "unknown"})) is None
+
+def test_supported_device_status_defaults_to_normal_before_first_report():
+    description = next(item for item in sensor.SENSORS if item.key == "device_status")
+
+    assert description.value_fn(entity("XS01-WX", {})) == "normal"
+    assert description.value_fn(entity("XC04-WX", {})) == "normal"
+
+
+def test_mute_button_is_a_visible_device_control():
+    description = next(item for item in button.BUTTONS if item.key == "mute")
+
+    assert description.entity_category is None
 
 
 def test_precreated_sensor_values_are_safe_before_first_payload():
@@ -180,6 +205,123 @@ def test_non_camera_selects_require_shadow_write_route():
     )
 
 
+def test_mailbox_controls_match_apk_payload_capabilities():
+    select_descriptions = {
+        description.key: description for description in select.SELECTS
+    }
+    binary_descriptions = {
+        description.key: description for description in binary_sensor.SENSORS
+    }
+    switch_descriptions = {
+        description.key: description for description in switch.SWITCHES
+    }
+    mailbox = routed_entity(
+        "SMA0A",
+        {
+            "mailNotice": "1",
+            "reportInterval": "30",
+            "scheduleStatus": "1",
+        },
+    )
+    mailbox.entity_type = EntityType.MAILBOX
+    smoke = routed_entity(
+        "XS01-M", {"reportInterval": "30", "scheduleStatus": "1"}
+    )
+    smoke.entity_type = EntityType.SMOKE
+
+    report_interval = select_descriptions["mailbox_report_interval"]
+    schedule_active = binary_descriptions["mailbox_schedule_active"]
+    mail_notice = switch_descriptions["mail_notice"]
+
+    assert report_interval.exists_fn(mailbox)
+    assert report_interval.fixed_options == (
+        "2",
+        "5",
+        "10",
+        "15",
+        "30",
+        "60",
+        "120",
+        "240",
+        "360",
+        "480",
+        "720",
+    )
+    assert schedule_active.exists_fn(mailbox)
+    assert schedule_active.value_fn(mailbox) is True
+    assert mail_notice.exists_fn(mailbox)
+    assert mail_notice.value_fn(mailbox) is True
+    assert "mail_notice" not in binary_descriptions
+    assert not report_interval.exists_fn(smoke)
+    assert not schedule_active.exists_fn(smoke)
+    assert not mail_notice.exists_fn(smoke)
+
+
+async def test_mailbox_report_interval_uses_apk_shadow_writer():
+    mailbox = routed_entity("SMA0A", {"reportInterval": "30"})
+    mailbox.entity_type = EntityType.MAILBOX
+    xsense = SimpleNamespace(update_shadow_setting=AsyncMock())
+    coordinator = SimpleNamespace(
+        xsense=xsense,
+        async_update_listeners=MagicMock(),
+    )
+    select_entity = SimpleNamespace(
+        coordinator=coordinator,
+        entity_description=next(
+            item
+            for item in select.SELECTS
+            if item.key == "mailbox_report_interval"
+        ),
+        _current_entity=lambda: mailbox,
+        options=[
+            "2",
+            "5",
+            "10",
+            "15",
+            "30",
+            "60",
+            "120",
+            "240",
+            "360",
+            "480",
+            "720",
+        ],
+    )
+
+    await select.XSenseSelectEntity.async_select_option(select_entity, "60")
+
+    xsense.update_shadow_setting.assert_awaited_once_with(
+        mailbox, "reportInterval", "60"
+    )
+    assert mailbox.data["reportInterval"] == 60
+    coordinator.async_update_listeners.assert_called_once_with()
+
+
+async def test_mailbox_mail_notice_uses_apk_shadow_writer():
+    mailbox = routed_entity("SMA51", {"mailNotice": "0"})
+    mailbox.entity_type = EntityType.MAILBOX
+    xsense = SimpleNamespace(update_shadow_setting=AsyncMock())
+    coordinator = SimpleNamespace(
+        xsense=xsense,
+        async_update_listeners=MagicMock(),
+    )
+    switch_entity = SimpleNamespace(
+        coordinator=coordinator,
+        entity_description=next(
+            item for item in switch.SWITCHES if item.key == "mail_notice"
+        ),
+        _current_entity=lambda: mailbox,
+    )
+
+    await switch.XSenseSwitchEntity._async_set_state(switch_entity, True)
+
+    xsense.update_shadow_setting.assert_awaited_once_with(
+        mailbox, "mailNotice", "1"
+    )
+    assert mailbox.data["mailNotice"] is True
+    coordinator.async_update_listeners.assert_called_once_with()
+
+
 def test_non_camera_numbers_include_apk_setting_controls():
     descriptions = {description.key: description for description in number.NUMBERS}
     routed = routed_entity(
@@ -228,6 +370,91 @@ def test_non_camera_numbers_include_apk_setting_controls():
     assert descriptions["humidity_comfort_min"].exists_fn(routed)
     assert descriptions["humidity_comfort_max"].exists_fn(routed)
     assert not descriptions["temperature_adjustment"].exists_fn(missing_station)
+
+
+def test_radon_server_controls_require_apk_station_identity():
+    select_descriptions = {
+        description.key: description for description in select.SELECTS
+    }
+    number_descriptions = {
+        description.key: description for description in number.NUMBERS
+    }
+    radon = SimpleNamespace(
+        type="XR0A-iR",
+        sn="radon-sn",
+        entity_id="station-id",
+        data={"radonUnit": "2", "minRadon": "75", "maxRadon": "150"},
+    )
+    missing_identity = SimpleNamespace(
+        type="XR0A-iR", sn="radon-sn", entity_id=None, data={}
+    )
+
+    assert select_descriptions["radon_unit"].exists_fn(radon)
+    assert number_descriptions["radon_minimum_threshold"].exists_fn(radon)
+    assert number_descriptions["radon_maximum_threshold"].exists_fn(radon)
+    assert not select_descriptions["radon_unit"].exists_fn(missing_identity)
+    assert not number_descriptions["radon_minimum_threshold"].exists_fn(
+        missing_identity
+    )
+
+
+async def test_radon_unit_select_uses_apk_server_writer():
+    radon = SimpleNamespace(
+        type="XR0A-iR",
+        sn="radon-sn",
+        entity_id="station-id",
+        data={"radonUnit": "1", "tempUnit": "2"},
+    )
+    xsense = SimpleNamespace(update_radon_unit=AsyncMock())
+    coordinator = SimpleNamespace(
+        xsense=xsense,
+        async_update_listeners=MagicMock(),
+    )
+    select_entity = SimpleNamespace(
+        coordinator=coordinator,
+        entity_description=next(
+            item for item in select.SELECTS if item.key == "radon_unit"
+        ),
+        _current_entity=lambda: radon,
+        options=["1", "2"],
+    )
+
+    await select.XSenseSelectEntity.async_select_option(select_entity, "2")
+
+    xsense.update_radon_unit.assert_awaited_once_with(radon, "2")
+    assert radon.data["radonUnit"] == 2
+    coordinator.async_update_listeners.assert_called_once_with()
+
+
+async def test_radon_threshold_number_preserves_paired_apk_value():
+    radon = SimpleNamespace(
+        type="XR0A-iR",
+        sn="radon-sn",
+        entity_id="station-id",
+        data={"minRadon": "75", "maxRadon": "150"},
+    )
+    xsense = SimpleNamespace(update_radon_thresholds=AsyncMock())
+    coordinator = SimpleNamespace(
+        xsense=xsense,
+        async_update_listeners=MagicMock(),
+    )
+    number_entity = SimpleNamespace(
+        coordinator=coordinator,
+        entity_description=next(
+            item
+            for item in number.NUMBERS
+            if item.key == "radon_minimum_threshold"
+        ),
+        _current_entity=lambda: radon,
+    )
+
+    await number.XSenseNumberEntity.async_set_native_value(number_entity, 80)
+
+    xsense.update_radon_thresholds.assert_awaited_once_with(
+        radon, min_radon=80, max_radon=150
+    )
+    assert radon.data["minRadon"] == 80
+    coordinator.async_update_listeners.assert_called_once_with()
 
 
 def test_shadow_range_number_values_use_apk_arrays_and_defaults():
@@ -431,7 +658,7 @@ def test_non_camera_volume_numbers_require_shadow_write_route():
     assert not descriptions["voice_volume"].exists_fn(missing_station)
 
 
-def test_camera_diagnostic_sensors_expose_apk_metadata():
+def test_camera_entities_keep_storage_health_without_raw_apk_metadata():
     descriptions = {description.key: description for description in sensor.SENSORS}
     camera = entity(
         "SSC0A",
@@ -454,7 +681,7 @@ def test_camera_diagnostic_sensors_expose_apk_metadata():
         },
     )
 
-    for key in {
+    raw_metadata_keys = {
         "camera_activated_time",
         "camera_status_code",
         "camera_dormancy_message",
@@ -463,13 +690,17 @@ def test_camera_diagnostic_sensors_expose_apk_metadata():
         "camera_firmware_version",
         "camera_network_name",
         "camera_offline_time",
-        "camera_sd_card_status",
-        "camera_sd_card_total",
-        "camera_sd_card_used",
         "camera_thumbnail_time",
         "camera_time_zone_area",
         "camera_wifi_channel",
         "camera_wired_mac_address",
+    }
+    assert raw_metadata_keys.isdisjoint(descriptions)
+
+    for key in {
+        "camera_sd_card_status",
+        "camera_sd_card_total",
+        "camera_sd_card_used",
     }:
         assert descriptions[key].exists_fn(camera)
 
@@ -3075,17 +3306,17 @@ def test_recording_media_sync_starts_only_when_enabled(monkeypatch):
 
     def async_call_later(hass, delay, action):
         calls.append(("later", delay, action))
-        return "unsub-later"
+        return lambda: None
 
     def async_track_time_interval(hass, action, interval):
         calls.append(("interval", interval, action))
-        return "unsub-interval"
+        return lambda: None
 
     monkeypatch.setattr(media_source, "async_call_later", async_call_later)
     monkeypatch.setattr(media_source, "async_track_time_interval", async_track_time_interval)
 
     unloads = []
-    hass = SimpleNamespace()
+    hass = SimpleNamespace(data={})
     disabled_entry = SimpleNamespace(
         entry_id="entry-disabled",
         options={},
@@ -3110,7 +3341,8 @@ def test_recording_media_sync_starts_only_when_enabled(monkeypatch):
     assert calls[1][1].total_seconds() == 21600
     assert calls[2][0] == "interval"
     assert calls[2][1].total_seconds() == 120
-    assert unloads == ["unsub-later", "unsub-interval", "unsub-interval"]
+    assert len(unloads) == 1
+    assert callable(unloads[0])
 
 
 def test_motion_event_data_exposes_direct_recording_url_aliases():

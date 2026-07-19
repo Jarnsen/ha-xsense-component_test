@@ -12,6 +12,7 @@ if not hasattr(sys.modules.get("custom_components"), "__path__"):
 from custom_components.xsense import (
     OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE,
     OBSOLETE_BINARY_SENSOR_KEYS,
+    LEGACY_OBSOLETE_BINARY_SENSOR_KEYS,
     OBSOLETE_NUMBER_KEYS,
     OBSOLETE_SELECT_KEYS,
     OBSOLETE_SENSOR_KEYS,
@@ -49,7 +50,7 @@ def test_obsolete_sensor_cleanup_targets_static_identifier_entities_only():
     assert "station-1-station-sn" in unique_ids
     assert "station-1-device-mac" in unique_ids
     assert "device-1-bluetooth-mac" in unique_ids
-    assert "station-1-ip" not in unique_ids
+    assert "station-1-ip" in unique_ids
     assert "device-1-wifi-rssi" not in unique_ids
     assert "station-1-last-self-test" not in unique_ids
 
@@ -70,17 +71,30 @@ def test_obsolete_sensor_cleanup_targets_removed_model_sensors_only():
 def test_obsolete_action_unique_ids_target_removed_model_actions_only():
     xs03_iwx = SimpleNamespace(entity_id="hall_smoke", type="XS03-iWX")
     xs01_wx = SimpleNamespace(entity_id="kitchen_smoke", type="XS01-WX")
+    sc06_wx = SimpleNamespace(entity_id="garage_combo", type="SC06-WX")
+    xs0b_ir = SimpleNamespace(entity_id="office_smoke", type="XS0B-iR")
 
     unique_ids = _obsolete_action_unique_ids(
-        {"stations": {}, "devices": {"hall": xs03_iwx, "kitchen": xs01_wx}}
+        {
+            "stations": {},
+            "devices": {
+                "hall": xs03_iwx,
+                "kitchen": xs01_wx,
+                "garage": sc06_wx,
+                "office": xs0b_ir,
+            },
+        }
     )
 
+    assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["SC06-WX"] == ("test",)
     assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["XS03-iWX"] == ("mute",)
-    assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["XS01-WX"] == ("mute", "test")
+    assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["XS01-WX"] == ("test",)
+    assert OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE["XS0B-iR"] == ("test",)
     assert unique_ids == {
+        "garage-combo-test",
         "hall-smoke-mute",
-        "kitchen-smoke-mute",
         "kitchen-smoke-test",
+        "office-smoke-test",
     }
 
 
@@ -407,7 +421,8 @@ def test_obsolete_binary_sensor_entry_detection_is_scoped_to_xsense_led_binary_s
 
 
 def test_obsolete_binary_sensor_keys_only_remove_removed_binary_sensors():
-    assert OBSOLETE_BINARY_SENSOR_KEYS == (
+    assert LEGACY_OBSOLETE_BINARY_SENSOR_KEYS == (
+        'is_life_end',
         'led_light',
         'motion_required',
         'video_recording_enabled',
@@ -443,7 +458,16 @@ def test_obsolete_binary_sensor_keys_only_remove_removed_binary_sensors():
         "chirp_tone_enabled",
         "reminder_enabled",
         "reminder_tone_enabled",
+        "mail_notice",
     )
+    assert {
+        "alarm_sound_enabled",
+        "app_tip_enabled",
+        "schedule_tip_enabled",
+        "test_active",
+        "timezone_enabled",
+        "timezone_valid",
+    } <= set(OBSOLETE_BINARY_SENSOR_KEYS)
 
 
 def test_camera_setup_controls_are_not_obsolete_registry_entries():
@@ -473,6 +497,26 @@ def test_obsolete_entity_keys_do_not_remove_current_platform_entities():
     )
     assert set(OBSOLETE_NUMBER_KEYS).isdisjoint(
         {description.key for description in NUMBERS}
+    )
+
+
+def test_raw_diagnostic_metadata_is_not_exposed_as_entities():
+    from custom_components.xsense.binary_sensor import SENSORS as BINARY_SENSORS
+    from custom_components.xsense.const import (
+        NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS,
+        NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS,
+    )
+    from custom_components.xsense.sensor import SENSORS
+
+    assert NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS.isdisjoint(
+        {description.key for description in SENSORS}
+    )
+    assert NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS.isdisjoint(
+        {description.key for description in BINARY_SENSORS}
+    )
+    assert NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS <= set(OBSOLETE_SENSOR_KEYS)
+    assert NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS <= set(
+        OBSOLETE_BINARY_SENSOR_KEYS
     )
 
 
@@ -610,12 +654,12 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
 
     assert removed == [
         'sensor.missing_device_serial_number',
+        'sensor.station_1_ip',
         'sensor.landing_landing_smoke_co_detector_co_event_id',
         'binary_sensor.kitchen_smoke_alarm_led_light',
         'binary_sensor.garden_camera_motion',
         'switch.kitchen_smoke_led_light',
         'button.hall_smoke_mute',
-        'button.kitchen_smoke_mute',
     ]
 
 def test_ai_detection_cleanup_disables_existing_entity_when_service_is_absent(

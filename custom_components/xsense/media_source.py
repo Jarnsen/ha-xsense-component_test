@@ -64,6 +64,22 @@ SERVICE_CLEAR_RECORDINGS_CACHE = "clear_recordings_cache"
 SERVICE_REFRESH_RECORDINGS_SCHEMA = vol.Schema({vol.Optional("entry_id"): str})
 
 
+def _create_recording_background_task(
+    hass: HomeAssistant,
+    entry_id: str,
+    coro,
+    name: str,
+):
+    """Create recording work tied to its config entry lifecycle."""
+    config_entries = getattr(hass, "config_entries", None)
+    get_entry = getattr(config_entries, "async_get_entry", None)
+    entry = get_entry(entry_id) if entry_id and callable(get_entry) else None
+    create_task = getattr(entry, "async_create_background_task", None)
+    if callable(create_task):
+        return create_task(hass, coro, name)
+    return hass.async_create_task(coro)
+
+
 async def async_get_media_source(hass: HomeAssistant) -> MediaSource:
     """Return the X-Sense camera recordings media source."""
     return XSenseRecordingsMediaSource(hass)
@@ -278,17 +294,6 @@ async def async_cache_recording_playback(
     await media_source._async_cached_playback_url(clip)
     cached_url = await media_source._async_cached_media_url(clip)
     if cached_url:
-        if not cached_url:
-            LOGGER.debug(
-                "X-Sense motion recording cache not linkable from Home Assistant media: %s",
-                {
-                    "camera": _short_serial(clip.get("serial")),
-                    "source": clip.get("source"),
-                    "start": clip.get("start"),
-                    "elapsed_ms": int((monotonic() - started_at) * 1000),
-                },
-            )
-            return ""
         LOGGER.debug(
             "X-Sense motion recording cache ready: %s",
             {
@@ -381,6 +386,7 @@ def async_start_recording_media_sync(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> None:
     """Start optional background caching of recording media."""
+    async_stop_recording_media_sync(hass, entry.entry_id)
     if not entry.options.get(CONF_RECORDING_MEDIA_SYNC_ENABLED):
         return
 
@@ -404,23 +410,25 @@ def async_start_recording_media_sync(
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug("X-Sense recent recording media sync failed: %s", exc)
 
-    entry.async_on_unload(
+    unsubs = [
         async_call_later(
             hass,
             RECORDING_MEDIA_SYNC_STARTUP_DELAY,
             _async_run_media_sync,
-        )
-    )
-    entry.async_on_unload(
-        async_track_time_interval(hass, _async_run_media_sync, interval)
-    )
-    entry.async_on_unload(
+        ),
+        async_track_time_interval(hass, _async_run_media_sync, interval),
         async_track_time_interval(
-            hass,
-            _async_run_recent_media_sync,
-            RECORDING_MEDIA_RECENT_SYNC_INTERVAL,
-        )
-    )
+            hass, _async_run_recent_media_sync, RECORDING_MEDIA_RECENT_SYNC_INTERVAL
+        ),
+    ]
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    sync_unsubs = domain_data.setdefault("_recording_media_sync_unsubs", {})
+    sync_unsubs[entry.entry_id] = unsubs
+
+    def _stop_entry_sync() -> None:
+        async_stop_recording_media_sync(hass, entry.entry_id, expected=unsubs)
+
+    entry.async_on_unload(_stop_entry_sync)
     LOGGER.debug(
         "X-Sense recording media sync started: %s",
         {
@@ -431,6 +439,27 @@ def async_start_recording_media_sync(
             ),
         },
     )
+
+
+def async_stop_recording_media_sync(
+    hass: HomeAssistant,
+    entry_id: str,
+    *,
+    expected: list | None = None,
+) -> None:
+    """Stop background recording sync owned by one config entry."""
+    domain_data = getattr(hass, "data", {}).get(DOMAIN, {})
+    sync_unsubs = domain_data.get("_recording_media_sync_unsubs")
+    if not isinstance(sync_unsubs, dict):
+        return
+    unsubs = sync_unsubs.get(entry_id)
+    if unsubs is None or (expected is not None and unsubs is not expected):
+        return
+    sync_unsubs.pop(entry_id, None)
+    for unsub in unsubs:
+        unsub()
+    if not sync_unsubs:
+        domain_data.pop("_recording_media_sync_unsubs", None)
 
 
 def build_identifier(params: dict[str, str] | None = None) -> str:
@@ -971,7 +1000,12 @@ class XSenseRecordingsMediaSource(MediaSource):
                 },
             )
 
-        self.hass.async_create_task(_async_background_cache())
+        _create_recording_background_task(
+            self.hass,
+            str(clip.get("entry_id") or ""),
+            _async_background_cache(),
+            "X-Sense HLS recording cache",
+        )
 
     async def _async_cache_hls_attribute_uri(
         self,
@@ -1119,7 +1153,12 @@ class XSenseRecordingsMediaSource(MediaSource):
                 {"requested": requested, "cached": cached},
             )
 
-        self.hass.async_create_task(_async_warmup())
+        _create_recording_background_task(
+            self.hass,
+            str(pending[0].get("entry_id") or ""),
+            _async_warmup(),
+            "X-Sense recording thumbnail warmup",
+        )
 
     async def _async_load_index(self) -> dict[str, Any]:
         domain_items = list(self.hass.data.get(DOMAIN, {}).items())
@@ -1896,11 +1935,9 @@ def _hls_playlist_ready(playlist_path: Path) -> bool:
     ]
     if not media_lines:
         return False
-    child_playlist_seen = False
     for line in media_lines:
         path = playlist_path.parent / line
         if _is_hls_playlist_uri(line):
-            child_playlist_seen = True
             if _hls_playlist_ready(path):
                 return True
             continue

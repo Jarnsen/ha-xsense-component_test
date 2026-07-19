@@ -13,7 +13,7 @@ Denne Home Assistant-integrasjonen gjør X-Sense-enheter tilgjengelige i smarthu
 Vi anbefaler å opprette en egen X-Sense-konto for Home Assistant og bare dele støttede enheter fra hovedkontoen.
 
 ## Kompatibilitet og HACS-oppdateringer
-Hvis du fortsatt bruker en gammel `v1.2.6.x`-versjon, oppdater til `v1.3.14` eller nyere før du oppdaterer Home Assistant Core til 2026.7 eller nyere. De gamle versjonene krevde `aiortc`, som ikke er kompatibel med Home Assistants Python 3.14-runtime. Nåværende `v1.3.x`-versjoner krever ikke lenger `aiortc`.
+Hvis du fortsatt bruker en gammel `v1.2.6.x`-versjon, oppdater til `v1.3.14` eller nyere før du oppdaterer Home Assistant Core til 2026.7 eller nyere. De gamle versjonene krevde `aiortc`, som ikke er kompatibel med Home Assistants Python 3.14-runtime. Nåværende `v1.4.x`-versjoner krever ikke lenger `aiortc`.
 
 Denne integrasjonen installeres som et tilpasset HACS-repository. Hvis oppdateringen ikke vises med en gang, åpne HACS, velg X-Sense-repositoriet, kjør **Update information**, oppdater eller last ned integrasjonen på nytt og start Home Assistant på nytt.
 

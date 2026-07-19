@@ -13,7 +13,7 @@ Tämä Home Assistant -integraatio tuo X-Sense-laitteet älykotiin. Se perustuu 
 Suosittelemme luomaan erillisen X-Sense-tilin Home Assistantia varten ja jakamaan päätililtä vain tuetut laitteet.
 
 ## Yhteensopivuus ja HACS-päivitykset
-Jos käytät edelleen vanhaa `v1.2.6.x`-versiota, päivitä versioon `v1.3.14` tai uudempaan ennen Home Assistant Core 2026.7:ään tai uudempaan päivittämistä. Vanhat versiot vaativat `aiortc`-paketin, joka ei ole yhteensopiva Home Assistantin Python 3.14 -ajoympäristön kanssa. Nykyiset `v1.3.x`-versiot eivät enää vaadi `aiortc`-pakettia.
+Jos käytät edelleen vanhaa `v1.2.6.x`-versiota, päivitä versioon `v1.3.14` tai uudempaan ennen Home Assistant Core 2026.7:ään tai uudempaan päivittämistä. Vanhat versiot vaativat `aiortc`-paketin, joka ei ole yhteensopiva Home Assistantin Python 3.14 -ajoympäristön kanssa. Nykyiset `v1.4.x`-versiot eivät enää vaadi `aiortc`-pakettia.
 
 Tämä integraatio asennetaan HACS:n mukautettuna repositoriona. Jos päivitys ei näy heti, avaa HACS, valitse X-Sense-repositorio, suorita **Update information**, päivitä tai lataa integraatio uudelleen ja käynnistä Home Assistant uudelleen.
 

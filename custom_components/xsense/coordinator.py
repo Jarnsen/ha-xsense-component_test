@@ -74,6 +74,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._camera_ai_history_lock = asyncio.Lock()
         self._startup_refresh_complete = False
         self._deferred_refresh_unsub = None
+        self._shutting_down = False
         super().__init__(
             hass,
             LOGGER,
@@ -87,8 +88,22 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Get mqtt server instance for specific host."""
         return self.mqtt_servers.get(host)
 
+    def _async_create_entry_task(self, coro, name: str):
+        """Create a task owned by this config entry when supported."""
+        create_task = getattr(getattr(self, "entry", None), "async_create_task", None)
+        if callable(create_task):
+            return create_task(self.hass, coro, name)
+        hass_create_task = getattr(self.hass, "create_task", None)
+        if callable(hass_create_task):
+            return hass_create_task(coro)
+        return self.hass.async_create_task(coro)
+
     async def async_shutdown(self) -> None:
         """Disconnect all MQTT clients owned by this coordinator."""
+        if self._shutting_down:
+            return
+        self._shutting_down = True
+
         if self._deferred_refresh_unsub is not None:
             self._deferred_refresh_unsub()
             self._deferred_refresh_unsub = None
@@ -106,8 +121,10 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             except Exception as ex:  # noqa: BLE001
                 LOGGER.warning("Could not disconnect XSense MQTT client: %s", ex)
 
-        if self.xsense is not None:
-            await self.xsense.close()
+        xsense = self.xsense
+        self.xsense = None
+        if xsense is not None:
+            await xsense.close()
 
     def async_start_camera_ai_history_polling(self, *, immediate: bool = True) -> None:
         """Start the lightweight camera AI-history poller."""
@@ -124,8 +141,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "X-Sense camera history polling started: interval_s=%s",
             CAMERA_AI_HISTORY_SCAN_INTERVAL,
         )
-        if immediate and hasattr(self.hass, "async_create_task"):
-            self.hass.async_create_task(self._async_poll_camera_ai_history(None))
+        if immediate:
+            self._async_create_entry_task(
+                self._async_poll_camera_ai_history(None),
+                "X-Sense camera AI history poll",
+            )
 
     def async_schedule_deferred_refresh(self) -> None:
         """Schedule live cloud/MQTT refresh work after HA startup."""
@@ -142,7 +162,10 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         @callback
         def _request_refresh(_now) -> None:
             self._deferred_refresh_unsub = None
-            self.hass.create_task(self.async_request_refresh())
+            self._async_create_entry_task(
+                self.async_request_refresh(),
+                "X-Sense deferred refresh",
+            )
 
         if getattr(self.hass, "is_running", False):
             _schedule_refresh(None)

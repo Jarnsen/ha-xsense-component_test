@@ -21,6 +21,8 @@ from .python_xsense.async_xsense import is_camera_entity
 from .const import (
     CAMERA_AI_SERVICE_AVAILABLE,
     DOMAIN,
+    NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS,
+    NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS,
 )
 from .coordinator import XSenseDataUpdateCoordinator
 from .event import async_cancel_recording_cache_tasks
@@ -30,6 +32,7 @@ from .media_source import (
     async_register_recording_services,
     async_remove_recording_index,
     async_start_recording_media_sync,
+    async_stop_recording_media_sync,
     async_unregister_recording_services,
 )
 from .repairs import async_check_stale_camera_blueprints
@@ -46,7 +49,7 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
 ]
 
-OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
+LEGACY_OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
     "serial_number",
     "station_sn",
     "device_sn",
@@ -130,8 +133,14 @@ OBSOLETE_SENSOR_KEYS: tuple[str, ...] = (
     "light_scene",
 )
 
+OBSOLETE_SENSOR_KEYS = (
+    *LEGACY_OBSOLETE_SENSOR_KEYS,
+    *sorted(NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS),
+)
 
-OBSOLETE_BINARY_SENSOR_KEYS: tuple[str, ...] = (
+
+LEGACY_OBSOLETE_BINARY_SENSOR_KEYS: tuple[str, ...] = (
+    "is_life_end",
     "led_light",
     "motion_required",
     "video_recording_enabled",
@@ -167,6 +176,12 @@ OBSOLETE_BINARY_SENSOR_KEYS: tuple[str, ...] = (
     "chirp_tone_enabled",
     "reminder_enabled",
     "reminder_tone_enabled",
+    "mail_notice",
+)
+
+OBSOLETE_BINARY_SENSOR_KEYS = (
+    *LEGACY_OBSOLETE_BINARY_SENSOR_KEYS,
+    *sorted(NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS),
 )
 
 OBSOLETE_SWITCH_KEYS: tuple[str, ...] = ()
@@ -184,17 +199,39 @@ OBSOLETE_ENTITY_KEYS_BY_DOMAIN = {
 }
 
 OBSOLETE_ENTITY_SUFFIXES_BY_DOMAIN = {
-    domain: tuple(f"-{key.replace('_', '-')}" for key in keys)
-    for domain, keys in OBSOLETE_ENTITY_KEYS_BY_DOMAIN.items()
+    Platform.SENSOR: tuple(
+        f"-{key.replace('_', '-')}" for key in LEGACY_OBSOLETE_SENSOR_KEYS
+    ),
+    Platform.BINARY_SENSOR: tuple(
+        f"-{key.replace('_', '-')}" for key in LEGACY_OBSOLETE_BINARY_SENSOR_KEYS
+    ),
+    Platform.SWITCH: (),
+    Platform.SELECT: (),
+    Platform.NUMBER: (),
 }
 
 OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
-    "XS01-WX": ("mute", "test"),
+    "SC06-WX": ("test",),
+    "XS01-WX": ("test",),
     "XS03-iWX": ("mute",),
+    "XS0B-iR": ("test",),
 }
 OBSOLETE_SENSOR_KEYS_BY_DEVICE_TYPE = {}
 BLUEPRINT_MAINTENANCE_CHECK_INTERVAL = timedelta(minutes=5)
 STARTUP_MAINTENANCE_DELAY = 30
+
+
+def _create_entry_task(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coro,
+    name: str,
+):
+    """Create a task owned by the config entry lifecycle."""
+    create_task = getattr(entry, "async_create_task", None)
+    if callable(create_task):
+        return create_task(hass, coro, name)
+    return hass.create_task(coro)
 
 
 def _has_camera_entities(data) -> bool:
@@ -211,7 +248,7 @@ def _has_camera_entities(data) -> bool:
 
 def _has_any_camera_entities(hass: HomeAssistant) -> bool:
     """Return whether any loaded X-Sense entry currently contains cameras."""
-    for coordinator in hass.data.get(DOMAIN, {}).values():
+    for coordinator in getattr(hass, "data", {}).get(DOMAIN, {}).values():
         data = getattr(coordinator, "data", None)
         if isinstance(data, dict) and _has_camera_entities(data):
             return True
@@ -221,9 +258,11 @@ def _has_any_camera_entities(hass: HomeAssistant) -> bool:
 def _cleanup_recordings_runtime(hass: HomeAssistant, entry_id: str | None = None) -> None:
     """Remove recordings UI/runtime pieces when no X-Sense cameras are present."""
     if entry_id:
+        async_stop_recording_media_sync(hass, entry_id)
         async_remove_recording_index(hass, entry_id)
-    async_unregister_recordings_panel(hass)
-    async_unregister_recording_services(hass)
+    if not _has_any_camera_entities(hass):
+        async_unregister_recordings_panel(hass)
+        async_unregister_recording_services(hass)
 
 
 async def _async_register_recordings_runtime(
@@ -231,7 +270,6 @@ async def _async_register_recordings_runtime(
 ) -> None:
     """Register recordings UI/runtime pieces once cameras are present."""
     await async_register_recordings_panel(hass)
-    await async_register_recordings_http_views(hass)
     await async_register_recording_services(hass)
     async_start_recording_media_sync(hass, entry)
 
@@ -258,6 +296,18 @@ def _obsolete_sensor_unique_ids(data) -> set[str]:
             )
         )
     return unique_ids
+
+
+def _obsolete_binary_sensor_unique_ids(data) -> set[str]:
+    """Return exact obsolete binary-sensor unique IDs for known devices."""
+    return {
+        _sensor_unique_id(entity.entity_id, key)
+        for entity in (
+            *data.get("stations", {}).values(),
+            *data.get("devices", {}).values(),
+        )
+        for key in OBSOLETE_BINARY_SENSOR_KEYS
+    }
 
 
 def _obsolete_action_unique_ids(data) -> set[str]:
@@ -416,6 +466,10 @@ def _remove_obsolete_sensor_entities(
     entity_registry = er.async_get(hass)
     checked_unique_ids = set()
     obsolete_action_unique_ids = _obsolete_action_unique_ids(data)
+    obsolete_unique_ids_by_domain = {
+        Platform.SENSOR: _obsolete_sensor_unique_ids(data),
+        Platform.BINARY_SENSOR: _obsolete_binary_sensor_unique_ids(data),
+    }
     obsolete_camera_motion_unique_ids = _obsolete_camera_motion_unique_ids(data)
     unsupported_led_light_switch_unique_ids = _unsupported_led_light_switch_unique_ids(
         data
@@ -439,6 +493,12 @@ def _remove_obsolete_sensor_entities(
         seen_entity_ids.add(registry_entry.entity_id)
         checked_unique_ids.add(registry_entry.unique_id)
         if _is_obsolete_entity_entry(registry_entry) or (
+            getattr(registry_entry, "platform", None) == DOMAIN
+            and _registry_entry_unique_id(registry_entry)
+            in obsolete_unique_ids_by_domain.get(
+                _registry_entry_domain(registry_entry), set()
+            )
+        ) or (
             _registry_entry_domain(registry_entry) == Platform.BUTTON
             and getattr(registry_entry, "platform", None) == DOMAIN
             and _registry_entry_unique_id(registry_entry)
@@ -494,6 +554,15 @@ def _remove_obsolete_sensor_entities(
             entity_registry.async_remove(entity_id)
 
     for unique_id in obsolete_camera_motion_unique_ids - checked_unique_ids:
+        entity_id = entity_registry.async_get_entity_id(
+            Platform.BINARY_SENSOR, DOMAIN, unique_id
+        )
+        if entity_id is not None:
+            entity_registry.async_remove(entity_id)
+
+    for unique_id in (
+        obsolete_unique_ids_by_domain[Platform.BINARY_SENSOR] - checked_unique_ids
+    ):
         entity_id = entity_registry.async_get_entity_id(
             Platform.BINARY_SENSOR, DOMAIN, unique_id
         )
@@ -693,15 +762,23 @@ def _schedule_startup_maintenance(
     coordinator: XSenseDataUpdateCoordinator,
 ) -> None:
     """Schedule startup maintenance outside the HA setup critical path."""
+    startup_event_fired = False
 
     @callback
     def _run_startup_maintenance(_now) -> None:
         """Schedule registry and repair maintenance."""
-        hass.create_task(_async_run_startup_maintenance(hass, entry, coordinator))
+        _create_entry_task(
+            hass,
+            entry,
+            _async_run_startup_maintenance(hass, entry, coordinator),
+            "X-Sense startup maintenance",
+        )
 
     @callback
     def _schedule_delayed_startup_maintenance(_event=None) -> None:
         """Delay startup maintenance until HA has finished starting."""
+        nonlocal startup_event_fired
+        startup_event_fired = True
         entry.async_on_unload(
             async_call_later(
                 hass,
@@ -714,12 +791,24 @@ def _schedule_startup_maintenance(
         _schedule_delayed_startup_maintenance()
         return
 
-    entry.async_on_unload(
-        hass.bus.async_listen_once(
-            EVENT_HOMEASSISTANT_STARTED,
-            _schedule_delayed_startup_maintenance,
-        )
+    remove_start_listener = hass.bus.async_listen_once(
+        EVENT_HOMEASSISTANT_STARTED,
+        _schedule_delayed_startup_maintenance,
     )
+
+    @callback
+    def _remove_pending_start_listener() -> None:
+        """Remove the startup listener only if it has not already fired."""
+        if not startup_event_fired:
+            remove_start_listener()
+
+    entry.async_on_unload(_remove_pending_start_listener)
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up integration-wide X-Sense resources."""
+    await async_register_recordings_http_views(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -729,7 +818,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-    recordings_runtime_registered = _has_any_camera_entities(hass)
+    recordings_runtime_registered = _has_camera_entities(coordinator.data)
     if recordings_runtime_registered:
         await _async_register_recordings_runtime(hass, entry)
     else:
@@ -739,10 +828,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     def _async_sync_recordings_runtime() -> None:
         """Register recordings runtime if cameras appear after setup."""
         nonlocal recordings_runtime_registered
-        has_cameras = _has_any_camera_entities(hass)
+        has_cameras = _has_camera_entities(coordinator.data)
         if has_cameras and not recordings_runtime_registered:
             recordings_runtime_registered = True
-            hass.create_task(_async_register_recordings_runtime(hass, entry))
+            _create_entry_task(
+                hass,
+                entry,
+                _async_register_recordings_runtime(hass, entry),
+                "X-Sense recordings runtime registration",
+            )
         elif not has_cameras and recordings_runtime_registered:
             recordings_runtime_registered = False
             _cleanup_recordings_runtime(hass, entry.entry_id)
@@ -755,7 +849,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     @callback
     def _schedule_blueprint_maintenance_check(_now) -> None:
         """Schedule the periodic stale blueprint maintenance check."""
-        hass.create_task(async_check_stale_camera_blueprints(hass))
+        _create_entry_task(
+            hass,
+            entry,
+            async_check_stale_camera_blueprints(hass),
+            "X-Sense blueprint maintenance",
+        )
 
     entry.async_on_unload(
         async_track_time_interval(
@@ -776,14 +875,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload the integration after options change."""
-    await hass.config_entries.async_reload(entry.entry_id)
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Reload a config entry."""
-    if not await async_unload_entry(hass, entry):
-        return False
-    return await async_setup_entry(hass, entry)
+    hass.config_entries.async_schedule_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -791,7 +883,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        coordinator: XSenseDataUpdateCoordinator | None = hass.data[DOMAIN].pop(
+        coordinator: XSenseDataUpdateCoordinator | None = hass.data.get(DOMAIN, {}).pop(
             entry.entry_id, None
         )
         async_cancel_recording_cache_tasks(hass, entry.entry_id)
@@ -800,6 +892,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await coordinator.async_shutdown()
         if not _has_any_camera_entities(hass):
             _cleanup_recordings_runtime(hass)
+        if not hass.data.get(DOMAIN):
+            hass.data.pop(DOMAIN, None)
 
     return unload_ok
 

@@ -73,20 +73,7 @@ class Station(Entity):
                 device_data["activate"] = device_data["isActivate"]
             source_devices.append(device_data)
             d = Device(self, **device_data)
-            data_updates = {}
-            if device_data.get("roomName") is not None:
-                data_updates["roomName"] = device_data["roomName"]
-            if device_data.get("stationId") is not None:
-                data_updates["stationId"] = device_data["stationId"]
-            if "isActivate" in device_data:
-                data_updates.update(
-                    {
-                        "activate": device_data["isActivate"],
-                        "isActivate": device_data["isActivate"],
-                    }
-                )
-            if data_updates:
-                d.set_data(data_updates)
+            d.set_data(device_data)
             result[device_data["deviceId"]] = d
             result_sn[str(device_data["deviceSn"])] = device_data["deviceId"]
 

@@ -81,6 +81,16 @@ def has_shadow_number(key: str) -> Callable[[Entity], bool]:
     )
 
 
+def has_radon_server_setting(entity: Entity) -> bool:
+    """Return whether the APK exposes XR0A-iR server-backed settings."""
+    station = getattr(entity, "station", entity)
+    return (
+        entity.type == "XR0A-iR"
+        and bool(getattr(station, "entity_id", None))
+        and bool(getattr(station, "sn", None))
+    )
+
+
 def _has_shadow_write_route(entity: Entity) -> bool:
     """Return if an entity has the serial context needed for shadow writes."""
     if not getattr(entity, "sn", None):
@@ -124,6 +134,28 @@ class XSenseNumberEntityDescription(NumberEntityDescription):
 
 
 NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
+    XSenseNumberEntityDescription(
+        key="radon_minimum_threshold",
+        data_key="minRadon",
+        translation_key="radon_minimum_threshold",
+        icon="mdi:radioactive-off",
+        native_unit_of_measurement="Bq/m³",
+        native_min_value=1,
+        native_max_value=9998,
+        native_step=1,
+        exists_fn=has_radon_server_setting,
+    ),
+    XSenseNumberEntityDescription(
+        key="radon_maximum_threshold",
+        data_key="maxRadon",
+        translation_key="radon_maximum_threshold",
+        icon="mdi:radioactive",
+        native_unit_of_measurement="Bq/m³",
+        native_min_value=2,
+        native_max_value=9999,
+        native_step=1,
+        exists_fn=has_radon_server_setting,
+    ),
     XSenseNumberEntityDescription(
         key="alarm_volume",
         data_key="alarmVol",
@@ -402,7 +434,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_live_speaker_volume",
         data_key="liveSpeakerVolume",
         addx_key="audio.liveSpeakerVolume",
-        name="Live Speaker Volume",
+        name="Speaker Volume",
         icon="mdi:volume-high",
         native_unit_of_measurement=PERCENTAGE,
         native_min_value=0,
@@ -416,7 +448,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_alarm_seconds",
         data_key="alarmSeconds",
         addx_key="alarmSeconds",
-        name="Alarm Seconds",
+        name="Alarm Duration",
         icon="mdi:timer-outline",
         native_min_value=0,
         native_max_value=300,
@@ -427,7 +459,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_night_threshold",
         data_key="nightThresholdLevel",
         addx_key="nightThresholdLevel",
-        name="Night Threshold",
+        name="Night Vision Sensitivity",
         icon="mdi:weather-night",
         native_min_value=1,
         native_max_value=3,
@@ -438,7 +470,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_cry_detection_level",
         data_key="cryDetectLevel",
         addx_key="cryDetectLevel",
-        name="Cry Detection Level",
+        name="Cry Detection Sensitivity",
         icon="mdi:baby-face-outline",
         native_min_value=1,
         native_max_value=3,
@@ -467,7 +499,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_mechanical_ding_dong_duration",
         data_key="mechanicalDingDongDuration",
         addx_key="mechanicalDingDongDuration",
-        name="Mechanical Ding-Dong Duration",
+        name="Mechanical Chime Duration",
         icon="mdi:bell-ring",
         native_min_value=0,
         native_max_value=30,
@@ -556,7 +588,27 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         if entity is None:
             raise HomeAssistantError("X-Sense entity is no longer available")
 
-        if self.entity_description.data_key == "warnPeriod":
+        if self.entity_description.data_key in {"minRadon", "maxRadon"}:
+            data_key = self.entity_description.data_key
+            int_value = round(value)
+            min_radon = (
+                int_value
+                if data_key == "minRadon"
+                else round(float(entity.data.get("minRadon", 75)))
+            )
+            max_radon = (
+                int_value
+                if data_key == "maxRadon"
+                else round(float(entity.data.get("maxRadon", 150)))
+            )
+            try:
+                await self.coordinator.xsense.update_radon_thresholds(
+                    entity, min_radon=min_radon, max_radon=max_radon
+                )
+            except ValueError as ex:
+                raise HomeAssistantError(str(ex)) from ex
+            entity.data[data_key] = int_value
+        elif self.entity_description.data_key == "warnPeriod":
             int_value = round(value)
             await self.coordinator.xsense.update_co_pre_alarm(entity, period=int_value)
             entity.data[self.entity_description.data_key] = int_value

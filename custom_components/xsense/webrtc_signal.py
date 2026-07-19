@@ -202,12 +202,17 @@ class XSenseWebRTCSignalSession:
         if ws is not None and not ws.closed:
             with suppress(Exception):
                 await ws.close()
-        if self._read_task is not None:
-            self._read_task.cancel()
-            self._read_task = None
-        if self._reconnect_task is not None:
-            self._reconnect_task.cancel()
-            self._reconnect_task = None
+        tasks = [
+            task
+            for task in (self._read_task, self._reconnect_task)
+            if task is not None and task is not asyncio.current_task()
+        ]
+        self._read_task = None
+        self._reconnect_task = None
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     def start_forwarding_remote_candidates(self) -> None:
         """Forward queued X-Sense ICE candidates to Home Assistant."""

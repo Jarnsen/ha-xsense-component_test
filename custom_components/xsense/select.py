@@ -54,6 +54,16 @@ def has_shadow_select(key: str) -> Callable[[Entity], bool]:
     )
 
 
+def has_radon_server_setting(entity: Entity) -> bool:
+    """Return whether the APK exposes XR0A-iR server-backed settings."""
+    station = getattr(entity, "station", entity)
+    return (
+        entity.type == "XR0A-iR"
+        and bool(getattr(station, "entity_id", None))
+        and bool(getattr(station, "sn", None))
+    )
+
+
 def _sbs50_default_select(entity: Entity, key: str) -> bool:
     """Return whether the APK exposes this SBS50 select before first shadow data."""
     return entity.type == "SBS50" and key in {"alarmTone", "ledBrt"}
@@ -179,12 +189,43 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         exists_fn=has_shadow_select("remindTime"),
     ),
     XSenseSelectEntityDescription(
+        key="mailbox_report_interval",
+        data_key="reportInterval",
+        translation_key="mailbox_report_interval",
+        fixed_options=(
+            "2",
+            "5",
+            "10",
+            "15",
+            "30",
+            "60",
+            "120",
+            "240",
+            "360",
+            "480",
+            "720",
+        ),
+        icon="mdi:mailbox-clock-outline",
+        exists_fn=lambda entity: (
+            getattr(entity, "entity_type", None) == EntityType.MAILBOX
+            and has_shadow_select("reportInterval")(entity)
+        ),
+    ),
+    XSenseSelectEntityDescription(
         key="temperature_unit",
         data_key="tempUnit",
         translation_key="temperature_unit",
         fixed_options=("1", "2"),
         icon="mdi:temperature-celsius",
         exists_fn=has_shadow_select("tempUnit"),
+    ),
+    XSenseSelectEntityDescription(
+        key="radon_unit",
+        data_key="radonUnit",
+        translation_key="radon_unit",
+        fixed_options=("1", "2"),
+        icon="mdi:radioactive",
+        exists_fn=has_radon_server_setting,
     ),
     XSenseSelectEntityDescription(
         key="comfort_type",
@@ -260,7 +301,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         addx_key="motionSensitivity",
         options_key="motionSensitivityOptionList",
         fixed_options=(0, 1, 2, 3),
-        name="Motion Sensitivity",
+        name="Detection Sensitivity",
         icon="mdi:motion-sensor",
         exists_fn=has_camera_motion_sensitivity,
     ),
@@ -269,7 +310,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="videoSeconds",
         addx_key="videoSeconds",
         options_key="videoSecondsValues",
-        name="Video Seconds",
+        name="Video Duration",
         icon="mdi:timer-outline",
         exists_fn=has_camera_video_seconds,
     ),
@@ -278,7 +319,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="antiflicker",
         addx_key="antiflicker",
         fixed_options=(50, 60),
-        name="Anti-Flicker Rate",
+        name="Flicker Frequency",
         icon="mdi:lightbulb-on-10",
         exists_fn=has_supported_data("antiflicker", support_key="supportAntiFlicker"),
     ),
@@ -301,7 +342,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="motionTrackMode",
         addx_key="motionTrackMode",
         fixed_options=(0, 1),
-        name="Motion Tracking Mode",
+        name="Motion Tracking",
         icon="mdi:axis-arrow",
         exists_fn=has_supported_data(
             "motionTrackMode", support_key="supportMotionTrack"
@@ -321,7 +362,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="cooldownValue",
         addx_key="cooldown.value",
         options_key="cooldownOptions",
-        name="Cooldown",
+        name="Cloud Cool Down Time",
         icon="mdi:timer-sand",
         exists_fn=lambda entity: (
             is_camera_entity(entity)
@@ -337,7 +378,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="doorBellRingKey",
         addx_key="audio.doorBellRingKey",
         options_key="doorBellRingKeyOptions",
-        name="Doorbell Ring Key",
+        name="Doorbell Tone",
         icon="mdi:bell-music",
         exists_fn=has_supported_data(
             "doorBellRingKey",
@@ -460,7 +501,9 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
                 user_enable=_required_bool_state(entity.data.get("cooldownEnabled")),
                 value=int(_typed_option(option)),
             )
-        elif self.entity_description.addx_key.startswith("audio."):
+        elif self.entity_description.addx_key and self.entity_description.addx_key.startswith(
+            "audio."
+        ):
             await self.coordinator.xsense.update_camera_audio(
                 entity,
                 **{
@@ -474,7 +517,9 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
                 entity, **{self.entity_description.addx_key: _typed_option(option)}
             )
         elif not is_camera_entity(entity):
-            if self.entity_description.data_key == "comfortType":
+            if self.entity_description.data_key == "radonUnit":
+                await self.coordinator.xsense.update_radon_unit(entity, option)
+            elif self.entity_description.data_key == "comfortType":
                 await self._async_select_comfort_type(entity, option)
             elif self.entity_description.data_key == "lightScene":
                 await self.coordinator.xsense.update_light_scene(entity, option)

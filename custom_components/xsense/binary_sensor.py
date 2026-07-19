@@ -21,7 +21,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
     XSenseEntity,
@@ -77,18 +77,6 @@ def has_mute_status(entity: Entity) -> bool:
     )
 
 
-def has_life_end_status(entity: Entity) -> bool:
-    """Return if an X-Sense entity should expose end-of-life status."""
-    if "isLifeEnd" in entity.data:
-        return True
-    entity_def = entities.get(entity.type) or {}
-    return entity_def.get("type") in {
-        EntityType.CO,
-        EntityType.COMBI,
-        EntityType.SMOKE,
-    }
-
-
 def alarm_status(entity: Entity) -> bool | None:
     """Return the reported alarm status, or unknown before the first report."""
     if "alarmStatus" not in entity.data:
@@ -142,14 +130,7 @@ def motion_detection_value(entity: Entity) -> bool | None:
     return boolean_state(entity.data.get("isMoved"))
 
 
-SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
-    XSenseBinarySensorEntityDescription(
-        key="is_life_end",
-        translation_key="is_life_end",
-        device_class=BinarySensorDeviceClass.PROBLEM,
-        exists_fn=has_life_end_status,
-        value_fn=lambda entity: boolean_state(entity.data.get("isLifeEnd")),
-    ),
+_ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="alarm_status",
         translation_key="alarm_status",
@@ -173,24 +154,17 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="ac_break",
-        name="AC Break",
+        name="AC Power Disconnected",
         device_class=BinarySensorDeviceClass.PROBLEM,
         exists_fn=has_data("acBreak"),
         value_fn=data_bool("acBreak"),
     ),
     XSenseBinarySensorEntityDescription(
         key="battery_end_of_use",
-        name="Battery End of Use",
+        name="Battery End-of-Life",
         device_class=BinarySensorDeviceClass.PROBLEM,
         exists_fn=has_data("bEndUse"),
         value_fn=data_bool("bEndUse"),
-    ),
-    XSenseBinarySensorEntityDescription(
-        key="mail_notice",
-        name="Mail Notice",
-        icon="mdi:mailbox-up",
-        exists_fn=has_data("mailNotice"),
-        value_fn=data_bool("mailNotice"),
     ),
     XSenseBinarySensorEntityDescription(
         key="armed",
@@ -201,7 +175,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="moved",
-        name="Motion",
+        name="Motion Detected",
         device_class=BinarySensorDeviceClass.MOTION,
         exists_fn=has_motion_detection,
         value_fn=motion_detection_value,
@@ -222,7 +196,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="camera_sleeping",
-        name="Camera Sleeping",
+        name="Sleeping",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:power-sleep",
         exists_fn=lambda entity: (
@@ -234,7 +208,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="base_removed",
-        name="Base Removed",
+        name="Mounting Bracket Removed",
         device_class=BinarySensorDeviceClass.PROBLEM,
         exists_fn=has_data("baseRemove"),
         value_fn=data_bool("baseRemove"),
@@ -248,7 +222,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="fire_drill_active",
-        name="Fire Drill Active",
+        name="Alarm Drill Active",
         icon="mdi:fire-alert",
         exists_fn=has_data("isFireDrill"),
         value_fn=data_bool("isFireDrill"),
@@ -269,7 +243,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="test_active",
-        name="Test Active",
+        name="Device Test Active",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:check-circle-outline",
         exists_fn=has_data("test"),
@@ -277,14 +251,14 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="mute",
-        name="Mute",
+        name="Device Silenced",
         icon="mdi:volume-off",
         exists_fn=has_data("mute"),
         value_fn=data_bool("mute"),
     ),
     XSenseBinarySensorEntityDescription(
         key="alarm_sound_enabled",
-        name="Alarm Sound Enabled",
+        name="Alarm Sound",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:volume-high",
         exists_fn=has_data("alarmSound"),
@@ -292,7 +266,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="app_tip_enabled",
-        name="App Tip Enabled",
+        name="App Notifications",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:message-badge-outline",
         exists_fn=has_data("appTip"),
@@ -300,43 +274,53 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="schedule_tip_enabled",
-        name="Schedule Tip Enabled",
+        name="Schedule Notifications",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:calendar-alert",
         exists_fn=has_data("scheduleTip"),
         value_fn=data_bool("scheduleTip"),
     ),
     XSenseBinarySensorEntityDescription(
+        key="mailbox_schedule_active",
+        translation_key="mailbox_schedule_active",
+        icon="mdi:calendar-clock",
+        exists_fn=lambda entity: (
+            getattr(entity, "entity_type", None) == EntityType.MAILBOX
+            and "scheduleStatus" in entity.data
+        ),
+        value_fn=data_bool("scheduleStatus"),
+    ),
+    XSenseBinarySensorEntityDescription(
         key="water_alarm_status",
-        name="Water Alarm Status",
+        name="Water Leak Alarm",
         device_class=BinarySensorDeviceClass.MOISTURE,
         exists_fn=has_data("waterAlarmStatus"),
         value_fn=data_bool("waterAlarmStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="water_mute_status",
-        name="Water Mute Status",
+        name="Water Leak Silenced",
         icon="mdi:water-off",
         exists_fn=has_data("waterMuteStatus"),
         value_fn=data_bool("waterMuteStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="temperature_alarm_status",
-        name="Temperature Alarm Status",
+        name="Temperature Alarm",
         device_class=BinarySensorDeviceClass.PROBLEM,
         exists_fn=has_data("tempAlarmStatus"),
         value_fn=data_bool("tempAlarmStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="temperature_mute_status",
-        name="Temperature Mute Status",
+        name="Temperature Alarm Silenced",
         icon="mdi:thermometer-off",
         exists_fn=has_data("tempMuteStatus"),
         value_fn=data_bool("tempMuteStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="timezone_enabled",
-        name="Time Zone Enabled",
+        name="Device Time Zone Enabled",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:map-clock-outline",
         exists_fn=has_data("timeZoneEnabled"),
@@ -344,7 +328,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="timezone_valid",
-        name="Time Zone Valid",
+        name="Device Time Zone Valid",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:clock-check-outline",
         exists_fn=has_data("timeZoneValid"),
@@ -354,10 +338,15 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="door",
         translation_key="door",
         device_class=BinarySensorDeviceClass.DOOR,
-        name="Door Sensor",
         value_fn=lambda device: boolean_state(device.data["isOpen"]),
         exists_fn=lambda device: "isOpen" in device.data,
     ),
+)
+
+SENSORS = tuple(
+    description
+    for description in _ALL_SENSORS
+    if description.key not in NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS
 )
 
 MQTTSensor = XSenseBinarySensorEntityDescription(

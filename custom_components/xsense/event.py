@@ -613,7 +613,19 @@ def _trigger_event_after_recording_cache(
         _trigger_camera_event(event_entity, event_type, event_data)
         _write_event_state(event_entity)
 
-    task = hass.async_create_task(_async_cache_then_trigger())
+    config_entries = getattr(hass, "config_entries", None)
+    get_entry = getattr(config_entries, "async_get_entry", None)
+    entry = get_entry(entry_id) if callable(get_entry) else None
+    create_background_task = getattr(entry, "async_create_background_task", None)
+    task = (
+        create_background_task(
+            hass,
+            _async_cache_then_trigger(),
+            "X-Sense event recording cache",
+        )
+        if callable(create_background_task)
+        else hass.async_create_task(_async_cache_then_trigger())
+    )
     if task is None or not hasattr(task, "add_done_callback"):
         return True
     hass_data = getattr(hass, "data", None)

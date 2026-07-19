@@ -17,7 +17,9 @@ from custom_components.xsense import (
     binary_sensor,
     button,
     camera,
+    config_flow,
     event,
+    media_source,
     number,
     repairs,
     select,
@@ -181,8 +183,8 @@ async def test_supported_co_status_loads_before_payload_keys():
     binary_keys = {entity.entity_description.key for entity in binary_calls[0]}
     sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
 
-    assert {"alarm_status", "is_life_end", "mute_status"} <= binary_keys
-    assert {"co", "co_level"} <= sensor_keys
+    assert {"alarm_status", "mute_status"} <= binary_keys
+    assert {"co", "co_level", "device_status"} <= sensor_keys
 
 
 async def test_supported_combo_co_status_loads_before_payload_keys():
@@ -210,18 +212,18 @@ async def test_supported_combo_co_status_loads_before_payload_keys():
     assert {"co", "co_level"} <= sensor_keys
 
 
-def test_supported_co_late_values_are_unknown_until_reported():
+def test_supported_co_late_values_use_safe_defaults_until_reported():
     co_detector = SimpleNamespace(data={}, type="XC04-WX")
     sensor_descriptions = {item.key: item for item in sensor.SENSORS}
     binary_descriptions = {item.key: item for item in binary_sensor.SENSORS}
 
     assert sensor_descriptions["co"].value_fn(co_detector) is None
     assert sensor_descriptions["co_level"].value_fn(co_detector) is None
-    assert binary_descriptions["is_life_end"].value_fn(co_detector) is None
+    assert sensor_descriptions["device_status"].value_fn(co_detector) == "normal"
     assert binary_descriptions["mute_status"].value_fn(co_detector) is None
 
 
-async def test_water_does_not_create_life_end_before_payload_key():
+async def test_water_does_not_create_device_status_before_payload_key():
     water = SimpleNamespace(
         data={},
         entity_id="water",
@@ -274,7 +276,8 @@ async def test_sbs50_station_entities_load_before_late_shadow_keys():
         entity.entity_description.key == "alarm_status" for entity in binary_calls[0]
     )
     sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
-    assert {"ip", "safe_mode", "wifi_rssi", "wifi_ssid", "zone_name"} <= sensor_keys
+    assert "wifi_rssi" in sensor_keys
+    assert {"ip", "safe_mode", "wifi_ssid", "zone_name"}.isdisjoint(sensor_keys)
     assert {
         entity.entity_description.key for entity in select_calls[0]
     } >= {"alarm_tone", "led_brightness"}
@@ -511,9 +514,10 @@ def test_blueprint_maintenance_interval_callback_stays_event_loop_safe():
 
     assert "@callback" in setup_source
     assert "def _schedule_blueprint_maintenance_check" in setup_source
-    assert "hass.create_task(async_check_stale_camera_blueprints(hass))" in setup_source
+    assert "_create_entry_task(" in setup_source
+    assert "async_check_stale_camera_blueprints(hass)" in setup_source
     assert "hass.async_create_task(async_check_stale_camera_blueprints(hass))" not in setup_source
-    assert "hass.create_task(_async_run_startup_maintenance" in maintenance_source
+    assert "_create_entry_task(" in maintenance_source
     assert "lambda _now: hass.async_create_task" not in maintenance_source
     assert "hass.async_create_task(_async_run_startup_maintenance" not in maintenance_source
 
@@ -559,24 +563,102 @@ def test_startup_maintenance_waits_until_home_assistant_started(monkeypatch):
     assert calls[4] == ("task", "_async_run_startup_maintenance")
 
 
-def test_async_reload_entry_unloads_then_sets_up(monkeypatch):
+def test_fired_startup_listener_is_not_removed_again(monkeypatch):
+    unload_callbacks = []
+    listener_removed = []
+    startup_callbacks = []
+
+    class Bus:
+        def async_listen_once(self, event, callback):
+            startup_callbacks.append(callback)
+            return lambda: listener_removed.append(event)
+
+    class Entry:
+        def async_on_unload(self, callback):
+            unload_callbacks.append(callback)
+
+    hass = SimpleNamespace(is_running=False, bus=Bus())
+    coordinator = SimpleNamespace()
+    monkeypatch.setattr(xsense_module, "async_call_later", lambda *args: lambda: None)
+
+    xsense_module._schedule_startup_maintenance(hass, Entry(), coordinator)
+    startup_callbacks[0](None)
+    for callback in unload_callbacks:
+        callback()
+
+    assert listener_removed == []
+
+
+def test_options_update_schedules_one_core_reload():
+    calls = []
+    entry = SimpleNamespace(entry_id="entry-id")
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_schedule_reload=lambda entry_id: calls.append(entry_id)
+        )
+    )
+
+    asyncio.run(xsense_module._async_options_updated(hass, entry))
+
+    assert calls == ["entry-id"]
+
+
+def test_integration_tasks_are_owned_by_config_entry():
     calls = []
 
-    async def async_unload_entry(hass, entry):
-        calls.append(("unload", entry.entry_id))
-        return True
+    async def work():
+        return None
 
-    async def async_setup_entry(hass, entry):
-        calls.append(("setup", entry.entry_id))
-        return True
+    class Entry:
+        def async_create_task(self, hass, coro, name):
+            calls.append((hass, name))
+            coro.close()
+            return "entry-task"
 
-    monkeypatch.setattr(xsense_module, "async_unload_entry", async_unload_entry)
-    monkeypatch.setattr(xsense_module, "async_setup_entry", async_setup_entry)
+    hass = SimpleNamespace(create_task=lambda coro: pytest.fail("unowned task created"))
 
-    entry = SimpleNamespace(entry_id="entry-id")
+    assert (
+        xsense_module._create_entry_task(hass, Entry(), work(), "lifecycle test")
+        == "entry-task"
+    )
+    assert calls == [(hass, "lifecycle test")]
 
-    assert asyncio.run(xsense_module.async_reload_entry(object(), entry)) is True
-    assert calls == [("unload", "entry-id"), ("setup", "entry-id")]
+
+def test_recording_background_tasks_are_owned_by_config_entry():
+    calls = []
+
+    async def work():
+        return None
+
+    class Entry:
+        def async_create_background_task(self, hass, coro, name):
+            calls.append((hass, name))
+            coro.close()
+            return "background-task"
+
+    entry = Entry()
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(async_get_entry=lambda entry_id: entry),
+        async_create_task=lambda coro: pytest.fail("unowned background task created"),
+    )
+
+    assert (
+        media_source._create_recording_background_task(
+            hass, "entry-id", work(), "recording lifecycle test"
+        )
+        == "background-task"
+    )
+    assert calls == [(hass, "recording lifecycle test")]
+
+
+def test_credential_updates_use_one_reload_path():
+    for method in (
+        config_flow.XSenseConfigFlow.async_step_reauth_confirm,
+        config_flow.XSenseConfigFlow.async_step_reconfigure,
+    ):
+        source = inspect.getsource(method)
+        assert "async_update_and_abort" in source
+        assert "async_update_reload_and_abort" not in source
 
 
 def test_unload_cancels_pending_recording_cache_tasks(monkeypatch):
@@ -625,7 +707,24 @@ def test_unload_cancels_pending_recording_cache_tasks(monkeypatch):
 
     assert asyncio.run(xsense_module.async_unload_entry(hass, entry)) is True
     assert ("cancel", "cache") in calls
-    assert event.RECORDING_CACHE_TASKS not in hass.data[DOMAIN]
+    assert DOMAIN not in hass.data
+
+
+def test_integration_setup_registers_global_recording_routes(monkeypatch):
+    calls = []
+
+    async def async_register_recordings_http_views(hass):
+        calls.append(hass)
+
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recordings_http_views",
+        async_register_recordings_http_views,
+    )
+    hass = SimpleNamespace()
+
+    assert asyncio.run(xsense_module.async_setup(hass, {})) is True
+    assert calls == [hass]
 
 
 def test_ai_notification_blueprint_filters_by_selected_event_entity():
@@ -1301,9 +1400,87 @@ def test_recordings_runtime_cleanup_removes_stale_non_camera_runtime(monkeypatch
     assert calls == [
         ("remove_index", "xcom-entry"),
         "recordings_panel",
-
         "recording_services",
     ]
+
+
+def test_recordings_runtime_cleanup_keeps_shared_runtime_for_other_camera_entry(
+    monkeypatch,
+):
+    calls = []
+    hass = SimpleNamespace(
+        data={
+            DOMAIN: {
+                "camera-entry": SimpleNamespace(
+                    data={
+                        "stations": {"camera": SimpleNamespace(type="SSC0A")},
+                        "devices": {},
+                    }
+                )
+            }
+        }
+    )
+
+    monkeypatch.setattr(
+        xsense_module,
+        "async_stop_recording_media_sync",
+        lambda hass, entry_id: calls.append(("stop_sync", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_remove_recording_index",
+        lambda hass, entry_id: calls.append(("remove_index", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recordings_panel",
+        lambda hass: calls.append("recordings_panel"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recording_services",
+        lambda hass: calls.append("recording_services"),
+    )
+
+    xsense_module._cleanup_recordings_runtime(hass, "sensor-only-entry")
+
+    assert calls == [
+        ("stop_sync", "sensor-only-entry"),
+        ("remove_index", "sensor-only-entry"),
+    ]
+
+
+def test_recording_media_sync_can_stop_before_entry_unload(monkeypatch):
+    cancelled = []
+    unload_callbacks = []
+
+    def schedule(*args, **kwargs):
+        marker = len(cancelled)
+
+        def cancel():
+            cancelled.append(marker)
+
+        return cancel
+
+    monkeypatch.setattr(media_source, "async_call_later", schedule)
+    monkeypatch.setattr(media_source, "async_track_time_interval", schedule)
+
+    entry = SimpleNamespace(
+        entry_id="camera-entry",
+        options={CONF_RECORDING_MEDIA_SYNC_ENABLED: True},
+        async_on_unload=unload_callbacks.append,
+    )
+    hass = SimpleNamespace(data={DOMAIN: {}})
+
+    media_source.async_start_recording_media_sync(hass, entry)
+    assert "camera-entry" in hass.data[DOMAIN]["_recording_media_sync_unsubs"]
+
+    media_source.async_stop_recording_media_sync(hass, "camera-entry")
+
+    assert len(cancelled) == 3
+    assert "_recording_media_sync_unsubs" not in hass.data[DOMAIN]
+    unload_callbacks[0]()
+    assert len(cancelled) == 3
 
 
 def test_setup_entry_removes_recordings_runtime_without_cameras(monkeypatch):
@@ -1513,7 +1690,7 @@ def test_setup_entry_registers_recordings_runtime_with_cameras(monkeypatch):
 
     assert ("cleanup", "entry-camera") not in calls
     assert "recordings_panel" in calls
-    assert "recordings_http_views" in calls
+    assert "recordings_http_views" not in calls
 
     assert "recording_services" in calls
     assert "recording_media_sync" in calls
@@ -1636,7 +1813,7 @@ def test_setup_entry_registers_recordings_runtime_when_camera_appears_later(
     asyncio.run(run_test())
 
     assert "recordings_panel" in calls
-    assert "recordings_http_views" in calls
+    assert "recordings_http_views" not in calls
 
     assert "recording_services" in calls
     assert "recording_media_sync" in calls
@@ -1811,6 +1988,8 @@ def test_recordings_hls_playlist_rewrites_segments_to_token_route(tmp_path):
     playlist.write_text(
         "#EXTM3U\n"
         "#EXT-X-TARGETDURATION:4\n"
+        '#EXT-X-KEY:METHOD=AES-128,URI="segment key.key"\n'
+        '#EXT-X-MAP:URI="init/map.mp4"\n'
         "segment_0001.ts\n"
         "nested/index.m3u8\n"
         "#EXT-X-ENDLIST\n",
@@ -1823,6 +2002,8 @@ def test_recordings_hls_playlist_rewrites_segments_to_token_route(tmp_path):
     ) == (
         "#EXTM3U\n"
         "#EXT-X-TARGETDURATION:4\n"
+        '#EXT-X-KEY:METHOD=AES-128,URI="/api/xsense/recordings/hls/token/segment%20key.key"\n'
+        '#EXT-X-MAP:URI="/api/xsense/recordings/hls/token/init/map.mp4"\n'
         "/api/xsense/recordings/hls/token/segment_0001.ts\n"
         "/api/xsense/recordings/hls/token/nested/index.m3u8\n"
         "#EXT-X-ENDLIST\n"

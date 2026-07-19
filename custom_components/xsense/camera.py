@@ -490,7 +490,20 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             },
         )
         if session is not None:
-            self.hass.async_create_task(session.close())
+            entry = getattr(self.coordinator, "entry", None)
+            create_task = getattr(entry, "async_create_task", None)
+            if callable(create_task):
+                create_task(
+                    self.hass,
+                    session.close(),
+                    "X-Sense WebRTC session close",
+                )
+            else:
+                hass_create_task = getattr(self.hass, "create_task", None)
+                if callable(hass_create_task):
+                    hass_create_task(session.close())
+                else:
+                    self.hass.async_create_task(session.close())
         super().close_webrtc_session(session_id)
 
     async def async_will_remove_from_hass(self) -> None:

@@ -8,7 +8,7 @@
 [打开简体中文 README](README_zh-CN.md)
 
 ## 兼容性和 HACS 更新
-如果你仍在使用旧的 `v1.2.6.x` 版本，请先更新到 `v1.3.14` 或更新版本，再将 Home Assistant Core 升级到 2026.7 或更新版本。当前的 `v1.3.x` 版本不再需要 `aiortc`。
+如果你仍在使用旧的 `v1.2.6.x` 版本，请先更新到 `v1.3.14` 或更新版本，再将 Home Assistant Core 升级到 2026.7 或更新版本。当前的 `v1.4.x` 版本不再需要 `aiortc`。
 
 此集成作为 HACS 自定义仓库安装。如果更新没有立即出现，请在 HACS 中选择 X-Sense 仓库，运行 **Update information**，然后更新或重新下载集成并重启 Home Assistant。
 

@@ -31,13 +31,13 @@ from .media_source import (
     _clip_thumbnail_cache_path,
     _hls_playlist_cache_path,
     _hls_ready,
+    _hls_attribute_uri,
     _local_media_url,
     _mp4_ready,
     _path_ready,
     _recording_media_root,
     _recording_media_sync_enabled,
     _sort_descending,
-    _unlink_missing_ok,
 )
 
 HLS_SEGMENT_TOKEN_TTL = 3600
@@ -847,7 +847,16 @@ def _hls_playlist_for_response(playlist_path: Path, segment_base_url: str) -> st
     rewritten = []
     for line in playlist_path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
+        if not stripped:
+            rewritten.append(line)
+            continue
+        if stripped.startswith("#"):
+            uri = _hls_attribute_uri(line)
+            if uri:
+                line = line.replace(
+                    f'URI="{uri}"',
+                    f'URI="{base}/{quote(uri, safe="/")}"',
+                )
             rewritten.append(line)
             continue
         rewritten.append(f"{base}/{quote(stripped, safe='/')}")

@@ -193,25 +193,6 @@ def FireDrillAction():
     }
 
 
-def SATestAction(shadow="appSelfTest"):
-    """Standalone device test."""
-    return {
-        "action": "test",
-        "topic": lambda x: f"appselftest_{x.sn}",
-        "shadow": shadow,
-        "time_format": None,
-    }
-
-
-def LegacySecondGenSelfTestAction(shadow="appSelfTest"):
-    """Older python-xsense self-test shape used by standalone Wi-Fi alarms."""
-    return {
-        "action": "test",
-        "topic": lambda x: f"2nd_selftest_{x.sn}",
-        "shadow": shadow,
-    }
-
-
 def _smoke_edition(entity):
     for source in (entity, getattr(entity, "station", None)):
         data = getattr(source, "data", None) or {}
@@ -247,6 +228,7 @@ def _xs01_wx_target(entity):
 
 
 def XS01WXMuteAction():
+    """Return the APK active-alarm mute command for XS01-WX."""
     return MuteAction(
         topic=lambda entity: "2nd_appmute" if _is_xs01_wx_v9(entity) else "appmute",
         target=_xs01_wx_target,
@@ -371,10 +353,7 @@ entities = {
     "SC06-WX": {
         "identifier": lambda entity: f"SC06-WX-{entity.sn}",
         "type": EntityType.COMBI,
-        "actions": [
-            LegacySecondGenSelfTestAction(),
-            WifiAlarmMuteAction(),
-        ],
+        "actions": [WifiAlarmMuteAction()],
     },
     "SC07-MR": {
         "identifier": lambda entity: f"SC07-MR-{entity.sn}",
@@ -638,10 +617,7 @@ entities = {
     },
     "XS01-WX": {
         "type": EntityType.SMOKE,
-        "actions": [
-            LegacySecondGenSelfTestAction(),
-            XS01WXMuteAction(),
-        ],
+        "actions": [XS01WXMuteAction()],
     },
     "XS0B-MR": {
         "type": EntityType.SMOKE,
@@ -744,10 +720,7 @@ entities = {
     },
     "XS0B-iR": {
         "type": EntityType.SMOKE,
-        "actions": [
-            SATestAction(),
-            WifiAlarmMuteAction(),
-        ],
+        "actions": [WifiAlarmMuteAction()],
     },
     "XS0E-iR": {
         "type": EntityType.SMOKE,

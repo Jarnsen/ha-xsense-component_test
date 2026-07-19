@@ -64,6 +64,13 @@ class House:
             if not station_id:
                 continue
             s = Station(self, **i)
+            s.set_data(
+                {
+                    key: value
+                    for key, value in i.items()
+                    if key not in {"devices", "deviceSort", "groupList"}
+                }
+            )
             s.set_devices(i)
 
             stations[station_id] = s
@@ -89,6 +96,13 @@ class House:
                 "devices": [],
             }
             s = Station(self, **station_data)
+            s.set_data(
+                {
+                    key: value
+                    for key, value in station_data.items()
+                    if key not in {"devices", "deviceSort", "groupList"}
+                }
+            )
             s.entity_type = EntityType.CAMERA
             s.set_devices(station_data)
             stations[station_id] = s

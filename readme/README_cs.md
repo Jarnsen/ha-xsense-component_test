@@ -13,7 +13,7 @@ Tato integrace pro Home Assistant zpřístupňuje zařízení X-Sense v chytré 
 Doporučujeme vytvořit druhý účet X-Sense určený pro Home Assistant a z hlavního účtu do něj sdílet pouze podporovaná zařízení.
 
 ## Kompatibilita a aktualizace HACS
-Pokud stále používáte staré sestavení `v1.2.6.x`, aktualizujte na `v1.3.14` nebo novější před aktualizací Home Assistant Core na 2026.7 nebo novější. Staré verze vyžadovaly `aiortc`, které není kompatibilní s Pythonem 3.14 v Home Assistant. Aktuální verze `v1.3.x` už `aiortc` nevyžadují.
+Pokud stále používáte staré sestavení `v1.2.6.x`, aktualizujte na `v1.3.14` nebo novější před aktualizací Home Assistant Core na 2026.7 nebo novější. Staré verze vyžadovaly `aiortc`, které není kompatibilní s Pythonem 3.14 v Home Assistant. Aktuální verze `v1.4.x` už `aiortc` nevyžadují.
 
 Tato integrace se instaluje jako vlastní repozitář HACS. Pokud se aktualizace nezobrazí hned, otevřete HACS, vyberte repozitář X-Sense, spusťte **Update information**, poté integraci aktualizujte nebo znovu stáhněte a restartujte Home Assistant.
 

@@ -13,7 +13,7 @@ Integrasi Home Assistant ini memungkinkan perangkat X-Sense digunakan di sistem 
 Sampai integrasi resmi Home Assistant tersedia, integrasi HACS ini akan terus diperbarui untuk menambah fitur dan memperbaiki masalah.
 
 ## Kompatibilitas dan pembaruan HACS
-Jika masih menggunakan build lama `v1.2.6.x`, perbarui ke `v1.3.14` atau yang lebih baru sebelum memperbarui Home Assistant Core ke 2026.7 atau yang lebih baru. Build lama memerlukan `aiortc`, yang tidak kompatibel dengan runtime Python 3.14 Home Assistant. Build `v1.3.x` saat ini tidak lagi memerlukan `aiortc`.
+Jika masih menggunakan build lama `v1.2.6.x`, perbarui ke `v1.3.14` atau yang lebih baru sebelum memperbarui Home Assistant Core ke 2026.7 atau yang lebih baru. Build lama memerlukan `aiortc`, yang tidak kompatibel dengan runtime Python 3.14 Home Assistant. Build `v1.4.x` saat ini tidak lagi memerlukan `aiortc`.
 
 Integrasi ini dipasang sebagai repositori kustom HACS. Jika pembaruan tidak langsung muncul, buka HACS, pilih repositori X-Sense, jalankan **Update information**, lalu perbarui atau unduh ulang integrasi dan mulai ulang Home Assistant.
 

@@ -30,7 +30,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
-from .const import DOMAIN, STATE_SIGNAL
+from .const import DOMAIN, NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS, STATE_SIGNAL
 from .entity import (
     XSenseEntity,
     coordinator_devices,
@@ -41,6 +41,10 @@ from .entity import (
 
 if TYPE_CHECKING:
     from .coordinator import XSenseDataUpdateCoordinator
+
+
+# These models report physical self-tests but have no remote self-test command.
+SELF_TEST_REPORT_ONLY_MODELS = {"SC06-WX", "XS01-WX", "XS0B-iR"}
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -96,6 +100,30 @@ def co_device(entity: Entity) -> bool:
         EntityType.CO,
         EntityType.COMBI,
     } or entity.type.startswith("XC")
+
+
+def has_device_status(entity: Entity) -> bool:
+    """Return whether the APK presents a combined current device status."""
+    entity_def = entities.get(entity.type) or {}
+    return "isLifeEnd" in entity.data or entity_def.get("type") in {
+        EntityType.CO,
+        EntityType.COMBI,
+        EntityType.SMOKE,
+    }
+
+
+def apk_device_status(entity: Entity) -> str:
+    """Return the APK current-status value using its exact precedence."""
+    if str(entity.data.get("isLifeEnd", "")).strip() == "1":
+        return "end_of_life"
+    if str(entity.data.get("sensorStatus", "")).strip() == "1":
+        return "malfunction"
+    try:
+        if int(entity.data["batInfo"]) <= 1:
+            return "low_battery"
+    except (KeyError, TypeError, ValueError):
+        pass
+    return "normal"
 
 
 def has_data_or_sbs50(key: str) -> Callable[[Entity], bool]:
@@ -174,12 +202,26 @@ def has_report_time(entity: Entity) -> bool:
 def has_self_test_report(entity: Entity) -> bool:
     """Return whether the entity can report an app-style self-test result."""
     entity_def = entities.get(entity.type, {})
-    return entity.type == "XS01-WX" or "lastSelfTest" in entity.data or any(
-        action.get("action") == "test" for action in entity_def.get("actions", [])
+    return (
+        entity.type in SELF_TEST_REPORT_ONLY_MODELS
+        or "lastSelfTest" in entity.data
+        or any(
+            action.get("action") == "test"
+            for action in entity_def.get("actions", [])
+        )
     )
 
 
-SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
+_ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
+    XSenseSensorEntityDescription(
+        key="device_status",
+        translation_key="device_status",
+        device_class=SensorDeviceClass.ENUM,
+        options=("normal", "low_battery", "malfunction", "end_of_life"),
+        icon="mdi:shield-check-outline",
+        exists_fn=has_device_status,
+        value_fn=apk_device_status,
+    ),
     XSenseSensorEntityDescription(
         key="wifi_rssi",
         translation_key="wifi_rssi",
@@ -216,6 +258,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="co",
+        translation_key="co_reading",
         native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
@@ -224,7 +267,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="co_peak",
-        name="CO Peak",
+        translation_key="peak_co_level",
         native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
@@ -233,7 +276,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="co_level",
-        name="CO Level",
+        translation_key="co_level",
         entity_category=EntityCategory.DIAGNOSTIC,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:molecule-co",
@@ -242,11 +285,30 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="co_peak_time",
-        name="CO Peak Time",
+        translation_key="peak_co_level_time",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:clock-alert-outline",
         value_fn=data_value("coPpmPeakTime"),
         exists_fn=has_data("coPpmPeakTime"),
+    ),
+    XSenseSensorEntityDescription(
+        key="radon_peak",
+        translation_key="radon_peak",
+        native_unit_of_measurement="Bq/m³",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:radioactive",
+        value_fn=optional_data_value("radonPeak"),
+        exists_fn=lambda device: device.type == "XR0A-iR"
+        or "radonPeak" in device.data,
+    ),
+    XSenseSensorEntityDescription(
+        key="radon_peak_time",
+        translation_key="radon_peak_time",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=optional_data_timestamp("radonPeakTime"),
+        exists_fn=lambda device: device.type == "XR0A-iR"
+        or "radonPeakTime" in device.data,
     ),
     XSenseSensorEntityDescription(
         key="temperature",
@@ -276,7 +338,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_battery",
-        name="Camera Battery",
+        name="Battery Level",
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
@@ -290,14 +352,13 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         translation_key="rf_level",
         device_class=SensorDeviceClass.ENUM,
         entity_category=EntityCategory.DIAGNOSTIC,
-        name="Signal strength",
         options=STATE_SIGNAL,
         value_fn=rf_level,
         exists_fn=lambda device: "rfLevel" in device.data,
     ),
     XSenseSensorEntityDescription(
         key="wifi_rssi_level",
-        name="Wi-Fi RSSI Level",
+        name="Wi-Fi Signal Strength",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:wifi-strength-2",
@@ -306,7 +367,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_signal_strength",
-        name="Camera Signal Strength",
+        name="Wi-Fi Signal Strength",
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
         state_class=SensorStateClass.MEASUREMENT,
@@ -324,7 +385,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_firmware_version",
-        name="Camera Firmware Version",
+        name="Firmware Version",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:chip",
         value_fn=data_value("firmwareVersion"),
@@ -340,7 +401,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_network_name",
-        name="Camera Network Name",
+        name="Wi-Fi Name (SSID)",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:wifi",
         value_fn=data_value("networkName"),
@@ -348,7 +409,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_wifi_channel",
-        name="Camera Wi-Fi Channel",
+        name="Wi-Fi Channel",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:wifi-cog",
         value_fn=data_value("wifiChannel"),
@@ -356,7 +417,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_wired_mac_address",
-        name="Camera Wired MAC Address",
+        name="MAC Address",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:ethernet",
         value_fn=data_value("wiredMacAddress"),
@@ -364,7 +425,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_sd_card_status",
-        name="Camera SD Card Status",
+        name="SD Card Status",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:sd",
         value_fn=data_value("sdCardFormatStatus"),
@@ -372,7 +433,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_sd_card_total",
-        name="Camera SD Card Total",
+        name="SD Card Total",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:sd",
         value_fn=data_value("sdCardTotal"),
@@ -380,7 +441,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_sd_card_used",
-        name="Camera SD Card Used",
+        name="SD Card Used",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:sd",
         value_fn=data_value("sdCardUsed"),
@@ -428,7 +489,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_time_zone_area",
-        name="Camera Time Zone Area",
+        name="Device Time Zone",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:map-clock-outline",
         value_fn=data_value("timeZoneArea"),
@@ -468,7 +529,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="pir_sensitivity",
-        name="PIR Sensitivity",
+        name="Sensor Sensitivity",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:tune-variant",
         value_fn=data_value("pirSensitivity"),
@@ -483,21 +544,21 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="temperature_mute_time",
-        name="Temperature Mute Time",
+        name="Temperature Alarm Silence Time",
         icon="mdi:thermometer-off",
         value_fn=data_value("tempMuteTime"),
         exists_fn=has_data("tempMuteTime"),
     ),
     XSenseSensorEntityDescription(
         key="water_mute_time",
-        name="Water Mute Time",
+        name="Water Leak Alarm Silence Time",
         icon="mdi:water-off",
         value_fn=data_value("waterMuteTime"),
         exists_fn=has_data("waterMuteTime"),
     ),
     XSenseSensorEntityDescription(
         key="short_warning",
-        name="Short Warning",
+        name="Short-Term CO Warning",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:alert-outline",
         value_fn=data_value("warnShort"),
@@ -505,7 +566,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="short_warning_co",
-        name="Short Warning CO",
+        name="Short-Term CO Warning Level",
         native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
@@ -514,7 +575,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="long_warning",
-        name="Long Warning",
+        name="Long-Term CO Warning",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:alert",
         value_fn=data_value("warnLong"),
@@ -522,7 +583,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="long_warning_co",
-        name="Long Warning CO",
+        name="Long-Term CO Warning Level",
         native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
@@ -531,7 +592,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="alarm_occur",
-        name="Alarm Occur",
+        name="Alarm Occurrence",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:alarm-light",
         value_fn=data_value("alarmOccur"),
@@ -547,7 +608,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="re_alarm",
-        name="Re-Alarm",
+        name="Repeated Alarm",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:alarm-light-outline",
         value_fn=data_value("reAlarm"),
@@ -571,7 +632,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="test_time",
-        name="Test Time",
+        name="Device Test Time",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=data_timestamp("testTime"),
@@ -595,7 +656,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="timezone",
-        name="Time Zone",
+        name="Device Time Zone",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:map-clock-outline",
         value_fn=data_value("timeZone"),
@@ -659,12 +720,18 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="safe_mode",
-        name="Safe Mode",
+        name="Security Mode",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:shield-home",
         value_fn=optional_data_value("safeMode"),
         exists_fn=has_data_or_sbs50("safeMode"),
     ),
+)
+
+SENSORS = tuple(
+    description
+    for description in _ALL_SENSORS
+    if description.key not in NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS
 )
 
 
