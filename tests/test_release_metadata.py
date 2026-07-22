@@ -12,6 +12,7 @@ from custom_components.xsense.python_xsense.async_xsense import (
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_NOTES = ROOT / ".github" / "release-notes"
 MANIFEST = ROOT / "custom_components" / "xsense" / "manifest.json"
+INTEGRATION = MANIFEST.parent
 FRONTEND = ROOT / "custom_components" / "xsense" / "frontend.py"
 CHANGELOG = ROOT / "CHANGELOG.md"
 HACS = ROOT / "hacs.json"
@@ -81,6 +82,10 @@ def test_manifest_does_not_use_direct_wheel_requirement():
         or "github.com/Wheemer/python-xsense" in requirement
         for requirement in manifest["requirements"]
     )
+
+
+def test_legacy_pion_adapter_binaries_are_not_packaged():
+    assert not list((INTEGRATION / "bin").glob("xsense_pion_adapter*"))
 
 
 def test_source_vendored_python_xsense_package_is_imported():
