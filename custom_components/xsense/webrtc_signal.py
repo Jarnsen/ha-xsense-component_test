@@ -497,10 +497,9 @@ class XSenseWebRTCSignalSession:
         )
         for candidate in candidates:
             await self._send_candidate(candidate)
-        await self._flush_pending_remote_candidates()
 
     async def _flush_pending_remote_candidates(self) -> None:
-        """Send any HA candidates that arrived before the X-Sense offer was sent."""
+        """Send any HA candidates that arrived before the X-Sense answer."""
         while self._pending_remote_candidates and not self._closed:
             await self._send_candidate(self._pending_remote_candidates.pop(0))
 
@@ -604,6 +603,7 @@ def make_data_channel_command_payload(
     *,
     request_id: str | None = None,
     timestamp: int | None = None,
+    top_level_parameters: dict[str, Any] | None = None,
 ) -> str:
     """Return an APK-compatible player data-channel command payload."""
     timestamp = int(timestamp if timestamp is not None else time.time())
@@ -613,9 +613,29 @@ def make_data_channel_command_payload(
         "timeStamp": timestamp,
         "action": action,
     }
-    if parameters:
+    if top_level_parameters:
+        payload.update(top_level_parameters)
+    elif parameters:
         payload["parameters"] = parameters
     return json.dumps(payload, separators=(",", ":"))
+
+
+def make_start_live_data_channel_command_payload(
+    resolution: str,
+    *,
+    request_id: str | None = None,
+    timestamp: int | None = None,
+) -> str:
+    """Return the APK startLive data-channel command."""
+    return make_data_channel_command_payload(
+        "startLive",
+        request_id=request_id,
+        timestamp=timestamp,
+        top_level_parameters={
+            "size": _map_video_size(resolution),
+            "resolution": resolution,
+        },
+    )
 
 
 def make_sd_video_list_command_payload(
@@ -1250,6 +1270,24 @@ def _base64_decode_text(value: str) -> str | None:
 def _b64_json(data: dict[str, Any]) -> str:
     raw = json.dumps(data, separators=(",", ":")).encode()
     return base64.b64encode(raw).decode()
+
+
+def _map_video_size(resolution: str) -> str:
+    if resolution in {"640x360", "640x480", "960x720"}:
+        return "1280x720"
+    if resolution in {"1280x720", "1280x960"}:
+        return "1280x720"
+    if resolution in {
+        "1920x1080",
+        "2048x1440",
+        "2048x1536",
+        "2304x1296",
+        "2560x1440",
+        "3840x2160",
+        "7680x4320",
+    }:
+        return "1920x1080"
+    return "1280x720"
 
 
 def _optional_int(value: Any) -> int | None:

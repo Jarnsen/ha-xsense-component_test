@@ -47,7 +47,6 @@ CAMERA_DESCRIPTION = XSenseCameraEntityDescription(
     name=None,
 )
 
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: config_entries.ConfigEntry,
@@ -123,7 +122,9 @@ def _camera_entity(
 ) -> XSenseCameraEntity:
     """Return the Home Assistant camera entity for an X-Sense camera."""
     entity_cls = (
-        XSenseWebRTCCameraEntity if _is_webrtc_camera(entity) else XSenseCameraEntity
+        XSenseWebRTCCameraEntity
+        if _is_supported_ipc_camera(entity)
+        else XSenseCameraEntity
     )
     return entity_cls(coordinator, entity, CAMERA_DESCRIPTION, station_id=station_id)
 
@@ -179,10 +180,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
 
     @property
     def supported_features(self) -> CameraEntityFeature:
-        """Return native stream support for direct camera streams."""
-        entity = self._current_entity()
-        if entity is not None and _is_native_stream_camera(entity):
-            return CameraEntityFeature.STREAM
+        """Return no stream support for non-IPC camera fallback entities."""
         return CameraEntityFeature(0)
 
     @property
@@ -211,21 +209,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
 
     async def stream_source(self) -> str | None:
         """Return a live stream URL when the X-Sense camera service provides one."""
-        entity = self._current_entity()
-        if entity is None or not _is_native_stream_camera(entity):
-            return None
-        source = await self.coordinator.xsense.start_camera_live(entity)
-        if source and not _is_ha_native_stream_url(source):
-            LOGGER.warning(
-                "X-Sense camera direct stream returned unsupported URL for HA stream: %s",
-                _camera_debug_context(
-                    entity,
-                    None,
-                    source_protocol=_url_scheme(source),
-                ),
-            )
-            return None
-        return source
+        return None
 
     async def async_will_remove_from_hass(self) -> None:
         """Stop any live view session when Home Assistant removes the entity."""
@@ -257,7 +241,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
     def supported_features(self) -> CameraEntityFeature:
         """Return native WebRTC stream support."""
         entity = self._current_entity()
-        if entity is not None and _is_webrtc_camera(entity):
+        if entity is not None and _is_supported_ipc_camera(entity):
             return CameraEntityFeature.STREAM
         return CameraEntityFeature(0)
 
@@ -287,7 +271,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
     ) -> None:
         """Handle a Home Assistant WebRTC offer with X-Sense signaling."""
         entity = self._current_entity()
-        if entity is None or not _is_webrtc_camera(entity):
+        if entity is None or not _is_supported_ipc_camera(entity):
             send_message(
                 WebRTCError(
                     "xsense_webrtc_unsupported",
@@ -523,55 +507,14 @@ def _camera_online(entity) -> bool:
     return entity.data.get("online") == 1
 
 
-def _stream_protocol(entity) -> str | None:
-    """Return the ADDX stream protocol from the camera device model."""
-    protocol = entity.data.get("streamProtocol")
-    if protocol is None:
-        return None
-    return str(protocol).lower()
-
-
-def _is_native_stream_camera(entity) -> bool:
-    """Return whether the camera has a Home Assistant native stream protocol."""
-    protocol = _stream_protocol(entity)
-    if protocol is None:
-        return False
-    return "rtsp" in protocol or "rtmp" in protocol
-
-
-def _is_webrtc_camera(entity) -> bool:
-    """Return whether the ADDX device model says this camera streams over WebRTC."""
-    protocol = _stream_protocol(entity)
-    if protocol is None:
-        return True
-    return "rtsp" not in protocol and "rtmp" not in protocol
-
-
-def _is_ha_native_stream_url(source: str) -> bool:
-    """Return whether Home Assistant's stream worker can open this URL directly."""
-    scheme = _url_scheme(source)
-    return scheme in {"rtsp", "rtmp"}
-
-
-def _url_scheme(source: str | None) -> str | None:
-    """Return a lower-case URL scheme without logging the full URL."""
-    if not source or ":" not in str(source):
-        return None
-    return str(source).split(":", 1)[0].lower()
+def _is_supported_ipc_camera(entity) -> bool:
+    """Return whether this is one of the APK-supported X-Sense IPC cameras."""
+    return is_camera_entity(entity)
 
 
 def _camera_live_resolution(entity) -> str:
     """Return the live resolution string used by the ADDX player."""
     return camera_live_resolution(entity)
-
-
-def _set_camera_data(entity, data: dict[str, object]) -> None:
-    """Set camera data on real entities and lightweight test doubles."""
-    if hasattr(entity, "set_data"):
-        entity.set_data(data)
-        return
-    if isinstance(getattr(entity, "data", None), dict):
-        entity.data.update(data)
 
 
 def _short_id(value):

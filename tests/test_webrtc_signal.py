@@ -58,6 +58,39 @@ def test_sdp_offer_payload_strips_candidates_and_keeps_resolution():
     assert "a=end-of-candidates" not in offer["sdp"]
 
 
+def test_start_live_data_channel_command_matches_apk_shape():
+    payload = json.loads(
+        webrtc_signal.make_start_live_data_channel_command_payload(
+            "1920x1080", request_id="req-1", timestamp=123
+        )
+    )
+
+    assert payload == {
+        "requestID": "req-1",
+        "connectionID": "7893feb",
+        "timeStamp": 123,
+        "action": "startLive",
+        "size": "1920x1080",
+        "resolution": "1920x1080",
+    }
+
+
+def test_sd_video_list_data_channel_command_keeps_parameters_shape():
+    payload = json.loads(
+        webrtc_signal.make_sd_video_list_command_payload(
+            111, 222, request_id="req-2", timestamp=123
+        )
+    )
+
+    assert payload == {
+        "requestID": "req-2",
+        "connectionID": "7893feb",
+        "timeStamp": 123,
+        "action": "getSdVideoList",
+        "parameters": {"startTime": 111, "stopTime": 222},
+    }
+
+
 def test_relay_offer_sdp_prunes_to_pcmu_audio_and_h264_video():
     sdp = (
         "v=0\r\n"
@@ -278,7 +311,53 @@ async def test_trickled_candidate_is_queued_until_answer_is_received():
     assert session._sent_candidate_count == 2
 
 
-async def test_online_camera_waits_for_peer_in_before_sending_offer():
+async def test_online_camera_waits_for_peer_in_before_sending_offer(monkeypatch):
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+    class FakeHttpSession:
+        def __init__(self, ws):
+            self.ws = ws
+
+        async def ws_connect(self, *args, **kwargs):
+            return self.ws
+
+    async def read_loop():
+        return None
+
+    ws = FakeWs()
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=FakeHttpSession(ws),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    monkeypatch.setattr(session, "_read_loop", read_loop)
+
+    assert ws.messages == []
+
+    await session._connect_signal()
+
+    assert ws.messages == []
+
+    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
+
+    assert [message["messageType"] for message in ws.messages] == [
+        "SDP_OFFER"
+    ]
+    assert session._offer_sent is True
+    assert session._camera_peer_ready is True
+    assert session._debug_context()["offer_attempt_count"] == 1
+
+
+async def test_offer_does_not_flush_ha_candidates_before_answer():
     class FakeWs:
         closed = False
 
@@ -296,16 +375,21 @@ async def test_online_camera_waits_for_peer_in_before_sending_offer():
         camera_online=True,
     )
     session._ws = FakeWs()
+    session._pending_remote_candidates.append(
+        {
+            "sdpMid": "0",
+            "sdpMLineIndex": 0,
+            "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+        }
+    )
 
-    assert session._ws.messages == []
-
-    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
+    await session._send_offer()
 
     assert [message["messageType"] for message in session._ws.messages] == [
         "SDP_OFFER"
     ]
-    assert session._offer_sent is True
-    assert session._debug_context()["offer_attempt_count"] == 1
+    assert len(session._pending_remote_candidates) == 1
+    assert session._sent_candidate_count == 0
 
 
 async def test_peer_out_before_answer_resets_offer_for_next_peer_in():

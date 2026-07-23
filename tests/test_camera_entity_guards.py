@@ -3690,15 +3690,16 @@ def test_camera_platform_does_not_load_optional_media_bridge():
     assert "aiortc" not in sys.modules
 
 
-def test_camera_capabilities_use_stream_path_only_for_direct_stream_cameras():
+def test_camera_capabilities_use_native_webrtc_path_for_supported_ipc_cameras():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
-        XSenseCameraEntity,
+        XSenseWebRTCCameraEntity,
     )
 
-    rtsp_camera_entity = entity("SSC0A", {"streamProtocol": "rtsp"})
-    webrtc_camera_entity = entity(
-        "SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True}
+    camera_entities = (
+        entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True}),
+        entity("SSC0A", {"streamProtocol": "rtsp"}),
+        entity("SSC0B", {"streamProtocol": "rtmp"}),
     )
 
     class Coordinator:
@@ -3711,26 +3712,21 @@ def test_camera_capabilities_use_stream_path_only_for_direct_stream_cameras():
         def async_add_listener(self, *args, **kwargs):
             return lambda: None
 
-    for camera_entity in (rtsp_camera_entity, webrtc_camera_entity):
-        camera_entity.entity_id = f"camera-{camera_entity.data['streamProtocol']}"
+    for camera_entity in camera_entities:
+        camera_entity.entity_id = (
+            f"camera-{camera_entity.type}-{camera_entity.data['streamProtocol']}"
+        )
         camera_entity.sn = "SSC0ATEST"
         camera_entity.name = "Camera"
         camera_entity.online = True
 
-    rtsp_camera = XSenseCameraEntity(
-        Coordinator(rtsp_camera_entity), rtsp_camera_entity, CAMERA_DESCRIPTION
-    )
-    webrtc_camera = XSenseCameraEntity(
-        Coordinator(webrtc_camera_entity), webrtc_camera_entity, CAMERA_DESCRIPTION
-    )
-
-    assert {
-        stream.value for stream in rtsp_camera.camera_capabilities.frontend_stream_types
-    } == {"hls"}
-    assert {
-        stream.value
-        for stream in webrtc_camera.camera_capabilities.frontend_stream_types
-    } == set()
+    for camera_entity in camera_entities:
+        camera = XSenseWebRTCCameraEntity(
+            Coordinator(camera_entity), camera_entity, CAMERA_DESCRIPTION
+        )
+        assert {
+            stream.value for stream in camera.camera_capabilities.frontend_stream_types
+        } == {"web_rtc"}
 
 
 def test_camera_factory_uses_native_webrtc_path_by_default():
@@ -3753,7 +3749,7 @@ def test_camera_factory_uses_native_webrtc_path_by_default():
     assert isinstance(created, camera_module.XSenseWebRTCCameraEntity)
 
 
-async def test_default_stream_source_mode_keeps_ha_provider_probe_behavior():
+async def test_base_camera_entity_does_not_probe_stream_provider():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseCameraEntity,
@@ -3777,7 +3773,7 @@ async def test_default_stream_source_mode_keeps_ha_provider_probe_behavior():
     camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
     camera.entity_id = "camera.camera_test"
 
-    assert await camera._async_get_supported_webrtc_provider(provider_probe) == "provider"
+    assert await camera._async_get_supported_webrtc_provider(provider_probe) is None
 
 
 async def test_default_native_webrtc_camera_allows_webrtc_provider_probe():
@@ -3837,7 +3833,7 @@ def test_webrtc_client_config_uses_data_channel_only():
 
 
 def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
-    """Lock the live camera path to the v1.2.6.61 success baseline."""
+    """Lock the live camera path to the v1.2.6.60 success baseline."""
     import inspect
     from pathlib import Path
 
@@ -3852,15 +3848,13 @@ def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
     ticket_source = inspect.getsource(AsyncXSense.get_camera_webrtc_ticket)
 
     forbidden_camera_patterns = {
-        "RTCConfiguration": "browser ICE-server injection",
-        "RTCIceServer": "browser ICE-server injection",
+        "XSenseCameraStreamView": "raw H264 bridge",
+        "/api/xsense/camera_stream": "raw H264 bridge",
+        "XSenseH264StreamSession": "raw H264 bridge",
         "_webrtc_ticket_prime_task": "ticket prewarm",
         "_schedule_webrtc_ticket_prime": "ticket prewarm",
         "_async_prime_webrtc_ticket": "ticket prewarm",
         "_webrtc_ticket_ice_servers": "ticket prewarm",
-        "_webrtc_keepalive_tasks": "live WebRTC keepalive loop",
-        "_start_webrtc_keepalive": "live WebRTC keepalive loop",
-        "_async_webrtc_keepalive_loop": "live WebRTC keepalive loop",
         "_mark_camera_webrtc_live": "active live marker",
         "_unmark_camera_webrtc_live": "active live marker",
         "_active_webrtc_camera_counts": "active live marker",
@@ -3870,20 +3864,27 @@ def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
     for pattern, reason in forbidden_camera_patterns.items():
         assert pattern not in camera_source, f"Do not reintroduce {reason}: {pattern}"
 
+    assert "XSenseWebRTCCameraEntity" in camera_source
     assert "WebRTCClientConfiguration(data_channel=\"data-channel-of-\")" in (
         camera_entity_source
     )
+    assert "async_handle_async_webrtc_offer" in camera_entity_source
     assert "_future_has_result" in add_candidate_source
     assert "verifyDormancyStatus=True" in ticket_source
 
 
-def test_camera_entity_webrtc_protocol_default_matches_apk():
+def test_supported_ipc_camera_detection_is_model_based_not_transport_based():
     from custom_components.xsense import camera
 
-    assert camera._is_webrtc_camera(entity("SSC0A", {}))
-    assert camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "webrtc"}))
-    assert not camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "rtsp"}))
-    assert not camera._is_webrtc_camera(entity("SSC0A", {"streamProtocol": "RTMP"}))
+    assert camera._is_supported_ipc_camera(entity("SSC0A", {}))
+    assert camera._is_supported_ipc_camera(
+        entity("SSC0A", {"streamProtocol": "webrtc"})
+    )
+    assert camera._is_supported_ipc_camera(entity("SSC0A", {"streamProtocol": "rtsp"}))
+    assert camera._is_supported_ipc_camera(entity("SSC0B", {"streamProtocol": "RTMP"}))
+    assert not camera._is_supported_ipc_camera(
+        entity("XS01-M", {"streamProtocol": "webrtc"})
+    )
 
 
 def test_webrtc_candidate_debug_context_hides_raw_candidate():
@@ -3925,25 +3926,69 @@ def test_camera_live_resolution_defaults_to_apk_live_view_default():
     assert camera_live_resolution(camera_entity) == "1920x1080"
 
 
-async def test_default_camera_uses_ha_supported_apk_live_url_stream_source():
+@pytest.mark.parametrize(
+    ("camera_type", "protocol"),
+    (
+        ("SSC0A", "webrtc"),
+        ("SSC0A", "rtsp"),
+        ("SSC0B", "rtmp"),
+    ),
+)
+async def test_supported_ipc_camera_always_uses_native_webrtc_entity(
+    camera_type, protocol
+):
+    from custom_components.xsense import camera as camera_module
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
-        XSenseCameraEntity,
+        XSenseWebRTCCameraEntity,
     )
 
-    camera_entity = entity("SSC0A", {"streamProtocol": "rtsp"})
+    camera_entity = entity(
+        camera_type, {"streamProtocol": protocol, "supportWebrtc": True}
+    )
     camera_entity.entity_id = "camera-test"
     camera_entity.sn = "SSC0ATEST"
     camera_entity.name = "Camera"
     camera_entity.online = True
 
+    class Coordinator:
+        def __init__(self):
+            self.entry = SimpleNamespace(entry_id="entry-1")
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    created = camera_module._camera_entity(Coordinator(), camera_entity)
+    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.entity_id = "camera.camera_test"
+
+    assert isinstance(created, XSenseWebRTCCameraEntity)
+    assert await camera.stream_source() is None
+
+
+async def test_unsupported_camera_type_has_no_stream_source():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseCameraEntity,
+    )
+
+    camera_entity = entity("XS01-M", {"streamProtocol": "webrtc"})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "XS01MTEST"
+    camera_entity.name = "Smoke"
+    camera_entity.online = True
+
     class XSense:
         async def start_camera_live(self, entity):
-            assert entity is camera_entity
-            return "rtsp://example/live"
+            raise AssertionError("Unsupported non-camera devices must not start live view")
 
     class Coordinator:
         def __init__(self):
+            self.entry = SimpleNamespace(entry_id="entry-1")
             self.data = {
                 "stations": {camera_entity.entity_id: camera_entity},
                 "devices": {},
@@ -3955,130 +4000,9 @@ async def test_default_camera_uses_ha_supported_apk_live_url_stream_source():
 
     camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
     camera.entity_id = "camera.camera_test"
-
-    assert await camera.stream_source() == "rtsp://example/live"
-
-
-async def test_plain_stream_source_entity_does_not_start_webrtc_camera_live_url():
-    from custom_components.xsense.camera import (
-        CAMERA_DESCRIPTION,
-        XSenseCameraEntity,
-    )
-
-    camera_entity = entity("SSC0A", {"streamProtocol": "webrtc", "supportWebrtc": True})
-    camera_entity.entity_id = "camera-test"
-    camera_entity.sn = "SSC0ATEST"
-    camera_entity.name = "Camera"
-    camera_entity.online = True
-    calls = []
-
-    class XSense:
-        async def start_camera_live(self, entity):
-            assert entity is camera_entity
-            calls.append("start")
-            return "rtsp://example/live"
-
-        async def stop_camera_live(self, entity):
-            raise AssertionError("RTSP stream source should not be stopped")
-
-    class Coordinator:
-        def __init__(self):
-            self.data = {
-                "stations": {camera_entity.entity_id: camera_entity},
-                "devices": {},
-            }
-            self.xsense = XSense()
-
-        def async_add_listener(self, *args, **kwargs):
-            return lambda: None
-
-    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
-    camera.entity_id = "camera.camera_test"
+    camera.hass = SimpleNamespace(data={})
 
     assert await camera.stream_source() is None
-    assert calls == []
-
-
-async def test_default_camera_rejects_webrtc_url_from_direct_stream_endpoint(caplog):
-    from custom_components.xsense.camera import (
-        CAMERA_DESCRIPTION,
-        XSenseCameraEntity,
-    )
-
-    camera_entity = entity("SSC0A", {"streamProtocol": "rtsp"})
-    camera_entity.entity_id = "camera-test"
-    camera_entity.sn = "SSC0ATEST"
-    camera_entity.name = "Camera"
-    camera_entity.online = True
-    calls = []
-
-    class XSense:
-        async def start_camera_live(self, entity):
-            assert entity is camera_entity
-            calls.append("start")
-            return "webrtc://3.65.49.157/live/camera_live"
-
-        async def stop_camera_live(self, entity):
-            assert entity is camera_entity
-            calls.append("stop")
-
-    class Coordinator:
-        def __init__(self):
-            self.data = {
-                "stations": {camera_entity.entity_id: camera_entity},
-                "devices": {},
-            }
-            self.xsense = XSense()
-
-        def async_add_listener(self, *args, **kwargs):
-            return lambda: None
-
-    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
-    camera.entity_id = "camera.camera_test"
-
-    with caplog.at_level(logging.WARNING):
-        assert await camera.stream_source() is None
-
-    assert calls == ["start"]
-    assert "unsupported URL for HA stream" in caplog.text
-
-
-async def test_default_camera_raises_when_stream_endpoint_no_response():
-    from custom_components.xsense.python_xsense.exceptions import APIFailure
-    from custom_components.xsense.camera import (
-        CAMERA_DESCRIPTION,
-        XSenseCameraEntity,
-    )
-
-    camera_entity = entity("SSC0A", {"streamProtocol": "rtsp"})
-    camera_entity.entity_id = "camera-test"
-    camera_entity.sn = "SSC0ATEST"
-    camera_entity.name = "Camera"
-    camera_entity.online = True
-
-    class XSense:
-        async def start_camera_live(self, entity):
-            assert entity is camera_entity
-            raise APIFailure(
-                "ADDX request for /device/newstartlive failed with error -3021/DEVICE_NO_RESPONSE"
-            )
-
-    class Coordinator:
-        def __init__(self):
-            self.data = {
-                "stations": {camera_entity.entity_id: camera_entity},
-                "devices": {},
-            }
-            self.xsense = XSense()
-
-        def async_add_listener(self, *args, **kwargs):
-            return lambda: None
-
-    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
-    camera.entity_id = "camera.camera_test"
-
-    with pytest.raises(APIFailure):
-        await camera.stream_source()
 
 
 async def test_failed_webrtc_signal_start_is_removed_from_sessions(monkeypatch):
