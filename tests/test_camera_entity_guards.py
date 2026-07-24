@@ -705,6 +705,31 @@ def test_camera_entities_keep_storage_health_without_raw_apk_metadata():
         assert descriptions[key].exists_fn(camera)
 
 
+def test_practical_network_location_fields_remain_diagnostic_entities():
+    xsense_init = importlib.import_module("custom_components.xsense")
+    from custom_components.xsense.const import NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS
+
+    descriptions = {description.key: description for description in sensor.SENSORS}
+    practical_keys = {"ip", "wifi_ssid", "wifi_rssi_level", "zone_name", "location"}
+    sample = entity(
+        "SBS50",
+        {
+            "ip": "192.0.2.10",
+            "ssid": "Home WiFi",
+            "wifiRssiLevel": 3,
+            "zoneName": "Garage",
+            "location": "Garage",
+        },
+    )
+
+    assert practical_keys.isdisjoint(NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS)
+    assert practical_keys.isdisjoint(xsense_init.OBSOLETE_SENSOR_KEYS)
+    assert practical_keys.issubset(descriptions)
+    for key in practical_keys:
+        assert descriptions[key].entity_category is EntityCategory.DIAGNOSTIC
+        assert descriptions[key].exists_fn(sample)
+
+
 def test_read_only_camera_entities_require_camera_entity():
     non_camera = entity("XS01-WX", {"batteryLevel": 2, "needMotion": 1})
     camera = entity("SSC0A", {"batteryLevel": 2, "needMotion": 1})

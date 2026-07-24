@@ -37,6 +37,8 @@ STATE_SIGNAL = [
 ]
 
 # Raw protocol metadata belongs in downloadable diagnostics, not on device pages.
+# Keep practical troubleshooting/location values as diagnostic entities so users
+# can still use them in dashboards and automations.
 NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS = frozenset(
     {
         "alarm_occur",
@@ -57,9 +59,7 @@ NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS = frozenset(
         "check_type",
         "color",
         "device_type",
-        "ip",
         "light_event",
-        "location",
         "long_warning",
         "pir_interval",
         "pir_sensitivity",
@@ -73,10 +73,7 @@ NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS = frozenset(
         "time",
         "timezone",
         "utc_time",
-        "wifi_rssi_level",
-        "wifi_ssid",
         "wifi_sw",
-        "zone_name",
     }
 )
 

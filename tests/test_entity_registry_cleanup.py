@@ -50,7 +50,7 @@ def test_obsolete_sensor_cleanup_targets_static_identifier_entities_only():
     assert "station-1-station-sn" in unique_ids
     assert "station-1-device-mac" in unique_ids
     assert "device-1-bluetooth-mac" in unique_ids
-    assert "station-1-ip" in unique_ids
+    assert "station-1-ip" not in unique_ids
     assert "device-1-wifi-rssi" not in unique_ids
     assert "station-1-last-self-test" not in unique_ids
 
@@ -654,7 +654,6 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
 
     assert removed == [
         'sensor.missing_device_serial_number',
-        'sensor.station_1_ip',
         'sensor.landing_landing_smoke_co_detector_co_event_id',
         'binary_sensor.kitchen_smoke_alarm_led_light',
         'binary_sensor.garden_camera_motion',

@@ -277,7 +277,8 @@ async def test_sbs50_station_entities_load_before_late_shadow_keys():
     )
     sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
     assert "wifi_rssi" in sensor_keys
-    assert {"ip", "safe_mode", "wifi_ssid", "zone_name"}.isdisjoint(sensor_keys)
+    assert {"ip", "wifi_ssid", "zone_name"}.issubset(sensor_keys)
+    assert "safe_mode" not in sensor_keys
     assert {
         entity.entity_description.key for entity in select_calls[0]
     } >= {"alarm_tone", "led_brightness"}
