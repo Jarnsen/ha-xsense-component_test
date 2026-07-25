@@ -265,7 +265,7 @@ def test_sdp_debug_includes_browser_rejection_shape_without_raw_values():
     assert "secret" not in str(context)
 
 
-async def test_trickled_candidate_is_queued_until_answer_is_received():
+async def test_trickled_candidate_is_queued_until_offer_is_sent():
     class FakeWs:
         closed = False
 
@@ -297,21 +297,50 @@ async def test_trickled_candidate_is_queued_until_answer_is_received():
 
     await session.add_candidate(candidate)
 
-    assert len(session._pending_remote_candidates) == 2
-    assert session._ws.messages == []
-
-    session._answer.set_result("v=0\r\n")
-    await session._flush_pending_remote_candidates()
-
-    assert session._pending_remote_candidates == []
+    assert len(session._pending_remote_candidates) == 1
     assert [message["messageType"] for message in session._ws.messages] == [
-        "ICE_CANDIDATE",
+        "ICE_CANDIDATE"
+    ]
+    assert session._sent_candidate_count == 1
+
+
+async def test_send_offer_flushes_candidates_queued_before_offer():
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    session._ws = FakeWs()
+    session._pending_remote_candidates.append(
+        {
+            "sdpMid": "0",
+            "sdpMLineIndex": 0,
+            "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+        }
+    )
+
+    await session._send_offer()
+
+    assert [message["messageType"] for message in session._ws.messages] == [
+        "SDP_OFFER",
         "ICE_CANDIDATE",
     ]
-    assert session._sent_candidate_count == 2
+    assert session._pending_remote_candidates == []
+    assert session._sent_candidate_count == 1
 
 
-async def test_online_camera_waits_for_peer_in_before_sending_offer(monkeypatch):
+async def test_online_camera_sends_offer_without_waiting_for_peer_in(monkeypatch):
     class FakeWs:
         closed = False
 
@@ -341,23 +370,90 @@ async def test_online_camera_waits_for_peer_in_before_sending_offer(monkeypatch)
     )
     monkeypatch.setattr(session, "_read_loop", read_loop)
 
-    assert ws.messages == []
-
     await session._connect_signal()
+    await session._begin_signal_offer_flow()
 
-    assert ws.messages == []
-
-    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
-
-    assert [message["messageType"] for message in ws.messages] == [
-        "SDP_OFFER"
-    ]
+    assert [message["messageType"] for message in ws.messages] == ["SDP_OFFER"]
     assert session._offer_sent is True
     assert session._camera_peer_ready is True
     assert session._debug_context()["offer_attempt_count"] == 1
 
 
-async def test_offer_does_not_flush_ha_candidates_before_answer():
+async def test_offline_camera_waits_for_peer_in_before_sending_offer(monkeypatch):
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+    class FakeHttpSession:
+        def __init__(self, ws):
+            self.ws = ws
+
+        async def ws_connect(self, *args, **kwargs):
+            return self.ws
+
+    async def read_loop():
+        return None
+
+    ws = FakeWs()
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=FakeHttpSession(ws),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=False,
+    )
+    monkeypatch.setattr(session, "_read_loop", read_loop)
+
+    await session._connect_signal()
+    await session._begin_signal_offer_flow()
+
+    assert ws.messages == []
+    assert session._offer_sent is False
+    assert session._camera_peer_ready is False
+
+    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
+
+    assert [message["messageType"] for message in ws.messages] == ["SDP_OFFER"]
+    assert session._offer_sent is True
+    assert session._camera_peer_ready is True
+    assert session._debug_context()["offer_attempt_count"] == 1
+
+
+async def test_online_camera_resends_offer_after_signal_reconnect(monkeypatch):
+    class FakeWs:
+        closed = False
+
+        def __init__(self):
+            self.messages = []
+
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    session._ws = FakeWs()
+    await session._begin_signal_offer_flow()
+    assert session._offer_sent is True
+
+    session._reset_offer_attempt("signal_reconnect")
+    session._ws = FakeWs()
+    await session._begin_signal_offer_flow()
+
+    assert session._offer_sent is True
+    assert session._debug_context()["offer_attempt_count"] == 2
+
+
+async def test_offer_does_not_send_ha_candidates_before_answer_arrives():
     class FakeWs:
         closed = False
 
@@ -386,10 +482,11 @@ async def test_offer_does_not_flush_ha_candidates_before_answer():
     await session._send_offer()
 
     assert [message["messageType"] for message in session._ws.messages] == [
-        "SDP_OFFER"
+        "SDP_OFFER",
+        "ICE_CANDIDATE",
     ]
-    assert len(session._pending_remote_candidates) == 1
-    assert session._sent_candidate_count == 0
+    assert session._pending_remote_candidates == []
+    assert session._sent_candidate_count == 1
 
 
 async def test_peer_out_before_answer_resets_offer_for_next_peer_in():

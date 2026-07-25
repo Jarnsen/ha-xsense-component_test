@@ -3857,6 +3857,16 @@ def test_webrtc_client_config_uses_data_channel_only():
     assert "iceServers" not in config["configuration"]
 
 
+def test_webrtc_keepalive_interval_matches_ticket_timeout():
+    from custom_components.xsense import camera
+
+    ticket = SimpleNamespace(app_stop_live_timeout=20)
+    assert camera._webrtc_keepalive_interval(ticket) == 10
+
+    missing_timeout = SimpleNamespace(app_stop_live_timeout=None)
+    assert camera._webrtc_keepalive_interval(missing_timeout) == 5
+
+
 def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
     """Lock the live camera path to the v1.2.6.60 success baseline."""
     import inspect
@@ -3871,6 +3881,10 @@ def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
         webrtc_signal.XSenseWebRTCSignalSession.add_candidate
     )
     ticket_source = inspect.getsource(AsyncXSense.get_camera_webrtc_ticket)
+
+    send_offer_source = inspect.getsource(
+        webrtc_signal.XSenseWebRTCSignalSession._send_offer
+    )
 
     forbidden_camera_patterns = {
         "XSenseCameraStreamView": "raw H264 bridge",
@@ -3894,7 +3908,12 @@ def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
         camera_entity_source
     )
     assert "async_handle_async_webrtc_offer" in camera_entity_source
-    assert "_future_has_result" in add_candidate_source
+    assert "_start_webrtc_keepalive" in camera_entity_source
+    assert "_begin_signal_offer_flow" in inspect.getsource(
+        webrtc_signal.XSenseWebRTCSignalSession.start
+    )
+    assert "_future_has_result(self._answer)" not in add_candidate_source
+    assert "await self._flush_pending_remote_candidates()" in send_offer_source
     assert "verifyDormancyStatus=True" in ticket_source
 
 
