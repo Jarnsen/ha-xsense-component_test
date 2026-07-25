@@ -24,7 +24,13 @@ _BLUEPRINT_VERSION_RE = re.compile(r"^\s*xsense_blueprint_version:\s*(\d+)\s*$",
 _CAMERA_BLUEPRINT_MARKERS = (
     "X-Sense Camera Event",
     "camera_ai_notification.yaml",
-    "Jarnsen/ha-xsense-component_test",
+    "event_type: xsense_camera_event",
+)
+_KEYPAD_BLUEPRINT_MARKERS = (
+    "X-Sense Keypad Code",
+    "keypad_code_action.yaml",
+    "keypad_code_router.yaml",
+    "event_type: xsense_keypad_code",
 )
 _CURRENT_BLUEPRINT_MARKERS = (
     "xsense_event_data is mapping",
@@ -230,6 +236,8 @@ def _stale_camera_blueprint_paths(
 
 def _is_xsense_camera_blueprint(text: str) -> bool:
     """Return whether the YAML text looks like the X-Sense camera blueprint."""
+    if any(marker in text for marker in _KEYPAD_BLUEPRINT_MARKERS):
+        return False
     return any(marker in text for marker in _CAMERA_BLUEPRINT_MARKERS)
 
 

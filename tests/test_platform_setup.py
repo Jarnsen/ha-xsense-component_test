@@ -1119,6 +1119,57 @@ variables:
     ]
 
 
+def test_keypad_blueprints_are_not_treated_as_stale_camera_blueprints(tmp_path):
+    blueprint_dir = tmp_path / "blueprints" / "automation" / "xsense"
+    blueprint_dir.mkdir(parents=True)
+
+    for filename in ("keypad_code_action.yaml", "keypad_code_router.yaml"):
+        source = Path("blueprints/automation/xsense") / filename
+        target = blueprint_dir / filename
+        target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+
+    assert repairs._stale_camera_blueprint_files(blueprint_dir.parent) == []
+
+
+def test_keypad_blueprints_are_not_replaced_by_camera_blueprint_maintenance(
+    tmp_path, monkeypatch
+):
+    blueprint_dir = tmp_path / "blueprints" / "automation" / "xsense"
+    blueprint_dir.mkdir(parents=True)
+
+    keypad_paths = {}
+    for filename in ("keypad_code_action.yaml", "keypad_code_router.yaml"):
+        source = Path("blueprints/automation/xsense") / filename
+        target = blueprint_dir / filename
+        contents = source.read_text(encoding="utf-8")
+        target.write_text(contents, encoding="utf-8")
+        keypad_paths[filename] = contents
+
+    async def async_add_executor_job(func, *args):
+        return func(*args)
+
+    reload_calls = []
+
+    class Services:
+        def has_service(self, domain, service):
+            return (domain, service) == ("automation", "reload")
+
+        async def async_call(self, domain, service, **kwargs):
+            reload_calls.append((domain, service, kwargs))
+
+    hass = SimpleNamespace(
+        config=SimpleNamespace(path=lambda *parts: str(tmp_path.joinpath(*parts))),
+        async_add_executor_job=async_add_executor_job,
+        services=Services(),
+    )
+
+    asyncio.run(repairs.async_check_stale_camera_blueprints(hass))
+
+    for filename, original in keypad_paths.items():
+        assert blueprint_dir.joinpath(filename).read_text(encoding="utf-8") == original
+    assert reload_calls == []
+
+
 def test_stale_camera_blueprint_auto_updates_and_reloads_automations(
     tmp_path, monkeypatch
 ):
