@@ -129,11 +129,11 @@ def test_relay_offer_sdp_prunes_to_pcmu_audio_and_h264_video():
     assert context["video_removed_payloads"] == 3
     assert context["audio_kept_payloads"] == 1
     assert context["video_kept_payloads"] == 2
-    assert context["fingerprint_scope"] == "unchanged"
-    assert context["fingerprints_removed"] == 0
+    assert "fingerprint_scope" not in context
+    assert "fingerprints_removed" not in context
 
 
-def test_relay_offer_sdp_promotes_repeated_media_fingerprint_to_session_scope():
+def test_relay_offer_sdp_preserves_repeated_media_fingerprints():
     fingerprint = "a=fingerprint:sha-256 AA:BB:CC\r\n"
     sdp = (
         "v=0\r\n"
@@ -152,10 +152,10 @@ def test_relay_offer_sdp_promotes_repeated_media_fingerprint_to_session_scope():
 
     relay_sdp, context = webrtc_signal._relay_offer_sdp(sdp)
 
-    assert relay_sdp.count("a=fingerprint:") == 1
-    assert relay_sdp.index("a=fingerprint:") < relay_sdp.index("m=audio")
-    assert context["fingerprint_scope"] == "promoted_to_session"
-    assert context["fingerprints_removed"] == 3
+    assert relay_sdp.count(fingerprint) == 3
+    assert relay_sdp.index(fingerprint) > relay_sdp.index("m=audio")
+    assert "fingerprint_scope" not in context
+    assert "fingerprints_removed" not in context
 
 
 def test_sdp_offer_payload_uses_camera_friendly_relay_offer():
@@ -467,8 +467,19 @@ async def test_online_signal_reconnect_resends_offer_without_waiting_for_peer_in
         camera_online=True,
     )
     session._ws = FakeWs()
+    await session.add_candidate(
+        SimpleNamespace(
+            candidate="candidate:1 1 udp 1 192.0.2.1 123 typ host",
+            sdp_mid="0",
+            sdp_m_line_index=0,
+        )
+    )
     await session._handle_signal_event("PEER_IN", "SSC0ATEST")
     assert session._offer_sent is True
+    assert [message["messageType"] for message in session._ws.messages] == [
+        "SDP_OFFER",
+        "ICE_CANDIDATE",
+    ]
 
     session._reset_offer_attempt("signal_reconnect")
     session._ws = FakeWs()
@@ -476,6 +487,10 @@ async def test_online_signal_reconnect_resends_offer_without_waiting_for_peer_in
 
     assert session._offer_sent is True
     assert session._debug_context()["offer_attempt_count"] == 2
+    assert [message["messageType"] for message in session._ws.messages] == [
+        "SDP_OFFER",
+        "ICE_CANDIDATE",
+    ]
 
 
 async def test_offer_does_not_send_ha_candidates_before_answer_arrives():

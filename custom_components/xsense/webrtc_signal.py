@@ -145,6 +145,7 @@ class XSenseWebRTCSignalSession:
         self._offer_attempt_count = 0
         self._signal_reconnect_count = 0
         self._pending_remote_candidates: list[Any] = []
+        self._remote_candidate_replay: list[dict[str, Any]] = []
         self._pending_client_candidates: list[dict[str, Any]] = []
         self._remote_candidate_callback = remote_candidate_callback
         self._forward_client_candidates = False
@@ -171,9 +172,32 @@ class XSenseWebRTCSignalSession:
                 "sent_candidate_count": self._sent_candidate_count,
                 "forwarded_candidate_count": self._forwarded_candidate_count,
                 "pending_remote_candidates": len(self._pending_remote_candidates),
+                "replay_remote_candidates": len(self._remote_candidate_replay),
                 "pending_client_candidates": len(self._pending_client_candidates),
             }
         )
+        context.update(extra)
+        return context
+
+    def _debug_compact_context(self, **extra: Any) -> dict[str, Any]:
+        context = {
+            "camera": _short_id(self._ticket.serial_number),
+            "client": _short_id(self._ticket.client_id),
+            "session": _short_id(self._session_id),
+            "recipient": _short_id(self._recipient_client_id),
+            "camera_online": self._camera_online,
+            "camera_peer_ready": self._camera_peer_ready,
+            "offer_sent": self._offer_sent,
+            "sdp_answer_received": _future_has_result(self._answer),
+            "last_signal_event": self._last_signal_event,
+            "signal_events": dict(self._signal_event_counts),
+            "offer_attempt_count": self._offer_attempt_count,
+            "signal_reconnect_count": self._signal_reconnect_count,
+            "sent_candidate_count": self._sent_candidate_count,
+            "pending_remote_candidates": len(self._pending_remote_candidates),
+            "replay_remote_candidates": len(self._remote_candidate_replay),
+            "pending_client_candidates": len(self._pending_client_candidates),
+        }
         context.update(extra)
         return context
 
@@ -216,7 +240,7 @@ class XSenseWebRTCSignalSession:
         self._forward_client_candidates = True
         LOGGER.debug(
             "X-Sense WebRTC signal relay forwarding queued remote candidates to HA: %s",
-            self._debug_context(
+            self._debug_compact_context(
                 queued_remote_candidate_count=len(self._pending_client_candidates)
             ),
         )
@@ -234,12 +258,13 @@ class XSenseWebRTCSignalSession:
                 self._debug_context(candidate_type=type(candidate).__name__),
             )
             return
+        self._remote_candidate_replay.append(dict(payload))
         if self._ws is None or self._ws.closed or not self._offer_sent:
             self._pending_remote_candidates.append(payload)
             if _should_log_count(len(self._pending_remote_candidates)):
                 LOGGER.debug(
                     "X-Sense WebRTC signal relay queued HA ICE candidates: %s",
-                    self._debug_context(
+                    self._debug_compact_context(
                         queue_reason=_candidate_queue_reason(self),
                     ),
                 )
@@ -451,7 +476,7 @@ class XSenseWebRTCSignalSession:
                 if _should_log_count(len(self._pending_client_candidates)):
                     LOGGER.debug(
                         "X-Sense WebRTC signal relay queued remote ICE candidates for HA: %s",
-                        self._debug_context(),
+                        self._debug_compact_context(),
                     )
 
     def _forward_remote_candidate(self, candidate: dict[str, Any]) -> None:
@@ -465,7 +490,7 @@ class XSenseWebRTCSignalSession:
         if _should_log_count(self._forwarded_candidate_count):
             LOGGER.debug(
                 "X-Sense WebRTC signal relay forwarding remote ICE candidates to HA: %s",
-                self._debug_context(),
+                self._debug_compact_context(),
             )
         self._remote_candidate_callback(candidate)
 
@@ -501,7 +526,7 @@ class XSenseWebRTCSignalSession:
         self._local_candidate_count = len(candidates)
         LOGGER.debug(
             "X-Sense WebRTC signal relay sending local ICE candidates: %s",
-            self._debug_context(**_candidate_debug_summary(candidates)),
+            self._debug_compact_context(**_candidate_debug_summary(candidates)),
         )
         for candidate in candidates:
             await self._send_candidate(candidate)
@@ -529,7 +554,7 @@ class XSenseWebRTCSignalSession:
         if _should_log_count(self._sent_candidate_count):
             LOGGER.debug(
                 "X-Sense WebRTC signal relay sent HA ICE candidates to X-Sense: %s",
-                self._debug_context(),
+                self._debug_compact_context(),
             )
 
     def _reset_offer_attempt(self, reason: str) -> None:
@@ -537,6 +562,9 @@ class XSenseWebRTCSignalSession:
         self._local_candidate_count = 0
         self._sent_candidate_count = 0
         self._forwarded_candidate_count = 0
+        self._pending_remote_candidates = [
+            dict(candidate) for candidate in self._remote_candidate_replay
+        ]
         LOGGER.debug(
             "X-Sense WebRTC signal relay offer attempt reset: %s",
             self._debug_context(reset_reason=reason),
@@ -890,7 +918,6 @@ def _relay_offer_sdp(sdp: str) -> tuple[str, dict[str, Any]]:
     if not sections:
         return sdp, {"sections": 0}
 
-    sections, fingerprint_context = _normalize_offer_fingerprint_scope(sections)
     normalized_sections: list[list[str]] = [sections[0]]
     context: dict[str, Any] = {
         "sections": len(sections),
@@ -898,7 +925,6 @@ def _relay_offer_sdp(sdp: str) -> tuple[str, dict[str, Any]]:
         "video_removed_payloads": 0,
         "audio_kept_payloads": 0,
         "video_kept_payloads": 0,
-        **fingerprint_context,
     }
     for section in sections[1:]:
         normalized, section_context = _normalize_offer_media_section(section)
@@ -910,62 +936,6 @@ def _relay_offer_sdp(sdp: str) -> tuple[str, dict[str, Any]]:
             ]
             context[f"{kind}_kept_payloads"] += section_context["kept_payloads"]
     return "".join(line for section in normalized_sections for line in section), context
-
-
-def _normalize_offer_fingerprint_scope(
-    sections: list[list[str]],
-) -> tuple[list[list[str]], dict[str, Any]]:
-    """Collapse repeated media fingerprints to the APK-style session fingerprint."""
-    session = list(sections[0])
-    media_sections = [list(section) for section in sections[1:]]
-    session_fingerprints = [
-        line for line in session if line.startswith("a=fingerprint:")
-    ]
-    media_fingerprints = [
-        line
-        for section in media_sections
-        for line in section
-        if line.startswith("a=fingerprint:")
-    ]
-    context: dict[str, Any] = {
-        "fingerprint_scope": "unchanged",
-        "fingerprints_removed": 0,
-    }
-    if not media_fingerprints:
-        return [session, *media_sections], context
-
-    fingerprint_values = {
-        line.rstrip("\r\n") for line in [*session_fingerprints, *media_fingerprints]
-    }
-    if len(fingerprint_values) != 1:
-        context["fingerprint_scope"] = "mixed"
-        return [session, *media_sections], context
-
-    fingerprint_line = session_fingerprints[0] if session_fingerprints else media_fingerprints[0]
-    if not session_fingerprints:
-        insert_at = _session_fingerprint_insert_index(session)
-        session.insert(insert_at, fingerprint_line)
-        context["fingerprint_scope"] = "promoted_to_session"
-    else:
-        context["fingerprint_scope"] = "deduplicated_to_session"
-
-    normalized_media_sections: list[list[str]] = []
-    for section in media_sections:
-        normalized = [
-            line for line in section if not line.startswith("a=fingerprint:")
-        ]
-        context["fingerprints_removed"] += len(section) - len(normalized)
-        normalized_media_sections.append(normalized)
-    return [session, *normalized_media_sections], context
-
-
-def _session_fingerprint_insert_index(session: list[str]) -> int:
-    """Return where a session-level fingerprint belongs in the SDP session section."""
-    for index, line in enumerate(session):
-        if line.startswith("m="):
-            return index
-    return len(session)
-
 
 def _sdp_sections(sdp: str) -> list[list[str]]:
     sections: list[list[str]] = [[]]
