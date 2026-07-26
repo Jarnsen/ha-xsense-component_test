@@ -340,7 +340,7 @@ async def test_send_offer_flushes_candidates_queued_before_offer():
     assert session._sent_candidate_count == 1
 
 
-async def test_online_camera_sends_offer_without_waiting_for_peer_in(monkeypatch):
+async def test_online_camera_waits_for_peer_in_before_sending_offer(monkeypatch):
     class FakeWs:
         closed = False
 
@@ -372,6 +372,12 @@ async def test_online_camera_sends_offer_without_waiting_for_peer_in(monkeypatch
 
     await session._connect_signal()
     await session._begin_signal_offer_flow()
+
+    assert ws.messages == []
+    assert session._offer_sent is False
+    assert session._camera_peer_ready is False
+
+    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
 
     assert [message["messageType"] for message in ws.messages] == ["SDP_OFFER"]
     assert session._offer_sent is True
@@ -424,7 +430,7 @@ async def test_offline_camera_waits_for_peer_in_before_sending_offer(monkeypatch
     assert session._debug_context()["offer_attempt_count"] == 1
 
 
-async def test_online_camera_resends_offer_after_signal_reconnect(monkeypatch):
+async def test_signal_reconnect_waits_for_peer_in_before_resending_offer(monkeypatch):
     class FakeWs:
         closed = False
 
@@ -442,12 +448,17 @@ async def test_online_camera_resends_offer_after_signal_reconnect(monkeypatch):
         camera_online=True,
     )
     session._ws = FakeWs()
-    await session._begin_signal_offer_flow()
+    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
     assert session._offer_sent is True
 
     session._reset_offer_attempt("signal_reconnect")
     session._ws = FakeWs()
     await session._begin_signal_offer_flow()
+
+    assert session._offer_sent is False
+    assert session._debug_context()["offer_attempt_count"] == 1
+
+    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
 
     assert session._offer_sent is True
     assert session._debug_context()["offer_attempt_count"] == 2
