@@ -336,15 +336,7 @@ class XSenseWebRTCSignalSession:
                 self._answer.set_exception(err)
 
     async def _begin_signal_offer_flow(self) -> None:
-        """Start or wait for the APK-style camera peer before relaying the SDP offer."""
-        if self._camera_online:
-            LOGGER.debug(
-                "X-Sense WebRTC camera online, starting peer offer without PEER_IN wait: %s",
-                self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),
-            )
-            self._camera_peer_ready = True
-            await self._send_offer()
-            return
+        """Wait for the camera peer before relaying Home Assistant's SDP offer."""
         LOGGER.debug(
             "X-Sense WebRTC waiting for PEER_IN before relay offer: %s",
             self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),

@@ -237,7 +237,6 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         )
         self._webrtc_sessions: dict[str, object] = {}
         self._pending_webrtc_candidates: dict[str, list[object]] = {}
-        self._webrtc_keepalive_tasks: dict[str, asyncio.Task] = {}
 
     @property
     def supported_features(self) -> CameraEntityFeature:
@@ -369,14 +368,12 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             ),
         )
         self._webrtc_sessions[session_id] = session
-        self._start_webrtc_keepalive(entity, session_id, ticket)
         await self._flush_pending_webrtc_candidates(entity, session_id, session)
         try:
             answer = await session.start()
         except Exception as err:  # noqa: BLE001 - HA frontend needs a clean error
             self._webrtc_sessions.pop(session_id, None)
             self._pending_webrtc_candidates.pop(session_id, None)
-            self._stop_webrtc_keepalive(session_id)
             await session.close()
             LOGGER.debug(
                 "X-Sense camera WebRTC signal relay failed: %s",
@@ -411,9 +408,6 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             self._pending_webrtc_candidates[preserve_pending_session_id] = (
                 preserved_pending
             )
-        for keepalive_session_id in list(self._webrtc_keepalive_tasks):
-            if keepalive_session_id != preserve_pending_session_id:
-                self._stop_webrtc_keepalive(keepalive_session_id)
         if not sessions:
             return
         LOGGER.debug(
@@ -465,7 +459,6 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         entity = self._current_entity()
         session = self._webrtc_sessions.pop(session_id, None)
         self._pending_webrtc_candidates.pop(session_id, None)
-        self._stop_webrtc_keepalive(session_id)
         LOGGER.debug(
             "X-Sense camera WebRTC session close requested: %s",
             _camera_debug_context(
@@ -503,82 +496,9 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
         sessions = list(self._webrtc_sessions.values())
         self._webrtc_sessions.clear()
         self._pending_webrtc_candidates.clear()
-        for keepalive_session_id in list(self._webrtc_keepalive_tasks):
-            self._stop_webrtc_keepalive(keepalive_session_id)
         for session in sessions:
             await session.close()
         await super().async_will_remove_from_hass()
-
-    def _start_webrtc_keepalive(self, entity, session_id: str, ticket) -> None:
-        """Keep an APK WebRTC live session awake while HA owns the offer."""
-        self._stop_webrtc_keepalive(session_id)
-        interval = _webrtc_keepalive_interval(ticket)
-        task = self.hass.async_create_task(
-            self._async_webrtc_keepalive_loop(entity, session_id, interval)
-        )
-        self._webrtc_keepalive_tasks[session_id] = task
-        LOGGER.debug(
-            "X-Sense camera WebRTC keepalive started: %s",
-            _camera_debug_context(
-                entity,
-                session_id,
-                keepalive_interval_s=interval,
-                app_stop_live_timeout=getattr(ticket, "app_stop_live_timeout", None),
-            ),
-        )
-
-    def _stop_webrtc_keepalive(self, session_id: str) -> None:
-        """Cancel an active WebRTC keepalive task."""
-        task = self._webrtc_keepalive_tasks.pop(session_id, None)
-        if task is not None and not task.done():
-            task.cancel()
-
-    async def _async_webrtc_keepalive_loop(
-        self, entity, session_id: str, interval: int
-    ) -> None:
-        """Send periodic APK live-view keepalives for the native WebRTC path."""
-        try:
-            while session_id in self._webrtc_sessions:
-                try:
-                    await self.coordinator.xsense.keep_camera_live_alive(entity)
-                except Exception as err:  # noqa: BLE001 - keep trying until session closes
-                    LOGGER.debug(
-                        "X-Sense camera WebRTC keepalive failed: %s",
-                        _camera_debug_context(
-                            entity,
-                            session_id,
-                            error=_error_debug_context(err),
-                        ),
-                    )
-                else:
-                    LOGGER.debug(
-                        "X-Sense camera WebRTC keepalive sent: %s",
-                        _camera_debug_context(
-                            entity,
-                            session_id,
-                            keepalive_interval_s=interval,
-                        ),
-                    )
-                await asyncio.sleep(interval)
-                if session_id not in self._webrtc_sessions:
-                    return
-        except asyncio.CancelledError:
-            raise
-        finally:
-            current_task = asyncio.current_task()
-            if self._webrtc_keepalive_tasks.get(session_id) is current_task:
-                self._webrtc_keepalive_tasks.pop(session_id, None)
-
-
-def _webrtc_keepalive_interval(ticket) -> int:
-    """Return an APK live-view keepalive cadence for a WebRTC ticket."""
-    try:
-        timeout = int(getattr(ticket, "app_stop_live_timeout", 0) or 0)
-    except (TypeError, ValueError):
-        timeout = 0
-    if timeout > 10:
-        return max(5, min(25, timeout // 2))
-    return 5
 
 
 def _camera_online(entity) -> bool:
