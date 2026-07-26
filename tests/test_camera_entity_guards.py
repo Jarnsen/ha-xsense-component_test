@@ -3858,7 +3858,7 @@ def test_webrtc_client_config_uses_data_channel_only():
 
 
 def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
-    """Lock the live camera path to the v1.2.6.60 success baseline."""
+    """Lock the live camera path to the protected WebRTC success checkpoints."""
     import inspect
     from pathlib import Path
 
@@ -3902,8 +3902,8 @@ def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
         webrtc_signal.XSenseWebRTCSignalSession.start
     )
     assert "keep_camera_live_alive" not in camera_entity_source
-    assert "_future_has_result(self._answer)" not in add_candidate_source
-    assert "await self._flush_pending_remote_candidates()" in send_offer_source
+    assert "_future_has_result(self._answer)" in add_candidate_source
+    assert "await self._flush_pending_remote_candidates()" not in send_offer_source
     assert "verifyDormancyStatus=True" in ticket_source
 
 

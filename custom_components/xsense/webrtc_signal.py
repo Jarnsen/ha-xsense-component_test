@@ -259,7 +259,12 @@ class XSenseWebRTCSignalSession:
             )
             return
         self._remote_candidate_replay.append(dict(payload))
-        if self._ws is None or self._ws.closed or not self._offer_sent:
+        if (
+            self._ws is None
+            or self._ws.closed
+            or not self._offer_sent
+            or not _future_has_result(self._answer)
+        ):
             self._pending_remote_candidates.append(payload)
             if _should_log_count(len(self._pending_remote_candidates)):
                 LOGGER.debug(
@@ -362,14 +367,6 @@ class XSenseWebRTCSignalSession:
 
     async def _begin_signal_offer_flow(self) -> None:
         """Start the APK-style signal offer flow."""
-        if self._camera_online:
-            self._camera_peer_ready = True
-            LOGGER.debug(
-                "X-Sense WebRTC camera online; sending relay offer without waiting for PEER_IN: %s",
-                self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),
-            )
-            await self._send_offer()
-            return
         LOGGER.debug(
             "X-Sense WebRTC waiting for PEER_IN before relay offer: %s",
             self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),
@@ -530,10 +527,8 @@ class XSenseWebRTCSignalSession:
         )
         for candidate in candidates:
             await self._send_candidate(candidate)
-        await self._flush_pending_remote_candidates()
-
     async def _flush_pending_remote_candidates(self) -> None:
-        """Send HA ICE candidates queued before the X-Sense offer was sent."""
+        """Send HA ICE candidates queued before the X-Sense answer."""
         while self._pending_remote_candidates and not self._closed:
             await self._send_candidate(self._pending_remote_candidates.pop(0))
 
