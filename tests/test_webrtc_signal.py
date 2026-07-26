@@ -124,13 +124,38 @@ def test_relay_offer_sdp_prunes_to_pcmu_audio_and_h264_video():
     assert "VP8/90000" not in relay_sdp
     assert "AV1/90000" not in relay_sdp
     assert "a=candidate:" not in relay_sdp
-    assert context == {
-        "sections": 4,
-        "audio_removed_payloads": 2,
-        "video_removed_payloads": 3,
-        "audio_kept_payloads": 1,
-        "video_kept_payloads": 2,
-    }
+    assert context["sections"] == 4
+    assert context["audio_removed_payloads"] == 2
+    assert context["video_removed_payloads"] == 3
+    assert context["audio_kept_payloads"] == 1
+    assert context["video_kept_payloads"] == 2
+    assert context["fingerprint_scope"] == "unchanged"
+    assert context["fingerprints_removed"] == 0
+
+
+def test_relay_offer_sdp_promotes_repeated_media_fingerprint_to_session_scope():
+    fingerprint = "a=fingerprint:sha-256 AA:BB:CC\r\n"
+    sdp = (
+        "v=0\r\n"
+        "a=group:BUNDLE 0 1 2\r\n"
+        "m=audio 9 UDP/TLS/RTP/SAVPF 0\r\n"
+        "a=mid:0\r\n"
+        f"{fingerprint}"
+        "m=video 9 UDP/TLS/RTP/SAVPF 103\r\n"
+        "a=mid:1\r\n"
+        f"{fingerprint}"
+        "a=rtpmap:103 H264/90000\r\n"
+        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
+        "a=mid:2\r\n"
+        f"{fingerprint}"
+    )
+
+    relay_sdp, context = webrtc_signal._relay_offer_sdp(sdp)
+
+    assert relay_sdp.count("a=fingerprint:") == 1
+    assert relay_sdp.index("a=fingerprint:") < relay_sdp.index("m=audio")
+    assert context["fingerprint_scope"] == "promoted_to_session"
+    assert context["fingerprints_removed"] == 3
 
 
 def test_sdp_offer_payload_uses_camera_friendly_relay_offer():
