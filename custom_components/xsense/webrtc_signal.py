@@ -882,6 +882,7 @@ def _relay_offer_sdp(sdp: str) -> tuple[str, dict[str, Any]]:
     if not sections:
         return sdp, {"sections": 0}
 
+    sections, fingerprint_context = _normalize_offer_fingerprint_scope(sections)
     normalized_sections: list[list[str]] = [sections[0]]
     context: dict[str, Any] = {
         "sections": len(sections),
@@ -889,6 +890,7 @@ def _relay_offer_sdp(sdp: str) -> tuple[str, dict[str, Any]]:
         "video_removed_payloads": 0,
         "audio_kept_payloads": 0,
         "video_kept_payloads": 0,
+        **fingerprint_context,
     }
     for section in sections[1:]:
         normalized, section_context = _normalize_offer_media_section(section)
@@ -900,6 +902,61 @@ def _relay_offer_sdp(sdp: str) -> tuple[str, dict[str, Any]]:
             ]
             context[f"{kind}_kept_payloads"] += section_context["kept_payloads"]
     return "".join(line for section in normalized_sections for line in section), context
+
+
+def _normalize_offer_fingerprint_scope(
+    sections: list[list[str]],
+) -> tuple[list[list[str]], dict[str, Any]]:
+    """Collapse repeated media fingerprints to the APK-style session fingerprint."""
+    session = list(sections[0])
+    media_sections = [list(section) for section in sections[1:]]
+    session_fingerprints = [
+        line for line in session if line.startswith("a=fingerprint:")
+    ]
+    media_fingerprints = [
+        line
+        for section in media_sections
+        for line in section
+        if line.startswith("a=fingerprint:")
+    ]
+    context: dict[str, Any] = {
+        "fingerprint_scope": "unchanged",
+        "fingerprints_removed": 0,
+    }
+    if not media_fingerprints:
+        return [session, *media_sections], context
+
+    fingerprint_values = {
+        line.rstrip("\r\n") for line in [*session_fingerprints, *media_fingerprints]
+    }
+    if len(fingerprint_values) != 1:
+        context["fingerprint_scope"] = "mixed"
+        return [session, *media_sections], context
+
+    fingerprint_line = session_fingerprints[0] if session_fingerprints else media_fingerprints[0]
+    if not session_fingerprints:
+        insert_at = _session_fingerprint_insert_index(session)
+        session.insert(insert_at, fingerprint_line)
+        context["fingerprint_scope"] = "promoted_to_session"
+    else:
+        context["fingerprint_scope"] = "deduplicated_to_session"
+
+    normalized_media_sections: list[list[str]] = []
+    for section in media_sections:
+        normalized = [
+            line for line in section if not line.startswith("a=fingerprint:")
+        ]
+        context["fingerprints_removed"] += len(section) - len(normalized)
+        normalized_media_sections.append(normalized)
+    return [session, *normalized_media_sections], context
+
+
+def _session_fingerprint_insert_index(session: list[str]) -> int:
+    """Return where a session-level fingerprint belongs in the SDP session section."""
+    for index, line in enumerate(session):
+        if line.startswith("m="):
+            return index
+    return len(session)
 
 
 def _sdp_sections(sdp: str) -> list[list[str]]:
