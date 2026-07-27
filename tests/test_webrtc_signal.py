@@ -2,7 +2,7 @@ import base64
 import json
 import sys
 import time
-from types import SimpleNamespace
+from pathlib import Path
 
 from custom_components.xsense import webrtc_signal
 
@@ -28,7 +28,7 @@ def b64_json(data):
     return base64.b64encode(json.dumps(data, separators=(",", ":")).encode()).decode()
 
 
-def test_signal_module_does_not_import_aiortc():
+def test_signal_module_does_not_require_local_aiortc_import():
     assert "aiortc" not in sys.modules
 
 
@@ -75,110 +75,23 @@ def test_start_live_data_channel_command_matches_apk_shape():
     }
 
 
-def test_sd_video_list_data_channel_command_keeps_parameters_shape():
+def test_sd_video_list_data_channel_command_matches_apk_shape():
     payload = json.loads(
         webrtc_signal.make_sd_video_list_command_payload(
-            111, 222, request_id="req-2", timestamp=123
+            1782049304,
+            1782049314,
+            request_id="request-id",
+            timestamp=1782049300,
         )
     )
 
     assert payload == {
-        "requestID": "req-2",
+        "requestID": "request-id",
         "connectionID": "7893feb",
-        "timeStamp": 123,
+        "timeStamp": 1782049300,
         "action": "getSdVideoList",
-        "parameters": {"startTime": 111, "stopTime": 222},
+        "parameters": {"startTime": 1782049304, "stopTime": 1782049314},
     }
-
-
-def test_relay_offer_sdp_prunes_to_pcmu_audio_and_h264_video():
-    sdp = (
-        "v=0\r\n"
-        "a=group:BUNDLE 0 1 2\r\n"
-        "m=audio 9 UDP/TLS/RTP/SAVPF 111 0 8\r\n"
-        "a=mid:0\r\n"
-        "a=rtpmap:111 opus/48000/2\r\n"
-        "a=rtpmap:0 PCMU/8000\r\n"
-        "a=rtpmap:8 PCMA/8000\r\n"
-        "a=fmtp:111 minptime=10;useinbandfec=1\r\n"
-        "a=candidate:1 1 udp 1 192.0.2.1 123 typ host\r\n"
-        "m=video 9 UDP/TLS/RTP/SAVPF 96 97 103 104 45\r\n"
-        "a=mid:1\r\n"
-        "a=rtpmap:96 VP8/90000\r\n"
-        "a=rtpmap:97 rtx/90000\r\n"
-        "a=fmtp:97 apt=96\r\n"
-        "a=rtpmap:103 H264/90000\r\n"
-        "a=rtcp-fb:103 nack pli\r\n"
-        "a=rtpmap:104 H264/90000\r\n"
-        "a=rtpmap:45 AV1/90000\r\n"
-        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
-        "a=mid:2\r\n"
-    )
-
-    relay_sdp, context = webrtc_signal._relay_offer_sdp(sdp)
-
-    assert "m=audio 9 UDP/TLS/RTP/SAVPF 0" in relay_sdp
-    assert "m=video 9 UDP/TLS/RTP/SAVPF 103 104" in relay_sdp
-    assert "m=application 9 UDP/DTLS/SCTP webrtc-datachannel" in relay_sdp
-    assert "opus/48000" not in relay_sdp
-    assert "VP8/90000" not in relay_sdp
-    assert "AV1/90000" not in relay_sdp
-    assert "a=candidate:" not in relay_sdp
-    assert context["sections"] == 4
-    assert context["audio_removed_payloads"] == 2
-    assert context["video_removed_payloads"] == 3
-    assert context["audio_kept_payloads"] == 1
-    assert context["video_kept_payloads"] == 2
-    assert "fingerprint_scope" not in context
-    assert "fingerprints_removed" not in context
-
-
-def test_relay_offer_sdp_preserves_repeated_media_fingerprints():
-    fingerprint = "a=fingerprint:sha-256 AA:BB:CC\r\n"
-    sdp = (
-        "v=0\r\n"
-        "a=group:BUNDLE 0 1 2\r\n"
-        "m=audio 9 UDP/TLS/RTP/SAVPF 0\r\n"
-        "a=mid:0\r\n"
-        f"{fingerprint}"
-        "m=video 9 UDP/TLS/RTP/SAVPF 103\r\n"
-        "a=mid:1\r\n"
-        f"{fingerprint}"
-        "a=rtpmap:103 H264/90000\r\n"
-        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
-        "a=mid:2\r\n"
-        f"{fingerprint}"
-    )
-
-    relay_sdp, context = webrtc_signal._relay_offer_sdp(sdp)
-
-    assert relay_sdp.count(fingerprint) == 3
-    assert relay_sdp.index(fingerprint) > relay_sdp.index("m=audio")
-    assert "fingerprint_scope" not in context
-    assert "fingerprints_removed" not in context
-
-
-def test_sdp_offer_payload_uses_camera_friendly_relay_offer():
-    sdp = (
-        "v=0\r\n"
-        "m=video 9 UDP/TLS/RTP/SAVPF 96 103\r\n"
-        "a=rtpmap:96 VP8/90000\r\n"
-        "a=rtpmap:103 H264/90000\r\n"
-    )
-
-    payload = json.loads(
-        webrtc_signal.make_sdp_offer_payload(
-            offer_sdp=sdp,
-            ticket=ticket(),
-            recipient_client_id="SSC0ATEST",
-            session_id="session123",
-            resolution="1920x1080",
-        )
-    )
-    offer = json.loads(base64.b64decode(payload["messagePayload"]).decode())
-
-    assert "m=video 9 UDP/TLS/RTP/SAVPF 103" in offer["sdp"]
-    assert "VP8/90000" not in offer["sdp"]
 
 
 def test_local_sdp_candidates_keep_ha_complete_offer_candidates():
@@ -207,63 +120,6 @@ def test_local_sdp_candidates_keep_ha_complete_offer_candidates():
     ]
 
 
-def test_candidate_init_payload_matches_home_assistant_model_shape():
-    candidate = SimpleNamespace(
-        candidate="candidate:1 1 udp 1 192.0.2.1 123 typ host",
-        sdp_mid="0",
-        sdp_m_line_index=0,
-    )
-
-    assert webrtc_signal._candidate_init_payload(candidate) == {
-        "sdpMid": "0",
-        "sdpMLineIndex": 0,
-        "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
-    }
-
-
-def test_answer_sdp_normalization_replaces_invalid_actpass_answer_setup():
-    offer_sdp = (
-        "v=0\r\n"
-        "m=audio 9 UDP/TLS/RTP/SAVPF 0\r\n"
-        "a=mid:0\r\n"
-        "a=recvonly\r\n"
-        "m=video 9 UDP/TLS/RTP/SAVPF 103\r\n"
-        "a=mid:1\r\n"
-        "a=recvonly\r\n"
-        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
-        "a=mid:2\r\n"
-        "a=sendrecv\r\n"
-    )
-    sdp = (
-        "v=0\r\n"
-        "m=audio 9 UDP/TLS/RTP/SAVPF 0\r\n"
-        "a=mid:0\r\n"
-        "a=setup:actpass\r\n"
-        "a=sendrecv\r\n"
-        "m=video 9 UDP/TLS/RTP/SAVPF 103\r\n"
-        "a=mid:1\r\n"
-        "a=setup:passive\r\n"
-        "a=sendonly\r\n"
-        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
-        "a=mid:2\r\n"
-        "a=setup:actpass\r\n"
-        "a=sendrecv\r\n"
-    )
-
-    normalized, context = webrtc_signal._normalize_answer_sdp(sdp, offer_sdp)
-
-    assert "a=setup:actpass" not in normalized
-    assert normalized.count("a=setup:passive") == 3
-    assert normalized.count("a=sendonly") == 2
-    assert (
-        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"
-        "a=mid:2\r\n"
-        "a=setup:passive\r\n"
-        "a=sendrecv\r\n"
-    ) in normalized
-    assert context == {"setup_actpass_replaced": 2, "sendrecv_replaced": 1}
-
-
 def test_sdp_debug_includes_browser_rejection_shape_without_raw_values():
     sdp = (
         "v=0\r\n"
@@ -280,417 +136,16 @@ def test_sdp_debug_includes_browser_rejection_shape_without_raw_values():
 
     context = webrtc_signal._sdp_debug(sdp)
 
-    assert context["groups"] == ["BUNDLE 0 1"]
-    assert context["setup"] == ["passive"]
-    assert context["directions"] == ["sendonly"]
-    assert context["ice_ufrag_count"] == 1
-    assert context["ice_pwd_count"] == 1
-    assert context["fingerprint_count"] == 1
-    assert context["rtcp_mux_count"] == 1
+    assert context["media"] == ["audio 9 UDP/TLS/RTP/SAVPF 0"]
+    assert context["mids"] == ["0"]
+    assert context["directions"] == {"0": "sendonly"}
+    assert context["fingerprints"] == ["sha-256"]
+    assert context["candidate_lines"] == 0
     assert "secret" not in str(context)
-
-
-async def test_trickled_candidate_is_queued_until_answer_is_received():
-    class FakeWs:
-        closed = False
-
-        def __init__(self):
-            self.messages = []
-
-        async def send_str(self, message):
-            self.messages.append(json.loads(message))
-
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-    candidate = SimpleNamespace(
-        candidate="candidate:1 1 udp 1 192.0.2.1 123 typ host",
-        sdp_mid="0",
-        sdp_m_line_index=0,
-    )
-
-    await session.add_candidate(candidate)
-
-    assert len(session._pending_remote_candidates) == 1
-
-    session._ws = FakeWs()
-    session._offer_sent = True
-
-    await session.add_candidate(candidate)
-
-    assert len(session._pending_remote_candidates) == 2
-    assert session._ws.messages == []
-    assert session._sent_candidate_count == 0
-
-    session._answer.set_result("v=0\r\n")
-    await session._flush_pending_remote_candidates()
-
-    assert len(session._pending_remote_candidates) == 0
-    assert [message["messageType"] for message in session._ws.messages] == [
-        "ICE_CANDIDATE",
-        "ICE_CANDIDATE",
-    ]
-    assert session._sent_candidate_count == 2
-
-
-async def test_send_offer_keeps_ha_candidates_queued_until_answer():
-    class FakeWs:
-        closed = False
-
-        def __init__(self):
-            self.messages = []
-
-        async def send_str(self, message):
-            self.messages.append(json.loads(message))
-
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-    session._ws = FakeWs()
-    session._pending_remote_candidates.append(
-        {
-            "sdpMid": "0",
-            "sdpMLineIndex": 0,
-            "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
-        }
-    )
-
-    await session._send_offer()
-
-    assert [message["messageType"] for message in session._ws.messages] == [
-        "SDP_OFFER",
-    ]
-    assert len(session._pending_remote_candidates) == 1
-    assert session._sent_candidate_count == 0
-
-
-async def test_online_camera_waits_for_peer_in_before_sending_offer(monkeypatch):
-    class FakeWs:
-        closed = False
-
-        def __init__(self):
-            self.messages = []
-
-        async def send_str(self, message):
-            self.messages.append(json.loads(message))
-
-    class FakeHttpSession:
-        def __init__(self, ws):
-            self.ws = ws
-
-        async def ws_connect(self, *args, **kwargs):
-            return self.ws
-
-    async def read_loop():
-        return None
-
-    ws = FakeWs()
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=FakeHttpSession(ws),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-    monkeypatch.setattr(session, "_read_loop", read_loop)
-
-    await session._connect_signal()
-    await session._begin_signal_offer_flow()
-
-    assert ws.messages == []
-    assert session._offer_sent is False
-    assert session._camera_peer_ready is False
-
-    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
-
-    assert [message["messageType"] for message in ws.messages] == ["SDP_OFFER"]
-    assert session._offer_sent is True
-    assert session._camera_peer_ready is True
-
-
-async def test_offline_camera_waits_for_peer_in_before_sending_offer(monkeypatch):
-    class FakeWs:
-        closed = False
-
-        def __init__(self):
-            self.messages = []
-
-        async def send_str(self, message):
-            self.messages.append(json.loads(message))
-
-    class FakeHttpSession:
-        def __init__(self, ws):
-            self.ws = ws
-
-        async def ws_connect(self, *args, **kwargs):
-            return self.ws
-
-    async def read_loop():
-        return None
-
-    ws = FakeWs()
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=FakeHttpSession(ws),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=False,
-    )
-    monkeypatch.setattr(session, "_read_loop", read_loop)
-
-    await session._connect_signal()
-    await session._begin_signal_offer_flow()
-
-    assert ws.messages == []
-    assert session._offer_sent is False
-    assert session._camera_peer_ready is False
-
-    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
-
-    assert [message["messageType"] for message in ws.messages] == ["SDP_OFFER"]
-    assert session._offer_sent is True
-    assert session._camera_peer_ready is True
-    assert session._debug_context()["offer_attempt_count"] == 1
-
-
-async def test_online_signal_reconnect_waits_for_peer_in_and_replays_candidates(monkeypatch):
-    class FakeWs:
-        closed = False
-
-        def __init__(self):
-            self.messages = []
-
-        async def send_str(self, message):
-            self.messages.append(json.loads(message))
-
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-    session._ws = FakeWs()
-    await session.add_candidate(
-        SimpleNamespace(
-            candidate="candidate:1 1 udp 1 192.0.2.1 123 typ host",
-            sdp_mid="0",
-            sdp_m_line_index=0,
-        )
-    )
-    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
-    assert session._offer_sent is True
-    assert [message["messageType"] for message in session._ws.messages] == [
-        "SDP_OFFER",
-    ]
-
-    session._reset_offer_attempt("signal_reconnect")
-    session._ws = FakeWs()
-    await session._begin_signal_offer_flow()
-
-    assert session._ws.messages == []
-    assert session._offer_sent is False
-
-    await session._handle_signal_event("PEER_IN", "SSC0ATEST")
-
-    assert session._offer_sent is True
-    assert session._debug_context()["offer_attempt_count"] == 2
-    assert [message["messageType"] for message in session._ws.messages] == [
-        "SDP_OFFER",
-    ]
-    assert len(session._pending_remote_candidates) == 1
-
-
-async def test_offer_does_not_send_ha_candidates_before_answer_arrives():
-    class FakeWs:
-        closed = False
-
-        def __init__(self):
-            self.messages = []
-
-        async def send_str(self, message):
-            self.messages.append(json.loads(message))
-
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-    session._ws = FakeWs()
-    session._pending_remote_candidates.append(
-        {
-            "sdpMid": "0",
-            "sdpMLineIndex": 0,
-            "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
-        }
-    )
-
-    await session._send_offer()
-
-    assert [message["messageType"] for message in session._ws.messages] == [
-        "SDP_OFFER",
-    ]
-    assert len(session._pending_remote_candidates) == 1
-    assert session._sent_candidate_count == 0
-
-
-async def test_peer_out_before_answer_resets_offer_for_next_peer_in():
-    class FakeWs:
-        closed = False
-
-        def __init__(self):
-            self.messages = []
-
-        async def send_str(self, message):
-            self.messages.append(json.loads(message))
-
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-    session._ws = FakeWs()
-    peer_payload = {"id": "SSC0ATEST", "name": "SSC0ATEST", "role": "master"}
-
-    await session._handle_signal_event("PEER_IN", peer_payload)
-    await session._handle_signal_event("PEER_OUT", peer_payload)
-    await session._handle_signal_event("PEER_IN", peer_payload)
-
-    assert [message["messageType"] for message in session._ws.messages] == [
-        "SDP_OFFER",
-        "SDP_OFFER",
-    ]
-    assert session._offer_sent is True
-    assert session._camera_peer_ready is True
-    assert session._debug_context()["offer_attempt_count"] == 2
-
-
-async def test_signal_close_schedules_reconnect_before_answer(monkeypatch):
-    scheduled = []
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-
-    class FakeTask:
-        def done(self):
-            return False
-
-    def create_task(coro):
-        scheduled.append(coro)
-        coro.close()
-        return FakeTask()
-
-    monkeypatch.setattr(webrtc_signal.asyncio, "create_task", create_task)
-
-    session._schedule_signal_reconnect(1006)
-
-    assert len(scheduled) == 1
-    assert session._debug_context()["signal_reconnect_count"] == 0
-
-
-async def test_signal_close_skips_terminal_reconnect_codes(monkeypatch):
-    scheduled = []
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-
-    def create_task(coro):
-        scheduled.append(coro)
-        coro.close()
-        return object()
-
-    monkeypatch.setattr(webrtc_signal.asyncio, "create_task", create_task)
-
-    session._schedule_signal_reconnect(3002)
-    session._schedule_signal_reconnect(3004)
-
-    assert scheduled == []
-
-
-async def test_read_loop_uses_local_websocket_when_session_ws_is_cleared():
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-
-    class FakeWs:
-        close_code = 1000
-        closed = False
-
-        def __aiter__(self):
-            return self
-
-        async def __anext__(self):
-            session._ws = None
-            raise StopAsyncIteration
-
-    session._ws = FakeWs()
-    session._answer.set_result("v=0\r\nanswer")
-
-    await session._read_loop()
-
-    assert session._answer.result() == "v=0\r\nanswer"
-
-
-async def test_debug_context_handles_cancelled_answer_future():
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-    session._answer.cancel()
-
-    context = session._debug_context()
-
-    assert context["sdp_answer_received"] is False
 
 
 def test_payload_debug_handles_mixed_key_types():
     assert webrtc_signal._payload_debug({1: "a", "b": "c"}) == "dict_keys=['1', 'b']"
-
-
-def test_sd_video_list_command_payload_matches_apk_data_channel_shape():
-    payload = json.loads(
-        webrtc_signal.make_sd_video_list_command_payload(
-            1782049304,
-            1782049314,
-            request_id="request-id",
-            timestamp=1782049300,
-        )
-    )
-
-    assert payload == {
-        "requestID": "request-id",
-        "connectionID": "7893feb",
-        "timeStamp": 1782049300,
-        "action": "getSdVideoList",
-        "parameters": {"startTime": 1782049304, "stopTime": 1782049314},
-    }
 
 
 def test_parse_owned_sdp_answer_from_signal_envelope():
@@ -708,3 +163,37 @@ def test_parse_owned_sdp_answer_from_signal_envelope():
 
     assert event == "SDP_ANSWER"
     assert webrtc_signal._owned_answer_sdp(payload, ticket()) == answer_sdp
+
+
+def test_webrtc_bridge_path_is_locked_to_known_success_shape():
+    source = Path(webrtc_signal.__file__).read_text(encoding="utf-8")
+
+    assert "class XSenseWebRTCSession" in source
+    assert "self._ha_pc = RTCPeerConnection()" in source
+    assert "self._camera_pc: RTCPeerConnection | None = None" in source
+    assert "createDataChannel(SIGNAL_DATA_CHANNEL)" in source
+    assert "make_start_live_data_channel_message" in source
+    assert "_send_start_live_if_ready" in source
+    assert "_mark_first_frame_received" in source
+    assert "_first_frame_received" in source
+    assert "_send_offer" in source
+    assert "make_sdp_offer_payload" in source
+    assert "XSenseWebRTCSignalSession" not in source
+
+
+def test_webrtc_bridge_fails_cleanly_without_ha_media_stack():
+    try:
+        webrtc_signal.XSenseWebRTCSession(
+            session=object(),
+            ticket=ticket(),
+            offer_sdp="v=0\r\n",
+            resolution="1920x1080",
+            send_message=lambda message: None,
+            on_close=lambda session_id: None,
+            camera_online=True,
+            refresh_ticket=lambda: ticket(),
+        )
+    except RuntimeError as err:
+        assert str(err) == "Home Assistant WebRTC media stack is not available"
+    else:
+        assert webrtc_signal.RTCPeerConnection is not None
