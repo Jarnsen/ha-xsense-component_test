@@ -146,6 +146,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## Automatisations de code de clavier SKP0A
+Le clavier SKP0A ne publie pas chaque pression de touche individuelle. Il publie un événement de clavier après qu'un code valide créé par l'application X-Sense soit soumis avec Home, Away ou Disarmed. L'intégration expose cet événement de code soumis sous le nom `xsense_keypad_code`.
+
+Utilisez le plan à code unique inclus pour exécuter les actions Home Assistant pour un code sélectionné. Vous pouvez éventuellement exiger le bouton de mode Home, Away ou Disarmed utilisé pour soumettre le code et éventuellement limiter l'automatisation à un numéro de série du clavier.
+
+[![Plan d'importation](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Utilisez le plan du routeur lorsque vous souhaitez qu'une automatisation mappe plusieurs codes de clavier à différentes actions Home Assistant.
+
+[![Importer le plan du routeur](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Les boutons de mode du clavier agissent comme des boutons de soumission. Si le mode sélectionné est déjà actif, X-Sense ne peut pas publier de nouvel événement, choisissez donc l'un des boutons de mode actuellement inactifs lors de la soumission d'un code.
+
+____________________________________________________________
+
 ## Exemples d'automatisations
 Avec cette intégration, vous pouvez créer différentes automatisations. Voici quelques exemples :
 

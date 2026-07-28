@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "डिवाइस पहले से ही कॉन्फ़िगर किया गया है",
+      "reauth_successful": "पुन:प्रमाणीकरण सफल रहा",
+      "reconfigure_successful": "पुनर्विन्यास सफल रहा"
+    },
+    "error": {
+      "cannot_connect": "कनेक्ट करने में विफल",
+      "invalid_auth": "अमान्य प्रमाणीकरण",
+      "unknown": "अप्रत्याशित त्रुटि"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "अपने X-Sense खाते से दोबारा साइन इन करें।",
+        "data": {
+          "email": "ईमेलप्लेसहोल्डर",
+          "password": "पासवर्ड"
+        }
+      },
+      "reconfigure": {
+        "description": "इस एकीकरण द्वारा उपयोग किए गए X-Sense खाते को अपडेट करें।",
+        "data": {
+          "email": "ईमेलप्लेसहोल्डर",
+          "password": "पासवर्ड"
+        }
+      },
+      "user": {
+        "description": "अपने X-Sense खाते से साइन इन करें।",
+        "data": {
+          "email": "ईमेलप्लेसहोल्डर",
+          "password": "पासवर्ड"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "रिकॉर्डिंग मीडिया सिंक Home Assistant मीडिया के अंतर्गत कैमरा क्लिप को कैश करता है ताकि X-Sense रिकॉर्डिंग साइडबार, मीडिया ब्राउज़र और मोबाइल नोटिफिकेशन रिकॉर्डिंग को जल्दी से खोल सकें। रिकॉर्डिंग खुलने पर ही उसे कैश करने के लिए छोड़ दें। हाल की रिकॉर्डिंग को पृष्ठभूमि में तैयार रखने के लिए इसे सक्षम करें।",
+        "data": {
+          "recording_media_sync_enabled": "रिकॉर्डिंग मीडिया सिंक",
+          "recording_media_sync_hours": "पृष्ठभूमि समन्वयन अंतराल",
+          "recording_media_storage_path": "कैश फ़ोल्डर रिकॉर्डिंग",
+          "recording_notification_quality": "अधिसूचना रिकॉर्डिंग गुणवत्ता",
+          "recording_media_days_order": "दिन का क्रम रिकार्ड करना",
+          "recording_media_clips_order": "रिकॉर्डिंग क्लिप ऑर्डर"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "हाल की रिकॉर्डिंग को स्वचालित रूप से कैश करें। यह भंडारण स्थान का उपयोग करता है और कैमरे को अधिक बार सक्रिय कर सकता है।",
+          "recording_media_sync_hours": "सामान्य पृष्ठभूमि कैच-अप सिंक कितनी बार चलना चाहिए। सिंक सक्षम होने पर हर दो मिनट में हाल की रिकॉर्डिंग की जाँच की जाती है।",
+          "recording_media_storage_path": "मीडियापाथप्लेसहोल्डर के अंतर्गत एक फ़ोल्डर का उपयोग करें। नए कैश्ड वीडियो और थंबनेल यहां संग्रहीत हैं।",
+          "recording_notification_quality": "मोबाइल सूचनाओं के लिए X-Sense के प्रत्यक्ष/उच्च-रिज़ॉल्यूशन क्लिप यूआरएल को प्राथमिकता देने के लिए HD चुनें। उपलब्ध होने पर कैमरा प्लेबैक कैप्चर पथ का उपयोग करने के लिए SD चुनें।",
+          "recording_media_days_order": "चुनें कि रिकॉर्डिंग व्यूअर में नए या पुराने दिन पहले दिखें या नहीं।",
+          "recording_media_clips_order": "चुनें कि क्या नई या पुरानी क्लिप प्रत्येक दिन सबसे पहले दिखाई देंगी।"
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "रिकॉर्डिंग कैश फ़ोल्डर `{old_path}` से `{new_path}` में बदल जाएगा। मौजूदा कैश्ड वीडियो और थंबनेल स्वचालित रूप से स्थानांतरित नहीं होते हैं। यदि आप चाहते हैं कि पुरानी कैश्ड रिकॉर्डिंग उपलब्ध रहे तो पहले मौजूदा वीडियोप्लेसहोल्डर और थंबप्लेसहोल्डर फ़ोल्डर्स को स्थानांतरित करें।"
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "मीडियापाथप्लेसहोल्डर के अंतर्गत एक फ़ोल्डर का उपयोग करें।"
+    },
+    "abort": {
+      "no_options": "इस X-Sense खाते के लिए कोई कॉन्फ़िगर करने योग्य विकल्प नहीं हैं।"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "सक्रिय"
+      },
+      "alarm_status": {
+        "name": "अलार्म स्थिति"
+      },
+      "connected": {
+        "name": "जुड़ा हुआ"
+      },
+      "door": {
+        "name": "दरवाज़ा"
+      },
+      "mailbox_schedule_active": {
+        "name": "मेलबॉक्स शेड्यूल सक्रिय"
+      },
+      "mute_status": {
+        "name": "डिवाइस खामोश"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "अलार्म ड्रिल"
+      },
+      "mute": {
+        "name": "मूक"
+      },
+      "test": {
+        "name": "डिवाइस परीक्षण"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "एआई डिटेक्शन"
+      },
+      "motion": {
+        "name": "गति"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "डिवाइस स्थिति",
+        "state": {
+          "normal": "सामान्य",
+          "low_battery": "कम बैटरी",
+          "malfunction": "खराबी",
+          "end_of_life": "जीवन का अंत"
+        }
+      },
+      "alarm_vol": {
+        "name": "अलार्म वॉल्यूम"
+      },
+      "wifi_rssi": {
+        "name": "वाईफ़ाईप्लेसहोल्डर सिग्नल शक्ति"
+      },
+      "ip_address": {
+        "name": "आईपी पता"
+      },
+      "co_reading": {
+        "name": "कोप्लेसहोल्डर पढ़ना"
+      },
+      "co_level": {
+        "name": "कोप्लेसधारक स्तर"
+      },
+      "peak_co_level": {
+        "name": "पीक कोप्लेसहोल्डर स्तर"
+      },
+      "peak_co_level_time": {
+        "name": "पीक कोप्लेसहोल्डर स्तर का समय"
+      },
+      "mcu_sw_version": {
+        "name": "MCU सॉफ़्टवेयर संस्करण"
+      },
+      "rf_level": {
+        "name": "सिग्नल की ताकत",
+        "state": {
+          "good": "अच्छा",
+          "moderate": "मध्यम",
+          "no_signal": "कोई सिग्नल नहीं",
+          "weak": "कमजोर"
+        }
+      },
+      "sw_version": {
+        "name": "सॉफ़्टवेयर संस्करण"
+      },
+      "voice_vol": {
+        "name": "आवाज की मात्रा"
+      },
+      "wifi_ssid": {
+        "name": "एसएसआईडीप्लेसहोल्डर"
+      },
+      "wifi_sw": {
+        "name": "वाईफ़िप्लेसहोल्डर मॉड्यूल फ़र्मवेयर संस्करण"
+      },
+      "last_self_test": {
+        "name": "डिवाइस परीक्षण परिणाम",
+        "state": {
+          "not_run": "भागो नहीं",
+          "success": "सफलता",
+          "failed": "असफल"
+        }
+      },
+      "last_self_test_time": {
+        "name": "डिवाइस परीक्षण का समय"
+      },
+      "radon_peak": {
+        "name": "पीक रेडॉन स्तर"
+      },
+      "radon_peak_time": {
+        "name": "पीक रेडॉन स्तर का समय"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "ग्रीन लाइन दहलीज"
+      },
+      "radon_maximum_threshold": {
+        "name": "लाल रेखा दहलीज"
+      },
+      "alarm_volume": {
+        "name": "अलार्म वॉल्यूम"
+      },
+      "voice_volume": {
+        "name": "आवाज की मात्रा"
+      },
+      "chirp_volume": {
+        "name": "चहचहाहट की मात्रा"
+      },
+      "reminder_volume": {
+        "name": "अनुस्मारक वॉल्यूम"
+      },
+      "temperature_adjustment": {
+        "name": "तापमान अंशांकन"
+      },
+      "humidity_adjustment": {
+        "name": "सापेक्ष आर्द्रता अंशांकन"
+      },
+      "warning_period": {
+        "name": "चेतावनी अवधि"
+      },
+      "temperature_min": {
+        "name": "तापमान रेंज न्यूनतम"
+      },
+      "temperature_max": {
+        "name": "तापमान रेंज अधिकतम"
+      },
+      "humidity_min": {
+        "name": "सापेक्ष आर्द्रता सीमा न्यूनतम"
+      },
+      "humidity_max": {
+        "name": "सापेक्षिक आर्द्रता सीमा अधिकतम"
+      },
+      "temperature_comfort_min": {
+        "name": "आरामदायक तापमान न्यूनतम"
+      },
+      "temperature_comfort_max": {
+        "name": "आरामदायक तापमान अधिकतम"
+      },
+      "humidity_comfort_min": {
+        "name": "आरामदायक आर्द्रता न्यूनतम"
+      },
+      "humidity_comfort_max": {
+        "name": "आरामदायक आर्द्रता अधिकतम"
+      },
+      "detection_sensitivity": {
+        "name": "जांच संवेदनशीलता"
+      },
+      "driveway_sensitivity": {
+        "name": "सेंसर संवेदनशीलता"
+      },
+      "trigger_brightness": {
+        "name": "ट्रिगर चमक"
+      },
+      "standby_brightness": {
+        "name": "स्टैंडबाय चमक"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "अलार्म टोन"
+      },
+      "chirp_tone": {
+        "name": "चहचहाहट टोन"
+      },
+      "reminder_tone": {
+        "name": "अनुस्मारक टोन"
+      },
+      "alarm_interval": {
+        "name": "अलार्म अंतराल"
+      },
+      "reminder_time": {
+        "name": "अनुस्मारक समय"
+      },
+      "mailbox_report_interval": {
+        "name": "डेटा रिपोर्टिंग अंतराल"
+      },
+      "temperature_unit": {
+        "name": "तापमान इकाई"
+      },
+      "radon_unit": {
+        "name": "रेडॉन यूनिट"
+      },
+      "comfort_type": {
+        "name": "आराम के स्तर को अनुकूलित करें"
+      },
+      "led_brightness": {
+        "name": "एलईडी चमक"
+      },
+      "light_motion_on_time": {
+        "name": "स्वचालित प्रकाश अवधि"
+      },
+      "light_scene": {
+        "name": "प्रकाश दृश्य"
+      },
+      "light_app_on_time": {
+        "name": "ऐप समय पर"
+      }
+    }
+  }
+}

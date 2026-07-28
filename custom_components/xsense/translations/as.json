@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "ডিভাইচ ইতিমধ্যে বিন্যাস কৰা হৈছে",
+      "reauth_successful": "পুনৰ প্ৰমাণীকৰণ সফল হৈছিল",
+      "reconfigure_successful": "পুনৰ বিন্যাস সফল হৈছিল"
+    },
+    "error": {
+      "cannot_connect": "সংযোগ কৰাত ব্যৰ্থ",
+      "invalid_auth": "অবৈধ প্ৰমাণীকৰণ",
+      "unknown": "অপ্ৰত্যাশিত ভুল"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "আপোনাৰ X-Sense একাউণ্টৰ সৈতে পুনৰ চাইন ইন কৰক।",
+        "data": {
+          "email": "ইমেইলপ্লেচহোল্ডাৰ",
+          "password": "পাছৱৰ্ড"
+        }
+      },
+      "reconfigure": {
+        "description": "এই সংহতিৰ দ্বাৰা ব্যৱহৃত X-Sense একাউণ্ট আপডেইট কৰক।",
+        "data": {
+          "email": "ইমেইলপ্লেচহোল্ডাৰ",
+          "password": "পাছৱৰ্ড"
+        }
+      },
+      "user": {
+        "description": "আপোনাৰ X-Sense একাউণ্টৰ সৈতে চাইন ইন কৰক।",
+        "data": {
+          "email": "ইমেইলপ্লেচহোল্ডাৰ",
+          "password": "পাছৱৰ্ড"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "ৰেকৰ্ডিং মিডিয়া ছিঙ্কে Home Assistant মাধ্যমৰ অন্তৰ্গত কেমেৰা ক্লিপসমূহ কেশ্ব কৰে যাতে X-Sense ৰেকৰ্ডিংসমূহ চাইডবাৰ, মিডিয়া ব্ৰাউজাৰ, আৰু মোবাইল জাননীসমূহে ৰেকৰ্ডিংসমূহ দ্ৰুতভাৱে খোলিব পাৰে। ৰেকৰ্ডিংসমূহ খোলাৰ পিছতহে ইয়াক কেশ্ব কৰিবলৈ বন্ধ কৰক। ইয়াক পটভূমিত শেহতীয়া ৰেকৰ্ডিংসমূহ সাজু কৰি ৰাখিবলৈ সামৰ্থবান কৰক।",
+        "data": {
+          "recording_media_sync_enabled": "ৰেকৰ্ডিং মিডিয়া ছিংক",
+          "recording_media_sync_hours": "পটভূমি ছিঙ্ক ব্যৱধান",
+          "recording_media_storage_path": "ৰেকৰ্ডিং কেচ ফোল্ডাৰ",
+          "recording_notification_quality": "অধিসূচনা ৰেকৰ্ডিং মান",
+          "recording_media_days_order": "ৰেকৰ্ডিং ডে অৰ্ডাৰ",
+          "recording_media_clips_order": "ক্লিপ অৰ্ডাৰ ৰেকৰ্ডিং"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "শেহতীয়া ৰেকৰ্ডিংসমূহ স্বয়ংক্ৰিয়ভাৱে কেশ্ব কৰক। ইয়াৰ দ্বাৰা সংৰক্ষণ স্থান ব্যৱহাৰ কৰা হয় আৰু কেমেৰাক অধিক সঘনাই জগাই তুলিব পাৰে।",
+          "recording_media_sync_hours": "সাধাৰণ পটভূমি কেচ-আপ ছিংক কিমান সঘনাই চলিব লাগে। শেহতীয়া ৰেকৰ্ডিংসমূহ প্ৰতি দুমিনিটৰ মূৰে মূৰে পৰীক্ষা কৰা হয় যেতিয়া ছিঙ্ক সামৰ্থবান কৰা হয়।",
+          "recording_media_storage_path": "/media ৰ অন্তৰ্গত এটা ফোল্ডাৰ ব্যৱহাৰ কৰক। নতুন কেচ কৰা ভিডিঅ' আৰু থাম্বনেইলসমূহ ইয়াত সংৰক্ষণ কৰা হয়।",
+          "recording_notification_quality": "মোবাইল জাননীসমূহৰ বাবে X-Sense ৰ প্ৰত্যক্ষ/উচ্চ-ৰিজ'লিউচন ক্লিপ URLসমূহ পছন্দ কৰিবলে HD নিৰ্ব্বাচন কৰক। উপলব্ধ হ'লে কেমেৰা প্লেবেক কেপচাৰ পথ ব্যৱহাৰ কৰিবলে SD নিৰ্ব্বাচন কৰক।",
+          "recording_media_days_order": "ৰেকৰ্ডিং দৰ্শকত নতুন বা পুৰণি দিন প্ৰথমে দেখা দিয়ে নে নাই বাছক।",
+          "recording_media_clips_order": "প্ৰতিটো দিনৰ ভিতৰত নতুন বা পুৰণি ক্লিপসমূহ প্ৰথমে দেখা দিয়ে নেকি বাছক।"
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "ৰেকৰ্ডিং কেশ্ব ফোল্ডাৰ `{old_path}` ৰ পৰা `{new_path}` লৈ সলনি হ'ব। বৰ্তমানৰ কেচ কৰা ভিডিঅ' আৰু থাম্বনেইলসমূহ স্বয়ংক্ৰিয়ভাৱে স্থানান্তৰ কৰা নহয়। বৰ্ত্তমানৰ `videos` আৰু `thumbs` ফোল্ডাৰসমূহ প্ৰথমে স্থানান্তৰ কৰক যদি আপুনি পুৰণি কেশ্ব কৰা ৰেকৰ্ডিংসমূহ উপলব্ধ থাকিব বিচাৰে।"
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "/media ৰ অন্তৰ্গত এটা ফোল্ডাৰ ব্যৱহাৰ কৰক।"
+    },
+    "abort": {
+      "no_options": "এই X-Sense একাউণ্টৰ বাবে কোনো বিন্যাসযোগ্য বিকল্প নাই ।"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "সক্ৰিয় কৰা হৈছে"
+      },
+      "alarm_status": {
+        "name": "এলাৰ্মৰ অৱস্থা"
+      },
+      "connected": {
+        "name": "সংযোগ কৰা হৈছে"
+      },
+      "door": {
+        "name": "দুৱাৰ"
+      },
+      "mailbox_schedule_active": {
+        "name": "মেইলবক্স সূচী সক্ৰিয়"
+      },
+      "mute_status": {
+        "name": "ডিভাইচ নিস্তব্ধ কৰা হৈছে"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "এলাৰ্ম ড্ৰিল"
+      },
+      "mute": {
+        "name": "নিস্তব্ধ"
+      },
+      "test": {
+        "name": "ডিভাইচ পৰীক্ষা"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "এআই ধৰা পেলোৱা"
+      },
+      "motion": {
+        "name": "গতি"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "ডিভাইচৰ অৱস্থা",
+        "state": {
+          "normal": "স্বাভাৱিক",
+          "low_battery": "বেটাৰী কম",
+          "malfunction": "বিজুতি",
+          "end_of_life": "জীৱনৰ শেষ"
+        }
+      },
+      "alarm_vol": {
+        "name": "এলাৰ্ম ভলিউম"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi সংকেতৰ শক্তি"
+      },
+      "ip_address": {
+        "name": "আই পি ঠিকনা"
+      },
+      "co_reading": {
+        "name": "CO পঢ়া"
+      },
+      "co_level": {
+        "name": "CO স্তৰ"
+      },
+      "peak_co_level": {
+        "name": "শীৰ্ষ CO স্তৰ"
+      },
+      "peak_co_level_time": {
+        "name": "শীৰ্ষ CO স্তৰৰ সময়"
+      },
+      "mcu_sw_version": {
+        "name": "MCU চফ্টৱেৰ সংস্কৰণ"
+      },
+      "rf_level": {
+        "name": "সংকেতৰ শক্তি",
+        "state": {
+          "good": "ভাল",
+          "moderate": "মধ্যমীয়া",
+          "no_signal": "কোনো সংকেত নাই",
+          "weak": "দুৰ্বল"
+        }
+      },
+      "sw_version": {
+        "name": "চফ্টৱেৰ সংস্কৰণ"
+      },
+      "voice_vol": {
+        "name": "কণ্ঠৰ ভলিউম"
+      },
+      "wifi_ssid": {
+        "name": "SSID ৰ দ্বাৰা"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi মডিউল ফাৰ্মৱেৰ সংস্কৰণ"
+      },
+      "last_self_test": {
+        "name": "ডিভাইচ পৰীক্ষাৰ ফলাফল",
+        "state": {
+          "not_run": "ৰান নহয়",
+          "success": "সফলতা",
+          "failed": "বিফল হ'ল"
+        }
+      },
+      "last_self_test_time": {
+        "name": "ডিভাইচ পৰীক্ষাৰ সময়"
+      },
+      "radon_peak": {
+        "name": "শীৰ্ষ ৰেডন স্তৰ"
+      },
+      "radon_peak_time": {
+        "name": "শীৰ্ষ ৰেডন স্তৰৰ সময়"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "গ্ৰীণ লাইন থ্ৰেছহোল্ড"
+      },
+      "radon_maximum_threshold": {
+        "name": "ৰেড লাইন থ্ৰেছহোল্ড"
+      },
+      "alarm_volume": {
+        "name": "এলাৰ্ম ভলিউম"
+      },
+      "voice_volume": {
+        "name": "কণ্ঠৰ ভলিউম"
+      },
+      "chirp_volume": {
+        "name": "চিৰ্প ভলিউম"
+      },
+      "reminder_volume": {
+        "name": "সোঁৱৰাই দিয়া ভলিউম"
+      },
+      "temperature_adjustment": {
+        "name": "তাপমাত্ৰা মানাংকন"
+      },
+      "humidity_adjustment": {
+        "name": "আপেক্ষিক আৰ্দ্ৰতা মানাংকন"
+      },
+      "warning_period": {
+        "name": "সতৰ্কবাণীৰ সময়সীমা"
+      },
+      "temperature_min": {
+        "name": "তাপমাত্ৰাৰ পৰিসৰ নূন্যতম"
+      },
+      "temperature_max": {
+        "name": "তাপমাত্ৰাৰ পৰিসৰ সৰ্বোচ্চ"
+      },
+      "humidity_min": {
+        "name": "আপেক্ষিক আৰ্দ্ৰতাৰ পৰিসৰ নূন্যতম"
+      },
+      "humidity_max": {
+        "name": "আপেক্ষিক আৰ্দ্ৰতাৰ পৰিসৰ সৰ্বোচ্চ"
+      },
+      "temperature_comfort_min": {
+        "name": "আৰামৰ উষ্ণতা নূন্যতম"
+      },
+      "temperature_comfort_max": {
+        "name": "আৰামৰ উষ্ণতা সৰ্বোচ্চ"
+      },
+      "humidity_comfort_min": {
+        "name": "আৰামৰ আৰ্দ্ৰতা নূন্যতম"
+      },
+      "humidity_comfort_max": {
+        "name": "আৰামৰ আৰ্দ্ৰতা সৰ্বোচ্চ"
+      },
+      "detection_sensitivity": {
+        "name": "ধৰা পেলোৱা সংবেদনশীলতা"
+      },
+      "driveway_sensitivity": {
+        "name": "চেন্সৰৰ সংবেদনশীলতা"
+      },
+      "trigger_brightness": {
+        "name": "ট্ৰিগাৰ উজ্জ্বলতা"
+      },
+      "standby_brightness": {
+        "name": "ষ্টেণ্ডবাই উজ্জ্বলতা"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "এলাৰ্ম টোন"
+      },
+      "chirp_tone": {
+        "name": "চিৰ্প টোন"
+      },
+      "reminder_tone": {
+        "name": "সোঁৱৰাই দিয়া সুৰ"
+      },
+      "alarm_interval": {
+        "name": "এলাৰ্ম ব্যৱধান"
+      },
+      "reminder_time": {
+        "name": "সোঁৱৰাই দিয়াৰ সময়"
+      },
+      "mailbox_report_interval": {
+        "name": "তথ্য প্ৰতিবেদন ব্যৱধান"
+      },
+      "temperature_unit": {
+        "name": "তাপমাত্ৰা একক"
+      },
+      "radon_unit": {
+        "name": "ৰেডন ইউনিট"
+      },
+      "comfort_type": {
+        "name": "আৰামৰ স্তৰ কাষ্টমাইজ কৰক"
+      },
+      "led_brightness": {
+        "name": "LED উজ্জ্বলতা"
+      },
+      "light_motion_on_time": {
+        "name": "স্বয়ংক্ৰিয় পোহৰৰ সময়সীমা"
+      },
+      "light_scene": {
+        "name": "পোহৰৰ দৃশ্য"
+      },
+      "light_app_on_time": {
+        "name": "এপ অন টাইম"
+      }
+    }
+  }
+}

@@ -143,6 +143,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A Coderingsautomatiseringen op toetsenborden
+Het SKP0A-toetsenbord publiceert niet elke individuele toetsaanslag. Het publiceert een toetsenbordgebeurtenis nadat een geldige X-Sense-app-gemaakte code is ingediend met Home, Away of Disarmed. Door de integratie wordt de ingediende codegebeurtenis zichtbaar als `xsense_keypad_code`.
+
+Gebruik de meegeleverde blauwdruk met één code om Home Assistant-acties uit te voeren voor één geselecteerde code. U kunt optioneel vereisen dat de Home-, Away- of Disarmed-modusknop wordt gebruikt om de code in te dienen, en optioneel de automatisering beperken tot één serienummer van het bediendeel.
+
+[![Blauwdruk importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Gebruik de routerblauwdruk als u wilt dat één automatisering meerdere toetsenbordcodes toewijst aan verschillende Home Assistant-acties.
+
+[![Routerblauwdruk importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+De toetsenbordmodusknoppen fungeren als verzendknoppen. Als de geselecteerde modus al actief is, publiceert X-Sense mogelijk geen nieuwe gebeurtenis. Kies daarom een ​​van de momenteel inactieve modusknoppen wanneer u een code indient.
+
+____________________________________________________________
+
 ## Voorbeelden van automatiseringen
 Met deze integratie kun je verschillende automatiseringen maken. Hier zijn enkele voorbeelden:
 

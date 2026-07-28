@@ -142,6 +142,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## Tự động hóa mã bàn phím SKP0A
+Bàn phím SKP0A không xuất bản từng lần nhấn phím riêng lẻ. Nó xuất bản một sự kiện bàn phím sau khi mã do ứng dụng X-Sense hợp lệ được gửi cùng với Home, Away hoặc Disarmed. Quá trình tích hợp hiển thị sự kiện mã được gửi đó dưới dạng `xsense_keypad_code`.
+
+Sử dụng bản thiết kế mã đơn đi kèm để chạy các hành động Home Assistant cho một mã đã chọn. Bạn có thể tùy ý yêu cầu nút chế độ Home, Away hoặc Disarmed được sử dụng để gửi mã và tùy ý giới hạn tự động hóa ở một số sê-ri bàn phím.
+
+[![Nhập bản thiết kế](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Sử dụng bản thiết kế bộ định tuyến khi bạn muốn một công cụ tự động hóa ánh xạ một số mã bàn phím tới các hành động Home Assistant khác nhau.
+
+[![Nhập bản thiết kế bộ định tuyến](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Các nút chế độ bàn phím hoạt động như các nút gửi. Nếu chế độ đã chọn đã hoạt động, X-Sense có thể không xuất bản sự kiện mới, vì vậy hãy chọn một trong các nút chế độ hiện không hoạt động khi gửi mã.
+
+____________________________________________________________
+
 ## Ví dụ tự động hóa
 Với tích hợp này, có thể tạo nhiều automation khác nhau. Một vài ví dụ:
 

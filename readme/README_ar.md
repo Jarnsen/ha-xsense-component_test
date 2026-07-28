@@ -240,3 +240,18 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A أتمتة رمز لوحة المفاتيح
+لا تقوم لوحة المفاتيح SKP0A بنشر كل ضغطة مفتاح فردية. ينشر حدث لوحة المفاتيح بعد إرسال رمز صالح تم إنشاؤه بواسطة تطبيق X-Sense باستخدام Home أو Away أو Disarmed. يكشف التكامل عن حدث التعليمات البرمجية المرسل كـ `xsense_keypad_code`.
+
+استخدم مخطط الكود المفرد المضمن لتشغيل إجراءات Home Assistant لرمز واحد محدد. يمكنك اختياريًا طلب استخدام زر الوضع Home أو Away أو Disarmed لإرسال الرمز، واختياريًا تحديد الأتمتة برقم تسلسلي واحد للوحة المفاتيح.
+
+[![استيراد المخطط](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+استخدم مخطط جهاز التوجيه عندما تريد أن تقوم إحدى الأتمتة بتعيين العديد من رموز لوحة المفاتيح لإجراءات Home Assistant المختلفة.
+
+[![استيراد مخطط جهاز التوجيه](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+تعمل أزرار وضع لوحة المفاتيح كأزرار إرسال. إذا كان الوضع المحدد نشطًا بالفعل، فقد لا ينشر X-Sense حدثًا جديدًا، لذا اختر أحد أزرار الوضع غير النشط حاليًا عند إرسال الرمز.
+
+____________________________________________________________

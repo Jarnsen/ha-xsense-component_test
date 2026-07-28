@@ -84,6 +84,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A tastatūras kodu automatizācija
+SKP0A tastatūra nepublicē katru atsevišķu taustiņu nospiešanu. Tas publicē tastatūras notikumu pēc derīga X-Sense lietotnes izveidotā koda iesniegšanas ar Home, Away vai Disarmed. Integrācija parāda šo iesniegtā koda notikumu kā `xsense_keypad_code`.
+
+Izmantojiet iekļauto viena koda projektu, lai veiktu Home Assistant darbības vienam atlasītajam kodam. Varat pēc izvēles pieprasīt režīma pogu Home, Away vai Disarmed, ko izmanto, lai iesniegtu kodu, un pēc izvēles ierobežot automatizāciju līdz vienam tastatūras sērijas numuram.
+
+[![Importēt projektu](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Izmantojiet maršrutētāja projektu, ja vēlaties, lai viena automatizācija noteiktu vairākus tastatūras kodus ar dažādām Home Assistant darbībām.
+
+[![Importēt maršrutētāja projektu](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Tastatūras režīma pogas darbojas kā iesniegšanas pogas. Ja izvēlētais režīms jau ir aktīvs, X-Sense var nepublicēt jaunu notikumu, tāpēc, iesniedzot kodu, izvēlieties kādu no pašlaik neaktīvā režīma pogām.
+
+____________________________________________________________
+
 ## Automatizācijas piemēri
 ```yaml
 automation:

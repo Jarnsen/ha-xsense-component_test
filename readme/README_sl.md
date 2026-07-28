@@ -217,3 +217,18 @@ actions:
 ```
 
 ____________________________________________________________
+
+## Avtomatizacija kode tipkovnice SKP0A
+Tipkovnica SKP0A ne objavi vsakega posameznega pritiska na tipko. Objavi dogodek tipkovnice po predložitvi veljavne kode X-Sense, ustvarjene v aplikaciji, z Home, Away ali Disarmed. Integracija izpostavi dogodek predložene kode kot `xsense_keypad_code`.
+
+Uporabite priloženi načrt z eno kodo za izvajanje dejanj Home Assistant za eno izbrano kodo. Po želji lahko zahtevate gumb načina Home, Away ali Disarmed, ki se uporablja za oddajo kode, in po želji omejite avtomatizacijo na eno serijsko številko tipkovnice.
+
+[![Uvozi načrt](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Uporabite načrt usmerjevalnika, če želite, da ena avtomatizacija preslika več kod tipkovnice v različna dejanja Home Assistant.
+
+[![Uvozi načrt usmerjevalnika](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Gumbi načina tipkovnice delujejo kot gumbi za pošiljanje. Če je izbrani način že aktiven, X-Sense morda ne bo objavil novega dogodka, zato pri oddaji kode izberite enega od gumbov trenutno neaktivnega načina.
+
+____________________________________________________________

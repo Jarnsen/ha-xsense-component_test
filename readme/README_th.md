@@ -143,6 +143,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## การทำงานอัตโนมัติของรหัสปุ่มกด SKP0A
+ปุ่มกด SKP0A ไม่ได้เผยแพร่ทุกการกดปุ่มแต่ละครั้ง โดยจะเผยแพร่เหตุการณ์ปุ่มกดหลังจากส่งโค้ดที่สร้างโดยแอป X-Sense ที่ถูกต้องด้วย Home, Away หรือ Disarmed การรวมเผยให้เห็นเหตุการณ์โค้ดที่ส่งมาเป็น `xsense_keypad_code`
+
+ใช้พิมพ์เขียวรหัสเดียวที่ให้มาเพื่อรันการดำเนินการ Home Assistant สำหรับรหัสที่เลือกหนึ่งรหัส คุณสามารถเลือกกำหนดให้ใช้ปุ่มโหมด Home, Away หรือ Disarmed ที่ใช้ในการส่งโค้ด และอาจจำกัดการทำงานอัตโนมัติไว้ที่หมายเลขซีเรียลของแผงปุ่มกดเพียงหมายเลขเดียวก็ได้
+
+[![นำเข้าพิมพ์เขียว](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+ใช้พิมพ์เขียวของเราเตอร์เมื่อคุณต้องการให้ระบบอัตโนมัติหนึ่งเครื่องแมปรหัสปุ่มกดหลายรหัสกับการดำเนินการต่างๆ ของ Home Assistant
+
+[![นำเข้าพิมพ์เขียวเราเตอร์](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+ปุ่มโหมดปุ่มกดทำหน้าที่เป็นปุ่มส่ง หากโหมดที่เลือกเปิดใช้งานอยู่ X-Sense อาจไม่เผยแพร่กิจกรรมใหม่ ดังนั้นให้เลือกปุ่มโหมดที่ไม่ใช้งานปุ่มใดปุ่มหนึ่งในขณะส่งรหัส
+
+____________________________________________________________
+
 ## ตัวอย่างระบบอัตโนมัติ
 ด้วย integration นี้สามารถสร้าง automation ได้หลายแบบ ตัวอย่างเช่น:
 

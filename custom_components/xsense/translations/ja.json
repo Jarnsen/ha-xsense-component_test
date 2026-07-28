@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "デバイスはすでに構成されています",
+      "reauth_successful": "再認証に成功しました",
+      "reconfigure_successful": "再構成は成功しました"
+    },
+    "error": {
+      "cannot_connect": "接続に失敗しました",
+      "invalid_auth": "無効な認証",
+      "unknown": "予期しないエラー"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "X-Sense アカウントで再度サインインします。",
+        "data": {
+          "email": "メールプレースホルダー",
+          "password": "パスワード"
+        }
+      },
+      "reconfigure": {
+        "description": "この統合で使用される X-Sense アカウントを更新します。",
+        "data": {
+          "email": "メールプレースホルダー",
+          "password": "パスワード"
+        }
+      },
+      "user": {
+        "description": "X-Sense アカウントでサインインします。",
+        "data": {
+          "email": "メールプレースホルダー",
+          "password": "パスワード"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "録画メディアの同期により、Home Assistant メディアの下にカメラ クリップがキャッシュされるため、X-Sense 録画サイドバー、メディア ブラウザ、およびモバイル通知で録画をすばやく開くことができます。録画を開いたときにのみキャッシュするには、オフのままにしておきます。最近の録音をバックグラウンドで準備できるようにするには、これを有効にします。",
+        "data": {
+          "recording_media_sync_enabled": "記録メディアの同期",
+          "recording_media_sync_hours": "バックグラウンド同期間隔",
+          "recording_media_storage_path": "録画キャッシュフォルダー",
+          "recording_notification_quality": "通知記録の品質",
+          "recording_media_days_order": "収録日順",
+          "recording_media_clips_order": "録音クリップの順序"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "最近の録音を自動的にキャッシュします。これによりストレージ容量が使用され、カメラがより頻繁にスリープ状態になる可能性があります。",
+          "recording_media_sync_hours": "通常のバックグラウンドキャッチアップ同期を実行する頻度。同期が有効になっている場合、最近の録音は数分ごとにチェックされます。",
+          "recording_media_storage_path": "/media の下のフォルダーを使用します。新しいキャッシュされたビデオとサムネイルはここに保存されます。",
+          "recording_notification_quality": "モバイル通知に X-Sense の直接/高解像度クリップ URL を優先するには、HD を選択します。利用可能な場合は、SD を選択して、カメラ再生キャプチャ パスを使用します。",
+          "recording_media_days_order": "録画ビューアに新しい日と古い日のどちらを最初に表示するかを選択します。",
+          "recording_media_clips_order": "新しいクリップと古いクリップのどちらを毎日最初に表示するかを選択します。"
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "記録キャッシュ フォルダーが `{old_path}` から `{new_path}` に変更されます。キャッシュされた既存のビデオとサムネイルは自動的に移動されません。キャッシュされた古い録画を引き続き使用できるようにするには、まず既存の `videos` フォルダーと `thumbs` フォルダーを移動します。"
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "/media の下のフォルダーを使用します。"
+    },
+    "abort": {
+      "no_options": "この X-Sense アカウントには構成可能なオプションはありません。"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "アクティブ化された"
+      },
+      "alarm_status": {
+        "name": "アラームステータス"
+      },
+      "connected": {
+        "name": "接続済み"
+      },
+      "door": {
+        "name": "ドア"
+      },
+      "mailbox_schedule_active": {
+        "name": "メールボックススケジュールがアクティブです"
+      },
+      "mute_status": {
+        "name": "デバイスのサイレント状態"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "警報訓練"
+      },
+      "mute": {
+        "name": "ミュート"
+      },
+      "test": {
+        "name": "デバイステスト"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI検出"
+      },
+      "motion": {
+        "name": "モーション"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "デバイスのステータス",
+        "state": {
+          "normal": "ノーマル",
+          "low_battery": "バッテリー残量低下",
+          "malfunction": "故障",
+          "end_of_life": "生産終了"
+        }
+      },
+      "alarm_vol": {
+        "name": "アラーム音量"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi 信号強度"
+      },
+      "ip_address": {
+        "name": "IPアドレス"
+      },
+      "co_reading": {
+        "name": "CO 読書"
+      },
+      "co_level": {
+        "name": "コップスホルダーレベル"
+      },
+      "peak_co_level": {
+        "name": "CO のピークレベル"
+      },
+      "peak_co_level_time": {
+        "name": "CO のピーク レベル時間"
+      },
+      "mcu_sw_version": {
+        "name": "MCU ソフトウェア バージョン"
+      },
+      "rf_level": {
+        "name": "信号強度",
+        "state": {
+          "good": "良い",
+          "moderate": "中等度",
+          "no_signal": "信号がありません",
+          "weak": "弱い"
+        }
+      },
+      "sw_version": {
+        "name": "ソフトウェアバージョン"
+      },
+      "voice_vol": {
+        "name": "声の大きさ"
+      },
+      "wifi_ssid": {
+        "name": "SSIDプレースホルダー"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi モジュールのファームウェア バージョン"
+      },
+      "last_self_test": {
+        "name": "デバイスのテスト結果",
+        "state": {
+          "not_run": "実行しない",
+          "success": "成功",
+          "failed": "失敗しました"
+        }
+      },
+      "last_self_test_time": {
+        "name": "デバイスのテスト時間"
+      },
+      "radon_peak": {
+        "name": "ピークラドンレベル"
+      },
+      "radon_peak_time": {
+        "name": "ピークラドンレベル時間"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "緑の線のしきい値"
+      },
+      "radon_maximum_threshold": {
+        "name": "赤線のしきい値"
+      },
+      "alarm_volume": {
+        "name": "アラーム音量"
+      },
+      "voice_volume": {
+        "name": "声の大きさ"
+      },
+      "chirp_volume": {
+        "name": "チャープボリューム"
+      },
+      "reminder_volume": {
+        "name": "リマインダーの音量"
+      },
+      "temperature_adjustment": {
+        "name": "温度校正"
+      },
+      "humidity_adjustment": {
+        "name": "相対湿度の校正"
+      },
+      "warning_period": {
+        "name": "警戒期間"
+      },
+      "temperature_min": {
+        "name": "最小温度範囲"
+      },
+      "temperature_max": {
+        "name": "最大温度範囲"
+      },
+      "humidity_min": {
+        "name": "相対湿度範囲の最小値"
+      },
+      "humidity_max": {
+        "name": "最大相対湿度範囲"
+      },
+      "temperature_comfort_min": {
+        "name": "最低快適温度"
+      },
+      "temperature_comfort_max": {
+        "name": "最高快適温度"
+      },
+      "humidity_comfort_min": {
+        "name": "最低快適湿度"
+      },
+      "humidity_comfort_max": {
+        "name": "快適湿度の最大値"
+      },
+      "detection_sensitivity": {
+        "name": "検出感度"
+      },
+      "driveway_sensitivity": {
+        "name": "センサー感度"
+      },
+      "trigger_brightness": {
+        "name": "トリガーの明るさ"
+      },
+      "standby_brightness": {
+        "name": "待機時の明るさ"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "アラーム音"
+      },
+      "chirp_tone": {
+        "name": "チャープトーン"
+      },
+      "reminder_tone": {
+        "name": "リマインダートーン"
+      },
+      "alarm_interval": {
+        "name": "アラーム間隔"
+      },
+      "reminder_time": {
+        "name": "リマインダー時間"
+      },
+      "mailbox_report_interval": {
+        "name": "データレポート間隔"
+      },
+      "temperature_unit": {
+        "name": "温度単位"
+      },
+      "radon_unit": {
+        "name": "ラドンユニット"
+      },
+      "comfort_type": {
+        "name": "快適さレベルをカスタマイズする"
+      },
+      "led_brightness": {
+        "name": "LEDの明るさ"
+      },
+      "light_motion_on_time": {
+        "name": "自動点灯時間"
+      },
+      "light_scene": {
+        "name": "光の情景"
+      },
+      "light_app_on_time": {
+        "name": "アプリはオンタイムで"
+      }
+    }
+  }
+}

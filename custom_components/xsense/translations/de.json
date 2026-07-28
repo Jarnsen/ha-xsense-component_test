@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Gerät ist bereits konfiguriert",
+      "reauth_successful": "Die erneute Authentifizierung war erfolgreich",
+      "reconfigure_successful": "Die Neukonfiguration war erfolgreich"
+    },
+    "error": {
+      "cannot_connect": "Verbindung konnte nicht hergestellt werden",
+      "invalid_auth": "Ungültige Authentifizierung",
+      "unknown": "Unerwarteter Fehler"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Melden Sie sich erneut mit Ihrem X-Sense-Konto an.",
+        "data": {
+          "email": "E-Mail",
+          "password": "Passwort"
+        }
+      },
+      "reconfigure": {
+        "description": "Aktualisieren Sie das von dieser Integration verwendete X-Sense-Konto.",
+        "data": {
+          "email": "E-Mail",
+          "password": "Passwort"
+        }
+      },
+      "user": {
+        "description": "Melden Sie sich mit Ihrem X-Sense-Konto an.",
+        "data": {
+          "email": "E-Mail",
+          "password": "Passwort"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Bei der Aufzeichnungsmediensynchronisierung werden Kameraclips unter Home Assistant-Medien zwischengespeichert, sodass die X-Sense-Aufzeichnungsseitenleiste, der Medienbrowser und mobile Benachrichtigungen Aufzeichnungen schnell öffnen können. Lassen Sie die Option deaktiviert, um Aufzeichnungen nur dann zwischenzuspeichern, wenn sie geöffnet sind. Aktivieren Sie es, um aktuelle Aufnahmen im Hintergrund bereitzuhalten.",
+        "data": {
+          "recording_media_sync_enabled": "Synchronisierung der Aufnahmemedien",
+          "recording_media_sync_hours": "Hintergrundsynchronisierungsintervall",
+          "recording_media_storage_path": "Aufnahme-Cache-Ordner",
+          "recording_notification_quality": "Qualität der Benachrichtigungsaufzeichnung",
+          "recording_media_days_order": "Reihenfolge der Aufnahmetage",
+          "recording_media_clips_order": "Reihenfolge der Aufnahmeclips"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Aktuelle Aufnahmen automatisch zwischenspeichern. Dadurch wird Speicherplatz beansprucht und die Kameras können möglicherweise häufiger aktiviert werden.",
+          "recording_media_sync_hours": "Wie oft die normale Nachholsynchronisierung im Hintergrund ausgeführt werden soll. Aktuelle Aufnahmen werden alle paar Minuten überprüft, wenn die Synchronisierung aktiviert ist.",
+          "recording_media_storage_path": "Verwenden Sie einen Ordner unter /media. Hier werden neue zwischengespeicherte Videos und Miniaturansichten gespeichert.",
+          "recording_notification_quality": "Wählen Sie HD, um die direkten/hochauflösenden Clip-URLs von X-Sense für mobile Benachrichtigungen zu bevorzugen. Wählen Sie SD, um den Aufnahmepfad für die Kamerawiedergabe zu verwenden, sofern verfügbar.",
+          "recording_media_days_order": "Wählen Sie, ob neuere oder ältere Tage zuerst im Aufzeichnungsviewer angezeigt werden.",
+          "recording_media_clips_order": "Wählen Sie, ob neuere oder ältere Clips an jedem Tag zuerst angezeigt werden."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Der Aufnahme-Cache-Ordner ändert sich von `{old_path}` zu `{new_path}`. Vorhandene zwischengespeicherte Videos und Miniaturansichten werden nicht automatisch verschoben. Verschieben Sie zuerst die vorhandenen Ordner `videos` und `thumbs`, wenn alte zwischengespeicherte Aufnahmen weiterhin verfügbar bleiben sollen."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Verwenden Sie einen Ordner unter /media."
+    },
+    "abort": {
+      "no_options": "Für dieses X-Sense-Konto gibt es keine konfigurierbaren Optionen."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Aktiviert"
+      },
+      "alarm_status": {
+        "name": "Alarmstatus"
+      },
+      "connected": {
+        "name": "Verbunden"
+      },
+      "door": {
+        "name": "Tür"
+      },
+      "mailbox_schedule_active": {
+        "name": "Postfachzeitplan aktiv"
+      },
+      "mute_status": {
+        "name": "Gerät stummgeschaltet"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Alarmübung"
+      },
+      "mute": {
+        "name": "Stumm"
+      },
+      "test": {
+        "name": "Gerätetest"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "KI-Erkennung"
+      },
+      "motion": {
+        "name": "Bewegung"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Gerätestatus",
+        "state": {
+          "normal": "Normal",
+          "low_battery": "Batterie schwach",
+          "malfunction": "Fehlfunktion",
+          "end_of_life": "Lebensende"
+        }
+      },
+      "alarm_vol": {
+        "name": "Alarmlautstärke"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi Signalstärke"
+      },
+      "ip_address": {
+        "name": "IP-Adresse"
+      },
+      "co_reading": {
+        "name": "CO Lesung"
+      },
+      "co_level": {
+        "name": "CO-Ebene"
+      },
+      "peak_co_level": {
+        "name": "Höchster CO-Level"
+      },
+      "peak_co_level_time": {
+        "name": "Spitzenzeit des CO-Levels"
+      },
+      "mcu_sw_version": {
+        "name": "MCU-Softwareversion"
+      },
+      "rf_level": {
+        "name": "Signalstärke",
+        "state": {
+          "good": "Gut",
+          "moderate": "Mäßig",
+          "no_signal": "Kein Signal",
+          "weak": "Schwach"
+        }
+      },
+      "sw_version": {
+        "name": "Softwareversion"
+      },
+      "voice_vol": {
+        "name": "Sprachlautstärke"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Firmware-Version des Wi-Fi-Moduls"
+      },
+      "last_self_test": {
+        "name": "Gerätetestergebnis",
+        "state": {
+          "not_run": "Nicht ausgeführt",
+          "success": "Erfolg",
+          "failed": "Fehlgeschlagen"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Gerätetestzeit"
+      },
+      "radon_peak": {
+        "name": "Höchster Radonwert"
+      },
+      "radon_peak_time": {
+        "name": "Zeit des höchsten Radonspiegels"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Schwellenwert der grünen Linie"
+      },
+      "radon_maximum_threshold": {
+        "name": "Schwellenwert der roten Linie"
+      },
+      "alarm_volume": {
+        "name": "Alarmlautstärke"
+      },
+      "voice_volume": {
+        "name": "Sprachlautstärke"
+      },
+      "chirp_volume": {
+        "name": "Chirp-Lautstärke"
+      },
+      "reminder_volume": {
+        "name": "Erinnerungslautstärke"
+      },
+      "temperature_adjustment": {
+        "name": "Temperaturkalibrierung"
+      },
+      "humidity_adjustment": {
+        "name": "Kalibrierung der relativen Luftfeuchtigkeit"
+      },
+      "warning_period": {
+        "name": "Warnzeitraum"
+      },
+      "temperature_min": {
+        "name": "Temperaturbereich Minimum"
+      },
+      "temperature_max": {
+        "name": "Maximaler Temperaturbereich"
+      },
+      "humidity_min": {
+        "name": "Minimaler Bereich der relativen Luftfeuchtigkeit"
+      },
+      "humidity_max": {
+        "name": "Maximaler Bereich der relativen Luftfeuchtigkeit"
+      },
+      "temperature_comfort_min": {
+        "name": "Minimale Komforttemperatur"
+      },
+      "temperature_comfort_max": {
+        "name": "Maximale Komforttemperatur"
+      },
+      "humidity_comfort_min": {
+        "name": "Komfort-Feuchtigkeitsminimum"
+      },
+      "humidity_comfort_max": {
+        "name": "Maximale Komfort-Luftfeuchtigkeit"
+      },
+      "detection_sensitivity": {
+        "name": "Erkennungsempfindlichkeit"
+      },
+      "driveway_sensitivity": {
+        "name": "Sensorempfindlichkeit"
+      },
+      "trigger_brightness": {
+        "name": "Helligkeit auslösen"
+      },
+      "standby_brightness": {
+        "name": "Standby-Helligkeit"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Alarmton"
+      },
+      "chirp_tone": {
+        "name": "Chirp-Ton"
+      },
+      "reminder_tone": {
+        "name": "Erinnerungston"
+      },
+      "alarm_interval": {
+        "name": "Alarmintervall"
+      },
+      "reminder_time": {
+        "name": "Erinnerungszeit"
+      },
+      "mailbox_report_interval": {
+        "name": "Datenberichtsintervall"
+      },
+      "temperature_unit": {
+        "name": "Temperatureinheit"
+      },
+      "radon_unit": {
+        "name": "Radon-Einheit"
+      },
+      "comfort_type": {
+        "name": "Passen Sie die Komfortstufen an"
+      },
+      "led_brightness": {
+        "name": "LED-Helligkeit"
+      },
+      "light_motion_on_time": {
+        "name": "Automatische Lichtdauer"
+      },
+      "light_scene": {
+        "name": "Lichtszene"
+      },
+      "light_app_on_time": {
+        "name": "App pünktlich"
+      }
+    }
+  }
+}

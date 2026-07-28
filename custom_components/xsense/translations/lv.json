@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Ierīce jau ir konfigurēta",
+      "reauth_successful": "Atkārtota autentifikācija bija veiksmīga",
+      "reconfigure_successful": "Pārkonfigurācija bija veiksmīga"
+    },
+    "error": {
+      "cannot_connect": "Neizdevās izveidot savienojumu",
+      "invalid_auth": "Nederīga autentifikācija",
+      "unknown": "Negaidīta kļūda"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Pierakstieties vēlreiz, izmantojot savu X-Sense kontu.",
+        "data": {
+          "email": "E-mail",
+          "password": "Parole"
+        }
+      },
+      "reconfigure": {
+        "description": "Atjauniniet X-Sense kontu, ko izmanto šī integrācija.",
+        "data": {
+          "email": "E-mail",
+          "password": "Parole"
+        }
+      },
+      "user": {
+        "description": "Pierakstieties ar savu X-Sense kontu.",
+        "data": {
+          "email": "E-mail",
+          "password": "Parole"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Ierakstīšanas multivides sinhronizēšana kešatmiņā saglabā kameras klipus zem multivides Home Assistant, lai X-Sense ierakstu sānjosla, multivides pārlūkprogramma un mobilie paziņojumi varētu ātri atvērt ierakstus. Atstājiet to izslēgtu, lai saglabātu ierakstus tikai tad, kad tie ir atvērti. Iespējojiet to, lai jaunākie ieraksti būtu gatavi fonā.",
+        "data": {
+          "recording_media_sync_enabled": "Ierakstīšanas multivides sinhronizācija",
+          "recording_media_sync_hours": "Fona sinhronizācijas intervāls",
+          "recording_media_storage_path": "Ierakstīšanas kešatmiņas mape",
+          "recording_notification_quality": "Paziņojumu ierakstīšanas kvalitāte",
+          "recording_media_days_order": "Ierakstīšanas dienas pasūtījums",
+          "recording_media_clips_order": "Ierakstīšanas klipa pasūtījums"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Automātiski saglabājiet jaunākos ierakstus kešatmiņā. Tas izmanto krātuves vietu un var biežāk pamodināt kameras.",
+          "recording_media_sync_hours": "Cik bieži vajadzētu darboties parastajai fona panākšanas sinhronizācijai. Kad sinhronizācija ir iespējota, pēdējie ieraksti tiek pārbaudīti ik pēc pāris minūtēm.",
+          "recording_media_storage_path": "Izmantojiet mapi sadaļā /media. Šeit tiek glabāti jauni kešatmiņā saglabātie videoklipi un sīktēli.",
+          "recording_notification_quality": "Izvēlieties HD, lai mobilajiem paziņojumiem dotu priekšroku X-Sense tiešajiem/augstas izšķirtspējas klipu vietrāžiem URL. Izvēlieties SD, lai izmantotu kameras atskaņošanas uzņemšanas ceļu, kad tas ir pieejams.",
+          "recording_media_days_order": "Izvēlieties, vai ierakstu skatītājā vispirms tiek rādītas jaunākas vai vecākas dienas.",
+          "recording_media_clips_order": "Izvēlieties, vai katru dienu vispirms tiek rādīti jaunāki vai vecāki klipi."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Ierakstu kešatmiņas mape tiks mainīta no `{old_path}` uz `{new_path}`. Esošie kešatmiņā saglabātie videoklipi un sīktēli netiek automātiski pārvietoti. Ja vēlaties, lai vecie kešatmiņā saglabātie ieraksti būtu pieejami, vispirms pārvietojiet esošās mapes `videos` un `thumbs`."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Izmantojiet mapi sadaļā /media."
+    },
+    "abort": {
+      "no_options": "Šim X-Sense kontam nav konfigurējamu opciju."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Aktivizēts"
+      },
+      "alarm_status": {
+        "name": "Trauksmes statuss"
+      },
+      "connected": {
+        "name": "Savienots"
+      },
+      "door": {
+        "name": "Durvis"
+      },
+      "mailbox_schedule_active": {
+        "name": "Pastkastes grafiks ir aktīvs"
+      },
+      "mute_status": {
+        "name": "Ierīce ir apklusināta"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Signalizācijas urbis"
+      },
+      "mute": {
+        "name": "Izslēgt skaņu"
+      },
+      "test": {
+        "name": "Ierīces pārbaude"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI noteikšana"
+      },
+      "motion": {
+        "name": "Kustība"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Ierīces statuss",
+        "state": {
+          "normal": "Normāls",
+          "low_battery": "Zems akumulators",
+          "malfunction": "Nepareiza darbība",
+          "end_of_life": "Dzīves beigas"
+        }
+      },
+      "alarm_vol": {
+        "name": "Signalizācijas skaļums"
+      },
+      "wifi_rssi": {
+        "name": "WIFIPLACE HOLDER Signāla stiprums"
+      },
+      "ip_address": {
+        "name": "IP adrese"
+      },
+      "co_reading": {
+        "name": "KOPLAKTURES Lasīšana"
+      },
+      "co_level": {
+        "name": "CO Līmenis"
+      },
+      "peak_co_level": {
+        "name": "Maksimālais CO līmenis"
+      },
+      "peak_co_level_time": {
+        "name": "Maksimālais CO līmeņa laiks"
+      },
+      "mcu_sw_version": {
+        "name": "MCU programmatūras versija"
+      },
+      "rf_level": {
+        "name": "Signāla stiprums",
+        "state": {
+          "good": "Labi",
+          "moderate": "Mērens",
+          "no_signal": "Nav signāla",
+          "weak": "Vāja"
+        }
+      },
+      "sw_version": {
+        "name": "Programmatūras versija"
+      },
+      "voice_vol": {
+        "name": "Balss skaļums"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi moduļa programmaparatūras versija"
+      },
+      "last_self_test": {
+        "name": "Ierīces pārbaudes rezultāts",
+        "state": {
+          "not_run": "Neskrien",
+          "success": "Panākumi",
+          "failed": "Neizdevās"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Ierīces pārbaudes laiks"
+      },
+      "radon_peak": {
+        "name": "Maksimālais radona līmenis"
+      },
+      "radon_peak_time": {
+        "name": "Maksimālā radona līmeņa laiks"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Zaļās līnijas slieksnis"
+      },
+      "radon_maximum_threshold": {
+        "name": "Sarkanās līnijas slieksnis"
+      },
+      "alarm_volume": {
+        "name": "Signalizācijas skaļums"
+      },
+      "voice_volume": {
+        "name": "Balss skaļums"
+      },
+      "chirp_volume": {
+        "name": "Čivināt skaļums"
+      },
+      "reminder_volume": {
+        "name": "Atgādinājuma skaļums"
+      },
+      "temperature_adjustment": {
+        "name": "Temperatūras kalibrēšana"
+      },
+      "humidity_adjustment": {
+        "name": "Relatīvā mitruma kalibrēšana"
+      },
+      "warning_period": {
+        "name": "Brīdinājuma periods"
+      },
+      "temperature_min": {
+        "name": "Temperatūras diapazons Minimālais"
+      },
+      "temperature_max": {
+        "name": "Temperatūras diapazons Maksimālais"
+      },
+      "humidity_min": {
+        "name": "Relatīvais mitruma diapazons Minimālais"
+      },
+      "humidity_max": {
+        "name": "Relatīvais mitruma diapazons Maksimums"
+      },
+      "temperature_comfort_min": {
+        "name": "Komforta temperatūras minimums"
+      },
+      "temperature_comfort_max": {
+        "name": "Komforta temperatūra Maksimālā"
+      },
+      "humidity_comfort_min": {
+        "name": "Komforta minimālais mitrums"
+      },
+      "humidity_comfort_max": {
+        "name": "Komforts Maksimālais mitrums"
+      },
+      "detection_sensitivity": {
+        "name": "Atklāšanas jutība"
+      },
+      "driveway_sensitivity": {
+        "name": "Sensora jutība"
+      },
+      "trigger_brightness": {
+        "name": "Sprūda spilgtums"
+      },
+      "standby_brightness": {
+        "name": "Gaidstāves spilgtums"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Trauksmes signāls"
+      },
+      "chirp_tone": {
+        "name": "Čaušanas tonis"
+      },
+      "reminder_tone": {
+        "name": "Atgādinājuma signāls"
+      },
+      "alarm_interval": {
+        "name": "Trauksmes intervāls"
+      },
+      "reminder_time": {
+        "name": "Atgādinājuma laiks"
+      },
+      "mailbox_report_interval": {
+        "name": "Datu ziņošanas intervāls"
+      },
+      "temperature_unit": {
+        "name": "Temperatūras mērvienība"
+      },
+      "radon_unit": {
+        "name": "Radona vienība"
+      },
+      "comfort_type": {
+        "name": "Pielāgojiet komforta līmeņus"
+      },
+      "led_brightness": {
+        "name": "LED spilgtums"
+      },
+      "light_motion_on_time": {
+        "name": "Automātiskais apgaismojuma ilgums"
+      },
+      "light_scene": {
+        "name": "Gaismas aina"
+      },
+      "light_app_on_time": {
+        "name": "Lietotne laicīgi"
+      }
+    }
+  }
+}

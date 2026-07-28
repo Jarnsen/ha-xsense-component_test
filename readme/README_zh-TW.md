@@ -143,6 +143,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A 鍵盤程式碼自動化
+SKP0A 鍵盤不會發布每個單獨的按鍵。在使用 Home、Away 或 Disarmed 提交有效的 X-Sense 應用程式建立的程式碼後，它會發布鍵盤事件。整合將提交的程式碼事件公開為 `xsense_keypad_code`。
+
+使用隨附的單代碼藍圖為選定的程式碼執行 Home Assistant 操作。您可以選擇要求使用 Home、Away 或 Disarmed 模式按鈕來提交程式碼，也可以選擇將自動化限制為一個鍵盤序號。
+
+[![導入藍圖](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+當您希望透過自動化將多個鍵盤代碼對應到不同的 Home Assistant 操作時，請使用路由器藍圖。
+
+[![導入路由器藍圖](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+鍵盤模式按鈕可作為提交按鈕。如果所選模式已處於活動狀態，X-Sense 可能不會發布新事件，因此在提交程式碼時選擇目前非活動模式按鈕之一。
+
+____________________________________________________________
+
 ## 自動化範例
 透過此整合可以建立多種自動化。以下是一些範例：
 

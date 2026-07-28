@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "อุปกรณ์ได้รับการกำหนดค่าแล้ว",
+      "reauth_successful": "การตรวจสอบสิทธิ์ซ้ำสำเร็จแล้ว",
+      "reconfigure_successful": "การกำหนดค่าใหม่สำเร็จแล้ว"
+    },
+    "error": {
+      "cannot_connect": "ไม่สามารถเชื่อมต่อได้",
+      "invalid_auth": "การรับรองความถูกต้องไม่ถูกต้อง",
+      "unknown": "ข้อผิดพลาดที่ไม่คาดคิด"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "ลงชื่อเข้าใช้อีกครั้งด้วยบัญชี X-Sense ของคุณ",
+        "data": {
+          "email": "E-mail",
+          "password": "รหัสผ่าน"
+        }
+      },
+      "reconfigure": {
+        "description": "อัปเดตบัญชี X-Sense ที่ใช้โดยการรวมระบบนี้",
+        "data": {
+          "email": "E-mail",
+          "password": "รหัสผ่าน"
+        }
+      },
+      "user": {
+        "description": "ลงชื่อเข้าใช้ด้วยบัญชี X-Sense ของคุณ",
+        "data": {
+          "email": "E-mail",
+          "password": "รหัสผ่าน"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "สื่อบันทึกจะซิงค์คลิปกล้องไว้ใต้สื่อ Home Assistant เพื่อให้แถบด้านข้างการบันทึก X-Sense เบราว์เซอร์สื่อ และการแจ้งเตือนทางมือถือสามารถเปิดการบันทึกได้อย่างรวดเร็ว ปล่อยให้เป็นการบันทึกแคชเฉพาะเมื่อเปิดเท่านั้น เปิดใช้งานเพื่อให้การบันทึกล่าสุดพร้อมในเบื้องหลัง",
+        "data": {
+          "recording_media_sync_enabled": "ซิงค์สื่อบันทึก",
+          "recording_media_sync_hours": "ช่วงเวลาการซิงค์พื้นหลัง",
+          "recording_media_storage_path": "โฟลเดอร์แคชบันทึก",
+          "recording_notification_quality": "คุณภาพการบันทึกการแจ้งเตือน",
+          "recording_media_days_order": "Recording day order",
+          "recording_media_clips_order": "ลำดับการบันทึกคลิป"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "แคชการบันทึกล่าสุดโดยอัตโนมัติ การดำเนินการนี้ใช้พื้นที่เก็บข้อมูลและอาจปลุกกล้องได้บ่อยขึ้น",
+          "recording_media_sync_hours": "ควรรันการซิงค์เบื้องหลังตามปกติบ่อยเพียงใด การบันทึกล่าสุดจะถูกตรวจสอบทุกๆ สองสามนาทีเมื่อเปิดใช้งานการซิงค์",
+          "recording_media_storage_path": "ใช้โฟลเดอร์ภายใต้ /media วิดีโอและภาพขนาดย่อที่เก็บไว้ใหม่จะถูกเก็บไว้ที่นี่",
+          "recording_notification_quality": "เลือก HD เพื่อเลือก URL คลิปโดยตรง/ความละเอียดสูงของ X-Sense สำหรับการแจ้งเตือนทางมือถือ เลือก SD เพื่อใช้เส้นทางการถ่ายภาพการเล่นกล้องเมื่อมีให้ใช้งาน",
+          "recording_media_days_order": "เลือกว่าวันที่ใหม่กว่าหรือเก่ากว่าจะปรากฏเป็นอันดับแรกในโปรแกรมดูการบันทึก",
+          "recording_media_clips_order": "เลือกว่าคลิปใหม่หรือเก่ากว่าจะปรากฏก่อนในแต่ละวัน"
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "โฟลเดอร์แคชการบันทึกจะเปลี่ยนจาก `{old_path}` เป็น `{new_path}` วิดีโอและภาพขนาดย่อที่แคชไว้จะไม่ถูกย้ายโดยอัตโนมัติ ย้ายโฟลเดอร์ `videos` และ `thumbs` ที่มีอยู่ก่อน หากคุณต้องการให้การบันทึกแคชเก่ายังคงอยู่"
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "ใช้โฟลเดอร์ภายใต้ /media"
+    },
+    "abort": {
+      "no_options": "ไม่มีตัวเลือกที่กำหนดค่าได้สำหรับบัญชี X-Sense นี้"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "เปิดใช้งานแล้ว"
+      },
+      "alarm_status": {
+        "name": "สถานะการเตือน"
+      },
+      "connected": {
+        "name": "เชื่อมต่อแล้ว"
+      },
+      "door": {
+        "name": "ประตู"
+      },
+      "mailbox_schedule_active": {
+        "name": "ตารางกล่องจดหมายที่ใช้งานอยู่"
+      },
+      "mute_status": {
+        "name": "อุปกรณ์ปิดเสียง"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "สว่านปลุก"
+      },
+      "mute": {
+        "name": "ปิดเสียง"
+      },
+      "test": {
+        "name": "การทดสอบอุปกรณ์"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI Detection"
+      },
+      "motion": {
+        "name": "Motion"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "สถานะอุปกรณ์",
+        "state": {
+          "normal": "Normal",
+          "low_battery": "แบตเตอรี่ต่ำ",
+          "malfunction": "ความผิดปกติ",
+          "end_of_life": "จุดสิ้นสุดของชีวิต"
+        }
+      },
+      "alarm_vol": {
+        "name": "ระดับเสียงปลุก"
+      },
+      "wifi_rssi": {
+        "name": "ความแรงของสัญญาณ Wi-Fi"
+      },
+      "ip_address": {
+        "name": "ที่อยู่ IP"
+      },
+      "co_reading": {
+        "name": "CO การอ่าน"
+      },
+      "co_level": {
+        "name": "ระดับ CO"
+      },
+      "peak_co_level": {
+        "name": "Peak CO Level"
+      },
+      "peak_co_level_time": {
+        "name": "เวลาระดับ CO สูงสุด"
+      },
+      "mcu_sw_version": {
+        "name": "เวอร์ชันซอฟต์แวร์ MCU"
+      },
+      "rf_level": {
+        "name": "ความแรงของสัญญาณ",
+        "state": {
+          "good": "ดี",
+          "moderate": "ปานกลาง",
+          "no_signal": "No Signal",
+          "weak": "Weak"
+        }
+      },
+      "sw_version": {
+        "name": "เวอร์ชันซอฟต์แวร์"
+      },
+      "voice_vol": {
+        "name": "ระดับเสียง"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "เวอร์ชันเฟิร์มแวร์โมดูล Wi-Fi"
+      },
+      "last_self_test": {
+        "name": "ผลการทดสอบอุปกรณ์",
+        "state": {
+          "not_run": "ไม่วิ่ง",
+          "success": "ความสำเร็จ",
+          "failed": "ล้มเหลว"
+        }
+      },
+      "last_self_test_time": {
+        "name": "เวลาทดสอบอุปกรณ์"
+      },
+      "radon_peak": {
+        "name": "Peak Radon Level"
+      },
+      "radon_peak_time": {
+        "name": "เวลาระดับพีคเรดอน"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "เกณฑ์เส้นสีเขียว"
+      },
+      "radon_maximum_threshold": {
+        "name": "Red Line Threshold"
+      },
+      "alarm_volume": {
+        "name": "Alarm Volume"
+      },
+      "voice_volume": {
+        "name": "ระดับเสียง"
+      },
+      "chirp_volume": {
+        "name": "Chirp Volume"
+      },
+      "reminder_volume": {
+        "name": "ปริมาณการแจ้งเตือน"
+      },
+      "temperature_adjustment": {
+        "name": "Temperature Calibration"
+      },
+      "humidity_adjustment": {
+        "name": "การสอบเทียบความชื้นสัมพัทธ์"
+      },
+      "warning_period": {
+        "name": "ระยะเวลาการเตือน"
+      },
+      "temperature_min": {
+        "name": "ช่วงอุณหภูมิต่ำสุด"
+      },
+      "temperature_max": {
+        "name": "ช่วงอุณหภูมิสูงสุด"
+      },
+      "humidity_min": {
+        "name": "ช่วงความชื้นสัมพัทธ์ขั้นต่ำ"
+      },
+      "humidity_max": {
+        "name": "ช่วงความชื้นสัมพัทธ์สูงสุด"
+      },
+      "temperature_comfort_min": {
+        "name": "อุณหภูมิความสะดวกสบายขั้นต่ำ"
+      },
+      "temperature_comfort_max": {
+        "name": "อุณหภูมิความสะดวกสบายสูงสุด"
+      },
+      "humidity_comfort_min": {
+        "name": "ความชื้นสัมพัทธ์ขั้นต่ำ"
+      },
+      "humidity_comfort_max": {
+        "name": "ความชื้นสัมพัทธ์สูงสุด"
+      },
+      "detection_sensitivity": {
+        "name": "ความไวในการตรวจจับ"
+      },
+      "driveway_sensitivity": {
+        "name": "ความไวของเซ็นเซอร์"
+      },
+      "trigger_brightness": {
+        "name": "ทริกเกอร์ความสว่าง"
+      },
+      "standby_brightness": {
+        "name": "ความสว่างขณะสแตนด์บาย"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "เสียงปลุก"
+      },
+      "chirp_tone": {
+        "name": "เจี๊ยบโทน"
+      },
+      "reminder_tone": {
+        "name": "เสียงเตือน"
+      },
+      "alarm_interval": {
+        "name": "ช่วงสัญญาณเตือน"
+      },
+      "reminder_time": {
+        "name": "Reminder Time"
+      },
+      "mailbox_report_interval": {
+        "name": "ช่วงเวลาการรายงานข้อมูล"
+      },
+      "temperature_unit": {
+        "name": "หน่วยอุณหภูมิ"
+      },
+      "radon_unit": {
+        "name": "หน่วยเรดอน"
+      },
+      "comfort_type": {
+        "name": "ปรับแต่งระดับความสบาย"
+      },
+      "led_brightness": {
+        "name": "ความสว่าง LED"
+      },
+      "light_motion_on_time": {
+        "name": "ระยะเวลาแสงอัตโนมัติ"
+      },
+      "light_scene": {
+        "name": "Light Scene"
+      },
+      "light_app_on_time": {
+        "name": "แอพตรงเวลา"
+      }
+    }
+  }
+}

@@ -146,6 +146,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## Automatizaciones de código de teclado SKP0A
+El teclado SKP0A no publica cada pulsación de tecla individual. Publica un evento de teclado después de enviar un código válido creado por la aplicación X-Sense con Home, Away o Disarmed. La integración expone ese evento de código enviado como `xsense_keypad_code`.
+
+Utilice el modelo de código único incluido para ejecutar acciones Home Assistant para un código seleccionado. Opcionalmente, puede solicitar el botón de modo Home, Away o Disarmed para enviar el código y, opcionalmente, limitar la automatización a un número de serie del teclado.
+
+[![Importar plano](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Utilice el modelo del enrutador cuando desee que una automatización asigne varios códigos de teclado a diferentes acciones Home Assistant.
+
+[![Importar plano de enrutador](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Los botones del modo de teclado actúan como botones de envío. Si el modo seleccionado ya está activo, es posible que X-Sense no publique un nuevo evento, así que elija uno de los botones de modo actualmente inactivos al enviar un código.
+
+____________________________________________________________
+
 ## Ejemplos de automatizaciones
 Con esta integración, se pueden crear varias automatizaciones. Aquí hay algunos ejemplos:
 

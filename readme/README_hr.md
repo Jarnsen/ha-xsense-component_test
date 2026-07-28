@@ -84,6 +84,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A Automatizacija koda tipkovnice
+Tipkovnica SKP0A ne objavljuje svaki pojedinačni pritisak tipke. Objavljuje događaj tipkovnice nakon što se važeći kod X-Sense koji je izradila aplikacija pošalje sa Home, Away ili Disarmed. Integracija izlaže taj događaj poslanog koda kao `xsense_keypad_code`.
+
+Upotrijebite uključeni nacrt jednog koda za pokretanje Home Assistant radnji za jedan odabrani kod. Po izboru možete zahtijevati gumb načina rada Home, Away ili Disarmed koji se koristi za slanje koda i po izboru ograničiti automatizaciju na jedan serijski broj tipkovnice.
+
+[![Uvezi nacrt](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Koristite nacrt usmjerivača kada želite da jedna automatizacija preslika nekoliko kodova tipkovnice na različite radnje Home Assistant.
+
+[![Uvezi nacrt usmjerivača](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Gumbi načina rada tipkovnice djeluju kao gumbi za slanje. Ako je odabrani način rada već aktivan, X-Sense možda neće objaviti novi događaj, stoga odaberite jedan od trenutno neaktivnih gumba načina rada prilikom slanja koda.
+
+____________________________________________________________
+
 ## Primjeri automatizacija
 ```yaml
 automation:

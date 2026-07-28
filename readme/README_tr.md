@@ -231,3 +231,18 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A Tuş Takımı Kod Otomasyonları
+SKP0A tuş takımı her tuş basışını yayınlamaz. Uygulama tarafından oluşturulan geçerli bir X-Sense kodu Home, Away veya Disarmed ile gönderildikten sonra bir tuş takımı olayı yayınlar. Entegrasyon, gönderilen kod olayını `xsense_keypad_code` olarak ortaya çıkarır.
+
+Seçilen bir kod için Home Assistant eylemlerini çalıştırmak üzere dahil edilen tek kodlu planı kullanın. Kodu göndermek için isteğe bağlı olarak Home, Away veya Disarmed mod düğmesinin kullanılmasını gerektirebilir ve isteğe bağlı olarak otomasyonu bir tuş takımı seri numarasıyla sınırlandırabilirsiniz.
+
+[![Planı İçe Aktar](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Bir otomasyonun birden fazla tuş takımı kodunu farklı Home Assistant eylemleriyle eşlemesini istediğinizde yönlendirici planını kullanın.
+
+[![Yönlendirici Planını İçe Aktar](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Tuş takımı modu düğmeleri gönderme düğmeleri görevi görür. Seçilen mod zaten etkinse, X-Sense yeni bir etkinlik yayınlamayabilir; bu nedenle, kodu gönderirken şu anda etkin olmayan mod düğmelerinden birini seçin.
+
+____________________________________________________________

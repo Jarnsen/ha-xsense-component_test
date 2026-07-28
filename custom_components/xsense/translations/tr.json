@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Cihaz zaten yapılandırılmış",
+      "reauth_successful": "Yeniden kimlik doğrulama başarılı oldu",
+      "reconfigure_successful": "Yeniden yapılandırma başarılı oldu"
+    },
+    "error": {
+      "cannot_connect": "Bağlantı başarısız oldu",
+      "invalid_auth": "Geçersiz kimlik doğrulama",
+      "unknown": "Beklenmeyen hata"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "X-Sense hesabınızla tekrar oturum açın.",
+        "data": {
+          "email": "E-POSTAYER TUTUCU",
+          "password": "Şifre"
+        }
+      },
+      "reconfigure": {
+        "description": "Bu entegrasyon tarafından kullanılan X-Sense hesabını güncelleyin.",
+        "data": {
+          "email": "E-POSTAYER TUTUCU",
+          "password": "Şifre"
+        }
+      },
+      "user": {
+        "description": "X-Sense hesabınızla oturum açın.",
+        "data": {
+          "email": "E-POSTAYER TUTUCU",
+          "password": "Şifre"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Kayıt ortamı senkronizasyonu, kamera kliplerini Home Assistant ortamı altında önbelleğe alır, böylece X-Sense Kayıtlar kenar çubuğu, Medya Tarayıcı ve mobil bildirimler kayıtları hızlı bir şekilde açabilir. Kayıtları yalnızca açıldıklarında önbelleğe almak için bunu kapalı bırakın. Son kayıtları arka planda hazır tutmak için bunu etkinleştirin.",
+        "data": {
+          "recording_media_sync_enabled": "Medya senkronizasyonu kaydediliyor",
+          "recording_media_sync_hours": "Arka planda senkronizasyon aralığı",
+          "recording_media_storage_path": "Önbellek klasörü kaydediliyor",
+          "recording_notification_quality": "Bildirim kayıt kalitesi",
+          "recording_media_days_order": "Kayıt günü sırası",
+          "recording_media_clips_order": "Klip sırası kaydediliyor"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Son kayıtları otomatik olarak önbelleğe alın. Bu, depolama alanını kullanır ve kameraları daha sık uyandırabilir.",
+          "recording_media_sync_hours": "Normal arka plan yakalama senkronizasyonunun ne sıklıkta çalışması gerektiği. Senkronizasyon etkinleştirildiğinde son kayıtlar birkaç dakikada bir kontrol edilir.",
+          "recording_media_storage_path": "/media altında bir klasör kullanın. Önbelleğe alınan yeni videolar ve küçük resimler burada saklanır.",
+          "recording_notification_quality": "Mobil bildirimler için X-Sense'ın doğrudan/yüksek çözünürlüklü klip URL'lerini tercih etmek için HD'ı seçin. Mümkün olduğunda kamera oynatma yakalama yolunu kullanmak için SD'ı seçin.",
+          "recording_media_days_order": "Kayıt görüntüleyicide ilk olarak daha yeni günlerin mi yoksa daha eski günlerin mi görüntüleneceğini seçin.",
+          "recording_media_clips_order": "Her gün içinde daha yeni veya daha eski kliplerin ilk önce görünüp görünmeyeceğini seçin."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Kayıt önbelleği klasörü `{old_path}` yerine `{new_path}` olarak değişecektir. Önbelleğe alınmış mevcut videolar ve küçük resimler otomatik olarak taşınmaz. Önbelleğe alınmış eski kayıtların kullanılabilir kalmasını istiyorsanız önce mevcut `videos` ve `thumbs` klasörlerini taşıyın."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "/media altında bir klasör kullanın."
+    },
+    "abort": {
+      "no_options": "Bu X-Sense hesabı için yapılandırılabilir seçenek yok."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Etkinleştirildi"
+      },
+      "alarm_status": {
+        "name": "Alarm Durumu"
+      },
+      "connected": {
+        "name": "Bağlı"
+      },
+      "door": {
+        "name": "Kapı"
+      },
+      "mailbox_schedule_active": {
+        "name": "Posta Kutusu Programı Etkin"
+      },
+      "mute_status": {
+        "name": "Cihaz Susturuldu"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Alarm Tatbikatı"
+      },
+      "mute": {
+        "name": "Sessiz"
+      },
+      "test": {
+        "name": "Cihaz Testi"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "Yapay Zeka Tespiti"
+      },
+      "motion": {
+        "name": "Hareket"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Cihaz Durumu",
+        "state": {
+          "normal": "Normal",
+          "low_battery": "Düşük Pil",
+          "malfunction": "Arıza",
+          "end_of_life": "Kullanım Ömrü Sonu"
+        }
+      },
+      "alarm_vol": {
+        "name": "Alarm Sesi"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi Sinyal Gücü"
+      },
+      "ip_address": {
+        "name": "IP Adresi"
+      },
+      "co_reading": {
+        "name": "CO Okuma"
+      },
+      "co_level": {
+        "name": "CO Seviyesi"
+      },
+      "peak_co_level": {
+        "name": "Zirve CO Seviyesi"
+      },
+      "peak_co_level_time": {
+        "name": "Zirve CO Seviye Süresi"
+      },
+      "mcu_sw_version": {
+        "name": "MCU Yazılım Sürümü"
+      },
+      "rf_level": {
+        "name": "Sinyal Gücü",
+        "state": {
+          "good": "iyi",
+          "moderate": "Orta",
+          "no_signal": "Sinyal Yok",
+          "weak": "Zayıf"
+        }
+      },
+      "sw_version": {
+        "name": "Yazılım Sürümü"
+      },
+      "voice_vol": {
+        "name": "Ses Seviyesi"
+      },
+      "wifi_ssid": {
+        "name": "SSIDYER TUTUCU"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi Modülü Firmware Sürümü"
+      },
+      "last_self_test": {
+        "name": "Cihaz Test Sonucu",
+        "state": {
+          "not_run": "Çalıştırılmadı",
+          "success": "Başarı",
+          "failed": "Başarısız"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Cihaz Test Süresi"
+      },
+      "radon_peak": {
+        "name": "Tepe Radon Seviyesi"
+      },
+      "radon_peak_time": {
+        "name": "Radon Zirve Seviyesi Süresi"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Yeşil Hat Eşiği"
+      },
+      "radon_maximum_threshold": {
+        "name": "Kırmızı Çizgi Eşiği"
+      },
+      "alarm_volume": {
+        "name": "Alarm Sesi"
+      },
+      "voice_volume": {
+        "name": "Ses Seviyesi"
+      },
+      "chirp_volume": {
+        "name": "Cıvıltı Sesi"
+      },
+      "reminder_volume": {
+        "name": "Hatırlatma Sesi"
+      },
+      "temperature_adjustment": {
+        "name": "Sıcaklık Kalibrasyonu"
+      },
+      "humidity_adjustment": {
+        "name": "Bağıl Nem Kalibrasyonu"
+      },
+      "warning_period": {
+        "name": "Uyarı Süresi"
+      },
+      "temperature_min": {
+        "name": "Sıcaklık Aralığı Minimum"
+      },
+      "temperature_max": {
+        "name": "Sıcaklık Aralığı Maksimum"
+      },
+      "humidity_min": {
+        "name": "Bağıl Nem Aralığı Minimum"
+      },
+      "humidity_max": {
+        "name": "Bağıl Nem Aralığı Maksimum"
+      },
+      "temperature_comfort_min": {
+        "name": "Konfor Sıcaklığı Minimum"
+      },
+      "temperature_comfort_max": {
+        "name": "Konfor Sıcaklığı Maksimum"
+      },
+      "humidity_comfort_min": {
+        "name": "Konfor Nem Minimum"
+      },
+      "humidity_comfort_max": {
+        "name": "Konfor Nem Maksimum"
+      },
+      "detection_sensitivity": {
+        "name": "Algılama Hassasiyeti"
+      },
+      "driveway_sensitivity": {
+        "name": "Sensör Hassasiyeti"
+      },
+      "trigger_brightness": {
+        "name": "Tetik Parlaklığı"
+      },
+      "standby_brightness": {
+        "name": "Bekleme Parlaklığı"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Alarm Tonu"
+      },
+      "chirp_tone": {
+        "name": "Cıvıltı Tonu"
+      },
+      "reminder_tone": {
+        "name": "Hatırlatma Tonu"
+      },
+      "alarm_interval": {
+        "name": "Alarm Aralığı"
+      },
+      "reminder_time": {
+        "name": "Hatırlatma Zamanı"
+      },
+      "mailbox_report_interval": {
+        "name": "Veri Raporlama Aralığı"
+      },
+      "temperature_unit": {
+        "name": "Sıcaklık Birimi"
+      },
+      "radon_unit": {
+        "name": "Radon Ünitesi"
+      },
+      "comfort_type": {
+        "name": "Konfor Düzeylerini Özelleştirin"
+      },
+      "led_brightness": {
+        "name": "LED Parlaklığı"
+      },
+      "light_motion_on_time": {
+        "name": "Otomatik Işık Süresi"
+      },
+      "light_scene": {
+        "name": "Işık Sahnesi"
+      },
+      "light_app_on_time": {
+        "name": "Uygulamanın Zamanında Açılması"
+      }
+    }
+  }
+}

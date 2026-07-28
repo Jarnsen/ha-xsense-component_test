@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Įrenginys jau sukonfigūruotas",
+      "reauth_successful": "Pakartotinis autentifikavimas buvo sėkmingas",
+      "reconfigure_successful": "Perkonfigūravimas buvo sėkmingas"
+    },
+    "error": {
+      "cannot_connect": "Nepavyko prisijungti",
+      "invalid_auth": "Neteisingas autentifikavimas",
+      "unknown": "Netikėta klaida"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Prisijunkite dar kartą naudodami X-Sense paskyrą.",
+        "data": {
+          "email": "E-mail",
+          "password": "Slaptažodis"
+        }
+      },
+      "reconfigure": {
+        "description": "Atnaujinkite šios integracijos naudojamą X-Sense paskyrą.",
+        "data": {
+          "email": "E-mail",
+          "password": "Slaptažodis"
+        }
+      },
+      "user": {
+        "description": "Prisijunkite naudodami savo X-Sense paskyrą.",
+        "data": {
+          "email": "E-mail",
+          "password": "Slaptažodis"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Įrašymo laikmenos sinchronizavimas talpykloje išsaugo fotoaparato klipus Home Assistant laikmenoje, todėl šoninė įrašų juosta X-Sense, medijos naršyklė ir pranešimai mobiliesiems gali greitai atidaryti įrašus. Palikite jį į talpyklos įrašus tik tada, kai jie atidaromi. Įjunkite, kad naujausi įrašai būtų paruošti fone.",
+        "data": {
+          "recording_media_sync_enabled": "Įrašymo laikmenos sinchronizavimas",
+          "recording_media_sync_hours": "Fono sinchronizavimo intervalas",
+          "recording_media_storage_path": "Įrašymo talpyklos aplankas",
+          "recording_notification_quality": "Pranešimų įrašymo kokybė",
+          "recording_media_days_order": "Įrašymo dienos užsakymas",
+          "recording_media_clips_order": "Įrašymo klipo užsakymas"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Automatiškai saugokite naujausius įrašus. Tai užima vietos saugykloje ir gali dažniau pažadinti kameras.",
+          "recording_media_sync_hours": "Kaip dažnai turėtų vykti įprastas fono pasivijimo sinchronizavimas. Įjungus sinchronizavimą, naujausi įrašai tikrinami kas kelias minutes.",
+          "recording_media_storage_path": "Naudokite aplanką, esantį /media. Čia saugomi nauji talpykloje saugomi vaizdo įrašai ir miniatiūros.",
+          "recording_notification_quality": "Pasirinkite HD, kad teiktumėte pirmenybę X-Sense tiesioginiams / didelės skyros klipų URL pranešimams mobiliesiems. Pasirinkite SD, jei norite naudoti fotoaparato atkūrimo fiksavimo kelią, kai įmanoma.",
+          "recording_media_days_order": "Pasirinkite, ar įrašų peržiūros priemonėje pirmiausia bus rodomos naujesnės ar senesnės dienos.",
+          "recording_media_clips_order": "Pasirinkite, ar kiekvieną dieną pirmiausia rodomi naujesni ar senesni klipai."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Įrašymo talpyklos aplankas pasikeis iš `{old_path}` į `{new_path}`. Esami talpykloje esantys vaizdo įrašai ir miniatiūros neperkeliami automatiškai. Pirmiausia perkelkite esamus aplankus `videos` ir `thumbs`, jei norite, kad seni talpykloje esantys įrašai liktų pasiekiami."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Naudokite aplanką, esantį /media."
+    },
+    "abort": {
+      "no_options": "Nėra konfigūruojamų šios X-Sense paskyros parinkčių."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Aktyvuota"
+      },
+      "alarm_status": {
+        "name": "Signalizacijos būsena"
+      },
+      "connected": {
+        "name": "Prisijungta"
+      },
+      "door": {
+        "name": "Durys"
+      },
+      "mailbox_schedule_active": {
+        "name": "Pašto dėžutės tvarkaraštis aktyvus"
+      },
+      "mute_status": {
+        "name": "Įrenginys nutildytas"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Signalizacijos gręžtuvas"
+      },
+      "mute": {
+        "name": "Nutildyti"
+      },
+      "test": {
+        "name": "Įrenginio testas"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI aptikimas"
+      },
+      "motion": {
+        "name": "Judėjimas"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Įrenginio būsena",
+        "state": {
+          "normal": "Normalus",
+          "low_battery": "Senka baterija",
+          "malfunction": "Gedimas",
+          "end_of_life": "Gyvenimo pabaiga"
+        }
+      },
+      "alarm_vol": {
+        "name": "Signalizacijos garsumas"
+      },
+      "wifi_rssi": {
+        "name": "WIFIPLACE HOLDER Signalo stiprumas"
+      },
+      "ip_address": {
+        "name": "IP adresas"
+      },
+      "co_reading": {
+        "name": "CO Skaitymas"
+      },
+      "co_level": {
+        "name": "CO Lygis"
+      },
+      "peak_co_level": {
+        "name": "Didžiausias CO lygis"
+      },
+      "peak_co_level_time": {
+        "name": "Didžiausias CO lygio laikas"
+      },
+      "mcu_sw_version": {
+        "name": "MCU programinės įrangos versija"
+      },
+      "rf_level": {
+        "name": "Signalo stiprumas",
+        "state": {
+          "good": "Gerai",
+          "moderate": "Vidutinis",
+          "no_signal": "Nėra signalo",
+          "weak": "Silpnas"
+        }
+      },
+      "sw_version": {
+        "name": "Programinės įrangos versija"
+      },
+      "voice_vol": {
+        "name": "Balso garsumas"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi modulio programinės aparatinės įrangos versija"
+      },
+      "last_self_test": {
+        "name": "Įrenginio testo rezultatas",
+        "state": {
+          "not_run": "Ne Bėgti",
+          "success": "Sėkmės",
+          "failed": "Nepavyko"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Įrenginio bandymo laikas"
+      },
+      "radon_peak": {
+        "name": "Didžiausias radono lygis"
+      },
+      "radon_peak_time": {
+        "name": "Didžiausio radono lygio laikas"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Žaliosios linijos slenkstis"
+      },
+      "radon_maximum_threshold": {
+        "name": "Raudonos linijos slenkstis"
+      },
+      "alarm_volume": {
+        "name": "Signalizacijos garsumas"
+      },
+      "voice_volume": {
+        "name": "Balso garsumas"
+      },
+      "chirp_volume": {
+        "name": "Chirp Volumas"
+      },
+      "reminder_volume": {
+        "name": "Priminimo garsumas"
+      },
+      "temperature_adjustment": {
+        "name": "Temperatūros kalibravimas"
+      },
+      "humidity_adjustment": {
+        "name": "Santykinės drėgmės kalibravimas"
+      },
+      "warning_period": {
+        "name": "Įspėjimo laikotarpis"
+      },
+      "temperature_min": {
+        "name": "Temperatūros diapazonas Minimalus"
+      },
+      "temperature_max": {
+        "name": "Temperatūros diapazonas Maksimalus"
+      },
+      "humidity_min": {
+        "name": "Santykinės drėgmės diapazonas Minimalus"
+      },
+      "humidity_max": {
+        "name": "Didžiausias santykinės drėgmės diapazonas"
+      },
+      "temperature_comfort_min": {
+        "name": "Minimali komforto temperatūra"
+      },
+      "temperature_comfort_max": {
+        "name": "Komforto temperatūra Maksimali"
+      },
+      "humidity_comfort_min": {
+        "name": "Komfortas Minimalus drėgnumas"
+      },
+      "humidity_comfort_max": {
+        "name": "Komfortas Maksimalus drėgnumas"
+      },
+      "detection_sensitivity": {
+        "name": "Aptikimo jautrumas"
+      },
+      "driveway_sensitivity": {
+        "name": "Jutiklio jautrumas"
+      },
+      "trigger_brightness": {
+        "name": "Trigerio ryškumas"
+      },
+      "standby_brightness": {
+        "name": "Budėjimo ryškumas"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Signalizacijos tonas"
+      },
+      "chirp_tone": {
+        "name": "Čiulpimo tonas"
+      },
+      "reminder_tone": {
+        "name": "Priminimo tonas"
+      },
+      "alarm_interval": {
+        "name": "Signalizacijos intervalas"
+      },
+      "reminder_time": {
+        "name": "Priminimo laikas"
+      },
+      "mailbox_report_interval": {
+        "name": "Duomenų ataskaitų teikimo intervalas"
+      },
+      "temperature_unit": {
+        "name": "Temperatūros vienetas"
+      },
+      "radon_unit": {
+        "name": "Radono vienetas"
+      },
+      "comfort_type": {
+        "name": "Tinkinkite komforto lygius"
+      },
+      "led_brightness": {
+        "name": "LED ryškumas"
+      },
+      "light_motion_on_time": {
+        "name": "Automatinė šviesos trukmė"
+      },
+      "light_scene": {
+        "name": "Šviesos scena"
+      },
+      "light_app_on_time": {
+        "name": "Programa laiku"
+      }
+    }
+  }
+}

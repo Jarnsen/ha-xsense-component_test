@@ -229,3 +229,18 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A কিপেড ক'ড অটোমেচন
+SKP0A কিপেডে প্ৰতিটো ব্যক্তিগত কি টিপ প্ৰকাশ নকৰে। ই এটা বৈধ X-Sense এপ-সৃষ্টি কৰা ক'ড Home, Away, বা Disarmed ৰ সৈতে জমা দিয়াৰ পিছত এটা কিপেড ইভেন্ট প্ৰকাশ কৰে। সংহতিটোৱে সেই জমা দিয়া-ক'ড ইভেন্টক `xsense_keypad_code` হিচাপে উন্মোচন কৰে।
+
+এটা নিৰ্বাচিত ক'ডৰ বাবে Home Assistant কাৰ্য্যসমূহ চলাবলৈ অন্তৰ্ভুক্ত একক-ক'ড ব্লুপ্ৰিণ্ট ব্যৱহাৰ কৰক। আপুনি বৈকল্পিকভাৱে ক'ড জমা দিবলে ব্যৱহৃত Home, Away, বা Disarmed ধৰণ বুটামৰ প্ৰয়োজন হব পাৰে, আৰু বৈকল্পিকভাৱে স্বয়ংক্ৰিয়কৰণ এটা কিপেড ক্ৰমিক নম্বৰত সীমিত কৰিব পাৰে।
+
+[![আমদানি ব্লুপ্ৰিণ্ট](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+ৰাউটাৰ ব্লুপ্ৰিণ্ট ব্যৱহাৰ কৰক যেতিয়া আপুনি এটা স্বয়ংক্ৰিয়কৰণ বিচাৰে কেইবাটাও কিপেড ক'ডক বিভিন্ন Home Assistant কাৰ্য্যসমূহলে মেপ কৰিবলে।
+
+[![ৰাউটাৰ ব্লুপ্ৰিণ্ট আমদানি কৰক](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+কিপেড মোড বুটামসমূহে জমা বুটাম হিচাপে কাম কৰে। যদি নিৰ্বাচিত ধৰণ ইতিমধ্যে সক্ৰিয়, X-Sense এ এটা নতুন ইভেন্ট প্ৰকাশ নকৰিবও পাৰে, গতিকে এটা ক'ড জমা দিয়াৰ সময়ত বৰ্তমানে নিষ্ক্ৰিয় ধৰণ বুটামসমূহৰ এটা বাছক।
+
+____________________________________________________________

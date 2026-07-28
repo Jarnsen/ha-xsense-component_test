@@ -228,3 +228,18 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A कीपैड कोड स्वचालन
+SKP0A कीपैड प्रत्येक व्यक्तिगत कुंजी प्रेस को प्रकाशित नहीं करता है। Home, Away, या Disarmed के साथ वैध X-Sense ऐप-निर्मित कोड सबमिट करने के बाद यह एक कीपैड इवेंट प्रकाशित करता है। एकीकरण उस सबमिट किए गए कोड ईवेंट को `xsense_keypad_code` के रूप में उजागर करता है।
+
+एक चयनित कोड के लिए Home Assistant क्रियाएं चलाने के लिए शामिल सिंगल-कोड ब्लूप्रिंट का उपयोग करें। आपको वैकल्पिक रूप से कोड सबमिट करने के लिए Home, Away, या Disarmed मोड बटन की आवश्यकता हो सकती है, और वैकल्पिक रूप से स्वचालन को एक कीपैड सीरियल नंबर तक सीमित कर सकते हैं।
+
+[![ब्लूप्रिंट आयात करें](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+जब आप चाहते हैं कि एक ऑटोमेशन कई कीपैड कोड को विभिन्न Home Assistant क्रियाओं में मैप करे तो राउटर ब्लूप्रिंट का उपयोग करें।
+
+[![राउटर ब्लूप्रिंट आयात करें](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+कीपैड मोड बटन सबमिट बटन के रूप में कार्य करते हैं। यदि चयनित मोड पहले से ही सक्रिय है, तो X-Sense एक नया ईवेंट प्रकाशित नहीं कर सकता है, इसलिए कोड सबमिट करते समय वर्तमान में निष्क्रिय मोड बटनों में से एक चुनें।
+
+____________________________________________________________

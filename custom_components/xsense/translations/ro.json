@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Dispozitivul este deja configurat",
+      "reauth_successful": "Re-autentificarea a avut succes",
+      "reconfigure_successful": "Reconfigurarea a avut succes"
+    },
+    "error": {
+      "cannot_connect": "Nu s-a putut conecta",
+      "invalid_auth": "Autentificare nevalidă",
+      "unknown": "Eroare neașteptată"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Conectați-vă din nou cu contul dvs. X-Sense.",
+        "data": {
+          "email": "E-mail",
+          "password": "Parolă"
+        }
+      },
+      "reconfigure": {
+        "description": "Actualizați contul X-Sense utilizat de această integrare.",
+        "data": {
+          "email": "E-mail",
+          "password": "Parolă"
+        }
+      },
+      "user": {
+        "description": "Conectați-vă cu contul dvs. X-Sense.",
+        "data": {
+          "email": "E-mail",
+          "password": "Parolă"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Sincronizarea media de înregistrare memorează în cache clipurile camerei în mediul Home Assistant, astfel încât bara laterală Înregistrări X-Sense, browserul media și notificările mobile pot deschide înregistrările rapid. Lăsați în cache înregistrările numai atunci când sunt deschise. Activați-l pentru a menține gata în fundal înregistrările recente.",
+        "data": {
+          "recording_media_sync_enabled": "Sincronizare media de înregistrare",
+          "recording_media_sync_hours": "Interval de sincronizare în fundal",
+          "recording_media_storage_path": "Dosarul cache de înregistrare",
+          "recording_notification_quality": "Calitatea înregistrării notificărilor",
+          "recording_media_days_order": "Comanda zilei de înregistrare",
+          "recording_media_clips_order": "Ordinea clipurilor de înregistrare"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Memorați în cache înregistrările recente în mod automat. Aceasta utilizează spațiu de stocare și poate trezi camerele mai des.",
+          "recording_media_sync_hours": "Cât de des ar trebui să ruleze sincronizarea normală de recuperare în fundal. Înregistrările recente sunt verificate la fiecare două minute când sincronizarea este activată.",
+          "recording_media_storage_path": "Utilizați un folder sub /media. Noile videoclipuri și miniaturi stocate în cache sunt stocate aici.",
+          "recording_notification_quality": "Alegeți HD pentru a prefera adresele URL ale clipurilor directe/de înaltă rezoluție ale X-Sense pentru notificările mobile. Alegeți SD pentru a utiliza calea de captură de redare a camerei atunci când este disponibilă.",
+          "recording_media_days_order": "Alegeți dacă zilele mai noi sau mai vechi apar mai întâi în vizualizatorul de înregistrări.",
+          "recording_media_clips_order": "Alegeți dacă clipurile mai noi sau mai vechi apar primele în fiecare zi."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Dosarul cache de înregistrare se va schimba din `{old_path}` în `{new_path}`. Videoclipurile și miniaturile existente în cache nu sunt mutate automat. Mutați mai întâi dosarele existente `videos` și `thumbs` dacă doriți ca înregistrările vechi din cache să rămână disponibile."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Utilizați un folder sub /media."
+    },
+    "abort": {
+      "no_options": "Nu există opțiuni configurabile pentru acest cont X-Sense."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Activat"
+      },
+      "alarm_status": {
+        "name": "Starea alarmei"
+      },
+      "connected": {
+        "name": "Conectat"
+      },
+      "door": {
+        "name": "Ușă"
+      },
+      "mailbox_schedule_active": {
+        "name": "Program cutie poștală activă"
+      },
+      "mute_status": {
+        "name": "Dispozitiv a fost oprit"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Foraj de alarmă"
+      },
+      "mute": {
+        "name": "Mut"
+      },
+      "test": {
+        "name": "Testul dispozitivului"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "Detectare AI"
+      },
+      "motion": {
+        "name": "Mișcare"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Stare dispozitiv",
+        "state": {
+          "normal": "Normal",
+          "low_battery": "Baterie descărcată",
+          "malfunction": "Defecțiune",
+          "end_of_life": "Sfârșitul vieții"
+        }
+      },
+      "alarm_vol": {
+        "name": "Volumul alarmei"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi Puterea semnalului"
+      },
+      "ip_address": {
+        "name": "Adresa IP"
+      },
+      "co_reading": {
+        "name": "CO Lectură"
+      },
+      "co_level": {
+        "name": "CO Nivel"
+      },
+      "peak_co_level": {
+        "name": "Nivel maxim CO"
+      },
+      "peak_co_level_time": {
+        "name": "Timp de nivel maxim CO"
+      },
+      "mcu_sw_version": {
+        "name": "Versiunea software MCU"
+      },
+      "rf_level": {
+        "name": "Puterea semnalului",
+        "state": {
+          "good": "Bun",
+          "moderate": "Moderat",
+          "no_signal": "Fără Semnal",
+          "weak": "Slab"
+        }
+      },
+      "sw_version": {
+        "name": "Versiune software"
+      },
+      "voice_vol": {
+        "name": "Volumul vocii"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Versiune de firmware pentru modulul Wi-Fi"
+      },
+      "last_self_test": {
+        "name": "Rezultatul testului dispozitivului",
+        "state": {
+          "not_run": "Nu alerga",
+          "success": "Succes",
+          "failed": "A eșuat"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Timp de testare a dispozitivului"
+      },
+      "radon_peak": {
+        "name": "Nivelul maxim de radon"
+      },
+      "radon_peak_time": {
+        "name": "Timpul nivelului maxim de radon"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Pragul de linie verde"
+      },
+      "radon_maximum_threshold": {
+        "name": "Pragul de linie roșie"
+      },
+      "alarm_volume": {
+        "name": "Volumul alarmei"
+      },
+      "voice_volume": {
+        "name": "Volumul vocii"
+      },
+      "chirp_volume": {
+        "name": "Volum Ciripit"
+      },
+      "reminder_volume": {
+        "name": "Volumul mementoului"
+      },
+      "temperature_adjustment": {
+        "name": "Calibrarea temperaturii"
+      },
+      "humidity_adjustment": {
+        "name": "Calibrarea umidității relative"
+      },
+      "warning_period": {
+        "name": "Perioada de avertizare"
+      },
+      "temperature_min": {
+        "name": "Interval de temperatură minim"
+      },
+      "temperature_max": {
+        "name": "Interval de temperatură Maxim"
+      },
+      "humidity_min": {
+        "name": "Interval de umiditate relativă minim"
+      },
+      "humidity_max": {
+        "name": "Interval de umiditate relativă maxim"
+      },
+      "temperature_comfort_min": {
+        "name": "Temperatura de confort minim"
+      },
+      "temperature_comfort_max": {
+        "name": "Temperatura de confort maxim"
+      },
+      "humidity_comfort_min": {
+        "name": "Confort Umiditate Minim"
+      },
+      "humidity_comfort_max": {
+        "name": "Confort Umiditate Maximă"
+      },
+      "detection_sensitivity": {
+        "name": "Sensibilitate de detectare"
+      },
+      "driveway_sensitivity": {
+        "name": "Sensibilitatea senzorului"
+      },
+      "trigger_brightness": {
+        "name": "Declanșează luminozitatea"
+      },
+      "standby_brightness": {
+        "name": "Luminozitate standby"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Ton de alarmă"
+      },
+      "chirp_tone": {
+        "name": "Tonul de ciripit"
+      },
+      "reminder_tone": {
+        "name": "Ton de memento"
+      },
+      "alarm_interval": {
+        "name": "Interval de alarmă"
+      },
+      "reminder_time": {
+        "name": "Timp de memento"
+      },
+      "mailbox_report_interval": {
+        "name": "Interval de raportare a datelor"
+      },
+      "temperature_unit": {
+        "name": "Unitate de temperatură"
+      },
+      "radon_unit": {
+        "name": "Unitatea de radon"
+      },
+      "comfort_type": {
+        "name": "Personalizați nivelurile de confort"
+      },
+      "led_brightness": {
+        "name": "Luminozitate LED"
+      },
+      "light_motion_on_time": {
+        "name": "Durata automată a luminii"
+      },
+      "light_scene": {
+        "name": "Scenă de lumină"
+      },
+      "light_app_on_time": {
+        "name": "Aplicația la timp"
+      }
+    }
+  }
+}

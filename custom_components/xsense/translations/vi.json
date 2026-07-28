@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Thiết bị đã được định cấu hình",
+      "reauth_successful": "Xác thực lại thành công",
+      "reconfigure_successful": "Cấu hình lại đã thành công"
+    },
+    "error": {
+      "cannot_connect": "Không thể kết nối",
+      "invalid_auth": "Xác thực không hợp lệ",
+      "unknown": "Lỗi không mong muốn"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Đăng nhập lại bằng tài khoản X-Sense của bạn.",
+        "data": {
+          "email": "E-mail",
+          "password": "Mật khẩu"
+        }
+      },
+      "reconfigure": {
+        "description": "Cập nhật tài khoản X-Sense được tích hợp này sử dụng.",
+        "data": {
+          "email": "E-mail",
+          "password": "Mật khẩu"
+        }
+      },
+      "user": {
+        "description": "Đăng nhập bằng tài khoản X-Sense của bạn.",
+        "data": {
+          "email": "E-mail",
+          "password": "Mật khẩu"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Đồng bộ hóa phương tiện ghi sẽ lưu vào bộ nhớ đệm các clip camera trong phương tiện Home Assistant để thanh bên X-Sense Bản ghi, Trình duyệt phương tiện và thông báo trên thiết bị di động có thể mở các bản ghi một cách nhanh chóng. Chỉ để nó vào bộ nhớ đệm khi chúng được mở. Kích hoạt nó để giữ các bản ghi gần đây sẵn sàng ở chế độ nền.",
+        "data": {
+          "recording_media_sync_enabled": "Ghi đồng bộ hóa phương tiện",
+          "recording_media_sync_hours": "Khoảng thời gian đồng bộ hóa nền",
+          "recording_media_storage_path": "Ghi thư mục bộ đệm",
+          "recording_notification_quality": "Chất lượng ghi thông báo",
+          "recording_media_days_order": "Ghi thứ tự ngày",
+          "recording_media_clips_order": "Thứ tự ghi clip"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Tự động lưu trữ các bản ghi gần đây. Điều này sử dụng không gian lưu trữ và có thể đánh thức camera thường xuyên hơn.",
+          "recording_media_sync_hours": "Tần suất chạy đồng bộ hóa bắt kịp nền thông thường. Các bản ghi gần đây được kiểm tra vài phút một lần khi bật đồng bộ hóa.",
+          "recording_media_storage_path": "Sử dụng thư mục trong /media. Các video và hình thu nhỏ mới được lưu trong bộ nhớ đệm được lưu trữ tại đây.",
+          "recording_notification_quality": "Chọn HD để ưu tiên URL clip trực tiếp/độ phân giải cao của X-Sense cho thông báo trên thiết bị di động. Chọn SD để sử dụng đường dẫn chụp phát lại của máy ảnh khi khả dụng.",
+          "recording_media_days_order": "Chọn xem ngày mới hơn hay cũ hơn sẽ xuất hiện đầu tiên trong trình xem bản ghi.",
+          "recording_media_clips_order": "Chọn xem các clip mới hơn hay cũ hơn sẽ xuất hiện đầu tiên trong mỗi ngày."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Thư mục bộ đệm ghi âm sẽ thay đổi từ `{old_path}` thành `{new_path}`. Các video và hình thu nhỏ hiện có trong bộ nhớ đệm không được di chuyển tự động. Trước tiên, hãy di chuyển các thư mục `videos` và `thumbs` hiện có nếu bạn muốn các bản ghi cũ được lưu trong bộ nhớ đệm vẫn khả dụng."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Sử dụng thư mục trong /media."
+    },
+    "abort": {
+      "no_options": "Không có tùy chọn có thể định cấu hình nào cho tài khoản X-Sense này."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Đã kích hoạt"
+      },
+      "alarm_status": {
+        "name": "Trạng thái cảnh báo"
+      },
+      "connected": {
+        "name": "Đã kết nối"
+      },
+      "door": {
+        "name": "cửa"
+      },
+      "mailbox_schedule_active": {
+        "name": "Lịch biểu hộp thư đang hoạt động"
+      },
+      "mute_status": {
+        "name": "Thiết bị đã im lặng"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Máy khoan báo động"
+      },
+      "mute": {
+        "name": "Tắt tiếng"
+      },
+      "test": {
+        "name": "Kiểm tra thiết bị"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "Phát hiện AI"
+      },
+      "motion": {
+        "name": "chuyển động"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Trạng thái thiết bị",
+        "state": {
+          "normal": "Bình thường",
+          "low_battery": "Pin yếu",
+          "malfunction": "Trục trặc",
+          "end_of_life": "Cuối đời"
+        }
+      },
+      "alarm_vol": {
+        "name": "Âm lượng báo động"
+      },
+      "wifi_rssi": {
+        "name": "Cường độ tín hiệu Wi-Fi"
+      },
+      "ip_address": {
+        "name": "Địa chỉ IP"
+      },
+      "co_reading": {
+        "name": "Đọc CO"
+      },
+      "co_level": {
+        "name": "Cấp độ CO"
+      },
+      "peak_co_level": {
+        "name": "Mức CO cao nhất"
+      },
+      "peak_co_level_time": {
+        "name": "Thời gian cấp CO cao nhất"
+      },
+      "mcu_sw_version": {
+        "name": "Phiên bản phần mềm MCU"
+      },
+      "rf_level": {
+        "name": "Cường độ tín hiệu",
+        "state": {
+          "good": "Tốt",
+          "moderate": "Trung bình",
+          "no_signal": "Không có tín hiệu",
+          "weak": "yếu"
+        }
+      },
+      "sw_version": {
+        "name": "Phiên bản phần mềm"
+      },
+      "voice_vol": {
+        "name": "Âm lượng giọng nói"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Phiên bản phần mềm mô-đun Wi-Fi"
+      },
+      "last_self_test": {
+        "name": "Kết quả kiểm tra thiết bị",
+        "state": {
+          "not_run": "Không chạy",
+          "success": "thành công",
+          "failed": "thất bại"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Thời gian kiểm tra thiết bị"
+      },
+      "radon_peak": {
+        "name": "Mức Radon cao nhất"
+      },
+      "radon_peak_time": {
+        "name": "Thời gian mức Radon cao nhất"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Ngưỡng đường màu xanh lá cây"
+      },
+      "radon_maximum_threshold": {
+        "name": "Ngưỡng đường màu đỏ"
+      },
+      "alarm_volume": {
+        "name": "Âm lượng báo động"
+      },
+      "voice_volume": {
+        "name": "Âm lượng giọng nói"
+      },
+      "chirp_volume": {
+        "name": "Âm lượng kêu"
+      },
+      "reminder_volume": {
+        "name": "Âm lượng nhắc nhở"
+      },
+      "temperature_adjustment": {
+        "name": "Hiệu chuẩn nhiệt độ"
+      },
+      "humidity_adjustment": {
+        "name": "Hiệu chuẩn độ ẩm tương đối"
+      },
+      "warning_period": {
+        "name": "Thời gian cảnh báo"
+      },
+      "temperature_min": {
+        "name": "Phạm vi nhiệt độ tối thiểu"
+      },
+      "temperature_max": {
+        "name": "Phạm vi nhiệt độ tối đa"
+      },
+      "humidity_min": {
+        "name": "Phạm vi độ ẩm tương đối tối thiểu"
+      },
+      "humidity_max": {
+        "name": "Phạm vi độ ẩm tương đối tối đa"
+      },
+      "temperature_comfort_min": {
+        "name": "Nhiệt độ thoải mái tối thiểu"
+      },
+      "temperature_comfort_max": {
+        "name": "Nhiệt độ thoải mái tối đa"
+      },
+      "humidity_comfort_min": {
+        "name": "Độ ẩm thoải mái tối thiểu"
+      },
+      "humidity_comfort_max": {
+        "name": "Độ ẩm thoải mái tối đa"
+      },
+      "detection_sensitivity": {
+        "name": "Độ nhạy phát hiện"
+      },
+      "driveway_sensitivity": {
+        "name": "Độ nhạy cảm biến"
+      },
+      "trigger_brightness": {
+        "name": "Độ sáng kích hoạt"
+      },
+      "standby_brightness": {
+        "name": "Độ sáng chờ"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Âm báo thức"
+      },
+      "chirp_tone": {
+        "name": "giai điệu chirp"
+      },
+      "reminder_tone": {
+        "name": "Âm nhắc nhở"
+      },
+      "alarm_interval": {
+        "name": "Khoảng thời gian báo động"
+      },
+      "reminder_time": {
+        "name": "Thời gian nhắc nhở"
+      },
+      "mailbox_report_interval": {
+        "name": "Khoảng thời gian báo cáo dữ liệu"
+      },
+      "temperature_unit": {
+        "name": "Đơn vị nhiệt độ"
+      },
+      "radon_unit": {
+        "name": "Đơn vị Radon"
+      },
+      "comfort_type": {
+        "name": "Tùy chỉnh mức độ thoải mái"
+      },
+      "led_brightness": {
+        "name": "Độ sáng LED"
+      },
+      "light_motion_on_time": {
+        "name": "Thời lượng ánh sáng tự động"
+      },
+      "light_scene": {
+        "name": "Cảnh nhẹ"
+      },
+      "light_app_on_time": {
+        "name": "Ứng dụng đúng giờ"
+      }
+    }
+  }
+}

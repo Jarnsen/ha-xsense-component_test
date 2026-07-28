@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Enheden er allerede konfigureret",
+      "reauth_successful": "Gengodkendelse lykkedes",
+      "reconfigure_successful": "Omkonfigurationen lykkedes"
+    },
+    "error": {
+      "cannot_connect": "Kunne ikke oprette forbindelse",
+      "invalid_auth": "Ugyldig godkendelse",
+      "unknown": "Uventet fejl"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Log ind igen med din X-Sense-konto.",
+        "data": {
+          "email": "E-mail",
+          "password": "Adgangskode"
+        }
+      },
+      "reconfigure": {
+        "description": "Opdater X-Sense-kontoen, der bruges af denne integration.",
+        "data": {
+          "email": "E-mail",
+          "password": "Adgangskode"
+        }
+      },
+      "user": {
+        "description": "Log ind med din X-Sense-konto.",
+        "data": {
+          "email": "E-mail",
+          "password": "Adgangskode"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Synkronisering af optagelsesmedier cacherer kameraklip under Home Assistant-mediet, så X-Sense-sidebjælken til optagelser, mediebrowseren og mobilmeddelelser kan åbne optagelser hurtigt. Lad det være slukket for kun at cache optagelser, når de er åbnet. Aktiver den for at holde de seneste optagelser klar i baggrunden.",
+        "data": {
+          "recording_media_sync_enabled": "Synkronisering af optagemedier",
+          "recording_media_sync_hours": "Baggrundssynkroniseringsinterval",
+          "recording_media_storage_path": "Optagelses cache mappe",
+          "recording_notification_quality": "Notifikationsoptagelseskvalitet",
+          "recording_media_days_order": "Optagelsesdagsrækkefølge",
+          "recording_media_clips_order": "Optagelse af klip rækkefølge"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Cache de seneste optagelser automatisk. Dette bruger lagerplads og kan vække kameraer oftere.",
+          "recording_media_sync_hours": "Hvor ofte den normale baggrundssynkronisering skal køre. Nylige optagelser kontrolleres hvert par minutter, når synkronisering er aktiveret.",
+          "recording_media_storage_path": "Brug en mappe under /media. Nye cachelagrede videoer og thumbnails gemmes her.",
+          "recording_notification_quality": "Vælg HD for at foretrække X-Senses direkte/højopløselige klip-URL'er til mobilmeddelelser. Vælg SD for at bruge kameraets afspilningsoptagelsessti, når den er tilgængelig.",
+          "recording_media_days_order": "Vælg, om nyere eller ældre dage vises først i optagelsesfremviseren.",
+          "recording_media_clips_order": "Vælg, om nyere eller ældre klip vises først inden for hver dag."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Optagelsescache-mappen ændres fra `{old_path}` til `{new_path}`. Eksisterende cachelagrede videoer og miniaturer flyttes ikke automatisk. Flyt de eksisterende mapper `videos` og `thumbs` først, hvis du ønsker, at gamle cachelagrede optagelser skal forblive tilgængelige."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Brug en mappe under /media."
+    },
+    "abort": {
+      "no_options": "Der er ingen konfigurerbare muligheder for denne X-Sense-konto."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Aktiveret"
+      },
+      "alarm_status": {
+        "name": "Alarmstatus"
+      },
+      "connected": {
+        "name": "Forbundet"
+      },
+      "door": {
+        "name": "Dør"
+      },
+      "mailbox_schedule_active": {
+        "name": "Postkasseplan er aktiv"
+      },
+      "mute_status": {
+        "name": "Enheden er lydløs"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Alarmøvelse"
+      },
+      "mute": {
+        "name": "Lydløs"
+      },
+      "test": {
+        "name": "Enhedstest"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI-detektion"
+      },
+      "motion": {
+        "name": "Bevægelse"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Enhedsstatus",
+        "state": {
+          "normal": "Normal",
+          "low_battery": "Lavt batteri",
+          "malfunction": "Fejlfunktion",
+          "end_of_life": "End-of-Life"
+        }
+      },
+      "alarm_vol": {
+        "name": "Alarmvolumen"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi Signalstyrke"
+      },
+      "ip_address": {
+        "name": "IP-adresse"
+      },
+      "co_reading": {
+        "name": "CO Læser"
+      },
+      "co_level": {
+        "name": "CO Niveau"
+      },
+      "peak_co_level": {
+        "name": "Højeste CO-niveau"
+      },
+      "peak_co_level_time": {
+        "name": "Maksimal CO niveau tid"
+      },
+      "mcu_sw_version": {
+        "name": "MCU Softwareversion"
+      },
+      "rf_level": {
+        "name": "Signalstyrke",
+        "state": {
+          "good": "Godt",
+          "moderate": "Moderat",
+          "no_signal": "Intet signal",
+          "weak": "Svag"
+        }
+      },
+      "sw_version": {
+        "name": "Softwareversion"
+      },
+      "voice_vol": {
+        "name": "Stemmelydstyrke"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi-modulets firmwareversion"
+      },
+      "last_self_test": {
+        "name": "Resultat af enhedens test",
+        "state": {
+          "not_run": "Ikke løb",
+          "success": "Succes",
+          "failed": "Mislykkedes"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Enhedens testtid"
+      },
+      "radon_peak": {
+        "name": "Højeste radonniveau"
+      },
+      "radon_peak_time": {
+        "name": "Peak Radon Level Time"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Grøn linje tærskel"
+      },
+      "radon_maximum_threshold": {
+        "name": "Rød linjetærskel"
+      },
+      "alarm_volume": {
+        "name": "Alarmvolumen"
+      },
+      "voice_volume": {
+        "name": "Stemmelydstyrke"
+      },
+      "chirp_volume": {
+        "name": "Chirp volumen"
+      },
+      "reminder_volume": {
+        "name": "Volumen for påmindelse"
+      },
+      "temperature_adjustment": {
+        "name": "Temperaturkalibrering"
+      },
+      "humidity_adjustment": {
+        "name": "Kalibrering af relativ fugtighed"
+      },
+      "warning_period": {
+        "name": "Advarselsperiode"
+      },
+      "temperature_min": {
+        "name": "Temperaturområde minimum"
+      },
+      "temperature_max": {
+        "name": "Temperaturområde Maksimum"
+      },
+      "humidity_min": {
+        "name": "Relativ luftfugtighed Minimum"
+      },
+      "humidity_max": {
+        "name": "Relativ luftfugtighed Maksimum"
+      },
+      "temperature_comfort_min": {
+        "name": "Komfort Temperatur Minimum"
+      },
+      "temperature_comfort_max": {
+        "name": "Komfort Temperatur maksimum"
+      },
+      "humidity_comfort_min": {
+        "name": "Komfort Luftfugtighed Minimum"
+      },
+      "humidity_comfort_max": {
+        "name": "Komfort Luftfugtighed Maksimal"
+      },
+      "detection_sensitivity": {
+        "name": "Detektionsfølsomhed"
+      },
+      "driveway_sensitivity": {
+        "name": "Sensorfølsomhed"
+      },
+      "trigger_brightness": {
+        "name": "Udløs lysstyrke"
+      },
+      "standby_brightness": {
+        "name": "Standby lysstyrke"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Alarm tone"
+      },
+      "chirp_tone": {
+        "name": "Kvidrende tone"
+      },
+      "reminder_tone": {
+        "name": "Påmindelsestone"
+      },
+      "alarm_interval": {
+        "name": "Alarminterval"
+      },
+      "reminder_time": {
+        "name": "Påmindelsestid"
+      },
+      "mailbox_report_interval": {
+        "name": "Datarapporteringsinterval"
+      },
+      "temperature_unit": {
+        "name": "Temperaturenhed"
+      },
+      "radon_unit": {
+        "name": "Radon enhed"
+      },
+      "comfort_type": {
+        "name": "Tilpas komfortniveauer"
+      },
+      "led_brightness": {
+        "name": "LED lysstyrke"
+      },
+      "light_motion_on_time": {
+        "name": "Automatisk lysvarighed"
+      },
+      "light_scene": {
+        "name": "Lysscene"
+      },
+      "light_app_on_time": {
+        "name": "App til tiden"
+      }
+    }
+  }
+}

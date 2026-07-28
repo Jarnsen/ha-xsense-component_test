@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "המכשיר כבר מוגדר",
+      "reauth_successful": "האימות מחדש הצליח",
+      "reconfigure_successful": "ההגדרה מחדש הצליחה"
+    },
+    "error": {
+      "cannot_connect": "החיבור נכשל",
+      "invalid_auth": "אימות לא חוקי",
+      "unknown": "שגיאה לא צפויה"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "היכנס שוב עם חשבון X-Sense שלך.",
+        "data": {
+          "email": "E-mail",
+          "password": "סיסמה"
+        }
+      },
+      "reconfigure": {
+        "description": "עדכן את חשבון X-Sense המשמש את השילוב הזה.",
+        "data": {
+          "email": "E-mail",
+          "password": "סיסמה"
+        }
+      },
+      "user": {
+        "description": "היכנס עם חשבון X-Sense שלך.",
+        "data": {
+          "email": "E-mail",
+          "password": "סיסמה"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "סינכרון מדיה הקלטת מטמון קטעי מצלמה תחת המדיה של Home Assistant כך שסרגל הצד של הקלטות X-Sense, דפדפן המדיה והתראות לנייד יכולים לפתוח הקלטות במהירות. השאר את זה כדי לשמור הקלטות רק כשהן נפתחות. אפשר אותו כדי לשמור את ההקלטות האחרונות מוכנות ברקע.",
+        "data": {
+          "recording_media_sync_enabled": "סינכרון מדיה הקלטת",
+          "recording_media_sync_hours": "מרווח סנכרון ברקע",
+          "recording_media_storage_path": "תיקיית מטמון הקלטות",
+          "recording_notification_quality": "איכות הקלטת הודעות",
+          "recording_media_days_order": "סדר יום הקלטה",
+          "recording_media_clips_order": "סדר הקלטת קליפים"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "שמור הקלטות אחרונות באופן אוטומטי. זה משתמש בשטח אחסון ועלול להעיר מצלמות לעתים קרובות יותר.",
+          "recording_media_sync_hours": "באיזו תדירות צריך לרוץ סנכרון התדמית הרגיל ברקע. הקלטות אחרונות נבדקות כל כמה דקות כאשר הסנכרון מופעל.",
+          "recording_media_storage_path": "השתמש בתיקייה תחת /media. סרטונים ותמונות ממוזערות חדשות בקובץ שמור מאוחסנים כאן.",
+          "recording_notification_quality": "בחר HD כדי להעדיף את כתובות ה-URL של קליפים ישירות/ברזולוציה גבוהה של X-Sense להתראות לנייד. בחר SD כדי להשתמש בנתיב לכידת השמעת המצלמה כאשר זמין.",
+          "recording_media_days_order": "בחר אם ימים חדשים יותר או ישנים יותר יופיעו תחילה במציג ההקלטות.",
+          "recording_media_clips_order": "בחר אם קליפים חדשים יותר או ישנים יותר יופיעו ראשונים בכל יום."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "תיקיית מטמון ההקלטה תשתנה מ-`{old_path}` ל-`{new_path}`. סרטונים ותמונות ממוזערות קיימים במטמון אינם מוזזים אוטומטית. העבר תחילה את התיקיות `videos` ו-`thumbs` הקיימות אם ברצונך שהקלטות ישנות המאוחסנות במטמון יישארו זמינות."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "השתמש בתיקייה תחת /media."
+    },
+    "abort": {
+      "no_options": "אין אפשרויות הניתנות להגדרה עבור חשבון X-Sense זה."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "הופעל"
+      },
+      "alarm_status": {
+        "name": "מצב אזעקה"
+      },
+      "connected": {
+        "name": "מחובר"
+      },
+      "door": {
+        "name": "דלת"
+      },
+      "mailbox_schedule_active": {
+        "name": "לוח הזמנים של תיבת הדואר פעיל"
+      },
+      "mute_status": {
+        "name": "המכשיר מושתק"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "תרגיל אזעקה"
+      },
+      "mute": {
+        "name": "השתק"
+      },
+      "test": {
+        "name": "בדיקת מכשיר"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "זיהוי AI"
+      },
+      "motion": {
+        "name": "תנועה"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "מצב מכשיר",
+        "state": {
+          "normal": "רגיל",
+          "low_battery": "סוללה נמוכה",
+          "malfunction": "תקלה",
+          "end_of_life": "סוף החיים"
+        }
+      },
+      "alarm_vol": {
+        "name": "עוצמת קול אזעקה"
+      },
+      "wifi_rssi": {
+        "name": "עוצמת אות Wi-Fi"
+      },
+      "ip_address": {
+        "name": "כתובת IP"
+      },
+      "co_reading": {
+        "name": "מחזיק משרה קורא"
+      },
+      "co_level": {
+        "name": "רמת CO"
+      },
+      "peak_co_level": {
+        "name": "שיא רמת CO"
+      },
+      "peak_co_level_time": {
+        "name": "זמן שיא רמת CO"
+      },
+      "mcu_sw_version": {
+        "name": "גרסת תוכנה MCU"
+      },
+      "rf_level": {
+        "name": "חוזק אות",
+        "state": {
+          "good": "טוב",
+          "moderate": "מתון",
+          "no_signal": "אין אות",
+          "weak": "חלש"
+        }
+      },
+      "sw_version": {
+        "name": "גרסת תוכנה"
+      },
+      "voice_vol": {
+        "name": "עוצמת קול"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "גרסת קושחה של מודול Wi-Fi"
+      },
+      "last_self_test": {
+        "name": "תוצאת בדיקת המכשיר",
+        "state": {
+          "not_run": "לא לרוץ",
+          "success": "הצלחה",
+          "failed": "נכשל"
+        }
+      },
+      "last_self_test_time": {
+        "name": "זמן בדיקת מכשיר"
+      },
+      "radon_peak": {
+        "name": "שיא רמת ראדון"
+      },
+      "radon_peak_time": {
+        "name": "זמן שיא רמת ראדון"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "סף קו ירוק"
+      },
+      "radon_maximum_threshold": {
+        "name": "סף קו אדום"
+      },
+      "alarm_volume": {
+        "name": "עוצמת קול אזעקה"
+      },
+      "voice_volume": {
+        "name": "עוצמת קול"
+      },
+      "chirp_volume": {
+        "name": "עוצמת ציוץ"
+      },
+      "reminder_volume": {
+        "name": "נפח תזכורת"
+      },
+      "temperature_adjustment": {
+        "name": "כיול טמפרטורה"
+      },
+      "humidity_adjustment": {
+        "name": "כיול לחות יחסית"
+      },
+      "warning_period": {
+        "name": "תקופת אזהרה"
+      },
+      "temperature_min": {
+        "name": "טווח טמפרטורות מינימום"
+      },
+      "temperature_max": {
+        "name": "טווח טמפרטורה מקסימלי"
+      },
+      "humidity_min": {
+        "name": "מינימום טווח לחות יחסית"
+      },
+      "humidity_max": {
+        "name": "טווח לחות יחסית מקסימום"
+      },
+      "temperature_comfort_min": {
+        "name": "טמפרטורת נוחות מינימום"
+      },
+      "temperature_comfort_max": {
+        "name": "טמפרטורת נוחות מקסימלית"
+      },
+      "humidity_comfort_min": {
+        "name": "נוחות לחות מינימום"
+      },
+      "humidity_comfort_max": {
+        "name": "נוחות לחות מקסימלית"
+      },
+      "detection_sensitivity": {
+        "name": "רגישות זיהוי"
+      },
+      "driveway_sensitivity": {
+        "name": "רגישות חיישן"
+      },
+      "trigger_brightness": {
+        "name": "הדק בהירות"
+      },
+      "standby_brightness": {
+        "name": "בהירות במצב המתנה"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "צליל אזעקה"
+      },
+      "chirp_tone": {
+        "name": "טון ציוץ"
+      },
+      "reminder_tone": {
+        "name": "טון תזכורת"
+      },
+      "alarm_interval": {
+        "name": "מרווח אזעקה"
+      },
+      "reminder_time": {
+        "name": "זמן תזכורת"
+      },
+      "mailbox_report_interval": {
+        "name": "מרווח דיווח נתונים"
+      },
+      "temperature_unit": {
+        "name": "יחידת טמפרטורה"
+      },
+      "radon_unit": {
+        "name": "יחידת ראדון"
+      },
+      "comfort_type": {
+        "name": "התאם אישית את רמות הנוחות"
+      },
+      "led_brightness": {
+        "name": "בהירות LED"
+      },
+      "light_motion_on_time": {
+        "name": "משך אור אוטומטי"
+      },
+      "light_scene": {
+        "name": "סצנת אור"
+      },
+      "light_app_on_time": {
+        "name": "אפליקציה בזמן"
+      }
+    }
+  }
+}

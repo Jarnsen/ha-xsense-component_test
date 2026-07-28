@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "設備已配置",
+      "reauth_successful": "重新認證成功",
+      "reconfigure_successful": "重新配置成功"
+    },
+    "error": {
+      "cannot_connect": "連線失敗",
+      "invalid_auth": "驗證無效",
+      "unknown": "意外錯誤"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "使用您的 X-Sense 帳戶再次登入。",
+        "data": {
+          "email": "電子郵件",
+          "password": "密碼"
+        }
+      },
+      "reconfigure": {
+        "description": "更新此整合使用的 X-Sense 帳戶。",
+        "data": {
+          "email": "電子郵件",
+          "password": "密碼"
+        }
+      },
+      "user": {
+        "description": "使用您的 X-Sense 帳戶登入。",
+        "data": {
+          "email": "電子郵件",
+          "password": "密碼"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "錄製媒體同步會在 Home Assistant 媒體下快取攝影機剪輯，以便 X-Sense 錄製側邊欄、媒體瀏覽器和行動通知可以快速開啟錄製。僅當錄音開啟時才將其關閉以快取錄音。使其能夠在後台保留最近的錄音。",
+        "data": {
+          "recording_media_sync_enabled": "錄製媒體同步",
+          "recording_media_sync_hours": "後台同步間隔",
+          "recording_media_storage_path": "錄音快取資料夾",
+          "recording_notification_quality": "通知錄製品質",
+          "recording_media_days_order": "錄音日順序",
+          "recording_media_clips_order": "錄製剪輯順序"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "自動快取最近的錄製內容。這會佔用儲存空間，並且可能會更頻繁地喚醒攝影機。",
+          "recording_media_sync_hours": "正常後台追趕同步應運轉的頻率。啟用同步後，每隔幾分鐘就會檢查最近的錄音。",
+          "recording_media_storage_path": "使用 /media 下的資料夾。新的快取影片和縮圖會儲存在這裡。",
+          "recording_notification_quality": "選擇 HD 以首選 X-Sense 的行動通知的直接/高解析度剪輯 URL。選擇 SD 以使用相機回放捕獲路徑（如果可用）。",
+          "recording_media_days_order": "選擇較新的日期還是較舊的日期首先顯示在錄音檢視器中。",
+          "recording_media_clips_order": "選擇每天首先顯示較新的剪輯還是較舊的剪輯。"
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "錄製快取資料夾將從 `{old_path}` 變更為 `{new_path}`。現有的快取影片和縮圖不會自動移動。如果您希望舊的快取錄製內容仍然可用，請先移動現有的 `videos` 和 `thumbs` 資料夾。"
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "請使用 /media 下的資料夾。"
+    },
+    "abort": {
+      "no_options": "此 X-Sense 帳戶沒有可設定選項。"
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "已啟用"
+      },
+      "alarm_status": {
+        "name": "警報狀態"
+      },
+      "connected": {
+        "name": "已連接"
+      },
+      "door": {
+        "name": "門"
+      },
+      "mailbox_schedule_active": {
+        "name": "信箱計畫活動"
+      },
+      "mute_status": {
+        "name": "裝置靜音"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "警報演習"
+      },
+      "mute": {
+        "name": "靜音"
+      },
+      "test": {
+        "name": "設備測試"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "人工智慧檢測"
+      },
+      "motion": {
+        "name": "運動"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "設備狀態",
+        "state": {
+          "normal": "正常",
+          "low_battery": "電池電量低",
+          "malfunction": "故障",
+          "end_of_life": "生命終點"
+        }
+      },
+      "alarm_vol": {
+        "name": "警報音量"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi 訊號強度"
+      },
+      "ip_address": {
+        "name": "IP位址"
+      },
+      "co_reading": {
+        "name": "CO 讀數"
+      },
+      "co_level": {
+        "name": "CO 濃度"
+      },
+      "peak_co_level": {
+        "name": "CO 峰值濃度"
+      },
+      "peak_co_level_time": {
+        "name": "CO 峰值時間"
+      },
+      "mcu_sw_version": {
+        "name": "MCU 軟體版本"
+      },
+      "rf_level": {
+        "name": "訊號強度",
+        "state": {
+          "good": "好",
+          "moderate": "中等",
+          "no_signal": "無訊號",
+          "weak": "弱"
+        }
+      },
+      "sw_version": {
+        "name": "軟體版本"
+      },
+      "voice_vol": {
+        "name": "語音音量"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi 模組韌體版本"
+      },
+      "last_self_test": {
+        "name": "設備測試結果",
+        "state": {
+          "not_run": "未運行",
+          "success": "成功",
+          "failed": "失敗"
+        }
+      },
+      "last_self_test_time": {
+        "name": "設備測試時間"
+      },
+      "radon_peak": {
+        "name": "氡氣峰值水平"
+      },
+      "radon_peak_time": {
+        "name": "氡氣峰值時間"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "綠線閾值"
+      },
+      "radon_maximum_threshold": {
+        "name": "紅線閾值"
+      },
+      "alarm_volume": {
+        "name": "警報音量"
+      },
+      "voice_volume": {
+        "name": "語音音量"
+      },
+      "chirp_volume": {
+        "name": "鳴叫音量"
+      },
+      "reminder_volume": {
+        "name": "提醒音量"
+      },
+      "temperature_adjustment": {
+        "name": "溫度校準"
+      },
+      "humidity_adjustment": {
+        "name": "相對濕度校準"
+      },
+      "warning_period": {
+        "name": "警告期"
+      },
+      "temperature_min": {
+        "name": "最低溫度範圍"
+      },
+      "temperature_max": {
+        "name": "最大溫度範圍"
+      },
+      "humidity_min": {
+        "name": "最小相對濕度範圍"
+      },
+      "humidity_max": {
+        "name": "最大相對濕度範圍"
+      },
+      "temperature_comfort_min": {
+        "name": "最低舒適溫度"
+      },
+      "temperature_comfort_max": {
+        "name": "最高舒適溫度"
+      },
+      "humidity_comfort_min": {
+        "name": "最低舒適濕度"
+      },
+      "humidity_comfort_max": {
+        "name": "最大舒適濕度"
+      },
+      "detection_sensitivity": {
+        "name": "檢測靈敏度"
+      },
+      "driveway_sensitivity": {
+        "name": "感測器靈敏度"
+      },
+      "trigger_brightness": {
+        "name": "觸發亮度"
+      },
+      "standby_brightness": {
+        "name": "待機亮度"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "警報音"
+      },
+      "chirp_tone": {
+        "name": "嘰嘰喳喳的聲音"
+      },
+      "reminder_tone": {
+        "name": "提醒音"
+      },
+      "alarm_interval": {
+        "name": "警報間隔"
+      },
+      "reminder_time": {
+        "name": "提醒時間"
+      },
+      "mailbox_report_interval": {
+        "name": "數據報告間隔"
+      },
+      "temperature_unit": {
+        "name": "溫度單位"
+      },
+      "radon_unit": {
+        "name": "氡單位"
+      },
+      "comfort_type": {
+        "name": "客製化舒適度"
+      },
+      "led_brightness": {
+        "name": "LED 亮度"
+      },
+      "light_motion_on_time": {
+        "name": "自動光照時間"
+      },
+      "light_scene": {
+        "name": "燈光場景"
+      },
+      "light_app_on_time": {
+        "name": "應用準時"
+      }
+    }
+  }
+}

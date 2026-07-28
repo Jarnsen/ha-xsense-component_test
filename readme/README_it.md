@@ -144,6 +144,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A Automazioni a codice da tastiera
+La tastiera SKP0A non pubblica ogni singola pressione di un tasto. Pubblica un evento tastiera dopo che un codice valido creato dall'app X-Sense è stato inviato con Home, Away o Disarmed. L'integrazione espone l'evento del codice inviato come `xsense_keypad_code`.
+
+Utilizza il progetto a codice singolo incluso per eseguire azioni Home Assistant per un codice selezionato. Facoltativamente è possibile richiedere il pulsante della modalità Home, Away o Disarmed utilizzato per inviare il codice e, facoltativamente, limitare l'automazione a un numero di serie della tastiera.
+
+[![Importa progetto](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Utilizzare il progetto del router quando si desidera che un'automazione mappi diversi codici tastiera su diverse azioni Home Assistant.
+
+[![Importa il progetto del router](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+I pulsanti della modalità tastiera fungono da pulsanti di invio. Se la modalità selezionata è già attiva, X-Sense potrebbe non pubblicare un nuovo evento, quindi scegli uno dei pulsanti della modalità attualmente inattiva quando invii un codice.
+
+____________________________________________________________
+
 ## Esempi di automazioni
 Con questa integrazione, è possibile creare diverse automazioni. Ecco alcuni esempi:
 

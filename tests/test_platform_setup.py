@@ -490,23 +490,21 @@ def test_keypad_code_router_blueprint_maps_multiple_codes_to_actions():
 
 
 def test_ai_notification_blueprint_docs_use_github_file_import_url():
-    with open("readme/README_en.md", encoding="utf-8") as file:
-        readme = file.read()
-
-    assert "raw.githubusercontent.com" not in readme
-    assert (
+    expected_urls = (
         "blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2F"
         "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
-        "automation%2Fxsense%2Fcamera_ai_notification.yaml"
-    ) in readme
-    assert (
+        "automation%2Fxsense%2Fcamera_ai_notification.yaml",
         "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
-        "automation%2Fxsense%2Fkeypad_code_action.yaml"
-    ) in readme
-    assert (
+        "automation%2Fxsense%2Fkeypad_code_action.yaml",
         "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
-        "automation%2Fxsense%2Fkeypad_code_router.yaml"
-    ) in readme
+        "automation%2Fxsense%2Fkeypad_code_router.yaml",
+    )
+
+    for path in Path("readme").glob("README_*.md"):
+        readme = path.read_text(encoding="utf-8")
+        assert "raw.githubusercontent.com" not in readme
+        for expected_url in expected_urls:
+            assert expected_url in readme, path.name
 
 
 def test_blueprint_maintenance_interval_callback_stays_event_loop_safe():

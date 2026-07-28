@@ -144,6 +144,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A Автоматизация ввода кода клавиатуры
+Клавиатура SKP0A не публикует каждое отдельное нажатие клавиши. Он публикует событие клавиатуры после того, как действительный код, созданный приложением X-Sense, отправляется с помощью Home, Away или Disarmed. Интеграция предоставляет это событие отправленного кода как `xsense_keypad_code`.
+
+Используйте включенную схему единого кода для запуска действий Home Assistant для одного выбранного кода. При желании вы можете потребовать кнопку режима Home, Away или Disarmed, используемую для отправки кода, и дополнительно ограничить автоматизацию одним серийным номером клавиатуры.
+
+[![Импортировать схему](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Используйте схему маршрутизатора, если вы хотите, чтобы одна автоматизация сопоставляла несколько кодов клавиатуры с разными действиями Home Assistant.
+
+[![Импортировать схему маршрутизатора](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Кнопки режима клавиатуры действуют как кнопки отправки. Если выбранный режим уже активен, X-Sense может не опубликовать новое событие, поэтому при отправке кода выберите одну из кнопок неактивного в данный момент режима.
+
+____________________________________________________________
+
 ## Примеры автоматизаций
 С помощью этой интеграции можно создать различные автоматизации. Вот несколько примеров:
 

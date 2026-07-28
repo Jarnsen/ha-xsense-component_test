@@ -84,6 +84,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A klaviatūros kodų automatika
+SKP0A klaviatūra neskelbia kiekvieno atskiro klavišo paspaudimo. Jis paskelbia klaviatūros įvykį po to, kai su Home, Away arba Disarmed pateikiamas galiojantis X-Sense programos sukurtas kodas. Integravimo metu šis pateikto kodo įvykis rodomas kaip `xsense_keypad_code`.
+
+Norėdami atlikti Home Assistant veiksmus vienam pasirinktam kodui, naudokite pridedamą vieno kodo projektą. Galite pasirinktinai reikalauti Home, Away arba Disarmed režimo mygtuko, naudojamo kodui pateikti, ir pasirinktinai apriboti automatizavimą iki vieno klaviatūros serijos numerio.
+
+[![Importuoti brėžinį](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Naudokite maršrutizatoriaus projektą, kai norite, kad viena automatika susietų kelis klaviatūros kodus su skirtingais Home Assistant veiksmais.
+
+[![Importuokite maršrutizatoriaus projektą](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Klaviatūros režimo mygtukai veikia kaip pateikimo mygtukai. Jei pasirinktas režimas jau aktyvus, X-Sense gali neskelbti naujo įvykio, todėl pateikdami kodą pasirinkite vieną iš šiuo metu neaktyvių režimo mygtukų.
+
+____________________________________________________________
+
 ## Automatizavimo pavyzdžiai
 ```yaml
 automation:

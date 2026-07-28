@@ -84,6 +84,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A Tastaturkodeautomatiseringer
+SKP0A-tastaturet udgiver ikke hvert enkelt tastetryk. Den udgiver en tastaturhændelse, efter at en gyldig X-Sense app-oprettet kode er indsendt med Home, Away eller Disarmed. Integrationen afslører den indsendte kodehændelse som `xsense_keypad_code`.
+
+Brug den medfølgende enkeltkode-plan til at køre Home Assistant-handlinger for én valgt kode. Du kan valgfrit kræve, at tilstandsknappen Home, Away eller Disarmed bruges til at sende koden, og eventuelt begrænse automatiseringen til ét tastaturserienummer.
+
+[![Import Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Brug routerplanen, når du vil have én automatisering til at knytte flere tastaturkoder til forskellige Home Assistant-handlinger.
+
+[![Importer router Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Tastaturtilstandsknapperne fungerer som afsendelsesknapper. Hvis den valgte tilstand allerede er aktiv, udgiver X-Sense muligvis ikke en ny begivenhed, så vælg en af ​​de aktuelt inaktive tilstandsknapper, når du indsender en kode.
+
+____________________________________________________________
+
 ## Eksempler på automatiseringer
 ```yaml
 automation:

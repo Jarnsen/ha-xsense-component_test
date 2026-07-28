@@ -84,6 +84,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A Automatisering av knappsatskod
+SKP0A-knappsatsen publicerar inte varje enskild knapptryckning. Den publicerar en knappsatshändelse efter att en giltig X-Sense app-skapad kod har skickats med Home, Away eller Disarmed. Integrationen visar den inlämnade kodhändelsen som `xsense_keypad_code`.
+
+Använd den medföljande enkelkodsritningen för att köra Home Assistant-åtgärder för en vald kod. Du kan valfritt kräva att lägesknappen Home, Away eller Disarmed används för att skicka koden, och eventuellt begränsa automatiseringen till ett serienummer på tangentbordet.
+
+[![Importera ritning](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Använd routerritningen när du vill att en automatisering ska mappa flera knappsatskoder till olika Home Assistant-åtgärder.
+
+[![Importera routerplan](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Knapparna för knappsatsläge fungerar som sändningsknappar. Om det valda läget redan är aktivt kan det hända att X-Sense inte publicerar en ny händelse, så välj en av de för närvarande inaktiva lägesknapparna när du skickar en kod.
+
+____________________________________________________________
+
 ## Exempel på automatiseringar
 ```yaml
 automation:

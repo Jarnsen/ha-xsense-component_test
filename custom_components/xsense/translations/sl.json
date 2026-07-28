@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Naprava je že konfigurirana",
+      "reauth_successful": "Ponovna avtentikacija je bila uspešna",
+      "reconfigure_successful": "Ponovna konfiguracija je bila uspešna"
+    },
+    "error": {
+      "cannot_connect": "Povezava ni uspela",
+      "invalid_auth": "Neveljavna avtentikacija",
+      "unknown": "Nepričakovana napaka"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Ponovno se prijavite s svojim računom X-Sense.",
+        "data": {
+          "email": "E-mail",
+          "password": "Geslo"
+        }
+      },
+      "reconfigure": {
+        "description": "Update the X-Sense account used by this integration.",
+        "data": {
+          "email": "E-mail",
+          "password": "Geslo"
+        }
+      },
+      "user": {
+        "description": "Sign in with your X-Sense account.",
+        "data": {
+          "email": "E-mail",
+          "password": "Geslo"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Sinhronizacija snemalnih medijev predpomni posnetke kamere pod medijem Home Assistant, tako da lahko stranska vrstica posnetkov X-Sense, brskalnik predstavnosti in mobilna obvestila hitro odprejo posnetke. Pustite izklopljeno, da shranjuje posnetke samo, ko so odprti. Enable it to keep recent recordings ready in the background.",
+        "data": {
+          "recording_media_sync_enabled": "Sinhronizacija snemalnih medijev",
+          "recording_media_sync_hours": "Interval sinhronizacije v ozadju",
+          "recording_media_storage_path": "Predpomnilnik za snemanje",
+          "recording_notification_quality": "Kakovost snemanja obvestil",
+          "recording_media_days_order": "Dnevni red snemanja",
+          "recording_media_clips_order": "Vrstni red snemanja posnetkov"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Samodejno predpomni nedavne posnetke. This uses storage space and may wake cameras more often.",
+          "recording_media_sync_hours": "How often the normal background catch-up sync should run. Nedavni posnetki se preverijo vsakih nekaj minut, ko je omogočena sinhronizacija.",
+          "recording_media_storage_path": "Uporabite mapo pod /media. New cached videos and thumbnails are stored here.",
+          "recording_notification_quality": "Izberite HD, če želite dati prednost neposrednim/visokoločljivim URL-jem posnetkov X-Sense za mobilna obvestila. Izberite SD, če želite uporabiti pot zajema predvajanja s kamero, ko je na voljo.",
+          "recording_media_days_order": "Izberite, ali se v pregledovalniku posnetkov najprej prikažejo novejši ali starejši dnevi.",
+          "recording_media_clips_order": "Izberite, ali se v posameznem dnevu najprej prikažejo novejši ali starejši posnetki."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Mapa predpomnilnika snemanja se bo spremenila iz `{old_path}` v `{new_path}`. Obstoječi predpomnjeni videoposnetki in sličice se ne premaknejo samodejno. Če želite, da stari predpomnjeni posnetki ostanejo na voljo, najprej premaknite obstoječi mapi `videos` in `thumbs`."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Uporabite mapo pod /media."
+    },
+    "abort": {
+      "no_options": "Za ta račun X-Sense ni nastavljivih možnosti."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Aktivirano"
+      },
+      "alarm_status": {
+        "name": "Stanje alarma"
+      },
+      "connected": {
+        "name": "Povezan"
+      },
+      "door": {
+        "name": "Vrata"
+      },
+      "mailbox_schedule_active": {
+        "name": "Razpored nabiralnika je aktiven"
+      },
+      "mute_status": {
+        "name": "Naprava utišana"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Alarmna vaja"
+      },
+      "mute": {
+        "name": "Mute"
+      },
+      "test": {
+        "name": "Test naprave"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "Odkrivanje AI"
+      },
+      "motion": {
+        "name": "Gibanje"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Stanje naprave",
+        "state": {
+          "normal": "normalno",
+          "low_battery": "Prazna baterija",
+          "malfunction": "Okvara",
+          "end_of_life": "Konec življenjske dobe"
+        }
+      },
+      "alarm_vol": {
+        "name": "Glasnost alarma"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi Moč signala"
+      },
+      "ip_address": {
+        "name": "IP naslov"
+      },
+      "co_reading": {
+        "name": "CO Branje"
+      },
+      "co_level": {
+        "name": "Nivo CO"
+      },
+      "peak_co_level": {
+        "name": "Najvišja raven CO"
+      },
+      "peak_co_level_time": {
+        "name": "Najvišja raven CO Čas"
+      },
+      "mcu_sw_version": {
+        "name": "Različica programske opreme MCU"
+      },
+      "rf_level": {
+        "name": "Moč signala",
+        "state": {
+          "good": "Dobro",
+          "moderate": "Zmerno",
+          "no_signal": "Ni signala",
+          "weak": "Šibko"
+        }
+      },
+      "sw_version": {
+        "name": "Različica programske opreme"
+      },
+      "voice_vol": {
+        "name": "Glasnost glasu"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Različica vdelane programske opreme modula Wi-Fi"
+      },
+      "last_self_test": {
+        "name": "Rezultat preizkusa naprave",
+        "state": {
+          "not_run": "Not Run",
+          "success": "Uspeh",
+          "failed": "Ni uspelo"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Čas preizkusa naprave"
+      },
+      "radon_peak": {
+        "name": "Najvišja raven radona"
+      },
+      "radon_peak_time": {
+        "name": "Čas najvišje ravni radona"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Prag zelene črte"
+      },
+      "radon_maximum_threshold": {
+        "name": "Prag rdeče črte"
+      },
+      "alarm_volume": {
+        "name": "Glasnost alarma"
+      },
+      "voice_volume": {
+        "name": "Glasnost glasu"
+      },
+      "chirp_volume": {
+        "name": "Glasnost žvrgolenja"
+      },
+      "reminder_volume": {
+        "name": "Glasnost opomnika"
+      },
+      "temperature_adjustment": {
+        "name": "Kalibracija temperature"
+      },
+      "humidity_adjustment": {
+        "name": "Kalibracija relativne vlažnosti"
+      },
+      "warning_period": {
+        "name": "Opozorilno obdobje"
+      },
+      "temperature_min": {
+        "name": "Minimalno temperaturno območje"
+      },
+      "temperature_max": {
+        "name": "Najvišje temperaturno območje"
+      },
+      "humidity_min": {
+        "name": "Najmanjši obseg relativne vlažnosti"
+      },
+      "humidity_max": {
+        "name": "Največji obseg relativne vlažnosti"
+      },
+      "temperature_comfort_min": {
+        "name": "Najnižja udobna temperatura"
+      },
+      "temperature_comfort_max": {
+        "name": "Najvišja udobna temperatura"
+      },
+      "humidity_comfort_min": {
+        "name": "Udobna vlažnost Minimalna"
+      },
+      "humidity_comfort_max": {
+        "name": "Maksimalna udobna vlažnost"
+      },
+      "detection_sensitivity": {
+        "name": "Občutljivost zaznavanja"
+      },
+      "driveway_sensitivity": {
+        "name": "Občutljivost senzorja"
+      },
+      "trigger_brightness": {
+        "name": "Sproži svetlost"
+      },
+      "standby_brightness": {
+        "name": "Svetlost v stanju pripravljenosti"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Zvok alarma"
+      },
+      "chirp_tone": {
+        "name": "Ton žvrgolenja"
+      },
+      "reminder_tone": {
+        "name": "Ton opomnika"
+      },
+      "alarm_interval": {
+        "name": "Interval alarma"
+      },
+      "reminder_time": {
+        "name": "Čas opomnika"
+      },
+      "mailbox_report_interval": {
+        "name": "Interval poročanja podatkov"
+      },
+      "temperature_unit": {
+        "name": "Enota za temperaturo"
+      },
+      "radon_unit": {
+        "name": "Radonska enota"
+      },
+      "comfort_type": {
+        "name": "Prilagodite ravni udobja"
+      },
+      "led_brightness": {
+        "name": "Svetlost LED"
+      },
+      "light_motion_on_time": {
+        "name": "Samodejno trajanje svetlobe"
+      },
+      "light_scene": {
+        "name": "Svetlobna scena"
+      },
+      "light_app_on_time": {
+        "name": "Aplikacija pravočasno"
+      }
+    }
+  }
+}

@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Enheten er allerede konfigurert",
+      "reauth_successful": "Re-autentisering var vellykket",
+      "reconfigure_successful": "Rekonfigureringen var vellykket"
+    },
+    "error": {
+      "cannot_connect": "Kunne ikke koble til",
+      "invalid_auth": "Ugyldig autentisering",
+      "unknown": "Uventet feil"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Logg på igjen med X-Sense-kontoen din.",
+        "data": {
+          "email": "E-mail",
+          "password": "Passord"
+        }
+      },
+      "reconfigure": {
+        "description": "Oppdater X-Sense-kontoen som brukes av denne integrasjonen.",
+        "data": {
+          "email": "E-mail",
+          "password": "Passord"
+        }
+      },
+      "user": {
+        "description": "Logg på med X-Sense-kontoen din.",
+        "data": {
+          "email": "E-mail",
+          "password": "Passord"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Synkronisering av opptak av media hurtigbufrer kameraklipp under Home Assistant-medier slik at X-Sense Recordings-sidefeltet, medienettleseren og mobilvarslinger kan åpne opptak raskt. La det være av for å bufre opptak bare når de er åpnet. Aktiver den for å holde nylige opptak klare i bakgrunnen.",
+        "data": {
+          "recording_media_sync_enabled": "Synkronisering av opptaksmedier",
+          "recording_media_sync_hours": "Bakgrunnssynkroniseringsintervall",
+          "recording_media_storage_path": "Opptaksbuffermappe",
+          "recording_notification_quality": "Varslingsopptakskvalitet",
+          "recording_media_days_order": "Bestilling av opptaksdag",
+          "recording_media_clips_order": "Opptak av klipprekkefølge"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Buffer nylige opptak automatisk. Dette bruker lagringsplass og kan vekke kameraer oftere.",
+          "recording_media_sync_hours": "Hvor ofte den vanlige bakgrunnssynkroniseringen skal kjøres. Nylige opptak kontrolleres hvert par minutter når synkronisering er aktivert.",
+          "recording_media_storage_path": "Bruk en mappe under /media. Nye bufrede videoer og miniatyrbilder lagres her.",
+          "recording_notification_quality": "Velg HD for å foretrekke X-Senses direkte/høyoppløselige klipp-URLer for mobilvarsler. Velg SD for å bruke fangstbanen for kameraavspilling når den er tilgjengelig.",
+          "recording_media_days_order": "Velg om nyere eller eldre dager vises først i opptaksvisningen.",
+          "recording_media_clips_order": "Velg om nyere eller eldre klipp vises først i løpet av hver dag."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Opptaksbuffermappen vil endres fra `{old_path}` til `{new_path}`. Eksisterende bufrede videoer og miniatyrbilder flyttes ikke automatisk. Flytt de eksisterende mappene `videos` og `thumbs` først hvis du vil at gamle bufrede opptak skal forbli tilgjengelige."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Bruk en mappe under /media."
+    },
+    "abort": {
+      "no_options": "Det er ingen konfigurerbare alternativer for denne X-Sense-kontoen."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Aktivert"
+      },
+      "alarm_status": {
+        "name": "Alarmstatus"
+      },
+      "connected": {
+        "name": "Tilkoblet"
+      },
+      "door": {
+        "name": "Dør"
+      },
+      "mailbox_schedule_active": {
+        "name": "Postboksplan er aktiv"
+      },
+      "mute_status": {
+        "name": "Enheten er lydløst"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Alarmøvelse"
+      },
+      "mute": {
+        "name": "Demp"
+      },
+      "test": {
+        "name": "Enhetstest"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI-deteksjon"
+      },
+      "motion": {
+        "name": "Bevegelse"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Enhetsstatus",
+        "state": {
+          "normal": "Normal",
+          "low_battery": "Lavt batteri",
+          "malfunction": "Feil",
+          "end_of_life": "End-of-Life"
+        }
+      },
+      "alarm_vol": {
+        "name": "Alarmvolum"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi Signalstyrke"
+      },
+      "ip_address": {
+        "name": "IP-adresse"
+      },
+      "co_reading": {
+        "name": "CO Lesing"
+      },
+      "co_level": {
+        "name": "CO Nivå"
+      },
+      "peak_co_level": {
+        "name": "Topp CO-nivå"
+      },
+      "peak_co_level_time": {
+        "name": "Topp CO nivå tid"
+      },
+      "mcu_sw_version": {
+        "name": "MCU programvareversjon"
+      },
+      "rf_level": {
+        "name": "Signalstyrke",
+        "state": {
+          "good": "Bra",
+          "moderate": "Moderat",
+          "no_signal": "Ingen signal",
+          "weak": "Svak"
+        }
+      },
+      "sw_version": {
+        "name": "Programvareversjon"
+      },
+      "voice_vol": {
+        "name": "Stemmevolum"
+      },
+      "wifi_ssid": {
+        "name": "SSIDPLASSHOLDER"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi-modulens fastvareversjon"
+      },
+      "last_self_test": {
+        "name": "Resultat av enhetstest",
+        "state": {
+          "not_run": "Ikke løp",
+          "success": "Suksess",
+          "failed": "Mislyktes"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Enhetstesttid"
+      },
+      "radon_peak": {
+        "name": "Topp radonnivå"
+      },
+      "radon_peak_time": {
+        "name": "Topp tid for radonnivå"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Grønn linjeterskel"
+      },
+      "radon_maximum_threshold": {
+        "name": "Rød linjeterskel"
+      },
+      "alarm_volume": {
+        "name": "Alarmvolum"
+      },
+      "voice_volume": {
+        "name": "Stemmevolum"
+      },
+      "chirp_volume": {
+        "name": "Kvitrevolum"
+      },
+      "reminder_volume": {
+        "name": "Påminnelsesvolum"
+      },
+      "temperature_adjustment": {
+        "name": "Temperaturkalibrering"
+      },
+      "humidity_adjustment": {
+        "name": "Kalibrering av relativ fuktighet"
+      },
+      "warning_period": {
+        "name": "Advarselsperiode"
+      },
+      "temperature_min": {
+        "name": "Temperaturområde Minimum"
+      },
+      "temperature_max": {
+        "name": "Temperaturområde Maksimum"
+      },
+      "humidity_min": {
+        "name": "Relativ luftfuktighet Minimum"
+      },
+      "humidity_max": {
+        "name": "Relativ fuktighetsområde Maksimum"
+      },
+      "temperature_comfort_min": {
+        "name": "Komfort Temperatur Minimum"
+      },
+      "temperature_comfort_max": {
+        "name": "Komfort Temperatur Maksimal"
+      },
+      "humidity_comfort_min": {
+        "name": "Komfort Fuktighet Minimum"
+      },
+      "humidity_comfort_max": {
+        "name": "Komfort Fuktighet Maksimal"
+      },
+      "detection_sensitivity": {
+        "name": "Deteksjonsfølsomhet"
+      },
+      "driveway_sensitivity": {
+        "name": "Sensorfølsomhet"
+      },
+      "trigger_brightness": {
+        "name": "Utløs lysstyrke"
+      },
+      "standby_brightness": {
+        "name": "Standby lysstyrke"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Alarmtone"
+      },
+      "chirp_tone": {
+        "name": "Kvitre tone"
+      },
+      "reminder_tone": {
+        "name": "Påminnelsestone"
+      },
+      "alarm_interval": {
+        "name": "Alarmintervall"
+      },
+      "reminder_time": {
+        "name": "Påminnelsestid"
+      },
+      "mailbox_report_interval": {
+        "name": "Datarapporteringsintervall"
+      },
+      "temperature_unit": {
+        "name": "Temperaturenhet"
+      },
+      "radon_unit": {
+        "name": "Radonenhet"
+      },
+      "comfort_type": {
+        "name": "Tilpass komfortnivåer"
+      },
+      "led_brightness": {
+        "name": "LED lysstyrke"
+      },
+      "light_motion_on_time": {
+        "name": "Automatisk lysvarighet"
+      },
+      "light_scene": {
+        "name": "Lysscene"
+      },
+      "light_app_on_time": {
+        "name": "App i tide"
+      }
+    }
+  }
+}

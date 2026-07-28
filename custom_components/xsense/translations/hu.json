@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Az eszköz már konfigurálva van",
+      "reauth_successful": "Az újrahitelesítés sikeres volt",
+      "reconfigure_successful": "Az újrakonfigurálás sikeres volt"
+    },
+    "error": {
+      "cannot_connect": "Nem sikerült csatlakozni",
+      "invalid_auth": "Érvénytelen hitelesítés",
+      "unknown": "Váratlan hiba"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Jelentkezzen be újra X-Sense-fiókjával.",
+        "data": {
+          "email": "E-mail",
+          "password": "Jelszó"
+        }
+      },
+      "reconfigure": {
+        "description": "Frissítse az ezen integráció által használt X-Sense-fiókot.",
+        "data": {
+          "email": "E-mail",
+          "password": "Jelszó"
+        }
+      },
+      "user": {
+        "description": "Jelentkezzen be X-Sense fiókjával.",
+        "data": {
+          "email": "E-mail",
+          "password": "Jelszó"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "A felvételi médiaszinkronizálás gyorsítótárazza a kamera klipjeit a Home Assistant adathordozó alatt, így az X-Sense Recordings oldalsáv, a médiaböngésző és a mobil értesítések gyorsan megnyithatják a felvételeket. Hagyja kikapcsolva a felvételek gyorsítótárazását, ha megnyitják őket. Engedélyezze a legutóbbi felvételek háttérben tartásához.",
+        "data": {
+          "recording_media_sync_enabled": "Felvételi adathordozó szinkronizálása",
+          "recording_media_sync_hours": "Háttér szinkronizálási időköz",
+          "recording_media_storage_path": "Rögzítési gyorsítótár mappa",
+          "recording_notification_quality": "Értesítés rögzítési minősége",
+          "recording_media_days_order": "Felvételi napi rendelés",
+          "recording_media_clips_order": "Klip rendelés rögzítése"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "A legutóbbi felvételek automatikus gyorsítótárazása. Ez tárhelyet foglal el, és gyakrabban ébresztheti fel a kamerákat.",
+          "recording_media_sync_hours": "Milyen gyakran fut a normál háttér-felzárkózási szinkronizálás. A legutóbbi felvételeket a rendszer néhány percenként ellenőrzi, ha a szinkronizálás engedélyezve van.",
+          "recording_media_storage_path": "Használjon egy mappát a /media alatt. Az új gyorsítótárazott videók és miniatűrök itt tárolódnak.",
+          "recording_notification_quality": "Válassza a HD lehetőséget, ha előnyben szeretné részesíteni az X-Sense közvetlen/nagy felbontású klip URL-jeit a mobil értesítésekhez. Válassza az SD lehetőséget a kamera lejátszási rögzítési útvonalának használatához, ha elérhető.",
+          "recording_media_days_order": "Válassza ki, hogy az újabb vagy a régebbi napok jelenjenek meg először a felvételnézőben.",
+          "recording_media_clips_order": "Válassza ki, hogy az újabb vagy a régebbi klipek jelenjenek meg először minden napon."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "A rögzítési gyorsítótár mappa `{old_path}`-ről `{new_path}`-re változik. A meglévő gyorsítótárazott videók és miniatűrök nem kerülnek át automatikusan. Először helyezze át a meglévő `videos` és `thumbs` mappákat, ha azt szeretné, hogy a régi gyorsítótárazott felvételek elérhetők maradjanak."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Használjon egy mappát a /media alatt."
+    },
+    "abort": {
+      "no_options": "Ehhez az X-Sense-fiókhoz nincsenek konfigurálható beállítások."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Aktiválva"
+      },
+      "alarm_status": {
+        "name": "Riasztás állapota"
+      },
+      "connected": {
+        "name": "Csatlakozva"
+      },
+      "door": {
+        "name": "Ajtó"
+      },
+      "mailbox_schedule_active": {
+        "name": "Postafiók ütemezése aktív"
+      },
+      "mute_status": {
+        "name": "Eszköz elnémítva"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Riasztófúró"
+      },
+      "mute": {
+        "name": "Némítás"
+      },
+      "test": {
+        "name": "Eszközteszt"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI észlelés"
+      },
+      "motion": {
+        "name": "Mozgás"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Eszköz állapota",
+        "state": {
+          "normal": "Normális",
+          "low_battery": "Alacsony akkumulátor",
+          "malfunction": "Hibás működés",
+          "end_of_life": "Életvége"
+        }
+      },
+      "alarm_vol": {
+        "name": "Riasztás hangereje"
+      },
+      "wifi_rssi": {
+        "name": "WIFIPLACETARTÓ Jelerősség"
+      },
+      "ip_address": {
+        "name": "IP-cím"
+      },
+      "co_reading": {
+        "name": "KÉSZTARTÓ Olvasás"
+      },
+      "co_level": {
+        "name": "CO Szint"
+      },
+      "peak_co_level": {
+        "name": "Csúcs KAPCSOLÓ Szint"
+      },
+      "peak_co_level_time": {
+        "name": "KAPCSOLÓTARTÓ csúcsidő"
+      },
+      "mcu_sw_version": {
+        "name": "MCU szoftververzió"
+      },
+      "rf_level": {
+        "name": "Jelerősség",
+        "state": {
+          "good": "Jó",
+          "moderate": "Mérsékelt",
+          "no_signal": "Nincs jel",
+          "weak": "Gyenge"
+        }
+      },
+      "sw_version": {
+        "name": "Szoftver verzió"
+      },
+      "voice_vol": {
+        "name": "Hangerő"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi modul firmware verziója"
+      },
+      "last_self_test": {
+        "name": "Eszközteszt eredménye",
+        "state": {
+          "not_run": "Nem fuss",
+          "success": "Siker",
+          "failed": "Sikertelen"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Eszköz tesztelési ideje"
+      },
+      "radon_peak": {
+        "name": "Csúcs radon szint"
+      },
+      "radon_peak_time": {
+        "name": "Radon csúcsidő"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Zöld vonal küszöb"
+      },
+      "radon_maximum_threshold": {
+        "name": "Piros vonal küszöb"
+      },
+      "alarm_volume": {
+        "name": "Riasztás hangereje"
+      },
+      "voice_volume": {
+        "name": "Hangerő"
+      },
+      "chirp_volume": {
+        "name": "Chirp Volume"
+      },
+      "reminder_volume": {
+        "name": "Emlékeztető kötet"
+      },
+      "temperature_adjustment": {
+        "name": "Hőmérséklet kalibrálása"
+      },
+      "humidity_adjustment": {
+        "name": "Relatív páratartalom kalibrálása"
+      },
+      "warning_period": {
+        "name": "Figyelmeztetési időszak"
+      },
+      "temperature_min": {
+        "name": "Minimális hőmérsékleti tartomány"
+      },
+      "temperature_max": {
+        "name": "Hőmérséklet tartomány Maximum"
+      },
+      "humidity_min": {
+        "name": "Relatív páratartalom tartomány minimum"
+      },
+      "humidity_max": {
+        "name": "Relatív páratartalom tartomány Maximum"
+      },
+      "temperature_comfort_min": {
+        "name": "Minimális komforthőmérséklet"
+      },
+      "temperature_comfort_max": {
+        "name": "Komfort hőmérséklet Maximum"
+      },
+      "humidity_comfort_min": {
+        "name": "Komfort páratartalom minimum"
+      },
+      "humidity_comfort_max": {
+        "name": "Komfort Páratartalom Maximum"
+      },
+      "detection_sensitivity": {
+        "name": "Érzékelési érzékenység"
+      },
+      "driveway_sensitivity": {
+        "name": "Szenzor érzékenysége"
+      },
+      "trigger_brightness": {
+        "name": "Trigger Brightness"
+      },
+      "standby_brightness": {
+        "name": "Készenléti fényerő"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Riasztási hang"
+      },
+      "chirp_tone": {
+        "name": "Csipogó hang"
+      },
+      "reminder_tone": {
+        "name": "Emlékeztető hang"
+      },
+      "alarm_interval": {
+        "name": "Riasztási időköz"
+      },
+      "reminder_time": {
+        "name": "Emlékeztető idő"
+      },
+      "mailbox_report_interval": {
+        "name": "Adatjelentési intervallum"
+      },
+      "temperature_unit": {
+        "name": "Hőmérséklet mértékegysége"
+      },
+      "radon_unit": {
+        "name": "Radon egység"
+      },
+      "comfort_type": {
+        "name": "Testreszabhatja a kényelmi szinteket"
+      },
+      "led_brightness": {
+        "name": "LED fényerő"
+      },
+      "light_motion_on_time": {
+        "name": "Automatikus világítás időtartama"
+      },
+      "light_scene": {
+        "name": "Fény jelenet"
+      },
+      "light_app_on_time": {
+        "name": "App On Time"
+      }
+    }
+  }
+}

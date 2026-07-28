@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Laite on jo määritetty",
+      "reauth_successful": "Uudelleentodennus onnistui",
+      "reconfigure_successful": "Uudelleenmääritys onnistui"
+    },
+    "error": {
+      "cannot_connect": "Yhteyden muodostaminen epäonnistui",
+      "invalid_auth": "Virheellinen todennus",
+      "unknown": "Odottamaton virhe"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Kirjaudu uudelleen sisään X-Sense-tililläsi.",
+        "data": {
+          "email": "E-mail",
+          "password": "Salasana"
+        }
+      },
+      "reconfigure": {
+        "description": "Päivitä tämän integroinnin käyttämä X-Sense-tili.",
+        "data": {
+          "email": "E-mail",
+          "password": "Salasana"
+        }
+      },
+      "user": {
+        "description": "Kirjaudu sisään X-Sense-tililläsi.",
+        "data": {
+          "email": "E-mail",
+          "password": "Salasana"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Tallennusmedian synkronointi tallentaa kameraleikkeet välimuistiin Home Assistant-mediaan, joten X-Sense Tallenteet-sivupalkki, Mediaselain ja mobiiliilmoitukset voivat avata tallenteet nopeasti. Jätä se pois päältä tallenteiden välimuistiin vasta, kun ne avataan. Ota se käyttöön pitääksesi viimeisimmät tallenteet valmiina taustalla.",
+        "data": {
+          "recording_media_sync_enabled": "Tallennusmedian synkronointi",
+          "recording_media_sync_hours": "Taustasynkronointiväli",
+          "recording_media_storage_path": "Tallennusvälimuistikansio",
+          "recording_notification_quality": "Ilmoituksen tallennuslaatu",
+          "recording_media_days_order": "Tallennuspäivän tilaus",
+          "recording_media_clips_order": "Tallennusleikkeen tilaus"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Tallenna viimeisimmät tallenteet automaattisesti välimuistiin. Tämä käyttää tallennustilaa ja saattaa herättää kamerat useammin.",
+          "recording_media_sync_hours": "Kuinka usein normaalin taustasynkronoinnin tulee olla käynnissä. Viimeisimmät tallenteet tarkistetaan muutaman minuutin välein, kun synkronointi on käytössä.",
+          "recording_media_storage_path": "Käytä /media-kohdassa olevaa kansiota. Uudet välimuistissa olevat videot ja pikkukuvat tallennetaan tänne.",
+          "recording_notification_quality": "Valitse HD, jos haluat suosia X-Sensein suoria/korkearesoluutioisia leikkeiden URL-osoitteita mobiili-ilmoituksille. Valitse SD, jos haluat käyttää kameran toistokaappauspolkua, kun se on käytettävissä.",
+          "recording_media_days_order": "Valitse, näkyvätkö tallenteiden katseluohjelmassa ensin uudemmat vai vanhemmat päivät.",
+          "recording_media_clips_order": "Valitse, näkyvätkö uudemmat vai vanhemmat leikkeet ensimmäisenä joka päivä."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Tallennusvälimuistikansio vaihtuu `{old_path}`-kansiosta `{new_path}`-kansioon. Olemassa olevia välimuistissa olevia videoita ja pikkukuvia ei siirretä automaattisesti. Siirrä ensin olemassa olevat `videos`- ja `thumbs`-kansiot, jos haluat säilyttää vanhat välimuistitallenteet."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Käytä /media-kohdassa olevaa kansiota."
+    },
+    "abort": {
+      "no_options": "Tälle X-Sense-tilille ei ole määritettäviä vaihtoehtoja."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Aktivoitu"
+      },
+      "alarm_status": {
+        "name": "Hälytyksen tila"
+      },
+      "connected": {
+        "name": "Yhdistetty"
+      },
+      "door": {
+        "name": "Ovi"
+      },
+      "mailbox_schedule_active": {
+        "name": "Postilaatikon aikataulu aktiivinen"
+      },
+      "mute_status": {
+        "name": "Laite hiljennetty"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Hälytysporaus"
+      },
+      "mute": {
+        "name": "Mykistä"
+      },
+      "test": {
+        "name": "Laitteen testi"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI-tunnistus"
+      },
+      "motion": {
+        "name": "Liike"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Laitteen tila",
+        "state": {
+          "normal": "Normaali",
+          "low_battery": "Alhainen akku",
+          "malfunction": "Toimintahäiriö",
+          "end_of_life": "Elämän loppu"
+        }
+      },
+      "alarm_vol": {
+        "name": "Hälytyksen äänenvoimakkuus"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi Signaalin voimakkuus"
+      },
+      "ip_address": {
+        "name": "IP-osoite"
+      },
+      "co_reading": {
+        "name": "KORKEANPITO Lukeminen"
+      },
+      "co_level": {
+        "name": "CO Taso"
+      },
+      "peak_co_level": {
+        "name": "KORKEANPIDIKKEEN huipputaso"
+      },
+      "peak_co_level_time": {
+        "name": "KORKEAKSIHOIDJAN huipputasoaika"
+      },
+      "mcu_sw_version": {
+        "name": "MCU ohjelmistoversio"
+      },
+      "rf_level": {
+        "name": "Signaalin voimakkuus",
+        "state": {
+          "good": "Hyvä",
+          "moderate": "Kohtalainen",
+          "no_signal": "Ei signaalia",
+          "weak": "Heikko"
+        }
+      },
+      "sw_version": {
+        "name": "Ohjelmistoversio"
+      },
+      "voice_vol": {
+        "name": "Äänenvoimakkuus"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi-moduulin laiteohjelmistoversio"
+      },
+      "last_self_test": {
+        "name": "Laitetestin tulos",
+        "state": {
+          "not_run": "Ei Juokse",
+          "success": "Menestystä",
+          "failed": "Epäonnistui"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Laitteen testausaika"
+      },
+      "radon_peak": {
+        "name": "Radonin huipputaso"
+      },
+      "radon_peak_time": {
+        "name": "Radonin huipputason aika"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Vihreän linjan kynnys"
+      },
+      "radon_maximum_threshold": {
+        "name": "Punaisen viivan kynnys"
+      },
+      "alarm_volume": {
+        "name": "Hälytyksen äänenvoimakkuus"
+      },
+      "voice_volume": {
+        "name": "Äänenvoimakkuus"
+      },
+      "chirp_volume": {
+        "name": "Chirp Volume"
+      },
+      "reminder_volume": {
+        "name": "Muistutuksen äänenvoimakkuus"
+      },
+      "temperature_adjustment": {
+        "name": "Lämpötilan kalibrointi"
+      },
+      "humidity_adjustment": {
+        "name": "Suhteellisen kosteuden kalibrointi"
+      },
+      "warning_period": {
+        "name": "Varoitusaika"
+      },
+      "temperature_min": {
+        "name": "Lämpötila-alue Minimi"
+      },
+      "temperature_max": {
+        "name": "Lämpötila-alue Maksimi"
+      },
+      "humidity_min": {
+        "name": "Suhteellinen kosteusalue Minimi"
+      },
+      "humidity_max": {
+        "name": "Suhteellinen kosteusalue Maksimi"
+      },
+      "temperature_comfort_min": {
+        "name": "Mukavuuslämpötilan minimi"
+      },
+      "temperature_comfort_max": {
+        "name": "Mukavuuslämpötila Maksimi"
+      },
+      "humidity_comfort_min": {
+        "name": "Mukavuus Kosteus Minimi"
+      },
+      "humidity_comfort_max": {
+        "name": "Mukavuus Kosteus Maksimi"
+      },
+      "detection_sensitivity": {
+        "name": "Tunnistusherkkyys"
+      },
+      "driveway_sensitivity": {
+        "name": "Anturin herkkyys"
+      },
+      "trigger_brightness": {
+        "name": "Liipaisimen kirkkaus"
+      },
+      "standby_brightness": {
+        "name": "Valmiustilan kirkkaus"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Hälytysääni"
+      },
+      "chirp_tone": {
+        "name": "Chip Tone"
+      },
+      "reminder_tone": {
+        "name": "Muistutusääni"
+      },
+      "alarm_interval": {
+        "name": "Hälytysväli"
+      },
+      "reminder_time": {
+        "name": "Muistutuksen aika"
+      },
+      "mailbox_report_interval": {
+        "name": "Tietojen raportointiväli"
+      },
+      "temperature_unit": {
+        "name": "Lämpötilayksikkö"
+      },
+      "radon_unit": {
+        "name": "Radon-yksikkö"
+      },
+      "comfort_type": {
+        "name": "Mukauta mukavuustasoja"
+      },
+      "led_brightness": {
+        "name": "LED kirkkaus"
+      },
+      "light_motion_on_time": {
+        "name": "Automaattinen valon kesto"
+      },
+      "light_scene": {
+        "name": "Valo kohtaus"
+      },
+      "light_app_on_time": {
+        "name": "Sovellus ajoissa"
+      }
+    }
+  }
+}

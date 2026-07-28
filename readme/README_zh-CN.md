@@ -145,6 +145,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A 键盘代码自动化
+SKP0A 键盘不会发布每个单独的按键。在使用 Home、Away 或 Disarmed 提交有效的 X-Sense 应用程序创建的代码后，它会发布键盘事件。集成将提交的代码事件公开为 `xsense_keypad_code`。
+
+使用随附的单代码蓝图为选定的代码运行 Home Assistant 操作。您可以选择要求使用 Home、Away 或 Disarmed 模式按钮来提交代码，也可以选择将自动化限制为一个键盘序列号。
+
+[![导入蓝图](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+当您希望通过自动化将多个键盘代码映射到不同的 Home Assistant 操作时，请使用路由器蓝图。
+
+[![导入路由器蓝图](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+键盘模式按钮充当提交按钮。如果所选模式已处于活动状态，X-Sense 可能不会发布新事件，因此在提交代码时选择当前非活动模式按钮之一。
+
+____________________________________________________________
+
 ## 自动化示例
 通过此集成，可以创建各种自动化。以下是一些示例：
 

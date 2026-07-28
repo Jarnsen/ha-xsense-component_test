@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Seade on juba konfigureeritud",
+      "reauth_successful": "Taasautentimine õnnestus",
+      "reconfigure_successful": "Ümberseadistamine õnnestus"
+    },
+    "error": {
+      "cannot_connect": "Ühenduse loomine ebaõnnestus",
+      "invalid_auth": "Kehtetu autentimine",
+      "unknown": "Ootamatu viga"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Logige uuesti sisse oma X-Sense kontoga.",
+        "data": {
+          "email": "E-mail",
+          "password": "Parool"
+        }
+      },
+      "reconfigure": {
+        "description": "Värskendage selle integratsiooni poolt kasutatavat X-Sense kontot.",
+        "data": {
+          "email": "E-mail",
+          "password": "Parool"
+        }
+      },
+      "user": {
+        "description": "Logige sisse oma X-Sense kontoga.",
+        "data": {
+          "email": "E-mail",
+          "password": "Parool"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Salvestusmeediumi sünkroonimine salvestab kaamera klipid vahemällu Home Assistant meedia alla, nii et X-Sense salvestiste külgriba, meediabrauser ja mobiilimärguanded saavad salvestisi kiiresti avada. Jätke see salvestuste vahemällu ainult siis, kui need on avatud. Lubage see, et hoida hiljutised salvestised taustal valmis.",
+        "data": {
+          "recording_media_sync_enabled": "Salvestusmeediumi sünkroonimine",
+          "recording_media_sync_hours": "Taustal sünkroonimise intervall",
+          "recording_media_storage_path": "Salvestamise vahemälu kaust",
+          "recording_notification_quality": "Teavituste salvestamise kvaliteet",
+          "recording_media_days_order": "Salvestuspäeva tellimus",
+          "recording_media_clips_order": "Klipi salvestamise tellimus"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Salvestage hiljutised salvestised automaatselt vahemällu. See kasutab salvestusruumi ja võib kaameraid sagedamini äratada.",
+          "recording_media_sync_hours": "Kui tihti peaks käima tavaline tausta järelsünkroonimine. Kui sünkroonimine on lubatud, kontrollitakse hiljutisi salvestisi iga paari minuti järel.",
+          "recording_media_storage_path": "Kasutage /media all olevat kausta. Siia salvestatakse uued vahemällu salvestatud videod ja pisipildid.",
+          "recording_notification_quality": "Valige HD, et eelistada mobiilimärguannete jaoks X-Sensei otse-/kõrge eraldusvõimega klipi URL-e. Valige SD, et kasutada kaamera taasesituse jäädvustusteed, kui see on saadaval.",
+          "recording_media_days_order": "Valige, kas salvestiste vaatajas kuvatakse esimesena uuemad või vanemad päevad.",
+          "recording_media_clips_order": "Valige, kas iga päev kuvatakse esimesena uuemad või vanemad klipid."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Salvestamise vahemälu kaust muudetakse kaustast `{old_path}` kaustaks `{new_path}`. Olemasolevaid vahemällu salvestatud videoid ja pisipilte ei teisaldata automaatselt. Kui soovite, et vanad vahemällu salvestatud salvestised jääksid kättesaadavaks, teisaldage esmalt olemasolevad kaustad `videos` ja `thumbs`."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Kasutage /media all olevat kausta."
+    },
+    "abort": {
+      "no_options": "Selle X-Sense konto jaoks pole konfigureeritavaid valikuid."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Aktiveeritud"
+      },
+      "alarm_status": {
+        "name": "Häire olek"
+      },
+      "connected": {
+        "name": "Ühendatud"
+      },
+      "door": {
+        "name": "Uks"
+      },
+      "mailbox_schedule_active": {
+        "name": "Postkasti ajakava aktiivne"
+      },
+      "mute_status": {
+        "name": "Seade vaigistatud"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Häire puur"
+      },
+      "mute": {
+        "name": "Vaigista"
+      },
+      "test": {
+        "name": "Seadme test"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI tuvastamine"
+      },
+      "motion": {
+        "name": "Liikumine"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Seadme olek",
+        "state": {
+          "normal": "Tavaline",
+          "low_battery": "Aku tühi",
+          "malfunction": "Talitlushäire",
+          "end_of_life": "Elu lõpp"
+        }
+      },
+      "alarm_vol": {
+        "name": "Häire helitugevus"
+      },
+      "wifi_rssi": {
+        "name": "WIFIPLACEHOIDER Signaali tugevus"
+      },
+      "ip_address": {
+        "name": "IP-aadress"
+      },
+      "co_reading": {
+        "name": "KOHTAHOIDJA Lugemine"
+      },
+      "co_level": {
+        "name": "KOHTAHOIDJA Tase"
+      },
+      "peak_co_level": {
+        "name": "KOHTAHOIDJA tipptase"
+      },
+      "peak_co_level_time": {
+        "name": "KOHTAHOIDJA tipptaseme aeg"
+      },
+      "mcu_sw_version": {
+        "name": "MCUi tarkvara versioon"
+      },
+      "rf_level": {
+        "name": "Signaali tugevus",
+        "state": {
+          "good": "Hea",
+          "moderate": "Mõõdukas",
+          "no_signal": "Signaali pole",
+          "weak": "Nõrk"
+        }
+      },
+      "sw_version": {
+        "name": "Tarkvara versioon"
+      },
+      "voice_vol": {
+        "name": "Hääle helitugevus"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi mooduli püsivara versioon"
+      },
+      "last_self_test": {
+        "name": "Seadme testimise tulemus",
+        "state": {
+          "not_run": "Ei jookse",
+          "success": "Edu",
+          "failed": "Ebaõnnestunud"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Seadme testimise aeg"
+      },
+      "radon_peak": {
+        "name": "Radooni tipptase"
+      },
+      "radon_peak_time": {
+        "name": "Radooni tipptaseme aeg"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Rohelise joone lävi"
+      },
+      "radon_maximum_threshold": {
+        "name": "Punase joone lävi"
+      },
+      "alarm_volume": {
+        "name": "Häire helitugevus"
+      },
+      "voice_volume": {
+        "name": "Hääle helitugevus"
+      },
+      "chirp_volume": {
+        "name": "Chirp Volume"
+      },
+      "reminder_volume": {
+        "name": "Meeldetuletuse helitugevus"
+      },
+      "temperature_adjustment": {
+        "name": "Temperatuuri kalibreerimine"
+      },
+      "humidity_adjustment": {
+        "name": "Suhtelise õhuniiskuse kalibreerimine"
+      },
+      "warning_period": {
+        "name": "Hoiatusperiood"
+      },
+      "temperature_min": {
+        "name": "Temperatuurivahemik Minimaalne"
+      },
+      "temperature_max": {
+        "name": "Temperatuurivahemik Maksimaalne"
+      },
+      "humidity_min": {
+        "name": "Suhtelise õhuniiskuse vahemik Minimaalne"
+      },
+      "humidity_max": {
+        "name": "Suhtelise õhuniiskuse vahemik Maksimaalne"
+      },
+      "temperature_comfort_min": {
+        "name": "Mugavustemperatuuri miinimum"
+      },
+      "temperature_comfort_max": {
+        "name": "Mugavustemperatuur Maksimaalne"
+      },
+      "humidity_comfort_min": {
+        "name": "Mugavus Niiskuse miinimum"
+      },
+      "humidity_comfort_max": {
+        "name": "Mugavus Maksimaalne niiskus"
+      },
+      "detection_sensitivity": {
+        "name": "Tuvastamise tundlikkus"
+      },
+      "driveway_sensitivity": {
+        "name": "Anduri tundlikkus"
+      },
+      "trigger_brightness": {
+        "name": "Päästiku heledus"
+      },
+      "standby_brightness": {
+        "name": "Ooterežiimi heledus"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Häiretoon"
+      },
+      "chirp_tone": {
+        "name": "Säutsutoon"
+      },
+      "reminder_tone": {
+        "name": "Meeldetuletustoon"
+      },
+      "alarm_interval": {
+        "name": "Häirete intervall"
+      },
+      "reminder_time": {
+        "name": "Meeldetuletuse aeg"
+      },
+      "mailbox_report_interval": {
+        "name": "Andmete esitamise intervall"
+      },
+      "temperature_unit": {
+        "name": "Temperatuuri ühik"
+      },
+      "radon_unit": {
+        "name": "Radooni üksus"
+      },
+      "comfort_type": {
+        "name": "Kohandage mugavustasemeid"
+      },
+      "led_brightness": {
+        "name": "LED heledus"
+      },
+      "light_motion_on_time": {
+        "name": "Automaatne valguse kestus"
+      },
+      "light_scene": {
+        "name": "Valgusstseen"
+      },
+      "light_app_on_time": {
+        "name": "Rakendus õigel ajal"
+      }
+    }
+  }
+}

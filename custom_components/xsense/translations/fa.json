@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "دستگاه قبلاً پیکربندی شده است",
+      "reauth_successful": "احراز هویت مجدد با موفقیت انجام شد",
+      "reconfigure_successful": "پیکربندی مجدد با موفقیت انجام شد"
+    },
+    "error": {
+      "cannot_connect": "اتصال ناموفق بود",
+      "invalid_auth": "احراز هویت نامعتبر است",
+      "unknown": "خطای غیرمنتظره"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "با حساب X-Sense خود دوباره وارد شوید.",
+        "data": {
+          "email": "E-mail",
+          "password": "رمز عبور"
+        }
+      },
+      "reconfigure": {
+        "description": "حساب X-Sense مورد استفاده توسط این ادغام را به روز کنید.",
+        "data": {
+          "email": "E-mail",
+          "password": "رمز عبور"
+        }
+      },
+      "user": {
+        "description": "با حساب X-Sense خود وارد شوید.",
+        "data": {
+          "email": "E-mail",
+          "password": "رمز عبور"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "همگام سازی رسانه ضبط، کلیپ های دوربین را در حافظه پنهان Home Assistant ذخیره می کند، بنابراین نوار کناری ضبط X-Sense، مرورگر رسانه و اعلان های تلفن همراه می توانند ضبط ها را به سرعت باز کنند. آن را تنها زمانی که ضبط‌ها در حافظه پنهان باز می‌شوند، بگذارید. برای آماده نگه داشتن ضبط های اخیر در پس زمینه، آن را فعال کنید.",
+        "data": {
+          "recording_media_sync_enabled": "همگام سازی رسانه ضبط",
+          "recording_media_sync_hours": "فاصله همگام سازی پس زمینه",
+          "recording_media_storage_path": "در حال ضبط پوشه کش",
+          "recording_notification_quality": "کیفیت ضبط اعلان",
+          "recording_media_days_order": "ثبت سفارش روز",
+          "recording_media_clips_order": "سفارش کلیپ ضبط"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "ضبط های اخیر را به صورت خودکار ذخیره کنید. این از فضای ذخیره سازی استفاده می کند و ممکن است دوربین ها را بیشتر بیدار کند.",
+          "recording_media_sync_hours": "هر چند وقت یک‌بار همگام‌سازی عادی پس‌زمینه باید اجرا شود. وقتی همگام‌سازی فعال است، ضبط‌های اخیر هر چند دقیقه بررسی می‌شوند.",
+          "recording_media_storage_path": "از پوشه ای در زیر /media استفاده کنید. ویدیوها و تصاویر کوچک ذخیره شده جدید در اینجا ذخیره می شوند.",
+          "recording_notification_quality": "HD را انتخاب کنید تا URL های کلیپ مستقیم/با وضوح بالا X-Sense را برای اعلان های تلفن همراه ترجیح دهید. SD را انتخاب کنید تا در صورت موجود بودن از مسیر ضبط پخش دوربین استفاده کنید.",
+          "recording_media_days_order": "انتخاب کنید روزهای جدیدتر یا قدیمی‌تر ابتدا در نمایشگر ضبط‌شده ظاهر شوند.",
+          "recording_media_clips_order": "انتخاب کنید کلیپ‌های جدیدتر یا قدیمی‌تر ابتدا در هر روز ظاهر شوند."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "پوشه کش ضبط از `{old_path}` به `{new_path}` تغییر می کند. ویدیوها و تصاویر کوچک موجود در حافظه پنهان به طور خودکار جابجا نمی شوند. اگر می‌خواهید ضبط‌های ذخیره شده قدیمی در حافظه پنهان باقی بمانند، ابتدا پوشه‌های `videos` و `thumbs` موجود را جابه‌جا کنید."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "از پوشه ای در زیر /media استفاده کنید."
+    },
+    "abort": {
+      "no_options": "هیچ گزینه قابل تنظیمی برای این حساب X-Sense وجود ندارد."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "فعال شد"
+      },
+      "alarm_status": {
+        "name": "وضعیت هشدار"
+      },
+      "connected": {
+        "name": "متصل شد"
+      },
+      "door": {
+        "name": "درب"
+      },
+      "mailbox_schedule_active": {
+        "name": "برنامه زمانی صندوق پست فعال است"
+      },
+      "mute_status": {
+        "name": "دستگاه خاموش شد"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "مته زنگ هشدار"
+      },
+      "mute": {
+        "name": "بی صدا"
+      },
+      "test": {
+        "name": "تست دستگاه"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "تشخیص هوش مصنوعی"
+      },
+      "motion": {
+        "name": "حرکت"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "وضعیت دستگاه",
+        "state": {
+          "normal": "عادی",
+          "low_battery": "باتری کم",
+          "malfunction": "خرابی",
+          "end_of_life": "پایان زندگی"
+        }
+      },
+      "alarm_vol": {
+        "name": "صدای زنگ هشدار"
+      },
+      "wifi_rssi": {
+        "name": "قدرت سیگنال Wi-Fi"
+      },
+      "ip_address": {
+        "name": "آدرس IP"
+      },
+      "co_reading": {
+        "name": "CO خواندن"
+      },
+      "co_level": {
+        "name": "سطح CO"
+      },
+      "peak_co_level": {
+        "name": "اوج سطح CO"
+      },
+      "peak_co_level_time": {
+        "name": "حداکثر زمان در سطح CO"
+      },
+      "mcu_sw_version": {
+        "name": "نسخه نرم افزار MCU"
+      },
+      "rf_level": {
+        "name": "قدرت سیگنال",
+        "state": {
+          "good": "خوب",
+          "moderate": "متوسط",
+          "no_signal": "بدون سیگنال",
+          "weak": "ضعیف"
+        }
+      },
+      "sw_version": {
+        "name": "نسخه نرم افزار"
+      },
+      "voice_vol": {
+        "name": "میزان صدا"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "نسخه سفت‌افزار ماژول Wi-Fi"
+      },
+      "last_self_test": {
+        "name": "نتیجه تست دستگاه",
+        "state": {
+          "not_run": "اجرا نمی شود",
+          "success": "موفقیت",
+          "failed": "شکست خورد"
+        }
+      },
+      "last_self_test_time": {
+        "name": "زمان تست دستگاه"
+      },
+      "radon_peak": {
+        "name": "اوج سطح رادون"
+      },
+      "radon_peak_time": {
+        "name": "زمان اوج سطح رادون"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "آستانه خط سبز"
+      },
+      "radon_maximum_threshold": {
+        "name": "آستانه خط قرمز"
+      },
+      "alarm_volume": {
+        "name": "صدای زنگ هشدار"
+      },
+      "voice_volume": {
+        "name": "میزان صدا"
+      },
+      "chirp_volume": {
+        "name": "صدای جیر جیر"
+      },
+      "reminder_volume": {
+        "name": "حجم یادآوری"
+      },
+      "temperature_adjustment": {
+        "name": "کالیبراسیون دما"
+      },
+      "humidity_adjustment": {
+        "name": "کالیبراسیون رطوبت نسبی"
+      },
+      "warning_period": {
+        "name": "دوره هشدار"
+      },
+      "temperature_min": {
+        "name": "محدوده دما حداقل"
+      },
+      "temperature_max": {
+        "name": "محدوده دما حداکثر"
+      },
+      "humidity_min": {
+        "name": "محدوده رطوبت نسبی حداقل"
+      },
+      "humidity_max": {
+        "name": "حداکثر محدوده رطوبت نسبی"
+      },
+      "temperature_comfort_min": {
+        "name": "حداقل دمای راحت"
+      },
+      "temperature_comfort_max": {
+        "name": "حداکثر دمای راحت"
+      },
+      "humidity_comfort_min": {
+        "name": "حداقل رطوبت راحت"
+      },
+      "humidity_comfort_max": {
+        "name": "حداکثر رطوبت راحت"
+      },
+      "detection_sensitivity": {
+        "name": "حساسیت تشخیص"
+      },
+      "driveway_sensitivity": {
+        "name": "حساسیت سنسور"
+      },
+      "trigger_brightness": {
+        "name": "روشنایی ماشه"
+      },
+      "standby_brightness": {
+        "name": "روشنایی آماده به کار"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "زنگ هشدار"
+      },
+      "chirp_tone": {
+        "name": "صدای جیر جیر"
+      },
+      "reminder_tone": {
+        "name": "آهنگ یادآوری"
+      },
+      "alarm_interval": {
+        "name": "فاصله هشدار"
+      },
+      "reminder_time": {
+        "name": "زمان یادآوری"
+      },
+      "mailbox_report_interval": {
+        "name": "فاصله گزارش داده ها"
+      },
+      "temperature_unit": {
+        "name": "واحد دما"
+      },
+      "radon_unit": {
+        "name": "واحد رادون"
+      },
+      "comfort_type": {
+        "name": "سطوح راحتی را سفارشی کنید"
+      },
+      "led_brightness": {
+        "name": "روشنایی LED"
+      },
+      "light_motion_on_time": {
+        "name": "مدت زمان نور خودکار"
+      },
+      "light_scene": {
+        "name": "صحنه نور"
+      },
+      "light_app_on_time": {
+        "name": "برنامه به موقع"
+      }
+    }
+  }
+}

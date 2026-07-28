@@ -217,3 +217,18 @@ actions:
 ```
 
 ____________________________________________________________
+
+## Автоматизація коду клавіатури SKP0A
+Клавіатура SKP0A не публікує кожне окреме натискання клавіші. Він публікує подію клавіатури після надсилання дійсного коду, створеного програмою X-Sense, із Home, Away або Disarmed. Інтеграція розкриває подію надісланого коду як `xsense_keypad_code`.
+
+Використовуйте схему одного коду, що входить у комплект, щоб запустити дії Home Assistant для одного вибраного коду. За бажанням ви можете вимагати кнопку режиму Home, Away або Disarmed, яка використовується для надсилання коду, і за бажанням обмежити автоматизацію одним серійним номером клавіатури.
+
+[![Імпорт Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Використовуйте схему маршрутизатора, якщо потрібно, щоб одна автоматизація зіставляла кілька кодів клавіатури з різними діями Home Assistant.
+
+[![Імпорт маршрутизатора](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Кнопки режиму клавіатури діють як кнопки надсилання. Якщо вибраний режим уже активний, X-Sense може не опублікувати нову подію, тому виберіть одну з кнопок неактивного режиму під час надсилання коду.
+
+____________________________________________________________

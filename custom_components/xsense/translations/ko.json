@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "장치가 이미 구성되었습니다.",
+      "reauth_successful": "재인증이 성공했습니다",
+      "reconfigure_successful": "재구성에 성공했습니다"
+    },
+    "error": {
+      "cannot_connect": "연결하지 못했습니다.",
+      "invalid_auth": "잘못된 인증",
+      "unknown": "예상치 못한 오류"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "X-Sense 계정으로 다시 로그인하세요.",
+        "data": {
+          "email": "이메일자리 표시자",
+          "password": "비밀번호"
+        }
+      },
+      "reconfigure": {
+        "description": "이 통합에 사용되는 X-Sense 계정을 업데이트하세요.",
+        "data": {
+          "email": "이메일자리 표시자",
+          "password": "비밀번호"
+        }
+      },
+      "user": {
+        "description": "X-Sense 계정으로 로그인하세요.",
+        "data": {
+          "email": "이메일자리 표시자",
+          "password": "비밀번호"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "녹화 미디어 동기화는 Home Assistant 미디어 아래에 카메라 클립을 캐시하므로 X-Sense 녹화 사이드바, 미디어 브라우저 및 모바일 알림이 녹화를 빠르게 열 수 있습니다. 녹음이 열릴 때만 캐시하려면 이 옵션을 꺼두세요. 백그라운드에서 최근 녹음을 준비하려면 활성화하세요.",
+        "data": {
+          "recording_media_sync_enabled": "녹화 미디어 동기화",
+          "recording_media_sync_hours": "백그라운드 동기화 간격",
+          "recording_media_storage_path": "녹화 캐시 폴더",
+          "recording_notification_quality": "알림 녹음 품질",
+          "recording_media_days_order": "녹화일 순서",
+          "recording_media_clips_order": "녹화 클립 순서"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "최근 녹음을 자동으로 캐시합니다. 이는 저장 공간을 사용하며 카메라를 더 자주 깨울 수 있습니다.",
+          "recording_media_sync_hours": "일반적인 백그라운드 캐치업 동기화를 실행해야 하는 빈도입니다. 동기화가 활성화되면 최근 녹음은 몇 분마다 확인됩니다.",
+          "recording_media_storage_path": "/media 아래의 폴더를 사용하세요. 새로 캐시된 비디오와 썸네일은 여기에 저장됩니다.",
+          "recording_notification_quality": "모바일 알림을 위해 X-Sense의 직접/고해상도 클립 URL을 선호하려면 HD를 선택하세요. 가능한 경우 카메라 재생 캡처 경로를 사용하려면 SD를 선택하십시오.",
+          "recording_media_days_order": "녹음 뷰어에서 최신 날짜 또는 이전 날짜를 먼저 표시할지 선택합니다.",
+          "recording_media_clips_order": "매일 새로운 클립이나 오래된 클립을 먼저 표시할지 선택합니다."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "녹화 캐시 폴더가 `{old_path}`에서 `{new_path}`로 변경됩니다. 기존에 캐시된 비디오와 썸네일은 자동으로 이동되지 않습니다. 오래되고 캐시된 녹화물을 계속 사용하려면 기존 `videos` 및 `thumbs` 폴더를 먼저 이동하세요."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "/media 아래의 폴더를 사용하세요."
+    },
+    "abort": {
+      "no_options": "이 X-Sense 계정에 대해 구성 가능한 옵션이 없습니다."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "활성화됨"
+      },
+      "alarm_status": {
+        "name": "알람 상태"
+      },
+      "connected": {
+        "name": "연결됨"
+      },
+      "door": {
+        "name": "문"
+      },
+      "mailbox_schedule_active": {
+        "name": "사서함 일정 활성"
+      },
+      "mute_status": {
+        "name": "장치가 침묵됨"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "알람 드릴"
+      },
+      "mute": {
+        "name": "음소거"
+      },
+      "test": {
+        "name": "장치 테스트"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI 탐지"
+      },
+      "motion": {
+        "name": "모션"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "장치 상태",
+        "state": {
+          "normal": "보통",
+          "low_battery": "배터리 부족",
+          "malfunction": "오작동",
+          "end_of_life": "수명 종료"
+        }
+      },
+      "alarm_vol": {
+        "name": "알람 볼륨"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi 신호 강도"
+      },
+      "ip_address": {
+        "name": "IP 주소"
+      },
+      "co_reading": {
+        "name": "CO 읽기"
+      },
+      "co_level": {
+        "name": "대체자 수준"
+      },
+      "peak_co_level": {
+        "name": "피크 CO 레벨"
+      },
+      "peak_co_level_time": {
+        "name": "최고 CO 레벨 시간"
+      },
+      "mcu_sw_version": {
+        "name": "MCU 소프트웨어 버전"
+      },
+      "rf_level": {
+        "name": "신호 강도",
+        "state": {
+          "good": "좋음",
+          "moderate": "보통",
+          "no_signal": "신호 없음",
+          "weak": "약함"
+        }
+      },
+      "sw_version": {
+        "name": "소프트웨어 버전"
+      },
+      "voice_vol": {
+        "name": "음성 볼륨"
+      },
+      "wifi_ssid": {
+        "name": "SSID 자리 표시자"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi 모듈 펌웨어 버전"
+      },
+      "last_self_test": {
+        "name": "장치 테스트 결과",
+        "state": {
+          "not_run": "실행되지 않음",
+          "success": "성공",
+          "failed": "실패"
+        }
+      },
+      "last_self_test_time": {
+        "name": "장치 테스트 시간"
+      },
+      "radon_peak": {
+        "name": "최고 라돈 수준"
+      },
+      "radon_peak_time": {
+        "name": "최고 라돈 수준 시간"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "녹색 라인 임계값"
+      },
+      "radon_maximum_threshold": {
+        "name": "빨간색 선 임계값"
+      },
+      "alarm_volume": {
+        "name": "알람 볼륨"
+      },
+      "voice_volume": {
+        "name": "음성 볼륨"
+      },
+      "chirp_volume": {
+        "name": "처프 볼륨"
+      },
+      "reminder_volume": {
+        "name": "알림 볼륨"
+      },
+      "temperature_adjustment": {
+        "name": "온도 교정"
+      },
+      "humidity_adjustment": {
+        "name": "상대 습도 교정"
+      },
+      "warning_period": {
+        "name": "경고 기간"
+      },
+      "temperature_min": {
+        "name": "온도 범위 최소"
+      },
+      "temperature_max": {
+        "name": "온도 범위 최대"
+      },
+      "humidity_min": {
+        "name": "상대 습도 범위 최소"
+      },
+      "humidity_max": {
+        "name": "상대 습도 범위 최대"
+      },
+      "temperature_comfort_min": {
+        "name": "쾌적 온도 최소"
+      },
+      "temperature_comfort_max": {
+        "name": "쾌적 온도 최대"
+      },
+      "humidity_comfort_min": {
+        "name": "쾌적 습도 최소"
+      },
+      "humidity_comfort_max": {
+        "name": "쾌적 습도 최대"
+      },
+      "detection_sensitivity": {
+        "name": "감지 감도"
+      },
+      "driveway_sensitivity": {
+        "name": "센서 감도"
+      },
+      "trigger_brightness": {
+        "name": "트리거 밝기"
+      },
+      "standby_brightness": {
+        "name": "대기 밝기"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "알람음"
+      },
+      "chirp_tone": {
+        "name": "처프 톤"
+      },
+      "reminder_tone": {
+        "name": "알림음"
+      },
+      "alarm_interval": {
+        "name": "알람 간격"
+      },
+      "reminder_time": {
+        "name": "알림 시간"
+      },
+      "mailbox_report_interval": {
+        "name": "데이터 보고 간격"
+      },
+      "temperature_unit": {
+        "name": "온도 단위"
+      },
+      "radon_unit": {
+        "name": "라돈 단위"
+      },
+      "comfort_type": {
+        "name": "편안함 수준 사용자 정의"
+      },
+      "led_brightness": {
+        "name": "LED 밝기"
+      },
+      "light_motion_on_time": {
+        "name": "자동 조명 지속 시간"
+      },
+      "light_scene": {
+        "name": "밝은 장면"
+      },
+      "light_app_on_time": {
+        "name": "앱 온타임"
+      }
+    }
+  }
+}

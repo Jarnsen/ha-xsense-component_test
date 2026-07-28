@@ -230,3 +230,18 @@ actions:
 ```
 
 ____________________________________________________________
+
+## Otomatisasi Kode Keypad SKP0A
+Papan tombol SKP0A tidak mempublikasikan setiap penekanan tombol individual. Ini menerbitkan peristiwa keypad setelah kode valid yang dibuat aplikasi X-Sense dikirimkan dengan Home, Away, atau Disarmed. Integrasi tersebut memperlihatkan peristiwa kode yang dikirimkan sebagai `xsense_keypad_code`.
+
+Gunakan cetak biru kode tunggal yang disertakan untuk menjalankan tindakan Home Assistant untuk satu kode yang dipilih. Anda juga dapat meminta tombol mode Home, Away, atau Disarmed digunakan untuk mengirimkan kode, dan secara opsional membatasi otomatisasi ke satu nomor seri keypad.
+
+[![Impor Cetak Biru](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Gunakan cetak biru router ketika Anda ingin satu otomatisasi memetakan beberapa kode keypad ke tindakan Home Assistant yang berbeda.
+
+[![Impor Cetak Biru Router](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Tombol mode keypad berfungsi sebagai tombol kirim. Jika mode yang dipilih sudah aktif, X-Sense mungkin tidak menerbitkan acara baru, jadi pilih salah satu tombol mode yang saat ini tidak aktif saat mengirimkan kode.
+
+____________________________________________________________

@@ -84,6 +84,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A klahvistiku koodiautomaatika
+Klaviatuur SKP0A ei avalda iga üksikut klahvivajutust. See avaldab klahvistiku sündmuse pärast seda, kui Home, Away või Disarmed on esitanud kehtiva X-Sense rakenduse loodud koodi. Integreerimine paljastab selle esitatud koodi sündmuse kui `xsense_keypad_code`.
+
+Kasutage kaasasolevat ühe koodi kavandit, et käivitada Home Assistant toiminguid ühe valitud koodi jaoks. Soovi korral saate koodi edastamiseks nõuda režiiminuppu Home, Away või Disarmed ja valikuliselt piirata automatiseerimist ühe klahvistiku seerianumbriga.
+
+[![Impordi plaan](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Kasutage ruuteri kavandit, kui soovite, et üks automaatika seostaks mitu klahvistiku koodi erinevate Home Assistant toimingutega.
+
+[![Importige ruuteri plaan](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Klaviatuurirežiimi nupud toimivad esitamisnuppudena. Kui valitud režiim on juba aktiivne, ei pruugi X-Sense uut sündmust avaldada, seega valige koodi esitamisel üks hetkel passiivse režiimi nuppudest.
+
+____________________________________________________________
+
 ## Automatiseerimise näited
 ```yaml
 automation:

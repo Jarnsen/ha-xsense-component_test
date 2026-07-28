@@ -229,3 +229,18 @@ actions:
 ```
 
 ____________________________________________________________
+
+## اتوماسیون کدهای صفحه کلید SKP0A
+صفحه کلید SKP0A هر فشار کلید را منتشر نمی کند. پس از ارسال کد معتبر ایجاد شده توسط برنامه X-Sense با Home، Away، یا Disarmed، یک رویداد صفحه کلید را منتشر می کند. ادغام آن رویداد کد ارسالی را به عنوان `xsense_keypad_code` نشان می دهد.
+
+از طرح تک کد ارائه شده برای اجرای اقدامات Home Assistant برای یک کد انتخاب شده استفاده کنید. می‌توانید به‌صورت اختیاری از دکمه حالت Home، Away یا Disarmed استفاده کنید که برای ارسال کد استفاده می‌شود، و به صورت اختیاری اتوماسیون را به یک شماره سریال صفحه‌کلید محدود کنید.
+
+[![طرح واردات](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+هنگامی که می خواهید یک اتوماسیون چندین کد صفحه کلید را به عملکردهای مختلف Home Assistant نگاشت کند، از طرح روتر استفاده کنید.
+
+[![وارد کردن نقشه روتر](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+دکمه های حالت صفحه کلید به عنوان دکمه های ارسال عمل می کنند. اگر حالت انتخاب شده از قبل فعال است، X-Sense ممکن است رویداد جدیدی را منتشر نکند، بنابراین هنگام ارسال کد یکی از دکمه های حالت غیرفعال فعلی را انتخاب کنید.
+
+____________________________________________________________

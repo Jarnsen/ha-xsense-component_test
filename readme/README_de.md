@@ -149,6 +149,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A Tastaturcode-Automatisierungen
+Die SKP0A-Tastatur veröffentlicht nicht jeden einzelnen Tastendruck. Es veröffentlicht ein Tastaturereignis, nachdem ein gültiger, von der X-Sense-App erstellter Code mit Home, Away oder Disarmed übermittelt wurde. Die Integration macht dieses übermittelte Codeereignis als `xsense_keypad_code` verfügbar.
+
+Verwenden Sie den enthaltenen Einzelcode-Blueprint, um Home Assistant-Aktionen für einen ausgewählten Code auszuführen. Sie können optional die Modustaste Home, Away oder Disarmed zum Senden des Codes anfordern und die Automatisierung optional auf eine Tastaturseriennummer beschränken.
+
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Verwenden Sie den Router-Blueprint, wenn Sie möchten, dass eine Automatisierung mehrere Tastaturcodes verschiedenen Home Assistant-Aktionen zuordnet.
+
+[![Router-Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Die Tasten im Tastaturmodus fungieren als Senden-Schaltflächen. Wenn der ausgewählte Modus bereits aktiv ist, veröffentlicht X-Sense möglicherweise kein neues Ereignis. Wählen Sie daher beim Senden eines Codes eine der derzeit inaktiven Modusschaltflächen aus.
+
+____________________________________________________________
+
 ## Beispiele für Automationen
 Mit dieser Integration lassen sich verschiedene Automationen erstellen. Hier sind einige Beispiele:
 

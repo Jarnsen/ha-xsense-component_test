@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Zařízení je již nakonfigurováno",
+      "reauth_successful": "Opětovné ověření bylo úspěšné",
+      "reconfigure_successful": "Rekonfigurace byla úspěšná"
+    },
+    "error": {
+      "cannot_connect": "Připojení se nezdařilo",
+      "invalid_auth": "Neplatné ověření",
+      "unknown": "Neočekávaná chyba"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Znovu se přihlaste pomocí svého účtu X-Sense.",
+        "data": {
+          "email": "E-mail",
+          "password": "Heslo"
+        }
+      },
+      "reconfigure": {
+        "description": "Aktualizujte účet X-Sense používaný touto integrací.",
+        "data": {
+          "email": "E-mail",
+          "password": "Heslo"
+        }
+      },
+      "user": {
+        "description": "Přihlaste se pomocí svého účtu X-Sense.",
+        "data": {
+          "email": "E-mail",
+          "password": "Heslo"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Synchronizace záznamových médií ukládá do mezipaměti klipy z fotoaparátu pod média Home Assistant, takže postranní panel Nahrávek X-Sense, Prohlížeč médií a mobilní oznámení mohou rychle otevřít nahrávky. Ponechte jej pro ukládání do mezipaměti pouze tehdy, když jsou otevřeny. Aktivujte ji, aby byly poslední nahrávky připraveny na pozadí.",
+        "data": {
+          "recording_media_sync_enabled": "Synchronizace nahrávacího média",
+          "recording_media_sync_hours": "Interval synchronizace na pozadí",
+          "recording_media_storage_path": "Složka mezipaměti záznamů",
+          "recording_notification_quality": "Kvalita záznamu oznámení",
+          "recording_media_days_order": "Objednávka dne záznamu",
+          "recording_media_clips_order": "Pořadí nahrávání klipů"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Automaticky ukládat poslední nahrávky do mezipaměti. To využívá úložný prostor a může častěji probudit kamery.",
+          "recording_media_sync_hours": "Jak často by měla běžet normální synchronizace na pozadí. Pokud je povolena synchronizace, poslední nahrávky se kontrolují každých pár minut.",
+          "recording_media_storage_path": "Použijte složku pod /media. Zde se ukládají nová videa a miniatury uložené v mezipaměti.",
+          "recording_notification_quality": "Vyberte HD, chcete-li upřednostnit přímé adresy URL klipů/ve vysokém rozlišení X-Sense pro mobilní oznámení. Zvolte SD, chcete-li použít cestu snímání přehrávání kamery, je-li k dispozici.",
+          "recording_media_days_order": "Zvolte, zda se v prohlížeči nahrávek jako první zobrazí novější nebo starší dny.",
+          "recording_media_clips_order": "Vyberte, zda se v každém dni zobrazí jako první novější nebo starší klipy."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Složka mezipaměti záznamů se změní z `{old_path}` na `{new_path}`. Stávající videa a miniatury uložené v mezipaměti se nepřesouvají automaticky. Pokud chcete, aby staré nahrávky uložené v mezipaměti zůstaly dostupné, přesuňte nejprve existující složky `videos` a `thumbs`."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Použijte složku pod /media."
+    },
+    "abort": {
+      "no_options": "Pro tento účet X-Sense neexistují žádné konfigurovatelné možnosti."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Aktivováno"
+      },
+      "alarm_status": {
+        "name": "Stav alarmu"
+      },
+      "connected": {
+        "name": "Připojeno"
+      },
+      "door": {
+        "name": "Dveře"
+      },
+      "mailbox_schedule_active": {
+        "name": "Plán poštovní schránky je aktivní"
+      },
+      "mute_status": {
+        "name": "Zařízení ztišeno"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Alarm Drill"
+      },
+      "mute": {
+        "name": "Ztlumit"
+      },
+      "test": {
+        "name": "Test zařízení"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "Detekce AI"
+      },
+      "motion": {
+        "name": "Pohyb"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Stav zařízení",
+        "state": {
+          "normal": "Normální",
+          "low_battery": "Slabá baterie",
+          "malfunction": "Porucha",
+          "end_of_life": "Konec životnosti"
+        }
+      },
+      "alarm_vol": {
+        "name": "Hlasitost alarmu"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi Síla signálu"
+      },
+      "ip_address": {
+        "name": "IP adresa"
+      },
+      "co_reading": {
+        "name": "CO Čtení"
+      },
+      "co_level": {
+        "name": "Úroveň CO"
+      },
+      "peak_co_level": {
+        "name": "Vrcholová úroveň CO"
+      },
+      "peak_co_level_time": {
+        "name": "Nejvyšší čas úrovně CO"
+      },
+      "mcu_sw_version": {
+        "name": "Verze softwaru MCU"
+      },
+      "rf_level": {
+        "name": "Síla signálu",
+        "state": {
+          "good": "Dobře",
+          "moderate": "Mírný",
+          "no_signal": "Žádný signál",
+          "weak": "slabý"
+        }
+      },
+      "sw_version": {
+        "name": "Verze softwaru"
+      },
+      "voice_vol": {
+        "name": "Hlasitost hlasu"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Verze firmwaru modulu Wi-Fi"
+      },
+      "last_self_test": {
+        "name": "Výsledek testu zařízení",
+        "state": {
+          "not_run": "Nespustit",
+          "success": "Úspěch",
+          "failed": "Nepodařilo se"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Doba testu zařízení"
+      },
+      "radon_peak": {
+        "name": "Nejvyšší hladina radonu"
+      },
+      "radon_peak_time": {
+        "name": "Doba nejvyšší hladiny radonu"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Práh zelené čáry"
+      },
+      "radon_maximum_threshold": {
+        "name": "Práh červené čáry"
+      },
+      "alarm_volume": {
+        "name": "Hlasitost alarmu"
+      },
+      "voice_volume": {
+        "name": "Hlasitost hlasu"
+      },
+      "chirp_volume": {
+        "name": "Hlasitost cvrlikání"
+      },
+      "reminder_volume": {
+        "name": "Hlasitost připomenutí"
+      },
+      "temperature_adjustment": {
+        "name": "Kalibrace teploty"
+      },
+      "humidity_adjustment": {
+        "name": "Kalibrace relativní vlhkosti"
+      },
+      "warning_period": {
+        "name": "Výstražné období"
+      },
+      "temperature_min": {
+        "name": "Teplotní rozsah Minimum"
+      },
+      "temperature_max": {
+        "name": "Maximální rozsah teplot"
+      },
+      "humidity_min": {
+        "name": "Minimální rozsah relativní vlhkosti"
+      },
+      "humidity_max": {
+        "name": "Maximální rozsah relativní vlhkosti"
+      },
+      "temperature_comfort_min": {
+        "name": "Komfortní teplota Minimum"
+      },
+      "temperature_comfort_max": {
+        "name": "Komfortní teplota Maximum"
+      },
+      "humidity_comfort_min": {
+        "name": "Komfortní vlhkost Minimum"
+      },
+      "humidity_comfort_max": {
+        "name": "Komfortní vlhkost Maximální"
+      },
+      "detection_sensitivity": {
+        "name": "Citlivost detekce"
+      },
+      "driveway_sensitivity": {
+        "name": "Citlivost snímače"
+      },
+      "trigger_brightness": {
+        "name": "Spustit Jas"
+      },
+      "standby_brightness": {
+        "name": "Jas v pohotovostním režimu"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Tón alarmu"
+      },
+      "chirp_tone": {
+        "name": "Tón cvrlikání"
+      },
+      "reminder_tone": {
+        "name": "Tón připomenutí"
+      },
+      "alarm_interval": {
+        "name": "Interval alarmu"
+      },
+      "reminder_time": {
+        "name": "Čas připomenutí"
+      },
+      "mailbox_report_interval": {
+        "name": "Interval hlášení dat"
+      },
+      "temperature_unit": {
+        "name": "Jednotka teploty"
+      },
+      "radon_unit": {
+        "name": "Radonová jednotka"
+      },
+      "comfort_type": {
+        "name": "Přizpůsobte si úrovně pohodlí"
+      },
+      "led_brightness": {
+        "name": "Jas LED"
+      },
+      "light_motion_on_time": {
+        "name": "Automatická doba svícení"
+      },
+      "light_scene": {
+        "name": "Světelná scéna"
+      },
+      "light_app_on_time": {
+        "name": "Aplikace na čas"
+      }
+    }
+  }
+}

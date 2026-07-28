@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Пристрій уже налаштовано",
+      "reauth_successful": "Повторна автентифікація пройшла успішно",
+      "reconfigure_successful": "Реконфігурація пройшла успішно"
+    },
+    "error": {
+      "cannot_connect": "Не вдалося підключитися",
+      "invalid_auth": "Недійсна автентифікація",
+      "unknown": "Несподівана помилка"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Увійдіть знову за допомогою свого облікового запису X-Sense.",
+        "data": {
+          "email": "E-mail",
+          "password": "Пароль"
+        }
+      },
+      "reconfigure": {
+        "description": "Оновіть обліковий запис X-Sense, який використовується цією інтеграцією.",
+        "data": {
+          "email": "E-mail",
+          "password": "Пароль"
+        }
+      },
+      "user": {
+        "description": "Увійдіть за допомогою свого облікового запису X-Sense.",
+        "data": {
+          "email": "E-mail",
+          "password": "Пароль"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Синхронізація медіафайлів запису кешує відеокліпи камери під носіями Home Assistant, щоб на бічній панелі записів X-Sense, медіа-браузері та мобільних сповіщеннях можна було швидко відкривати записи. Залиште його вимкненим, щоб кешувати записи лише тоді, коли вони відкриті. Увімкніть його, щоб останні записи залишалися готовими у фоновому режимі.",
+        "data": {
+          "recording_media_sync_enabled": "Синхронізація носіїв запису",
+          "recording_media_sync_hours": "Інтервал фонової синхронізації",
+          "recording_media_storage_path": "Папка кеша запису",
+          "recording_notification_quality": "Якість запису сповіщень",
+          "recording_media_days_order": "Порядок дня запису",
+          "recording_media_clips_order": "Порядок запису кліпу"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Кешувати останні записи автоматично. Це займає простір у пам’яті та може частіше виводити камери з режиму сну.",
+          "recording_media_sync_hours": "Як часто має виконуватися звичайна фонова наздоганяюча синхронізація. Останні записи перевіряються кожні кілька хвилин, коли ввімкнено синхронізацію.",
+          "recording_media_storage_path": "Використовуйте папку під /media. Тут зберігаються нові кешовані відео та мініатюри.",
+          "recording_notification_quality": "Виберіть HD, щоб віддати перевагу прямим/високороздільним URL-адресам кліпу X-Sense для мобільних сповіщень. Виберіть SD, щоб використовувати шлях захоплення відтворення камери, якщо він доступний.",
+          "recording_media_days_order": "Виберіть, чи з’являтимуться новіші чи старіші дні в засобі перегляду записів.",
+          "recording_media_clips_order": "Виберіть, чи з’являтимуться нові або старі кліпи першими протягом кожного дня."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Папка кешу записів зміниться з `{old_path}` на `{new_path}`. Існуючі кешовані відео та мініатюри не переміщуються автоматично. Спочатку перемістіть існуючі папки `videos` і `thumbs`, якщо ви хочете, щоб старі кешовані записи залишалися доступними."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Використовуйте папку під /media."
+    },
+    "abort": {
+      "no_options": "Для цього облікового запису X-Sense немає параметрів, які можна налаштувати."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "активовано"
+      },
+      "alarm_status": {
+        "name": "Статус будильника"
+      },
+      "connected": {
+        "name": "Підключено"
+      },
+      "door": {
+        "name": "двері"
+      },
+      "mailbox_schedule_active": {
+        "name": "Розклад поштової скриньки активний"
+      },
+      "mute_status": {
+        "name": "Пристрій вимкнено"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Сигналізатор"
+      },
+      "mute": {
+        "name": "Вимкнути звук"
+      },
+      "test": {
+        "name": "Тест пристрою"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "Виявлення ШІ"
+      },
+      "motion": {
+        "name": "Рух"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Стан пристрою",
+        "state": {
+          "normal": "нормальний",
+          "low_battery": "Низький заряд батареї",
+          "malfunction": "Несправність",
+          "end_of_life": "Кінець життя"
+        }
+      },
+      "alarm_vol": {
+        "name": "Гучність будильника"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi Потужність сигналу"
+      },
+      "ip_address": {
+        "name": "IP-адреса"
+      },
+      "co_reading": {
+        "name": "CO Читання"
+      },
+      "co_level": {
+        "name": "Рівень CO"
+      },
+      "peak_co_level": {
+        "name": "Піковий рівень CO"
+      },
+      "peak_co_level_time": {
+        "name": "Час пікового рівня CO"
+      },
+      "mcu_sw_version": {
+        "name": "Версія програмного забезпечення MCU"
+      },
+      "rf_level": {
+        "name": "Сила сигналу",
+        "state": {
+          "good": "добре",
+          "moderate": "Помірний",
+          "no_signal": "Немає сигналу",
+          "weak": "Слабкий"
+        }
+      },
+      "sw_version": {
+        "name": "Версія програмного забезпечення"
+      },
+      "voice_vol": {
+        "name": "Гучність голосу"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Версія мікропрограми модуля Wi-Fi"
+      },
+      "last_self_test": {
+        "name": "Результат перевірки пристрою",
+        "state": {
+          "not_run": "Не бігти",
+          "success": "Успіх",
+          "failed": "Не вдалося"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Час перевірки пристрою"
+      },
+      "radon_peak": {
+        "name": "Піковий рівень радону"
+      },
+      "radon_peak_time": {
+        "name": "Час пікового рівня радону"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Порогове значення зеленої лінії"
+      },
+      "radon_maximum_threshold": {
+        "name": "Поріг червоної лінії"
+      },
+      "alarm_volume": {
+        "name": "Гучність будильника"
+      },
+      "voice_volume": {
+        "name": "Гучність голосу"
+      },
+      "chirp_volume": {
+        "name": "Гучність чирпу"
+      },
+      "reminder_volume": {
+        "name": "Гучність нагадування"
+      },
+      "temperature_adjustment": {
+        "name": "Калібрування температури"
+      },
+      "humidity_adjustment": {
+        "name": "Калібрування відносної вологості"
+      },
+      "warning_period": {
+        "name": "Період попередження"
+      },
+      "temperature_min": {
+        "name": "Мінімальний діапазон температур"
+      },
+      "temperature_max": {
+        "name": "Діапазон температур Максимум"
+      },
+      "humidity_min": {
+        "name": "Мінімальний діапазон відносної вологості"
+      },
+      "humidity_max": {
+        "name": "Максимальний діапазон відносної вологості"
+      },
+      "temperature_comfort_min": {
+        "name": "Комфортна температура Мінімум"
+      },
+      "temperature_comfort_max": {
+        "name": "Максимальна комфортна температура"
+      },
+      "humidity_comfort_min": {
+        "name": "Мінімальна комфортна вологість"
+      },
+      "humidity_comfort_max": {
+        "name": "Максимальна комфортна вологість"
+      },
+      "detection_sensitivity": {
+        "name": "Чутливість виявлення"
+      },
+      "driveway_sensitivity": {
+        "name": "Чутливість датчика"
+      },
+      "trigger_brightness": {
+        "name": "Тригер Яскравість"
+      },
+      "standby_brightness": {
+        "name": "Яскравість у режимі очікування"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Тон будильника"
+      },
+      "chirp_tone": {
+        "name": "Звуковий сигнал"
+      },
+      "reminder_tone": {
+        "name": "Тон нагадування"
+      },
+      "alarm_interval": {
+        "name": "Інтервал тривоги"
+      },
+      "reminder_time": {
+        "name": "Час нагадування"
+      },
+      "mailbox_report_interval": {
+        "name": "Інтервал звітування даних"
+      },
+      "temperature_unit": {
+        "name": "Одиниця вимірювання температури"
+      },
+      "radon_unit": {
+        "name": "Радонова установка"
+      },
+      "comfort_type": {
+        "name": "Налаштуйте рівні комфорту"
+      },
+      "led_brightness": {
+        "name": "Яскравість світлодіодів"
+      },
+      "light_motion_on_time": {
+        "name": "Автоматична тривалість освітлення"
+      },
+      "light_scene": {
+        "name": "Світлова сцена"
+      },
+      "light_app_on_time": {
+        "name": "Додаток вчасно"
+      }
+    }
+  }
+}

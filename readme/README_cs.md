@@ -84,6 +84,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## Automatizace kódu klávesnice SKP0A
+Klávesnice SKP0A nepublikuje každé jednotlivé stisknutí klávesy. Po odeslání platného kódu vytvořeného aplikací X-Sense pomocí Home, Away nebo Disarmed zveřejní událost klávesnice. Integrace odhaluje událost odeslaného kódu jako `xsense_keypad_code`.
+
+Použijte přiložený plán s jedním kódem ke spuštění akcí Home Assistant pro jeden vybraný kód. Volitelně můžete vyžadovat tlačítko režimu Home, Away nebo Disarmed používané k odeslání kódu a volitelně omezit automatizaci na jedno sériové číslo klávesnice.
+
+[![Importovat plán](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Použijte plán routeru, když chcete, aby jedna automatizace mapovala několik kódů klávesnice na různé akce Home Assistant.
+
+[![Importujte plán routeru](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Tlačítka režimu klávesnice fungují jako tlačítka pro odeslání. Pokud je vybraný režim již aktivní, X-Sense nemusí publikovat novou událost, takže při odesílání kódu vyberte jedno z aktuálně neaktivních tlačítek režimu.
+
+____________________________________________________________
+
 ## Příklady automatizací
 ```yaml
 automation:

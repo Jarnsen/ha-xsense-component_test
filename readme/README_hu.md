@@ -84,6 +84,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A Kezelőkód automatizálások
+A SKP0A billentyűzet nem tesz közzé minden egyes gombnyomást. Egy érvényes X-Sense alkalmazás által létrehozott kód beküldése után a billentyűzeten közzétesz egy eseményt a Home, Away vagy Disarmed kóddal. Az integráció a beküldött kód eseményt `xsense_keypad_code` néven teszi közzé.
+
+Használja a mellékelt egykódos tervrajzot a Home Assistant műveletek futtatásához egy kiválasztott kódhoz. Opcionálisan megkövetelheti a Home, Away vagy Disarmed mód gombot a kód elküldéséhez, és opcionálisan korlátozhatja az automatizálást egy billentyűzet sorozatszámra.
+
+[![Tervrajz importálása](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Használja az útválasztó tervrajzát, ha azt szeretné, hogy egy automatika több billentyűzetkódot is leképezhessen a különböző Home Assistant műveletekre.
+
+[![Az útválasztó tervrajz importálása](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+A billentyűzet mód gombjai küldés gombként működnek. Ha a kiválasztott mód már aktív, akkor előfordulhat, hogy a X-Sense nem tesz közzé új eseményt, ezért kód elküldésekor válassza az aktuálisan inaktív mód gombok egyikét.
+
+____________________________________________________________
+
 ## Automatizálási példák
 ```yaml
 automation:

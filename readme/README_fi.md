@@ -84,6 +84,22 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A Näppäimistökoodiautomaatio
+SKP0A-näppäimistö ei julkaise jokaista yksittäistä näppäinpainallusta. Se julkaisee näppäimistötapahtuman sen jälkeen, kun kelvollinen X-Sense-sovelluksen luoma koodi on lähetetty Home:n, Away:n tai Disarmed:n kanssa. Integrointi paljastaa lähetetyn koodin tapahtuman muodossa `xsense_keypad_code`.
+
+Käytä mukana toimitettua yhden koodin suunnitelmaa Home Assistant-toimintojen suorittamiseen yhdelle valitulle koodille. Voit halutessasi vaatia Home-, Away- tai Disarmed-tilapainiketta, jota käytetään koodin lähettämiseen, ja valinnaisesti voit rajoittaa automaation yhteen näppäimistön sarjanumeroon.
+
+[![Tuo Blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+Käytä reitittimen suunnitelmaa, kun haluat yhden automaation yhdistävän useita näppäimistökoodeja eri Home Assistant-toimintoihin.
+
+[![Tuo reitittimen suunnitelma](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+Näppäimistön tilan painikkeet toimivat lähetyspainikkeina. Jos valittu tila on jo aktiivinen, X-Sense ei välttämättä julkaise uutta tapahtumaa, joten valitse jokin tällä hetkellä ei-aktiivisista tilan painikkeista, kun lähetät koodin.
+
+____________________________________________________________
+
 ## Automaatioesimerkkejä
 ```yaml
 automation:

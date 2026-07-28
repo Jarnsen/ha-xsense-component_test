@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Perangkat sudah dikonfigurasi",
+      "reauth_successful": "Otentikasi ulang berhasil",
+      "reconfigure_successful": "Konfigurasi ulang berhasil"
+    },
+    "error": {
+      "cannot_connect": "Gagal terhubung",
+      "invalid_auth": "Otentikasi tidak valid",
+      "unknown": "Kesalahan yang tidak terduga"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Masuk lagi dengan akun X-Sense Anda.",
+        "data": {
+          "email": "PEMEGANG EMAILPLACE",
+          "password": "Kata sandi"
+        }
+      },
+      "reconfigure": {
+        "description": "Perbarui akun X-Sense yang digunakan oleh integrasi ini.",
+        "data": {
+          "email": "PEMEGANG EMAILPLACE",
+          "password": "Kata sandi"
+        }
+      },
+      "user": {
+        "description": "Masuk dengan akun X-Sense Anda.",
+        "data": {
+          "email": "PEMEGANG EMAILPLACE",
+          "password": "Kata sandi"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Merekam sinkronisasi media menyimpan cache klip kamera di bawah media Home Assistant sehingga sidebar Rekaman X-Sense, Browser Media, dan notifikasi seluler dapat membuka rekaman dengan cepat. Biarkan rekaman disimpan dalam cache hanya ketika dibuka. Aktifkan untuk menyimpan rekaman terbaru di latar belakang.",
+        "data": {
+          "recording_media_sync_enabled": "Merekam sinkronisasi media",
+          "recording_media_sync_hours": "Interval sinkronisasi latar belakang",
+          "recording_media_storage_path": "Merekam folder cache",
+          "recording_notification_quality": "Kualitas rekaman notifikasi",
+          "recording_media_days_order": "Merekam pesanan hari",
+          "recording_media_clips_order": "Merekam urutan klip"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Cache rekaman terbaru secara otomatis. Tindakan ini menghabiskan ruang penyimpanan dan mungkin lebih sering membangunkan kamera.",
+          "recording_media_sync_hours": "Seberapa sering sinkronisasi pengejar latar belakang normal harus dijalankan. Rekaman terbaru diperiksa setiap beberapa menit saat sinkronisasi diaktifkan.",
+          "recording_media_storage_path": "Gunakan folder di bawah /media. Video dan thumbnail baru yang di-cache disimpan di sini.",
+          "recording_notification_quality": "Pilih HD untuk memilih URL klip langsung/resolusi tinggi X-Sense untuk notifikasi seluler. Pilih SD untuk menggunakan jalur pengambilan pemutaran kamera bila tersedia.",
+          "recording_media_days_order": "Pilih apakah hari yang lebih baru atau lebih lama muncul pertama kali di penampil rekaman.",
+          "recording_media_clips_order": "Pilih apakah klip baru atau lama muncul pertama kali setiap hari."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Folder cache rekaman akan berubah dari `{old_path}` menjadi `{new_path}`. Video dan thumbnail yang ada dalam cache tidak dipindahkan secara otomatis. Pindahkan folder `videos` dan `thumbs` yang ada terlebih dahulu jika Anda ingin rekaman cache lama tetap tersedia."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Gunakan folder di bawah /media."
+    },
+    "abort": {
+      "no_options": "Tidak ada opsi yang dapat dikonfigurasi untuk akun X-Sense ini."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Diaktifkan"
+      },
+      "alarm_status": {
+        "name": "Status Alarm"
+      },
+      "connected": {
+        "name": "Terhubung"
+      },
+      "door": {
+        "name": "Pintu"
+      },
+      "mailbox_schedule_active": {
+        "name": "Jadwal Kotak Surat Aktif"
+      },
+      "mute_status": {
+        "name": "Perangkat Dibungkam"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Latihan Alarm"
+      },
+      "mute": {
+        "name": "Bisu"
+      },
+      "test": {
+        "name": "Tes Perangkat"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "Deteksi AI"
+      },
+      "motion": {
+        "name": "Gerakan"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Status Perangkat",
+        "state": {
+          "normal": "Biasa",
+          "low_battery": "Baterai Lemah",
+          "malfunction": "Kerusakan",
+          "end_of_life": "Akhir Kehidupan"
+        }
+      },
+      "alarm_vol": {
+        "name": "Volume Alarm"
+      },
+      "wifi_rssi": {
+        "name": "Kekuatan Sinyal Wi-Fi"
+      },
+      "ip_address": {
+        "name": "Alamat IP"
+      },
+      "co_reading": {
+        "name": "Bacaan CO"
+      },
+      "co_level": {
+        "name": "Tingkat CO"
+      },
+      "peak_co_level": {
+        "name": "Tingkat CO Puncak"
+      },
+      "peak_co_level_time": {
+        "name": "Waktu Level CO Puncak"
+      },
+      "mcu_sw_version": {
+        "name": "Versi Perangkat Lunak MCU"
+      },
+      "rf_level": {
+        "name": "Kekuatan Sinyal",
+        "state": {
+          "good": "Bagus",
+          "moderate": "Sedang",
+          "no_signal": "Tidak Ada Sinyal",
+          "weak": "Lemah"
+        }
+      },
+      "sw_version": {
+        "name": "Versi Perangkat Lunak"
+      },
+      "voice_vol": {
+        "name": "Volume Suara"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Versi Firmware Modul Wi-Fi"
+      },
+      "last_self_test": {
+        "name": "Hasil Tes Perangkat",
+        "state": {
+          "not_run": "Tidak Jalankan",
+          "success": "Sukses",
+          "failed": "Gagal"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Waktu Uji Perangkat"
+      },
+      "radon_peak": {
+        "name": "Tingkat Puncak Radon"
+      },
+      "radon_peak_time": {
+        "name": "Waktu Tingkat Puncak Radon"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Ambang Batas Garis Hijau"
+      },
+      "radon_maximum_threshold": {
+        "name": "Ambang Batas Garis Merah"
+      },
+      "alarm_volume": {
+        "name": "Volume Alarm"
+      },
+      "voice_volume": {
+        "name": "Volume Suara"
+      },
+      "chirp_volume": {
+        "name": "Volume Kicauan"
+      },
+      "reminder_volume": {
+        "name": "Volume Pengingat"
+      },
+      "temperature_adjustment": {
+        "name": "Kalibrasi Suhu"
+      },
+      "humidity_adjustment": {
+        "name": "Kalibrasi Kelembaban Relatif"
+      },
+      "warning_period": {
+        "name": "Periode Peringatan"
+      },
+      "temperature_min": {
+        "name": "Kisaran Suhu Minimum"
+      },
+      "temperature_max": {
+        "name": "Kisaran Suhu Maksimum"
+      },
+      "humidity_min": {
+        "name": "Kisaran Kelembaban Relatif Minimum"
+      },
+      "humidity_max": {
+        "name": "Kisaran Kelembaban Relatif Maksimum"
+      },
+      "temperature_comfort_min": {
+        "name": "Suhu Kenyamanan Minimum"
+      },
+      "temperature_comfort_max": {
+        "name": "Suhu Kenyamanan Maksimal"
+      },
+      "humidity_comfort_min": {
+        "name": "Kenyamanan Kelembaban Minimum"
+      },
+      "humidity_comfort_max": {
+        "name": "Kenyamanan Kelembaban Maksimal"
+      },
+      "detection_sensitivity": {
+        "name": "Sensitivitas Deteksi"
+      },
+      "driveway_sensitivity": {
+        "name": "Sensitivitas Sensor"
+      },
+      "trigger_brightness": {
+        "name": "Memicu Kecerahan"
+      },
+      "standby_brightness": {
+        "name": "Kecerahan Siaga"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Nada Alarm"
+      },
+      "chirp_tone": {
+        "name": "Nada Kicauan"
+      },
+      "reminder_tone": {
+        "name": "Nada Pengingat"
+      },
+      "alarm_interval": {
+        "name": "Interval Alarm"
+      },
+      "reminder_time": {
+        "name": "Waktu Pengingat"
+      },
+      "mailbox_report_interval": {
+        "name": "Interval Pelaporan Data"
+      },
+      "temperature_unit": {
+        "name": "Satuan Suhu"
+      },
+      "radon_unit": {
+        "name": "Satuan Radon"
+      },
+      "comfort_type": {
+        "name": "Sesuaikan Tingkat Kenyamanan"
+      },
+      "led_brightness": {
+        "name": "Kecerahan LED"
+      },
+      "light_motion_on_time": {
+        "name": "Durasi Cahaya Otomatis"
+      },
+      "light_scene": {
+        "name": "Adegan Cahaya"
+      },
+      "light_app_on_time": {
+        "name": "Aplikasi Tepat Waktu"
+      }
+    }
+  }
+}

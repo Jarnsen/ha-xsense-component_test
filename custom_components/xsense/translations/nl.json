@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Apparaat is al geconfigureerd",
+      "reauth_successful": "Opnieuw verifiëren is gelukt",
+      "reconfigure_successful": "Herconfiguratie was succesvol"
+    },
+    "error": {
+      "cannot_connect": "Kan geen verbinding maken",
+      "invalid_auth": "Ongeldige authenticatie",
+      "unknown": "Onverwachte fout"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Meld u opnieuw aan met uw X-Sense-account.",
+        "data": {
+          "email": "E-mail",
+          "password": "Wachtwoord"
+        }
+      },
+      "reconfigure": {
+        "description": "Update het X-Sense-account dat door deze integratie wordt gebruikt.",
+        "data": {
+          "email": "E-mail",
+          "password": "Wachtwoord"
+        }
+      },
+      "user": {
+        "description": "Log in met uw X-Sense-account.",
+        "data": {
+          "email": "E-mail",
+          "password": "Wachtwoord"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Bij het synchroniseren van opnamemedia worden camerafragmenten in de cache opgeslagen onder Home Assistant-media, zodat de zijbalk Opnames van X-Sense, de mediabrowser en mobiele meldingen opnames snel kunnen openen. Laat het uitgeschakeld om opnames alleen in de cache op te slaan wanneer ze worden geopend. Schakel het in om recente opnamen op de achtergrond gereed te houden.",
+        "data": {
+          "recording_media_sync_enabled": "Synchronisatie van opnamemedia",
+          "recording_media_sync_hours": "Achtergrondsynchronisatie-interval",
+          "recording_media_storage_path": "Opnamecachemap",
+          "recording_notification_quality": "Opnamekwaliteit van meldingen",
+          "recording_media_days_order": "Dagvolgorde opnemen",
+          "recording_media_clips_order": "Volgorde van opnameclips"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Cache recente opnames automatisch. Dit gebruikt opslagruimte en kan camera's vaker activeren.",
+          "recording_media_sync_hours": "Hoe vaak de normale inhaalsynchronisatie op de achtergrond moet worden uitgevoerd. Recente opnamen worden elke paar minuten gecontroleerd wanneer synchronisatie is ingeschakeld.",
+          "recording_media_storage_path": "Gebruik een map onder /media. Nieuwe in de cache opgeslagen video's en thumbnails worden hier opgeslagen.",
+          "recording_notification_quality": "Kies HD om de voorkeur te geven aan de directe clip-URL's/clip-URL's van X-Sense voor mobiele meldingen. Kies SD om het opnamepad voor het afspelen van de camera te gebruiken, indien beschikbaar.",
+          "recording_media_days_order": "Kies of nieuwere of oudere dagen eerst verschijnen in de opnameviewer.",
+          "recording_media_clips_order": "Kies of nieuwere of oudere clips elke dag als eerste verschijnen."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "De map voor de opnamecache verandert van `{old_path}` in `{new_path}`. Bestaande video's en thumbnails in de cache worden niet automatisch verplaatst. Verplaats eerst de bestaande mappen `videos` en `thumbs` als u wilt dat oude opnamen in de cache beschikbaar blijven."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Gebruik een map onder /media."
+    },
+    "abort": {
+      "no_options": "Er zijn geen configureerbare opties voor dit X-Sense-account."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Geactiveerd"
+      },
+      "alarm_status": {
+        "name": "Alarmstatus"
+      },
+      "connected": {
+        "name": "Verbonden"
+      },
+      "door": {
+        "name": "Deur"
+      },
+      "mailbox_schedule_active": {
+        "name": "Mailboxschema actief"
+      },
+      "mute_status": {
+        "name": "Apparaat stilgezet"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Alarmboor"
+      },
+      "mute": {
+        "name": "Dempen"
+      },
+      "test": {
+        "name": "Apparaattest"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "AI-detectie"
+      },
+      "motion": {
+        "name": "Beweging"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Apparaatstatus",
+        "state": {
+          "normal": "Normaal",
+          "low_battery": "Lage batterij",
+          "malfunction": "Storing",
+          "end_of_life": "Einde levensduur"
+        }
+      },
+      "alarm_vol": {
+        "name": "Alarmvolume"
+      },
+      "wifi_rssi": {
+        "name": "Wi-Fi Signaalsterkte"
+      },
+      "ip_address": {
+        "name": "IP-adres"
+      },
+      "co_reading": {
+        "name": "CO Lezen"
+      },
+      "co_level": {
+        "name": "CO-niveau"
+      },
+      "peak_co_level": {
+        "name": "Piek CO-niveau"
+      },
+      "peak_co_level_time": {
+        "name": "Piek CO-niveautijd"
+      },
+      "mcu_sw_version": {
+        "name": "MCU-softwareversie"
+      },
+      "rf_level": {
+        "name": "Signaalsterkte",
+        "state": {
+          "good": "Goed",
+          "moderate": "Matig",
+          "no_signal": "Geen signaal",
+          "weak": "Zwak"
+        }
+      },
+      "sw_version": {
+        "name": "Softwareversie"
+      },
+      "voice_vol": {
+        "name": "Stemvolume"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Wi-Fi-module Firmwareversie"
+      },
+      "last_self_test": {
+        "name": "Apparaattestresultaat",
+        "state": {
+          "not_run": "Niet rennen",
+          "success": "Succes",
+          "failed": "Mislukt"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Testtijd apparaat"
+      },
+      "radon_peak": {
+        "name": "Piekradonniveau"
+      },
+      "radon_peak_time": {
+        "name": "Piekradonniveautijd"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Groene lijndrempel"
+      },
+      "radon_maximum_threshold": {
+        "name": "Rode lijndrempel"
+      },
+      "alarm_volume": {
+        "name": "Alarmvolume"
+      },
+      "voice_volume": {
+        "name": "Stemvolume"
+      },
+      "chirp_volume": {
+        "name": "Tjilpvolume"
+      },
+      "reminder_volume": {
+        "name": "Herinneringsvolume"
+      },
+      "temperature_adjustment": {
+        "name": "Temperatuurkalibratie"
+      },
+      "humidity_adjustment": {
+        "name": "Relatieve vochtigheid kalibratie"
+      },
+      "warning_period": {
+        "name": "Waarschuwingsperiode"
+      },
+      "temperature_min": {
+        "name": "Temperatuurbereik Minimaal"
+      },
+      "temperature_max": {
+        "name": "Temperatuurbereik Maximaal"
+      },
+      "humidity_min": {
+        "name": "Relatieve vochtigheidsbereik minimaal"
+      },
+      "humidity_max": {
+        "name": "Relatieve vochtigheidsbereik maximaal"
+      },
+      "temperature_comfort_min": {
+        "name": "Comforttemperatuur Minimum"
+      },
+      "temperature_comfort_max": {
+        "name": "Comforttemperatuur Maximaal"
+      },
+      "humidity_comfort_min": {
+        "name": "Comfort Vochtigheid Minimum"
+      },
+      "humidity_comfort_max": {
+        "name": "Comfort Luchtvochtigheid Maximaal"
+      },
+      "detection_sensitivity": {
+        "name": "Detectiegevoeligheid"
+      },
+      "driveway_sensitivity": {
+        "name": "Sensorgevoeligheid"
+      },
+      "trigger_brightness": {
+        "name": "Helderheid activeren"
+      },
+      "standby_brightness": {
+        "name": "Stand-by helderheid"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Alarmtoon"
+      },
+      "chirp_tone": {
+        "name": "Tjilp toon"
+      },
+      "reminder_tone": {
+        "name": "Herinneringstoon"
+      },
+      "alarm_interval": {
+        "name": "Alarminterval"
+      },
+      "reminder_time": {
+        "name": "Herinneringstijd"
+      },
+      "mailbox_report_interval": {
+        "name": "Gegevensrapportage-interval"
+      },
+      "temperature_unit": {
+        "name": "Temperatuur eenheid"
+      },
+      "radon_unit": {
+        "name": "Radon-eenheid"
+      },
+      "comfort_type": {
+        "name": "Pas comfortniveaus aan"
+      },
+      "led_brightness": {
+        "name": "LED-helderheid"
+      },
+      "light_motion_on_time": {
+        "name": "Automatische lichtduur"
+      },
+      "light_scene": {
+        "name": "Lichte scène"
+      },
+      "light_app_on_time": {
+        "name": "App op tijd"
+      }
+    }
+  }
+}

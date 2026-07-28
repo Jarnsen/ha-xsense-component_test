@@ -230,3 +230,18 @@ actions:
 ```
 
 ____________________________________________________________
+
+## SKP0A 키패드 코드 자동화
+SKP0A 키패드는 모든 개별 키 누름을 공개하지 않습니다. 유효한 X-Sense 앱 생성 코드가 Home, Away 또는 Disarmed와 함께 제출된 후 키패드 이벤트를 게시합니다. 통합은 제출된 코드 이벤트를 `xsense_keypad_code`로 노출합니다.
+
+포함된 단일 코드 청사진을 사용하여 선택한 코드 하나에 대해 Home Assistant 작업을 실행하세요. 선택적으로 코드를 제출하는 데 사용되는 Home, Away 또는 Disarmed 모드 버튼을 요구할 수 있으며 선택적으로 자동화를 하나의 키패드 일련 번호로 제한할 수 있습니다.
+
+[![청사진 가져오기](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_action.yaml)
+
+하나의 자동화로 여러 키패드 코드를 다른 Home Assistant 작업에 매핑하려면 라우터 청사진을 사용하세요.
+
+[![라우터 블루프린트 가져오기](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fkeypad_code_router.yaml)
+
+키패드 모드 버튼은 제출 버튼 역할을 합니다. 선택한 모드가 이미 활성화된 경우 X-Sense는 새 이벤트를 게시하지 않을 수 있으므로 코드를 제출할 때 현재 비활성 모드 버튼 중 하나를 선택하세요.
+
+____________________________________________________________

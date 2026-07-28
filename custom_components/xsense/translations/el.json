@@ -1,0 +1,289 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Η συσκευή έχει ήδη διαμορφωθεί",
+      "reauth_successful": "Ο εκ νέου έλεγχος ταυτότητας ήταν επιτυχής",
+      "reconfigure_successful": "Η επαναδιαμόρφωση ήταν επιτυχής"
+    },
+    "error": {
+      "cannot_connect": "Αποτυχία σύνδεσης",
+      "invalid_auth": "Μη έγκυρος έλεγχος ταυτότητας",
+      "unknown": "Απροσδόκητο σφάλμα"
+    },
+    "step": {
+      "reauth_confirm": {
+        "description": "Συνδεθείτε ξανά με τον λογαριασμό σας X-Sense.",
+        "data": {
+          "email": "ΚΑΤΟΧΟΣ E-mail",
+          "password": "Κωδικός πρόσβασης"
+        }
+      },
+      "reconfigure": {
+        "description": "Ενημερώστε τον λογαριασμό X-Sense που χρησιμοποιείται από αυτήν την ενοποίηση.",
+        "data": {
+          "email": "ΚΑΤΟΧΟΣ E-mail",
+          "password": "Κωδικός πρόσβασης"
+        }
+      },
+      "user": {
+        "description": "Συνδεθείτε με τον λογαριασμό σας X-Sense.",
+        "data": {
+          "email": "ΚΑΤΟΧΟΣ E-mail",
+          "password": "Κωδικός πρόσβασης"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Ο συγχρονισμός μέσων εγγραφής αποθηκεύει κλιπ κάμερας κάτω από τα μέσα Home Assistant, έτσι ώστε η πλαϊνή γραμμή εγγραφών X-Sense, το πρόγραμμα περιήγησης πολυμέσων και οι ειδοποιήσεις για κινητά να μπορούν να ανοίγουν τις εγγραφές γρήγορα. Αφήστε το στη μνήμη cache των εγγραφών μόνο όταν ανοίξουν. Ενεργοποιήστε το για να διατηρείτε τις πρόσφατες εγγραφές έτοιμες στο παρασκήνιο.",
+        "data": {
+          "recording_media_sync_enabled": "Συγχρονισμός μέσων εγγραφής",
+          "recording_media_sync_hours": "Διάστημα συγχρονισμού φόντου",
+          "recording_media_storage_path": "Εγγραφή φακέλου προσωρινής μνήμης",
+          "recording_notification_quality": "Ποιότητα εγγραφής ειδοποιήσεων",
+          "recording_media_days_order": "Καταγραφή ημέρας παραγγελίας",
+          "recording_media_clips_order": "Παραγγελία κλιπ εγγραφής"
+        },
+        "data_description": {
+          "recording_media_sync_enabled": "Αποθηκεύστε προσωρινά τις πρόσφατες εγγραφές αυτόματα. Αυτό χρησιμοποιεί χώρο αποθήκευσης και μπορεί να αφυπνίζει τις κάμερες πιο συχνά.",
+          "recording_media_sync_hours": "Πόσο συχνά θα πρέπει να εκτελείται ο κανονικός συγχρονισμός παρακολούθησης φόντου. Οι πρόσφατες εγγραφές ελέγχονται κάθε δύο λεπτά όταν είναι ενεργοποιημένος ο συγχρονισμός.",
+          "recording_media_storage_path": "Χρησιμοποιήστε έναν φάκελο στην περιοχή /media. Τα νέα αποθηκευμένα βίντεο και μικρογραφίες αποθηκεύονται εδώ.",
+          "recording_notification_quality": "Επιλέξτε HD για να προτιμήσετε τις διευθύνσεις URL κλιπ απευθείας/υψηλής ανάλυσης του X-Sense για ειδοποιήσεις για κινητά. Επιλέξτε SD για να χρησιμοποιήσετε τη διαδρομή λήψης αναπαραγωγής της κάμερας όταν είναι διαθέσιμη.",
+          "recording_media_days_order": "Επιλέξτε εάν οι νεότερες ή παλαιότερες ημέρες θα εμφανίζονται πρώτα στην προβολή εγγραφών.",
+          "recording_media_clips_order": "Επιλέξτε εάν νεότερα ή παλαιότερα κλιπ θα εμφανίζονται πρώτα μέσα σε κάθε ημέρα."
+        }
+      },
+      "confirm_recording_media_storage_path": {
+        "description": "Ο φάκελος της προσωρινής μνήμης εγγραφής θα αλλάξει από `{old_path}` σε `{new_path}`. Τα υπάρχοντα αποθηκευμένα βίντεο και μικρογραφίες δεν μετακινούνται αυτόματα. Μετακινήστε πρώτα τους υπάρχοντες φακέλους `videos` και `thumbs` εάν θέλετε να παραμείνουν διαθέσιμες παλιές αποθηκευμένες εγγραφές."
+      }
+    },
+    "error": {
+      "invalid_recording_media_path": "Χρησιμοποιήστε έναν φάκελο στην περιοχή /media."
+    },
+    "abort": {
+      "no_options": "Δεν υπάρχουν επιλογές με δυνατότητα διαμόρφωσης για αυτόν τον λογαριασμό X-Sense."
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "activate": {
+        "name": "Ενεργοποιήθηκε"
+      },
+      "alarm_status": {
+        "name": "Κατάσταση συναγερμού"
+      },
+      "connected": {
+        "name": "Συνδεδεμένος"
+      },
+      "door": {
+        "name": "Πόρτα"
+      },
+      "mailbox_schedule_active": {
+        "name": "Χρονοδιάγραμμα γραμματοκιβωτίου Ενεργό"
+      },
+      "mute_status": {
+        "name": "Σίγαση συσκευής"
+      }
+    },
+    "button": {
+      "fire_drill": {
+        "name": "Τρυπάνι συναγερμού"
+      },
+      "mute": {
+        "name": "Σίγαση"
+      },
+      "test": {
+        "name": "Δοκιμή συσκευής"
+      }
+    },
+    "event": {
+      "ai_detection": {
+        "name": "Ανίχνευση AI"
+      },
+      "motion": {
+        "name": "Κίνηση"
+      }
+    },
+    "sensor": {
+      "device_status": {
+        "name": "Κατάσταση συσκευής",
+        "state": {
+          "normal": "Κανονικό",
+          "low_battery": "Χαμηλή μπαταρία",
+          "malfunction": "Δυσλειτουργία",
+          "end_of_life": "Τέλος Ζωής"
+        }
+      },
+      "alarm_vol": {
+        "name": "Ένταση συναγερμού"
+      },
+      "wifi_rssi": {
+        "name": "Ισχύς σήματος Wi-Fi"
+      },
+      "ip_address": {
+        "name": "Διεύθυνση IP"
+      },
+      "co_reading": {
+        "name": "CO Ανάγνωση"
+      },
+      "co_level": {
+        "name": "Επίπεδο CO"
+      },
+      "peak_co_level": {
+        "name": "Κορυφαίο επίπεδο CO"
+      },
+      "peak_co_level_time": {
+        "name": "Χρόνος αιχμής επιπέδου CO"
+      },
+      "mcu_sw_version": {
+        "name": "Έκδοση λογισμικού MCU"
+      },
+      "rf_level": {
+        "name": "Ισχύς σήματος",
+        "state": {
+          "good": "Καλό",
+          "moderate": "Μέτρια",
+          "no_signal": "Χωρίς σήμα",
+          "weak": "Αδύναμος"
+        }
+      },
+      "sw_version": {
+        "name": "Έκδοση λογισμικού"
+      },
+      "voice_vol": {
+        "name": "Ένταση φωνής"
+      },
+      "wifi_ssid": {
+        "name": "SSID"
+      },
+      "wifi_sw": {
+        "name": "Έκδοση υλικολογισμικού μονάδας Wi-Fi"
+      },
+      "last_self_test": {
+        "name": "Αποτέλεσμα δοκιμής συσκευής",
+        "state": {
+          "not_run": "Όχι τρέξιμο",
+          "success": "Επιτυχία",
+          "failed": "Απέτυχε"
+        }
+      },
+      "last_self_test_time": {
+        "name": "Ώρα δοκιμής συσκευής"
+      },
+      "radon_peak": {
+        "name": "Μέγιστη στάθμη ραδονίου"
+      },
+      "radon_peak_time": {
+        "name": "Χρόνος αιχμής επιπέδου ραδονίου"
+      }
+    },
+    "number": {
+      "radon_minimum_threshold": {
+        "name": "Κατώφλι πράσινης γραμμής"
+      },
+      "radon_maximum_threshold": {
+        "name": "Κατώφλι Κόκκινης Γραμμής"
+      },
+      "alarm_volume": {
+        "name": "Ένταση συναγερμού"
+      },
+      "voice_volume": {
+        "name": "Ένταση φωνής"
+      },
+      "chirp_volume": {
+        "name": "Ένταση Chirp"
+      },
+      "reminder_volume": {
+        "name": "Όγκος υπενθύμισης"
+      },
+      "temperature_adjustment": {
+        "name": "Βαθμονόμηση θερμοκρασίας"
+      },
+      "humidity_adjustment": {
+        "name": "Βαθμονόμηση σχετικής υγρασίας"
+      },
+      "warning_period": {
+        "name": "Προειδοποιητική περίοδος"
+      },
+      "temperature_min": {
+        "name": "Ελάχιστο εύρος θερμοκρασίας"
+      },
+      "temperature_max": {
+        "name": "Μέγιστο εύρος θερμοκρασίας"
+      },
+      "humidity_min": {
+        "name": "Ελάχιστο εύρος σχετικής υγρασίας"
+      },
+      "humidity_max": {
+        "name": "Μέγιστο εύρος σχετικής υγρασίας"
+      },
+      "temperature_comfort_min": {
+        "name": "Ελάχιστη θερμοκρασία άνεσης"
+      },
+      "temperature_comfort_max": {
+        "name": "Μέγιστη θερμοκρασία άνεσης"
+      },
+      "humidity_comfort_min": {
+        "name": "Ελάχιστη υγρασία άνεσης"
+      },
+      "humidity_comfort_max": {
+        "name": "Άνεση Υγρασία Μέγιστη"
+      },
+      "detection_sensitivity": {
+        "name": "Ευαισθησία ανίχνευσης"
+      },
+      "driveway_sensitivity": {
+        "name": "Ευαισθησία αισθητήρα"
+      },
+      "trigger_brightness": {
+        "name": "Φωτεινότητα ενεργοποίησης"
+      },
+      "standby_brightness": {
+        "name": "Φωτεινότητα αναμονής"
+      }
+    },
+    "select": {
+      "alarm_tone": {
+        "name": "Ήχος συναγερμού"
+      },
+      "chirp_tone": {
+        "name": "Τόνος κελαηδίσματος"
+      },
+      "reminder_tone": {
+        "name": "Ήχος υπενθύμισης"
+      },
+      "alarm_interval": {
+        "name": "Διάστημα συναγερμού"
+      },
+      "reminder_time": {
+        "name": "Ώρα υπενθύμισης"
+      },
+      "mailbox_report_interval": {
+        "name": "Διάστημα αναφοράς δεδομένων"
+      },
+      "temperature_unit": {
+        "name": "Μονάδα Θερμοκρασίας"
+      },
+      "radon_unit": {
+        "name": "Μονάδα Ραδονίου"
+      },
+      "comfort_type": {
+        "name": "Προσαρμόστε τα επίπεδα άνεσης"
+      },
+      "led_brightness": {
+        "name": "Φωτεινότητα LED"
+      },
+      "light_motion_on_time": {
+        "name": "Αυτόματη Διάρκεια Φωτός"
+      },
+      "light_scene": {
+        "name": "Φωτεινή σκηνή"
+      },
+      "light_app_on_time": {
+        "name": "App On Time"
+      }
+    }
+  }
+}
