@@ -14,6 +14,8 @@ from homeassistant.components.camera import (
     CameraEntityFeature,
 )
 from homeassistant.components.camera.webrtc import (
+    WebRTCAnswer,
+    WebRTCCandidate,
     WebRTCClientConfiguration,
     WebRTCError,
     WebRTCSendMessage,
@@ -21,6 +23,7 @@ from homeassistant.components.camera.webrtc import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from webrtc_models import RTCIceCandidateInit
 
 from .python_xsense.async_xsense import camera_live_resolution, is_camera_entity
 from .python_xsense.exceptions import APIFailure, SessionExpired
@@ -262,7 +265,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
     @callback
     def _async_get_webrtc_client_configuration(self) -> WebRTCClientConfiguration:
         """Return the Home Assistant browser WebRTC client configuration."""
-        return WebRTCClientConfiguration()
+        return WebRTCClientConfiguration(data_channel="data-channel-of-")
 
     async def async_handle_async_webrtc_offer(
         self, offer_sdp: str, session_id: str, send_message: WebRTCSendMessage
@@ -323,7 +326,7 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             return
 
         webrtc_signal = await self.hass.async_add_import_executor_job(
-            import_module, __package__ + ".webrtc_signal"
+            import_module, __package__ + ".python_xsense.webrtc_signal"
         )
         try:
             ticket = webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, ticket_data)
@@ -354,36 +357,20 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             self._pending_webrtc_candidates.pop(session_id, None)
             return
 
-        async def refresh_ticket():
-            refreshed = await self.coordinator.xsense.get_camera_webrtc_ticket(
-                entity, force_refresh=True
-            )
-            if not isinstance(refreshed, dict):
-                return None
-            LOGGER.debug(
-                "X-Sense camera WebRTC refreshed ticket response: %s",
-                _ticket_data_debug_context(refreshed),
-            )
-            return webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, refreshed)
-
-        def remove_session() -> None:
-            if self._webrtc_sessions.get(session_id) is session:
-                self._webrtc_sessions.pop(session_id, None)
-
-        session = webrtc_signal.XSenseWebRTCSession(
+        session = webrtc_signal.XSenseWebRTCSignalSession(
             session=async_get_clientsession(self.hass),
             ticket=ticket,
             offer_sdp=offer_sdp,
             resolution=_camera_live_resolution(entity),
-            send_message=send_message,
-            on_close=remove_session,
             camera_online=_camera_online(entity),
-            refresh_ticket=refresh_ticket,
+            remote_candidate_callback=lambda candidate: _send_remote_candidate(
+                send_message, entity, session_id, candidate
+            ),
         )
         self._webrtc_sessions[session_id] = session
         await self._flush_pending_webrtc_candidates(entity, session_id, session)
         try:
-            started = await session.start()
+            answer = await session.start()
         except Exception as err:  # noqa: BLE001 - HA frontend needs a clean error
             self._webrtc_sessions.pop(session_id, None)
             self._pending_webrtc_candidates.pop(session_id, None)
@@ -396,10 +383,15 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             )
             send_message(WebRTCError("xsense_webrtc_start_failed", str(err)))
             return
-        if not started:
-            self._webrtc_sessions.pop(session_id, None)
-            self._pending_webrtc_candidates.pop(session_id, None)
-            await session.close()
+
+        LOGGER.debug(
+            "X-Sense camera WebRTC answer ready for Home Assistant: %s",
+            _camera_debug_context(
+                entity, session_id, answer_sdp=_sdp_debug_context(answer)
+            ),
+        )
+        send_message(WebRTCAnswer(answer))
+        session.start_forwarding_remote_candidates()
 
     async def _close_existing_webrtc_sessions(
         self, preserve_pending_session_id: str | None = None
@@ -566,6 +558,25 @@ def _ticket_data_debug_context(ticket_data):
         "ticket_id": _short_id(ticket_data.get("id")),
         "real_camera": _short_id(ticket_data.get("realCxSerialNumber")),
     }
+
+
+def _send_remote_candidate(send_message, entity, session_id, candidate) -> None:
+    """Forward an X-Sense ICE candidate to the Home Assistant WebRTC client."""
+    try:
+        send_message(
+            WebRTCCandidate(
+                RTCIceCandidateInit(
+                    candidate["candidate"],
+                    sdp_mid=candidate.get("sdpMid"),
+                    sdp_m_line_index=candidate.get("sdpMLineIndex"),
+                )
+            )
+        )
+    except (KeyError, TypeError, ValueError) as err:
+        LOGGER.debug(
+            "X-Sense camera WebRTC ignored invalid remote ICE candidate: %s",
+            _camera_debug_context(entity, session_id, error=type(err).__name__),
+        )
 
 
 def _sdp_debug_context(sdp: str | None) -> dict:

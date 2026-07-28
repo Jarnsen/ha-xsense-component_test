@@ -4,7 +4,7 @@ import sys
 import time
 from pathlib import Path
 
-from custom_components.xsense import webrtc_signal
+from custom_components.xsense.python_xsense import webrtc_signal
 
 
 def ticket(**overrides):
@@ -165,35 +165,26 @@ def test_parse_owned_sdp_answer_from_signal_envelope():
     assert webrtc_signal._owned_answer_sdp(payload, ticket()) == answer_sdp
 
 
-def test_webrtc_bridge_path_is_locked_to_known_success_shape():
+def test_webrtc_signal_relay_path_is_locked_to_known_success_shape():
     source = Path(webrtc_signal.__file__).read_text(encoding="utf-8")
 
-    assert "class XSenseWebRTCSession" in source
-    assert "self._ha_pc = RTCPeerConnection()" in source
-    assert "self._camera_pc: RTCPeerConnection | None = None" in source
-    assert "createDataChannel(SIGNAL_DATA_CHANNEL)" in source
-    assert "make_start_live_data_channel_message" in source
-    assert "_send_start_live_if_ready" in source
-    assert "_mark_first_frame_received" in source
-    assert "_first_frame_received" in source
+    assert "class XSenseWebRTCSignalSession" in source
+    assert "aiortc" not in source
+    assert "RTCPeerConnection" not in source
     assert "_send_offer" in source
     assert "make_sdp_offer_payload" in source
-    assert "XSenseWebRTCSignalSession" not in source
+    assert "start_forwarding_remote_candidates" in source
+    assert "_forward_remote_candidate" in source
+    assert "class XSenseWebRTCSession" not in source
 
 
-def test_webrtc_bridge_fails_cleanly_without_ha_media_stack():
-    try:
-        webrtc_signal.XSenseWebRTCSession(
-            session=object(),
-            ticket=ticket(),
-            offer_sdp="v=0\r\n",
-            resolution="1920x1080",
-            send_message=lambda message: None,
-            on_close=lambda session_id: None,
-            camera_online=True,
-            refresh_ticket=lambda: ticket(),
-        )
-    except RuntimeError as err:
-        assert str(err) == "Home Assistant WebRTC media stack is not available"
-    else:
-        assert webrtc_signal.RTCPeerConnection is not None
+async def test_webrtc_signal_session_constructs_without_local_media_stack():
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+
+    assert session is not None

@@ -3831,7 +3831,7 @@ async def test_default_native_webrtc_camera_allows_webrtc_provider_probe():
     )
 
 
-def test_webrtc_client_config_uses_local_bridge_defaults():
+def test_webrtc_client_config_uses_signal_relay_defaults():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseWebRTCCameraEntity,
@@ -3853,7 +3853,7 @@ def test_webrtc_client_config_uses_local_bridge_defaults():
 
     config = camera._async_get_webrtc_client_configuration().to_frontend_dict()
 
-    assert "dataChannel" not in config
+    assert config["dataChannel"] == "data-channel-of-"
     assert "iceServers" not in config["configuration"]
 
 
@@ -3862,7 +3862,8 @@ def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
     import inspect
     from pathlib import Path
 
-    from custom_components.xsense import camera, webrtc_signal
+    from custom_components.xsense import camera
+    from custom_components.xsense.python_xsense import webrtc_signal
     from custom_components.xsense.python_xsense.async_xsense import AsyncXSense
 
     camera_source = Path(camera.__file__).read_text(encoding="utf-8")
@@ -3888,19 +3889,21 @@ def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
         assert pattern not in camera_source, f"Do not reintroduce {reason}: {pattern}"
 
     assert "XSenseWebRTCCameraEntity" in camera_source
-    assert "WebRTCClientConfiguration()" in camera_entity_source
+    assert (
+        'WebRTCClientConfiguration(data_channel="data-channel-of-")'
+        in camera_entity_source
+    )
     assert "async_handle_async_webrtc_offer" in camera_entity_source
-    assert "XSenseWebRTCSession(" in camera_entity_source
-    assert "refresh_ticket=refresh_ticket" in camera_entity_source
-    assert "send_message=send_message" in camera_entity_source
-    assert "class XSenseWebRTCSession" in session_source
-    assert "self._ha_pc = RTCPeerConnection()" in session_source
-    assert "self._camera_pc: RTCPeerConnection | None = None" in session_source
-    assert "createDataChannel(SIGNAL_DATA_CHANNEL)" in session_source
-    assert "_send_start_live_if_ready" in session_source
-    assert "_mark_first_frame_received" in session_source
+    assert "XSenseWebRTCSignalSession(" in camera_entity_source
+    assert "remote_candidate_callback=" in camera_entity_source
+    assert "send_message(WebRTCAnswer(answer))" in camera_entity_source
+    assert "class XSenseWebRTCSignalSession" in session_source
+    assert "RTCPeerConnection" not in session_source
+    assert "aiortc" not in session_source
+    assert "start_forwarding_remote_candidates" in session_source
+    assert "_forward_remote_candidate" in session_source
     assert "keep_camera_live_alive" not in camera_entity_source
-    assert "XSenseWebRTCSignalSession" not in session_source
+    assert "XSenseWebRTCSession" not in session_source
     assert "verifyDormancyStatus=True" in ticket_source
 
 
@@ -4079,7 +4082,7 @@ async def test_failed_webrtc_signal_start_is_removed_from_sessions(monkeypatch):
         XSenseWebRTCTicket=SimpleNamespace(
             from_api=lambda serial_number, data: SimpleNamespace(is_valid=True)
         ),
-        XSenseWebRTCSession=FakeSession,
+        XSenseWebRTCSignalSession=FakeSession,
     )
 
     class FakeHass:
@@ -4197,15 +4200,16 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
     class FakeSession:
         def __init__(self, **kwargs):
             self.candidates = []
-            self.send_message = kwargs["send_message"]
             created_sessions.append(self)
 
         async def add_candidate(self, candidate):
             self.candidates.append(candidate)
 
         async def start(self):
-            self.send_message(WebRTCAnswer("v=0\r\nanswer"))
-            return True
+            return "v=0\r\nanswer"
+
+        def start_forwarding_remote_candidates(self):
+            pass
 
         async def close(self):
             pass
@@ -4214,7 +4218,7 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
         XSenseWebRTCTicket=SimpleNamespace(
             from_api=lambda serial_number, data: SimpleNamespace(is_valid=True)
         ),
-        XSenseWebRTCSession=FakeSession,
+        XSenseWebRTCSignalSession=FakeSession,
     )
 
     class FakeHass:
@@ -4300,12 +4304,13 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
 
     class NewSession:
         def __init__(self, **kwargs):
-            self.send_message = kwargs["send_message"]
             created_sessions.append(kwargs)
 
         async def start(self):
-            self.send_message(WebRTCAnswer("v=0\r\nanswer"))
-            return True
+            return "v=0\r\nanswer"
+
+        def start_forwarding_remote_candidates(self):
+            pass
 
         async def close(self):
             pass
@@ -4314,7 +4319,7 @@ async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
         XSenseWebRTCTicket=SimpleNamespace(
             from_api=lambda serial_number, data: SimpleNamespace(is_valid=True)
         ),
-        XSenseWebRTCSession=NewSession,
+        XSenseWebRTCSignalSession=NewSession,
     )
 
     class FakeHass:
