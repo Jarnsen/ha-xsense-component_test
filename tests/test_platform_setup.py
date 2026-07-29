@@ -249,6 +249,51 @@ async def test_water_does_not_create_device_status_before_payload_key():
     assert "alarm_status" in binary_keys
 
 
+async def test_detector_lifecycle_fields_remain_entities():
+    detector = SimpleNamespace(
+        data={"standard": "0", "time": "20260729101530"},
+        entity_type=sensor.EntityType.COMBI,
+        entity_id="smoke-co",
+        name="Smoke CO Detector",
+        online=True,
+        shadow_name="SC07-WXstation-sn",
+        sn="detector-sn",
+        type="SC07-WX",
+    )
+
+    class Coordinator:
+        data = {"stations": {}, "devices": {detector.entity_id: detector}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    binary_calls = await _setup_platform(binary_sensor, Coordinator())
+    binary_keys = {entity.entity_description.key for entity in binary_calls[0]}
+    sensor_calls = await _setup_platform(sensor, Coordinator())
+    sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
+
+    assert "is_life_end" in binary_keys
+    assert "standard" in sensor_keys
+    assert "time" in sensor_keys
+    standard_entity = next(
+        entity
+        for entity in sensor_calls[0]
+        if entity.entity_description.key == "standard"
+    )
+    life_end_entity = next(
+        entity
+        for entity in binary_calls[0]
+        if entity.entity_description.key == "is_life_end"
+    )
+    assert standard_entity.native_value == "EN 50291"
+    assert life_end_entity.is_on is None
+    assert "is_life_end" not in xsense_module.OBSOLETE_BINARY_SENSOR_KEYS
+    assert "standard" not in xsense_module.OBSOLETE_SENSOR_KEYS
+    assert "time" not in xsense_module.OBSOLETE_SENSOR_KEYS
+
+
 async def test_sbs50_station_entities_load_before_late_shadow_keys():
     station = SimpleNamespace(
         data={},

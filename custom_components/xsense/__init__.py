@@ -140,7 +140,6 @@ OBSOLETE_SENSOR_KEYS = (
 
 
 LEGACY_OBSOLETE_BINARY_SENSOR_KEYS: tuple[str, ...] = (
-    "is_life_end",
     "led_light",
     "motion_required",
     "video_recording_enabled",

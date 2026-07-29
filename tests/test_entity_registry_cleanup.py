@@ -422,7 +422,6 @@ def test_obsolete_binary_sensor_entry_detection_is_scoped_to_xsense_led_binary_s
 
 def test_obsolete_binary_sensor_keys_only_remove_removed_binary_sensors():
     assert LEGACY_OBSOLETE_BINARY_SENSOR_KEYS == (
-        'is_life_end',
         'led_light',
         'motion_required',
         'video_recording_enabled',

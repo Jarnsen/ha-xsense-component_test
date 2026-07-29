@@ -102,6 +102,14 @@ def co_device(entity: Entity) -> bool:
     } or entity.type.startswith("XC")
 
 
+def co_alarm_standard(entity: Entity) -> str | None:
+    """Return the CO alarm standard label used by the X-Sense app."""
+    value = entity.data.get("standard")
+    if value in (None, ""):
+        return None
+    return "EN 50291" if str(value) == "0" else "UL 2034"
+
+
 def has_device_status(entity: Entity) -> bool:
     """Return whether the APK presents a combined current device status."""
     entity_def = entities.get(entity.type) or {}
@@ -505,10 +513,10 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="standard",
-        name="Standard",
+        name="CO Alarm Standard",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:certificate-outline",
-        value_fn=data_value("standard"),
+        value_fn=co_alarm_standard,
         exists_fn=has_data("standard"),
     ),
     XSenseSensorEntityDescription(
