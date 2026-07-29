@@ -3,6 +3,7 @@ import json
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 from custom_components.xsense.python_xsense import webrtc_signal
 
@@ -26,6 +27,15 @@ def ticket(**overrides):
 
 def b64_json(data):
     return base64.b64encode(json.dumps(data, separators=(",", ":")).encode()).decode()
+
+
+class FakeWebSocket:
+    def __init__(self):
+        self.closed = False
+        self.messages = []
+
+    async def send_str(self, message):
+        self.messages.append(json.loads(message))
 
 
 def test_signal_module_does_not_require_local_aiortc_import():
@@ -188,3 +198,50 @@ async def test_webrtc_signal_session_constructs_without_local_media_stack():
     )
 
     assert session is not None
+
+
+async def test_webrtc_signal_flushes_trickled_ha_candidates_after_offer_without_answer():
+    fake_ws = FakeWebSocket()
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp=(
+            "v=0\r\n"
+            "m=audio 9 UDP/TLS/RTP/SAVPF 0\r\n"
+            "a=mid:0\r\n"
+            "m=video 9 UDP/TLS/RTP/SAVPF 96\r\n"
+            "a=mid:1\r\n"
+        ),
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    candidate = SimpleNamespace(
+        candidate="candidate:1 1 udp 1 192.0.2.1 123 typ host",
+        sdp_mid="0",
+        sdp_m_line_index=0,
+    )
+
+    await session.add_candidate(candidate)
+
+    assert len(session._pending_remote_candidates) == 1
+    assert not session._answer.done()
+
+    session._ws = fake_ws
+    session._recipient_client_id = "SSC0ATEST"
+
+    await session._send_offer()
+
+    assert not session._answer.done()
+    assert len(session._pending_remote_candidates) == 0
+    assert [message["messageType"] for message in fake_ws.messages] == [
+        "SDP_OFFER",
+        "ICE_CANDIDATE",
+    ]
+    ice_payload = json.loads(
+        base64.b64decode(fake_ws.messages[1]["messagePayload"]).decode()
+    )
+    assert ice_payload == {
+        "sdpMid": "0",
+        "sdpMLineIndex": 0,
+        "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+    }

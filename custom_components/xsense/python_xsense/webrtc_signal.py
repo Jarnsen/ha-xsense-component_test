@@ -235,16 +235,18 @@ class XSenseWebRTCSignalSession:
             self._ws is None
             or self._ws.closed
             or not self._offer_sent
-            or not _future_has_result(self._answer)
         ):
             self._pending_remote_candidates.append(payload)
-            LOGGER.debug(
-                "X-Sense WebRTC signal relay queued HA ICE candidate: %s",
-                self._debug_context(
-                    queue_reason=_candidate_queue_reason(self),
-                    **_single_candidate_debug(payload),
-                ),
-            )
+            pending = len(self._pending_remote_candidates)
+            if pending <= 3 or pending in {5, 10, 25, 50, 100}:
+                LOGGER.debug(
+                    "X-Sense WebRTC signal relay queued HA ICE candidate: %s",
+                    self._debug_context(
+                        queue_reason=_candidate_queue_reason(self),
+                        queued_candidate_count=pending,
+                        **_single_candidate_debug(payload),
+                    ),
+                )
             return
         LOGGER.debug(
             "X-Sense WebRTC signal relay sending HA ICE candidate immediately: %s",
@@ -492,10 +494,27 @@ class XSenseWebRTCSignalSession:
         )
         for candidate in candidates:
             await self._send_candidate(candidate)
+        await self._flush_pending_remote_candidates()
 
     async def _flush_pending_remote_candidates(self) -> None:
-        """Send any HA candidates that arrived before the X-Sense answer."""
-        while self._pending_remote_candidates and not self._closed:
+        """Send any HA candidates that arrived before the signal relay was ready."""
+        if self._ws is None or self._ws.closed or not self._offer_sent:
+            return
+        pending = len(self._pending_remote_candidates)
+        if pending:
+            LOGGER.debug(
+                "X-Sense WebRTC signal relay flushing queued HA ICE candidates: %s",
+                self._debug_context(
+                    queued_candidate_count=pending,
+                    **_candidate_debug_summary(self._pending_remote_candidates),
+                ),
+            )
+        while (
+            self._pending_remote_candidates
+            and not self._closed
+            and self._ws is not None
+            and not self._ws.closed
+        ):
             await self._send_candidate(self._pending_remote_candidates.pop(0))
 
     async def _send_candidate(self, candidate: dict[str, Any]) -> None:
@@ -1197,8 +1216,6 @@ def _candidate_queue_reason(session: XSenseWebRTCSignalSession) -> str:
         return "signal_closed"
     if not session._offer_sent:
         return "waiting_for_peer_offer"
-    if not _future_has_result(session._answer):
-        return "waiting_for_sdp_answer"
     return "unknown"
 
 
