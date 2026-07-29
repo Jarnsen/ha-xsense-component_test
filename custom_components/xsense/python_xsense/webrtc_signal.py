@@ -235,6 +235,7 @@ class XSenseWebRTCSignalSession:
             self._ws is None
             or self._ws.closed
             or not self._offer_sent
+            or not _future_has_result(self._answer)
         ):
             self._pending_remote_candidates.append(payload)
             pending = len(self._pending_remote_candidates)
@@ -494,11 +495,15 @@ class XSenseWebRTCSignalSession:
         )
         for candidate in candidates:
             await self._send_candidate(candidate)
-        await self._flush_pending_remote_candidates()
 
     async def _flush_pending_remote_candidates(self) -> None:
-        """Send any HA candidates that arrived before the signal relay was ready."""
-        if self._ws is None or self._ws.closed or not self._offer_sent:
+        """Send any HA candidates that arrived before the X-Sense answer."""
+        if (
+            self._ws is None
+            or self._ws.closed
+            or not self._offer_sent
+            or not _future_has_result(self._answer)
+        ):
             return
         pending = len(self._pending_remote_candidates)
         if pending:
