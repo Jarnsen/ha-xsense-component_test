@@ -294,6 +294,139 @@ async def test_detector_lifecycle_fields_remain_entities():
     assert "time" not in xsense_module.OBSOLETE_SENSOR_KEYS
 
 
+@pytest.mark.parametrize(
+    "device_type",
+    [
+        "CB0Z-3S",
+        "LP/N-SA-0B",
+        "LP/N-SCA-0A",
+        "SC01-MN",
+        "SC01-MR",
+        "SC06-WX",
+        "SC07-MR",
+        "SC07-WX",
+        "SC07-iA",
+        "SD11-MR",
+        "SD19-MN",
+        "SK0Z-3S",
+        "XC01-M",
+        "XC04-WX",
+        "XC0C-MR",
+        "XC0C-iA",
+        "XC0C-iR",
+        "XC0M-iR",
+        "XP02S-MR",
+        "XP0A-MR",
+        "XP0A-iR",
+        "XP0H-MR",
+        "XP0H-iR",
+        "XP0J-iA",
+        "XP0P-MR",
+        "XP0S-iA",
+        "XP0T-iA",
+        "XP0V-iA",
+        "XP0W-iA",
+        "XS01-M",
+        "XS01-WX",
+        "XS03-WX",
+        "XS03-iWX",
+        "XS0AA-iA",
+        "XS0AB-iA",
+        "XS0B-MR",
+        "XS0B-iR",
+        "XS0D-MR",
+        "XS0E-iR",
+        "XS0F-PMA",
+        "XS0R-iA",
+        "XS0X-MN",
+    ],
+)
+async def test_detector_life_end_entity_is_model_backed(device_type):
+    detector = SimpleNamespace(
+        data={},
+        entity_id=f"{device_type.lower()}-detector",
+        name=f"{device_type} Detector",
+        online=True,
+        shadow_name=f"{device_type}-station-sn",
+        sn="detector-sn",
+        type=device_type,
+    )
+
+    class Coordinator:
+        data = {"stations": {}, "devices": {detector.entity_id: detector}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    binary_calls = await _setup_platform(binary_sensor, Coordinator())
+    life_end_entity = next(
+        entity
+        for entity in binary_calls[0]
+        if entity.entity_description.key == "is_life_end"
+    )
+
+    assert life_end_entity.is_on is None
+
+
+@pytest.mark.parametrize("device_type", ["SBS50", "SWS51", "SDS0A", "SMS0A"])
+async def test_non_lifecycle_models_do_not_get_model_backed_life_end_entity(
+    device_type,
+):
+    device = SimpleNamespace(
+        data={},
+        entity_id=f"{device_type.lower()}-device",
+        name=f"{device_type} Device",
+        online=True,
+        shadow_name=f"{device_type}-station-sn",
+        sn="device-sn",
+        type=device_type,
+    )
+
+    class Coordinator:
+        data = {"stations": {}, "devices": {device.entity_id: device}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    binary_calls = await _setup_platform(binary_sensor, Coordinator())
+    binary_keys = {entity.entity_description.key for entity in binary_calls[0]}
+
+    assert "is_life_end" not in binary_keys
+
+
+async def test_unknown_payload_life_end_entity_is_payload_backed():
+    device = SimpleNamespace(
+        data={"isLifeEnd": False},
+        entity_id="unknown-with-payload",
+        name="Unknown With Payload",
+        online=True,
+        shadow_name="unknown-station-sn",
+        sn="device-sn",
+        type="UNKNOWN",
+    )
+
+    class Coordinator:
+        data = {"stations": {}, "devices": {device.entity_id: device}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    binary_calls = await _setup_platform(binary_sensor, Coordinator())
+    life_end_entity = next(
+        entity
+        for entity in binary_calls[0]
+        if entity.entity_description.key == "is_life_end"
+    )
+
+    assert life_end_entity.is_on is False
+
+
 async def test_sbs50_station_entities_load_before_late_shadow_keys():
     station = SimpleNamespace(
         data={},

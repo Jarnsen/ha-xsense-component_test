@@ -200,7 +200,7 @@ async def test_webrtc_signal_session_constructs_without_local_media_stack():
     assert session is not None
 
 
-async def test_webrtc_signal_keeps_trickled_ha_candidates_queued_until_answer():
+async def test_webrtc_signal_flushes_trickled_ha_candidates_after_offer():
     fake_ws = FakeWebSocket()
     session = webrtc_signal.XSenseWebRTCSignalSession(
         session=object(),
@@ -232,12 +232,6 @@ async def test_webrtc_signal_keeps_trickled_ha_candidates_queued_until_answer():
     await session._send_offer()
 
     assert not session._answer.done()
-    assert len(session._pending_remote_candidates) == 1
-    assert [message["messageType"] for message in fake_ws.messages] == ["SDP_OFFER"]
-
-    session._answer.set_result("v=0\r\n")
-    await session._flush_pending_remote_candidates()
-
     assert len(session._pending_remote_candidates) == 0
     assert [message["messageType"] for message in fake_ws.messages] == [
         "SDP_OFFER",

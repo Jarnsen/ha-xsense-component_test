@@ -231,12 +231,7 @@ class XSenseWebRTCSignalSession:
                 self._debug_context(candidate_type=type(candidate).__name__),
             )
             return
-        if (
-            self._ws is None
-            or self._ws.closed
-            or not self._offer_sent
-            or not _future_has_result(self._answer)
-        ):
+        if self._ws is None or self._ws.closed or not self._offer_sent:
             self._pending_remote_candidates.append(payload)
             pending = len(self._pending_remote_candidates)
             if pending <= 3 or pending in {5, 10, 25, 50, 100}:
@@ -419,7 +414,6 @@ class XSenseWebRTCSignalSession:
                 )
                 if not self._answer.done():
                     self._answer.set_result(answer)
-                await self._flush_pending_remote_candidates()
             else:
                 LOGGER.debug(
                     "X-Sense WebRTC signal relay ignored SDP answer: %s",
@@ -495,15 +489,11 @@ class XSenseWebRTCSignalSession:
         )
         for candidate in candidates:
             await self._send_candidate(candidate)
+        await self._flush_pending_remote_candidates()
 
     async def _flush_pending_remote_candidates(self) -> None:
-        """Send any HA candidates that arrived before the X-Sense answer."""
-        if (
-            self._ws is None
-            or self._ws.closed
-            or not self._offer_sent
-            or not _future_has_result(self._answer)
-        ):
+        """Send any HA candidates that arrived before the X-Sense offer was sent."""
+        if self._ws is None or self._ws.closed or not self._offer_sent:
             return
         pending = len(self._pending_remote_candidates)
         if pending:
@@ -536,10 +526,15 @@ class XSenseWebRTCSignalSession:
             )
         )
         self._sent_candidate_count += 1
-        LOGGER.debug(
-            "X-Sense WebRTC signal relay sent HA ICE candidate to X-Sense: %s",
-            self._debug_context(**_single_candidate_debug(candidate)),
-        )
+        sent = self._sent_candidate_count
+        if sent <= 3 or sent in {5, 10, 25, 50, 100}:
+            LOGGER.debug(
+                "X-Sense WebRTC signal relay sent HA ICE candidate to X-Sense: %s",
+                self._debug_context(
+                    sent_candidate_count=sent,
+                    **_single_candidate_debug(candidate),
+                ),
+            )
 
     def _reset_offer_attempt(self, reason: str) -> None:
         self._offer_sent = False

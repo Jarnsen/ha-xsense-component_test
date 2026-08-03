@@ -51,6 +51,54 @@ ALARM_DEVICE_CLASS_BY_TYPE = {
     "XH": BinarySensorDeviceClass.HEAT,
 }
 
+LIFE_END_STATUS_DEVICE_TYPES = frozenset(
+    {
+        # CO, combo, and smoke detector models from the APK device map.
+        "CB0Z-3S",
+        "LP/N-SA-0B",
+        "LP/N-SCA-0A",
+        "SC01-MN",
+        "SC01-MR",
+        "SC06-WX",
+        "SC07-MR",
+        "SC07-WX",
+        "SC07-iA",
+        "SD11-MR",
+        "SD19-MN",
+        "SK0Z-3S",
+        "XC01-M",
+        "XC04-WX",
+        "XC0C-MR",
+        "XC0C-iA",
+        "XC0C-iR",
+        "XC0M-iR",
+        "XP02S-MR",
+        "XP0A-MR",
+        "XP0A-iR",
+        "XP0H-MR",
+        "XP0H-iR",
+        "XP0J-iA",
+        "XP0P-MR",
+        "XP0S-iA",
+        "XP0T-iA",
+        "XP0V-iA",
+        "XP0W-iA",
+        "XS01-M",
+        "XS01-WX",
+        "XS03-WX",
+        "XS03-iWX",
+        "XS0AA-iA",
+        "XS0AB-iA",
+        "XS0B-MR",
+        "XS0B-iR",
+        "XS0D-MR",
+        "XS0E-iR",
+        "XS0F-PMA",
+        "XS0R-iA",
+        "XS0X-MN",
+    }
+)
+
 
 def alarm_device_class(entity: Entity) -> BinarySensorDeviceClass | None:
     """Return the Home Assistant device class for an XSense alarm state."""
@@ -79,12 +127,9 @@ def has_mute_status(entity: Entity) -> bool:
 
 def has_life_end_status(entity: Entity) -> bool:
     """Return if an X-Sense detector can report end-of-life status."""
-    entity_def = entities.get(entity.type) or {}
-    return "isLifeEnd" in entity.data or entity_def.get("type") in {
-        EntityType.CO,
-        EntityType.COMBI,
-        EntityType.SMOKE,
-    }
+    model = str(getattr(entity, "type", "") or "").strip()
+    data = getattr(entity, "data", {}) or {}
+    return "isLifeEnd" in data or model in LIFE_END_STATUS_DEVICE_TYPES
 
 
 def alarm_status(entity: Entity) -> bool | None:
