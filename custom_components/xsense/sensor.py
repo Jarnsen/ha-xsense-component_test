@@ -672,7 +672,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="zone_name",
-        name="Zone Name",
+        name="Voice Location",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:map-marker-outline",
         value_fn=optional_data_value("zoneName"),

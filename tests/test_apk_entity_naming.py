@@ -38,16 +38,36 @@ def test_detector_names_match_apk_1400_terms():
     assert _description_name(
         "sensor", sensor.SENSORS, "device_status"
     ) == "Device Status"
+    assert _description_name("sensor", sensor.SENSORS, "safe_mode") == (
+        "Security Mode"
+    )
+    assert _description_name("sensor", sensor.SENSORS, "zone_name") == (
+        "Voice Location"
+    )
     assert _description_name(
         "binary_sensor", binary_sensor.SENSORS, "mute_status"
     ) == "Device Silenced"
+    assert _description_name(
+        "binary_sensor", binary_sensor.SENSORS, "is_life_end"
+    ) == "End-of-Life"
     assert _description_name("button", button.BUTTONS, "test") == "Device Test"
     assert _description_name("button", button.BUTTONS, "fire_drill") == "Alarm Drill"
+    assert _description_name("sensor", sensor.SENSORS, "wifi_ssid") == "SSID"
+    assert _description_name("sensor", sensor.SENSORS, "ip") == "IP Address"
+    assert _description_name(
+        "sensor", sensor.SENSORS, "rf_level"
+    ) == "Signal Strength"
     assert _description_name("sensor", sensor.SENSORS, "co") == "CO Reading"
     assert _description_name("sensor", sensor.SENSORS, "co_level") == "CO Level"
     assert _description_name(
         "sensor", sensor.SENSORS, "co_peak"
     ) == "Peak CO Level"
+    assert _description_name(
+        "sensor", sensor.SENSORS, "last_self_test"
+    ) == "Device Test Result"
+    assert _description_name(
+        "sensor", sensor.SENSORS, "last_self_test_time"
+    ) == "Device Test Time"
 
 
 def test_device_setting_names_match_apk_1400_terms():

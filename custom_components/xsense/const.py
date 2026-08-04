@@ -65,7 +65,6 @@ NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS = frozenset(
         "pir_sensitivity",
         "re_alarm",
         "reported_device_type",
-        "safe_mode",
         "short_warning",
         "smoke_edition",
         "test_time",
