@@ -1,11 +1,14 @@
 from datetime import datetime, timezone
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+import custom_components.xsense.sensor as sensor_module
 from custom_components.xsense.python_xsense.entity_map import EntityType
 from custom_components.xsense.sensor import (
     SENSORS,
+    UNIT_PARTS_PER_MILLION,
     battery_percentage,
     has_report_time,
     has_self_test_report,
@@ -40,6 +43,18 @@ def test_device_report_time_remains_available():
     )
 
     assert has_report_time(entity)
+
+
+def test_co_sensor_units_do_not_use_deprecated_ha_constant():
+    source = Path(sensor_module.__file__).read_text(encoding="utf-8")
+
+    assert "CONCENTRATION_PARTS_PER_MILLION" not in source
+    assert UNIT_PARTS_PER_MILLION == "ppm"
+    for key in ("co", "co_peak", "short_warning_co", "long_warning_co"):
+        assert (
+            _sensor_description(key).native_unit_of_measurement
+            == UNIT_PARTS_PER_MILLION
+        )
 
 
 def test_self_test_result_success_code_matches_apk():
