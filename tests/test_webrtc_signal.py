@@ -68,23 +68,6 @@ def test_sdp_offer_payload_strips_candidates_and_keeps_resolution():
     assert "a=end-of-candidates" not in offer["sdp"]
 
 
-def test_start_live_data_channel_command_matches_apk_shape():
-    payload = json.loads(
-        webrtc_signal.make_start_live_data_channel_command_payload(
-            "1920x1080", request_id="req-1", timestamp=123
-        )
-    )
-
-    assert payload == {
-        "requestID": "req-1",
-        "connectionID": "7893feb",
-        "timeStamp": 123,
-        "action": "startLive",
-        "size": "1920x1080",
-        "resolution": "1920x1080",
-    }
-
-
 def test_sd_video_list_data_channel_command_matches_apk_shape():
     payload = json.loads(
         webrtc_signal.make_sd_video_list_command_payload(
@@ -181,6 +164,7 @@ def test_webrtc_signal_relay_path_is_locked_to_known_success_shape():
     assert "class XSenseWebRTCSignalSession" in source
     assert "aiortc" not in source
     assert "RTCPeerConnection" not in source
+    assert "homeassistant" not in source
     assert "_send_offer" in source
     assert "make_sdp_offer_payload" in source
     assert "start_forwarding_remote_candidates" in source
@@ -244,4 +228,50 @@ async def test_webrtc_signal_flushes_trickled_ha_candidates_after_offer():
         "sdpMid": "0",
         "sdpMLineIndex": 0,
         "candidate": "candidate:1 1 udp 1 192.0.2.1 123 typ host",
+    }
+
+
+async def test_webrtc_signal_sends_ha_candidates_immediately_after_offer():
+    fake_ws = FakeWebSocket()
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp=(
+            "v=0\r\n"
+            "m=audio 9 UDP/TLS/RTP/SAVPF 0\r\n"
+            "a=mid:0\r\n"
+            "m=video 9 UDP/TLS/RTP/SAVPF 96\r\n"
+            "a=mid:1\r\n"
+        ),
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    candidate = SimpleNamespace(
+        candidate="candidate:2 1 udp 1 192.0.2.2 456 typ host",
+        sdp_mid="1",
+        sdp_m_line_index=1,
+    )
+    session._ws = fake_ws
+    session._recipient_client_id = "SSC0ATEST"
+
+    await session._send_offer()
+    assert [message["messageType"] for message in fake_ws.messages] == ["SDP_OFFER"]
+    assert len(session._pending_remote_candidates) == 0
+    assert not session._answer.done()
+
+    await session.add_candidate(candidate)
+
+    assert len(session._pending_remote_candidates) == 0
+    assert not session._answer.done()
+    assert [message["messageType"] for message in fake_ws.messages] == [
+        "SDP_OFFER",
+        "ICE_CANDIDATE",
+    ]
+    ice_payload = json.loads(
+        base64.b64decode(fake_ws.messages[1]["messagePayload"]).decode()
+    )
+    assert ice_payload == {
+        "sdpMid": "1",
+        "sdpMLineIndex": 1,
+        "candidate": "candidate:2 1 udp 1 192.0.2.2 456 typ host",
     }

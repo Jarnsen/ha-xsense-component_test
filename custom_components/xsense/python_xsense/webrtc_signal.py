@@ -627,25 +627,6 @@ def make_data_channel_command_payload(
     return json.dumps(payload, separators=(",", ":"))
 
 
-def make_start_live_data_channel_command_payload(
-    resolution: str,
-    *,
-    request_id: str | None = None,
-    timestamp: int | None = None,
-) -> str:
-    """Return the APK startLive data-channel command."""
-    timestamp = int(timestamp if timestamp is not None else time.time())
-    payload: dict[str, Any] = {
-        "requestID": request_id or _make_data_channel_request_id(),
-        "connectionID": _DATA_CHANNEL_CONNECTION_ID,
-        "timeStamp": timestamp,
-        "action": "startLive",
-        "size": resolution,
-        "resolution": resolution,
-    }
-    return json.dumps(payload, separators=(",", ":"))
-
-
 def make_sd_video_list_command_payload(
     start_time: int,
     stop_time: int,
@@ -1105,16 +1086,6 @@ def _sdp_media_directions(sdp: str) -> dict[str, str]:
             if current_mid is not None:
                 directions[current_mid] = line.removeprefix("a=")
     return directions
-
-
-def _map_video_size(resolution: str) -> str:
-    """Return the APK data-channel video size token for a resolution."""
-    value = str(resolution or "").lower()
-    if value in {"1920x1080", "1080p", "hd"}:
-        return "FHD"
-    if value in {"1280x720", "720p", "sd"}:
-        return "HD"
-    return "AUTO"
 
 
 def _normalize_answer_sdp(
