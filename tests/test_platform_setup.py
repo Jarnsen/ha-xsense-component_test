@@ -2288,10 +2288,12 @@ def test_recordings_panel_debug_view_logs_sanitized_payload(caplog):
     assert "'ready_state': 0" in caplog.text
     assert "'network_state': 3" in caplog.text
     assert "'error_code': 4" in caplog.text
-    assert "'hls_type': 'mediaError'" in caplog.text
-    assert "'hls_details': 'bufferStalledError'" in caplog.text
+    assert "'hls_type': 'mediaerror'" in caplog.text
+    assert "'hls_details': 'bufferstallederror'" in caplog.text
     assert "'hls_fatal': True" in caplog.text
+    assert "'has_message': True" in caplog.text
     assert "CAMERA-SERIAL-123456" not in caplog.text
+    assert "Recording is not ready (404)" not in caplog.text
 
 
 def test_recordings_panel_data_exposes_cache_backed_clips(monkeypatch):
