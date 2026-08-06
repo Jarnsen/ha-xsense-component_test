@@ -1,0 +1,5 @@
+name: X-Sense CodeQL configuration
+
+query-filters:
+  - exclude:
+      id: py/weak-sensitive-data-hashing

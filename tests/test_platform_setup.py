@@ -7,7 +7,8 @@ import json
 import logging
 
 import yaml
-from jinja2 import Template
+from jinja2 import Environment
+from markupsafe import Markup
 import pytest
 from yaml.loader import SafeLoader
 
@@ -1047,12 +1048,17 @@ def test_ai_notification_tap_url_never_uses_raw_media_or_external_urls():
     ) as file:
         blueprint = yaml.load(file, Loader=BlueprintLoader)
 
-    tap_template = Template(blueprint["variables"]["xsense_recording_tap_url"])
-    notification_template = Template(blueprint["variables"]["xsense_notification_url"])
+    jinja_env = Environment(autoescape=True)
+    tap_template = jinja_env.from_string(
+        blueprint["variables"]["xsense_recording_tap_url"]
+    )
+    notification_template = jinja_env.from_string(
+        blueprint["variables"]["xsense_notification_url"]
+    )
 
     def rendered_notification_url(recording_url):
-        tap_url = tap_template.render(xsense_recording_url=recording_url)
-        return notification_template.render(xsense_recording_tap_url=tap_url)
+        tap_url = tap_template.render(xsense_recording_url=Markup(recording_url))
+        return notification_template.render(xsense_recording_tap_url=Markup(tap_url))
 
     assert rendered_notification_url(
         "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN&start=1&end=2"

@@ -436,8 +436,8 @@ class XSenseRecordingsPanelDebugView(http.HomeAssistantView):
         LOGGER.debug(
             "X-Sense recordings panel frontend event: %s",
             {
-                "event": str(payload.get("event") or "unknown")[:80],
-                "entry_id": str(payload.get("entry_id") or "")[:32],
+                "event": _log_safe_str(payload.get("event") or "unknown", 80),
+                "entry_id": _log_safe_str(payload.get("entry_id"), 32),
                 "camera": _short_serial(payload.get("serial")),
                 "start": _safe_int(payload.get("start")),
                 "end": _safe_int(payload.get("end")),
@@ -446,16 +446,16 @@ class XSenseRecordingsPanelDebugView(http.HomeAssistantView):
                 "status": _safe_int(payload.get("status")),
                 "ok": _safe_bool(payload.get("ok")),
                 "bytes": _safe_int(payload.get("bytes")),
-                "content_type": str(payload.get("content_type") or "")[:80],
-                "blob_type": str(payload.get("blob_type") or "")[:80],
+                "content_type": _log_safe_str(payload.get("content_type"), 80),
+                "blob_type": _log_safe_str(payload.get("blob_type"), 80),
                 "elapsed_ms": _safe_int(payload.get("elapsed_ms")),
                 "duration_ms": _safe_int(payload.get("duration")),
                 "ready_state": _safe_int(payload.get("ready_state")),
                 "network_state": _safe_int(payload.get("network_state")),
                 "error_code": _safe_int(payload.get("error_code")),
-                "message": str(payload.get("message") or "")[:240],
-                "hls_type": str(payload.get("type") or "")[:80],
-                "hls_details": str(payload.get("details") or "")[:160],
+                "message": _log_safe_str(payload.get("message"), 240),
+                "hls_type": _log_safe_str(payload.get("type"), 80),
+                "hls_details": _log_safe_str(payload.get("details"), 160),
                 "hls_fatal": _safe_bool(payload.get("fatal")),
             },
         )
@@ -506,7 +506,10 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug(
                 "X-Sense recordings panel playback cache failed: %s",
-                {**_clip_debug_context(entry_id, serial, start, end), "error": str(exc)},
+                {
+                    **_clip_debug_context(entry_id, serial, start, end),
+                    "error": _log_safe_str(exc, 160),
+                },
             )
             raise web.HTTPNotFound(reason="X-Sense recording is not ready") from exc
         output_path = _clip_cache_path(clip)
@@ -617,7 +620,10 @@ class XSenseRecordingsHlsSegmentView(http.HomeAssistantView):
         if waited_ms is None:
             LOGGER.debug(
                 "X-Sense recordings HLS segment not ready after wait: %s",
-                {"filename": filename, "wait_timeout_s": HLS_SEGMENT_WAIT_TIMEOUT},
+                {
+                    "filename": _log_safe_str(filename, 160),
+                    "wait_timeout_s": HLS_SEGMENT_WAIT_TIMEOUT,
+                },
             )
             raise web.HTTPNotFound(reason="X-Sense HLS segment is not ready")
         headers = {"Cache-Control": "private, max-age=3600"}
@@ -640,7 +646,7 @@ class XSenseRecordingsHlsSegmentView(http.HomeAssistantView):
         LOGGER.debug(
             "X-Sense recordings HLS segment served: %s",
             {
-                "filename": filename,
+                "filename": _log_safe_str(filename, 160),
                 "bytes": size,
                 "waited_ms": waited_ms,
             },
@@ -870,7 +876,7 @@ def _clip_debug_context(
     end: str | int,
 ) -> dict[str, Any]:
     return {
-        "entry_id": entry_id,
+        "entry_id": _log_safe_str(entry_id, 32),
         "camera": _short_serial(serial),
         "start": start,
         "end": end,
@@ -878,10 +884,16 @@ def _clip_debug_context(
 
 
 def _short_serial(value: Any) -> str:
-    text = str(value or "")
+    text = _log_safe_str(value, 64)
     if len(text) <= 6:
         return text
     return f"...{text[-6:]}"
+
+
+def _log_safe_str(value: Any, limit: int) -> str:
+    """Return a short single-line string safe for structured debug logs."""
+    text = str(value or "").replace("\r", "\\r").replace("\n", "\\n")
+    return text[:limit]
 
 
 def _safe_int(value: Any) -> int | None:
