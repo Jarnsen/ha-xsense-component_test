@@ -75,17 +75,17 @@ def test_options_schema_accepts_recording_sync_options():
             CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
             CONF_RECORDING_MEDIA_SYNC_HOURS: "6",
             CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_alt",
-            CONF_RECORDING_NOTIFICATION_QUALITY: "SD",
-            CONF_RECORDING_MEDIA_DAYS_ORDER: "Ascending",
-            CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
+            CONF_RECORDING_NOTIFICATION_QUALITY: "sd",
+            CONF_RECORDING_MEDIA_DAYS_ORDER: "ascending",
+            CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",
         }
     ) == {
-        CONF_RECORDING_MEDIA_DAYS_ORDER: "Ascending",
-        CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
+        CONF_RECORDING_MEDIA_DAYS_ORDER: "ascending",
+        CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",
         CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_alt",
-        CONF_RECORDING_NOTIFICATION_QUALITY: "SD",
+        CONF_RECORDING_NOTIFICATION_QUALITY: "sd",
     }
 
 
@@ -110,13 +110,13 @@ def test_options_schema_can_be_serialized_for_home_assistant_options_ui():
     assert quality_field["selector"]["select"]["translation_key"] == (
         CONF_RECORDING_NOTIFICATION_QUALITY
     )
-    assert quality_field["selector"]["select"]["options"] == ["HD", "SD"]
+    assert quality_field["selector"]["select"]["options"] == ["hd", "sd"]
     assert days_order_field["selector"]["select"]["translation_key"] == (
         CONF_RECORDING_MEDIA_DAYS_ORDER
     )
     assert days_order_field["selector"]["select"]["options"] == [
-        "Ascending",
-        "Descending",
+        "ascending",
+        "descending",
     ]
 
 
@@ -137,8 +137,8 @@ def test_options_schema_normalizes_stale_prerelease_options():
         CONF_RECORDING_MEDIA_SYNC_HOURS: DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
         CONF_RECORDING_MEDIA_STORAGE_PATH: DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
         CONF_RECORDING_NOTIFICATION_QUALITY: DEFAULT_RECORDING_NOTIFICATION_QUALITY,
-        CONF_RECORDING_MEDIA_DAYS_ORDER: "Descending",
-        CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
+        CONF_RECORDING_MEDIA_DAYS_ORDER: "descending",
+        CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",
     }
 
 
@@ -159,9 +159,9 @@ def test_options_flow_rejects_storage_path_outside_media_without_schema_crash():
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/tmp/xsense",
         CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
-        CONF_RECORDING_NOTIFICATION_QUALITY: "HD",
-        CONF_RECORDING_MEDIA_DAYS_ORDER: "Ascending",
-        CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
+        CONF_RECORDING_NOTIFICATION_QUALITY: "hd",
+        CONF_RECORDING_MEDIA_DAYS_ORDER: "ascending",
+        CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",
     }
 
     result = asyncio.run(flow.async_step_init(user_input))
@@ -256,9 +256,9 @@ def test_options_flow_confirms_recording_storage_path_changes():
                 CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_recordings",
                 CONF_RECORDING_MEDIA_SYNC_ENABLED: False,
                 CONF_RECORDING_MEDIA_SYNC_HOURS: 24,
-                CONF_RECORDING_NOTIFICATION_QUALITY: "HD",
-                CONF_RECORDING_MEDIA_DAYS_ORDER: "Descending",
-                CONF_RECORDING_MEDIA_CLIPS_ORDER: "Descending",
+                CONF_RECORDING_NOTIFICATION_QUALITY: "hd",
+                CONF_RECORDING_MEDIA_DAYS_ORDER: "descending",
+                CONF_RECORDING_MEDIA_CLIPS_ORDER: "descending",
             }
         )
     )
@@ -266,9 +266,9 @@ def test_options_flow_confirms_recording_storage_path_changes():
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_alt",
         CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
-        CONF_RECORDING_NOTIFICATION_QUALITY: "SD",
-        CONF_RECORDING_MEDIA_DAYS_ORDER: "Ascending",
-        CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
+        CONF_RECORDING_NOTIFICATION_QUALITY: "sd",
+        CONF_RECORDING_MEDIA_DAYS_ORDER: "ascending",
+        CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",
     }
 
     warning = asyncio.run(flow.async_step_init(user_input))
@@ -298,9 +298,9 @@ def test_options_flow_saves_without_warning_when_storage_path_unchanged():
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_recordings",
         CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
-        CONF_RECORDING_NOTIFICATION_QUALITY: "HD",
-        CONF_RECORDING_MEDIA_DAYS_ORDER: "Ascending",
-        CONF_RECORDING_MEDIA_CLIPS_ORDER: "Ascending",
+        CONF_RECORDING_NOTIFICATION_QUALITY: "hd",
+        CONF_RECORDING_MEDIA_DAYS_ORDER: "ascending",
+        CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",
     }
 
     result = asyncio.run(flow.async_step_init(user_input))

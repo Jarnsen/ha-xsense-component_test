@@ -766,20 +766,20 @@
   "selector": {
     "recording_notification_quality": {
       "options": {
-        "HD": "HD",
-        "SD": "SD"
+        "hd": "HD",
+        "sd": "SD"
       }
     },
     "recording_media_days_order": {
       "options": {
-        "Ascending": "Ascending",
-        "Descending": "Descending"
+        "ascending": "Ascending",
+        "descending": "Descending"
       }
     },
     "recording_media_clips_order": {
       "options": {
-        "Ascending": "Ascending",
-        "Descending": "Descending"
+        "ascending": "Ascending",
+        "descending": "Descending"
       }
     }
   }
