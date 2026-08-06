@@ -2281,19 +2281,10 @@ def test_recordings_panel_debug_view_logs_sanitized_payload(caplog):
     response = asyncio.run(http.XSenseRecordingsPanelDebugView(None).post(Request()))
 
     assert response.status == 200
-    assert "X-Sense recordings panel frontend event" in caplog.text
-    assert "playback_fetch_response" in caplog.text
-    assert "'playback_url_kind': 'api'" in caplog.text
-    assert "'duration_ms': 30000" in caplog.text
-    assert "'ready_state': 0" in caplog.text
-    assert "'network_state': 3" in caplog.text
-    assert "'error_code': 4" in caplog.text
-    assert "'hls_type': 'mediaerror'" in caplog.text
-    assert "'hls_details': 'bufferstallederror'" in caplog.text
-    assert "'hls_fatal': True" in caplog.text
-    assert "'has_message': True" in caplog.text
-    assert "CAMERA-SERIAL-123456" not in caplog.text
+    assert "X-Sense recordings panel frontend debug payload received" in caplog.text
+    assert "playback_fetch_response" not in caplog.text
     assert "Recording is not ready (404)" not in caplog.text
+    assert "CAMERA-SERIAL-123456" not in caplog.text
 
 
 def test_recordings_panel_data_exposes_cache_backed_clips(monkeypatch):

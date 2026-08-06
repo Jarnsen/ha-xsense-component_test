@@ -43,31 +43,6 @@ from .media_source import (
 HLS_SEGMENT_TOKEN_TTL = 3600
 HLS_SEGMENT_WAIT_TIMEOUT = 10
 HLS_SEGMENT_WAIT_INTERVAL = 0.25
-PANEL_DEBUG_EVENTS = {
-    "clip_open",
-    "playback_blob_ready",
-    "playback_error",
-    "playback_fetch_response",
-    "playback_fetch_start",
-    "playback_hls_js_attached",
-    "playback_hls_js_error",
-    "playback_hls_native_attached",
-    "playback_hls_ready",
-    "playback_prepare_start",
-    "playback_signed_path_ready",
-    "playback_skipped_already_loading",
-    "playback_skipped_already_ready",
-    "playback_skipped_missing_url",
-    "route_clip_missing",
-    "route_clip_selected",
-    "video_autoplay_error",
-    "video_canplay",
-    "video_error",
-    "video_loadedmetadata",
-    "video_playing",
-    "video_stalled",
-    "video_waiting",
-}
 
 
 async def async_register_recordings_http_views(hass: HomeAssistant) -> None:
@@ -458,10 +433,7 @@ class XSenseRecordingsPanelDebugView(http.HomeAssistantView):
         if not isinstance(payload, dict):
             raise web.HTTPBadRequest(reason="Invalid X-Sense panel debug payload")
 
-        LOGGER.debug(
-            "X-Sense recordings panel frontend event: %s",
-            _panel_debug_log_context(payload),
-        )
+        LOGGER.debug("X-Sense recordings panel frontend debug payload received")
         return web.json_response({"ok": True})
 
 
@@ -893,35 +865,6 @@ def _short_serial(value: Any) -> str:
     return f"...{text[-6:]}"
 
 
-def _panel_debug_log_context(payload: dict[str, Any]) -> dict[str, Any]:
-    event = _log_safe_str(payload.get("event") or "unknown", 80)
-    if event not in PANEL_DEBUG_EVENTS:
-        event = "unknown"
-    return {
-        "event": event,
-        "entry_id": _log_safe_str(payload.get("entry_id"), 32),
-        "camera": _short_serial(payload.get("serial")),
-        "start": _safe_int(payload.get("start")),
-        "end": _safe_int(payload.get("end")),
-        "cached": _safe_bool(payload.get("cached")),
-        "playback_url_kind": _url_kind(payload.get("playback_url")),
-        "status": _safe_int(payload.get("status")),
-        "ok": _safe_bool(payload.get("ok")),
-        "bytes": _safe_int(payload.get("bytes")),
-        "content_type": _media_type_kind(payload.get("content_type")),
-        "blob_type": _media_type_kind(payload.get("blob_type")),
-        "elapsed_ms": _safe_int(payload.get("elapsed_ms")),
-        "duration_ms": _safe_int(payload.get("duration")),
-        "ready_state": _safe_int(payload.get("ready_state")),
-        "network_state": _safe_int(payload.get("network_state")),
-        "error_code": _safe_int(payload.get("error_code")),
-        "hls_type": _hls_error_type(payload.get("type")),
-        "hls_details": _hls_error_detail(payload.get("details")),
-        "hls_fatal": _safe_bool(payload.get("fatal")),
-        "has_message": bool(payload.get("message")),
-    }
-
-
 def _log_safe_str(value: Any, limit: int) -> str:
     """Return a short single-line string safe for structured debug logs."""
     text = str(value or "").replace("\r", "\\r").replace("\n", "\\n")
@@ -955,37 +898,6 @@ def _url_kind(value: Any) -> str:
         return "panel"
     if text.startswith(("http://", "https://")):
         return "external"
-    return "other"
-
-
-def _media_type_kind(value: Any) -> str:
-    text = _log_safe_str(value, 80).lower()
-    if not text:
-        return ""
-    if "application/vnd.apple.mpegurl" in text or "application/x-mpegurl" in text:
-        return "hls"
-    if text.startswith("video/"):
-        return "video"
-    if text.startswith("image/"):
-        return "image"
-    if text.startswith("application/"):
-        return "application"
-    return "other"
-
-
-def _hls_error_type(value: Any) -> str:
-    text = _log_safe_str(value, 80).lower()
-    if text in {"networkerror", "mediaerror", "muxerror", "othererror", "keysystemerror"}:
-        return text
-    return "unknown" if text else ""
-
-
-def _hls_error_detail(value: Any) -> str:
-    text = _log_safe_str(value, 160).lower()
-    if not text:
-        return ""
-    if any(term in text for term in ("manifest", "level", "frag", "buffer", "key")):
-        return text
     return "other"
 
 
