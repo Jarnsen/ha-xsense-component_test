@@ -220,7 +220,9 @@ class XSenseBase:
 
         concatenated_string = ''.join(values)
         mac_data = concatenated_string.encode('utf-8') + self.clientsecret
-        return hashlib.md5(mac_data).hexdigest()
+        # X-Sense requires this exact MD5 MAC for API request signing.
+        # codeql[py/weak-sensitive-data-hashing]
+        return hashlib.new("md5", mac_data, usedforsecurity=False).hexdigest()
 
     def _signed_body(self, data: Dict | None, code: str, *, ipc: bool = False) -> Dict:
         data = dict(data or {})
