@@ -71,9 +71,7 @@ def test_detector_names_match_apk_1400_terms():
 
 
 def test_device_setting_names_match_apk_1400_terms():
-    assert next(item for item in switch.SWITCHES if item.key == "led_light").name == (
-        "LED Indicator"
-    )
+    assert _description_name("switch", switch.SWITCHES, "led_light") == "LED Indicator"
     assert _description_name(
         "select", select.SELECTS, "mailbox_report_interval"
     ) == "Data Reporting Interval"
@@ -92,18 +90,16 @@ def test_device_setting_names_match_apk_1400_terms():
 
 
 def test_camera_names_match_apk_1400_terms():
-    assert next(
-        item for item in button.BUTTONS if item.key == "camera_wake"
-    ).name == "Wake Up"
-    assert next(
-        item for item in switch.SWITCHES if item.key == "camera_sleep"
-    ).name == "Sleep Mode"
-    assert next(
-        item for item in switch.SWITCHES if item.key == "camera_mirror_flip"
-    ).name == "Rotate Image"
-    assert next(
-        item for item in select.SELECTS if item.key == "camera_antiflicker_rate"
-    ).name == "Flicker Frequency"
-    assert next(
-        item for item in number.NUMBERS if item.key == "camera_alarm_seconds"
-    ).name == "Alarm Duration"
+    assert _description_name("button", button.BUTTONS, "camera_wake") == "Wake Up"
+    assert _description_name("switch", switch.SWITCHES, "camera_sleep") == (
+        "Sleep Mode"
+    )
+    assert _description_name("switch", switch.SWITCHES, "camera_mirror_flip") == (
+        "Rotate Image"
+    )
+    assert _description_name(
+        "select", select.SELECTS, "camera_antiflicker_rate"
+    ) == "Flicker Frequency"
+    assert _description_name("number", number.NUMBERS, "camera_alarm_seconds") == (
+        "Alarm Duration"
+    )

@@ -14,7 +14,6 @@ from homeassistant import config_entries
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, LOGGER
@@ -26,6 +25,7 @@ from .entity import (
     coordinator_stations,
     device_station_id,
 )
+from .errors import xsense_error
 
 
 async def run_action(entity: Entity, xsense: AsyncXSense, action: str) -> None:
@@ -65,7 +65,6 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     XSenseButtonEntityDescription(
         key="test",
         translation_key="test",
-        name="Device Test",
         icon="mdi:bell-ring",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "test"),
@@ -74,7 +73,6 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     XSenseButtonEntityDescription(
         key="mute",
         translation_key="mute",
-        name="Mute",
         icon="mdi:volume-off",
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "mute"),
         press_fn=partial(run_action, action="mute"),
@@ -82,7 +80,6 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     XSenseButtonEntityDescription(
         key="fire_drill",
         translation_key="fire_drill",
-        name="Alarm Drill",
         icon="mdi:fire-alert",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "firedrill"),
@@ -90,7 +87,7 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     ),
     XSenseButtonEntityDescription(
         key="camera_wake",
-        name="Wake Up",
+        translation_key="camera_wake",
         icon="mdi:power-sleep",
         entity_category=EntityCategory.CONFIG,
         exists_fn=can_wake_camera,
@@ -163,7 +160,7 @@ class XSenseButtonEntity(XSenseEntity, ButtonEntity):
         xsense = self.coordinator.xsense
         device = self._current_entity()
         if device is None:
-            raise HomeAssistantError("X-Sense entity is no longer available")
+            raise xsense_error("entity_unavailable")
 
         LOGGER.debug(
             "X-Sense button action requested: %s",

@@ -1722,10 +1722,10 @@ def _recording_notification_quality(hass: HomeAssistant, entry_id: str) -> str:
     """Return the preferred recording quality for mobile notification clips."""
     config_entries = getattr(hass, "config_entries", None)
     if config_entries is None or not hasattr(config_entries, "async_get_entry"):
-        return DEFAULT_RECORDING_NOTIFICATION_QUALITY
+        return DEFAULT_RECORDING_NOTIFICATION_QUALITY.upper()
     entry = config_entries.async_get_entry(entry_id)
     if entry is None:
-        return DEFAULT_RECORDING_NOTIFICATION_QUALITY
+        return DEFAULT_RECORDING_NOTIFICATION_QUALITY.upper()
     return _safe_recording_quality(
         getattr(entry, "options", {}).get(
             CONF_RECORDING_NOTIFICATION_QUALITY,
@@ -1739,7 +1739,7 @@ def _safe_recording_quality(value: Any) -> str:
     quality = str(value or DEFAULT_RECORDING_NOTIFICATION_QUALITY).strip().upper()
     if quality in {"HD", "SD"}:
         return quality
-    return DEFAULT_RECORDING_NOTIFICATION_QUALITY
+    return DEFAULT_RECORDING_NOTIFICATION_QUALITY.upper()
 
 
 def _preferred_recording_video_url(
@@ -2068,9 +2068,19 @@ def _sort_descending(
     """Return whether a Tapo-style media order option is descending."""
     entry = hass.config_entries.async_get_entry(entry_id) if entry_id else None
     if entry is None:
-        return default == "Descending"
+        return _sort_order_value(default) == "descending"
     value = entry.options.get(option_name, entry.data.get(option_name, default))
-    return value == "Descending"
+    return _sort_order_value(value) == "descending"
+
+
+def _sort_order_value(value: Any) -> str:
+    """Return a normalized recording sort order option."""
+    text = str(value or "").strip().lower().replace("_", " ").replace("-", " ")
+    if text in {"ascending", "asc", "oldest", "oldest first"}:
+        return "ascending"
+    if text in {"descending", "desc", "newest", "newest first"}:
+        return "descending"
+    return DEFAULT_RECORDING_MEDIA_CLIPS_ORDER
 
 
 def _local_media_url(path: Path) -> str:

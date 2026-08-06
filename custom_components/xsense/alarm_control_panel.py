@@ -12,13 +12,13 @@ from homeassistant.components.alarm_control_panel import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
-from .entity import coordinator_stations
 from .coordinator import XSenseDataUpdateCoordinator
+from .entity import coordinator_stations
+from .errors import xsense_error
 
 LOGGER = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ class XSenseAlarmControlPanel(
     )
     _attr_code_arm_required = False
     _attr_has_entity_name = True
-    _attr_name = "Alarm"
+    _attr_translation_key = "alarm"
 
     def __init__(
         self,
@@ -171,7 +171,7 @@ class XSenseAlarmControlPanel(
         """Request a safeMode change through the X-Sense MQTT shadow."""
         station = self._station
         if station is None:
-            raise HomeAssistantError("X-Sense station is no longer available")
+            raise xsense_error("station_unavailable")
 
         LOGGER.debug(
             "Station %s requesting safeMode %s via MQTT appMode",
@@ -205,7 +205,7 @@ class XSenseAlarmControlPanel(
                 "Station %s cannot set safeMode because MQTT is not connected",
                 station.sn,
             )
-            raise HomeAssistantError("X-Sense MQTT is not connected")
+            raise xsense_error("mqtt_not_connected")
 
         try:
             await mqtt.async_publish(
@@ -228,4 +228,4 @@ class XSenseAlarmControlPanel(
                 station.sn,
                 ex,
             )
-            raise HomeAssistantError("Could not publish X-Sense safe mode command") from ex
+            raise xsense_error("safe_mode_publish_failed") from ex

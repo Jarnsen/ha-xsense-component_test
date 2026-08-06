@@ -24,9 +24,10 @@ from homeassistant.core import (
     callback,
     get_hassjob_callable_job_type,
 )
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.collection import chunked_or_all
 from homeassistant.util.logging import catch_log_exception
+
+from .errors import xsense_error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -437,7 +438,7 @@ class XSenseMQTT:
             else:
                 self._wildcard_subscriptions.remove(subscription)
         except (KeyError, ValueError) as exc:
-            raise HomeAssistantError("Can't remove subscription twice") from exc
+            raise xsense_error("subscription_remove_twice") from exc
 
     # unchanged
     @callback
@@ -488,7 +489,7 @@ class XSenseMQTT:
         This method is a coroutine.
         """
         if not isinstance(topic, str):
-            raise HomeAssistantError("Topic needs to be a string!")
+            raise xsense_error("mqtt_topic_not_string")
 
         if job_type is None:
             job_type = get_hassjob_callable_job_type(msg_callback)
@@ -753,9 +754,7 @@ class XSenseMQTT:
     async def _async_wait_for_mid_or_raise(self, mid: int, result_code: int) -> None:
         """Wait for ACK from broker or raise on error."""
         if result_code != 0:
-            raise HomeAssistantError(
-                f"Error talking to MQTT: {mqtt.error_string(result_code)}"
-            )
+            raise xsense_error("mqtt_error", error=mqtt.error_string(result_code))
 
         # Create the mid event if not created, either _mqtt_handle_mid or
         # _async_wait_for_mid_or_raise may be executed first.

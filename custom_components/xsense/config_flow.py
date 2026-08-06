@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers import selector
 
 from .python_xsense import AsyncXSense
 from .python_xsense.async_xsense import is_camera_entity
@@ -91,21 +92,36 @@ def options_schema(
                     CONF_RECORDING_NOTIFICATION_QUALITY,
                     DEFAULT_RECORDING_NOTIFICATION_QUALITY,
                 ),
-            ): vol.In(RECORDING_NOTIFICATION_QUALITY_OPTIONS),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=RECORDING_NOTIFICATION_QUALITY_OPTIONS,
+                    translation_key=CONF_RECORDING_NOTIFICATION_QUALITY,
+                )
+            ),
             vol.Optional(
                 CONF_RECORDING_MEDIA_DAYS_ORDER,
                 default=options.get(
                     CONF_RECORDING_MEDIA_DAYS_ORDER,
                     DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
                 ),
-            ): vol.In(RECORDING_MEDIA_ORDER_OPTIONS),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=RECORDING_MEDIA_ORDER_OPTIONS,
+                    translation_key=CONF_RECORDING_MEDIA_DAYS_ORDER,
+                )
+            ),
             vol.Optional(
                 CONF_RECORDING_MEDIA_CLIPS_ORDER,
                 default=options.get(
                     CONF_RECORDING_MEDIA_CLIPS_ORDER,
                     DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
                 ),
-            ): vol.In(RECORDING_MEDIA_ORDER_OPTIONS),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=RECORDING_MEDIA_ORDER_OPTIONS,
+                    translation_key=CONF_RECORDING_MEDIA_CLIPS_ORDER,
+                )
+            ),
         }
     )
 
@@ -189,14 +205,14 @@ def _safe_order(value: Any, default: str) -> str:
         return text
     lookup = text.lower().replace("_", " ").replace("-", " ")
     if lookup in {"ascending", "asc", "oldest", "oldest first"}:
-        return "Ascending"
+        return "ascending"
     if lookup in {"descending", "desc", "newest", "newest first"}:
-        return "Descending"
+        return "descending"
     return default
 
 
 def _safe_recording_quality(value: Any) -> str:
-    text = str(value or "").strip().upper()
+    text = str(value or "").strip().lower()
     if text in RECORDING_NOTIFICATION_QUALITY_OPTIONS:
         return text
     return DEFAULT_RECORDING_NOTIFICATION_QUALITY
@@ -376,11 +392,12 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
                 user_input.get(CONF_RECORDING_MEDIA_STORAGE_PATH)
             ):
                 errors[CONF_RECORDING_MEDIA_STORAGE_PATH] = "invalid_recording_media_path"
-            elif recording_media_storage_path_changed(self._options, user_input):
+            else:
+                user_input = _normalized_options(user_input)
+                if not recording_media_storage_path_changed(self._options, user_input):
+                    return self.async_create_entry(title="", data=user_input)
                 self._pending_options = dict(user_input)
                 return await self.async_step_confirm_recording_media_storage_path()
-            else:
-                return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(
             step_id="init",

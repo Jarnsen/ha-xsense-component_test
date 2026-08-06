@@ -21,7 +21,6 @@ from homeassistant import config_entries
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_platform
@@ -34,6 +33,7 @@ from .entity import (
     coordinator_stations,
     device_station_id,
 )
+from .errors import xsense_error
 
 
 ATTR_ENABLED = "enabled"
@@ -278,7 +278,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="led_light",
         data_key="ledLight",
-        name="LED Indicator",
+        translation_key="led_light",
         icon="mdi:led-on",
         exists_fn=has_led_light,
         value_fn=optional_data_bool("ledLight"),
@@ -286,7 +286,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="light_power",
         data_key="on",
-        name="Light",
+        translation_key="light_power",
         icon="mdi:lightbulb",
         entity_category=None,
         exists_fn=lambda entity: (
@@ -300,7 +300,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="alarm_enabled",
         data_key="alarmEnable",
         read_key="alarmEnabled",
-        name="Alarm Enabled",
+        translation_key="alarm_enabled",
         icon="mdi:bell-check",
         exists_fn=lambda entity: (
             _has_shadow_write_route(entity)
@@ -314,7 +314,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="continued_alarm",
         data_key="continueAlarm",
         read_key="continuedAlarm",
-        name="Continued Alarm",
+        translation_key="continued_alarm",
         icon="mdi:bell-plus",
         exists_fn=lambda entity: (
             _has_shadow_write_route(entity)
@@ -327,7 +327,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="mail_notice",
         data_key="mailNotice",
-        name="Mail Reminder",
+        translation_key="mail_notice",
         icon="mdi:mailbox-up",
         exists_fn=lambda entity: (
             _has_shadow_write_route(entity)
@@ -339,7 +339,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="chirp_tone_enabled",
         data_key="chirpToneEnable",
-        name="Chirp Tone Enabled",
+        translation_key="chirp_tone_enabled",
         icon="mdi:volume-high",
         exists_fn=has_shadow_data("chirpToneEnable"),
         value_fn=data_bool("chirpToneEnable"),
@@ -347,7 +347,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="reminder_enabled",
         data_key="remindOn",
-        name="Reminder Enabled",
+        translation_key="reminder_enabled",
         icon="mdi:bell-clock",
         exists_fn=has_shadow_data("remindOn"),
         value_fn=data_bool("remindOn"),
@@ -355,7 +355,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="reminder_tone_enabled",
         data_key="remindToneEnable",
-        name="Reminder Tone Enabled",
+        translation_key="reminder_tone_enabled",
         icon="mdi:volume-high",
         exists_fn=has_shadow_data("remindToneEnable"),
         value_fn=data_bool("remindToneEnable"),
@@ -363,7 +363,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="await_enabled",
         data_key="awaitEnable",
-        name="Await Enabled",
+        translation_key="await_enabled",
         icon="mdi:timer-sand",
         exists_fn=has_shadow_data("awaitEnable"),
         value_fn=data_bool("awaitEnable"),
@@ -372,7 +372,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="pir_enabled",
         data_key="pirEnable",
-        name="PIR Enabled",
+        translation_key="pir_enabled",
         icon="mdi:motion-sensor",
         exists_fn=has_shadow_data("pirEnable"),
         value_fn=data_bool("pirEnable"),
@@ -381,7 +381,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="sunshine_enabled",
         data_key="sunshineEnable",
-        name="Sunshine Enabled",
+        translation_key="sunshine_enabled",
         icon="mdi:white-balance-sunny",
         exists_fn=has_shadow_data("sunshineEnable"),
         value_fn=data_bool("sunshineEnable"),
@@ -390,7 +390,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="key_sound_enabled",
         data_key="keySound",
-        name="Key Sound Enabled",
+        translation_key="key_sound_enabled",
         icon="mdi:volume-high",
         exists_fn=has_shadow_data("keySound"),
         value_fn=data_bool("keySound"),
@@ -398,7 +398,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
     XSenseSwitchEntityDescription(
         key="warning_enabled",
         data_key="warnIsOpen",
-        name="Warning Enabled",
+        translation_key="warning_enabled",
         icon="mdi:alert",
         exists_fn=has_shadow_data("warnIsOpen"),
         value_fn=data_bool("warnIsOpen"),
@@ -407,7 +407,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_motion_detection",
         data_key="needMotion",
         addx_key="needMotion",
-        name="Motion Detection",
+        translation_key="camera_motion_detection",
         icon="mdi:motion-sensor",
         exists_fn=has_camera_data("needMotion"),
         value_fn=data_bool("needMotion"),
@@ -416,7 +416,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_person_detection",
         data_key="devicePersonDetect",
         addx_key="devicePersonDetect",
-        name="Person Detection",
+        translation_key="camera_person_detection",
         icon="mdi:account-alert",
         exists_fn=has_camera_person_detection,
         value_fn=lambda entity: boolean_state(entity.data.get("devicePersonDetect")),
@@ -425,7 +425,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_video_recording",
         data_key="needVideo",
         addx_key="needVideo",
-        name="Record Video",
+        translation_key="camera_video_recording",
         icon="mdi:video-check",
         exists_fn=has_camera_data("needVideo"),
         value_fn=data_bool("needVideo"),
@@ -434,7 +434,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_night_vision",
         data_key="needNightVision",
         addx_key="needNightVision",
-        name="Auto Night Vision",
+        translation_key="camera_night_vision",
         icon="mdi:weather-night",
         exists_fn=has_camera_data("needNightVision"),
         value_fn=data_bool("needNightVision"),
@@ -443,7 +443,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_recording_light",
         data_key="recLamp",
         addx_key="recLamp",
-        name="Status LED",
+        translation_key="camera_recording_light",
         icon="mdi:led-on",
         exists_fn=has_supported_data("recLamp", "supportRecLamp"),
         value_fn=data_bool("recLamp"),
@@ -452,7 +452,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_alarm",
         data_key="needAlarm",
         addx_key="needAlarm",
-        name="Camera Alarm",
+        translation_key="camera_alarm",
         icon="mdi:bell-check",
         exists_fn=has_supported_data("needAlarm", "supportAlarm"),
         value_fn=data_bool("needAlarm"),
@@ -461,7 +461,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_mirror_flip",
         data_key="mirrorFlip",
         addx_key="mirrorFlip",
-        name="Rotate Image",
+        translation_key="camera_mirror_flip",
         icon="mdi:flip-horizontal",
         exists_fn=has_supported_data("mirrorFlip", "supportMirrorFlip"),
         value_fn=data_bool("mirrorFlip"),
@@ -470,7 +470,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_antiflicker",
         data_key="antiflickerSwitch",
         addx_key="antiflickerSwitch",
-        name="Anti-Flicker",
+        translation_key="camera_antiflicker",
         icon="mdi:lightbulb-on-10",
         exists_fn=has_supported_data("antiflickerSwitch", "supportAntiFlicker"),
         value_fn=data_bool("antiflickerSwitch"),
@@ -479,7 +479,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_cry_detection",
         data_key="cryDetect",
         addx_key="cryDetect",
-        name="Cry Detection",
+        translation_key="camera_cry_detection",
         icon="mdi:baby-face-outline",
         exists_fn=has_supported_data("cryDetect", "supportCryDetect"),
         value_fn=data_bool("cryDetect"),
@@ -488,7 +488,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_cooldown",
         data_key="cooldownEnabled",
         addx_key="cooldown.userEnable",
-        name="Cooldown",
+        translation_key="camera_cooldown",
         icon="mdi:timer-sand",
         exists_fn=lambda entity: (
             is_camera_entity(entity)
@@ -504,7 +504,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_device_call",
         data_key="deviceCallToggleOn",
         addx_key="deviceCallToggleOn",
-        name="Device Call",
+        translation_key="camera_device_call",
         icon="mdi:phone",
         exists_fn=has_supported_data("deviceCallToggleOn", "supportDeviceCall"),
         value_fn=data_bool("deviceCallToggleOn"),
@@ -513,7 +513,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_ding_dong",
         data_key="mechanicalDingDongSwitch",
         addx_key="mechanicalDingDongSwitch",
-        name="Mechanical Chime",
+        translation_key="camera_ding_dong",
         icon="mdi:bell-ring",
         exists_fn=has_supported_data(
             "mechanicalDingDongSwitch", "supportMechanicalDingDong"
@@ -524,7 +524,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_motion_tracking",
         data_key="motionTrack",
         addx_key="motionTrack",
-        name="Motion Tracking",
+        translation_key="camera_motion_tracking",
         icon="mdi:axis-arrow",
         exists_fn=has_supported_data("motionTrack", "supportMotionTrack"),
         value_fn=data_bool("motionTrack"),
@@ -533,7 +533,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_voice_volume",
         data_key="voiceVolumeSwitch",
         addx_key="voiceVolumeSwitch",
-        name="Voice Volume",
+        translation_key="camera_voice_volume",
         icon="mdi:volume-high",
         exists_fn=has_supported_data("voiceVolumeSwitch", "supportVoiceVolume"),
         value_fn=data_bool("voiceVolumeSwitch"),
@@ -542,7 +542,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_live_audio",
         data_key="liveAudioToggleOn",
         addx_key="audio.liveAudioToggleOn",
-        name="Live Audio",
+        translation_key="camera_live_audio",
         icon="mdi:volume-high",
         exists_fn=has_apk_default_supported_data(
             "liveAudioToggleOn", "supportLiveAudio"
@@ -553,7 +553,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_recording_audio",
         data_key="recordingAudioToggleOn",
         addx_key="audio.recordingAudioToggleOn",
-        name="Recording Audio",
+        translation_key="camera_recording_audio",
         icon="mdi:microphone",
         exists_fn=has_apk_default_supported_data(
             "recordingAudioToggleOn", "supportRecordingAudio"
@@ -564,7 +564,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_auto_power_on",
         data_key="chargeAutoPowerOnSwitch",
         addx_key="chargeAutoPowerOnSwitch",
-        name="Auto Power-On",
+        translation_key="camera_auto_power_on",
         icon="mdi:battery-sync",
         exists_fn=has_supported_data(
             "chargeAutoPowerOnSwitch", "supportChargeAutoPowerOn"
@@ -575,7 +575,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_white_light",
         data_key="whiteLightScintillation",
         addx_key="whiteLightScintillation",
-        name="White Light",
+        translation_key="camera_white_light",
         icon="mdi:spotlight-beam",
         exists_fn=has_supported_data("whiteLightScintillation", "supportLight"),
         value_fn=data_bool("whiteLightScintillation"),
@@ -584,7 +584,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_alarm_when_removed",
         data_key="alarmWhenRemoveToggleOn",
         addx_key="doorbell.alarmWhenRemoveToggleOn",
-        name="Alarm When Removed",
+        translation_key="camera_alarm_when_removed",
         icon="mdi:bell-alert",
         exists_fn=has_supported_data("alarmWhenRemoveToggleOn", "supportDoorBellAlarm"),
         value_fn=data_bool("alarmWhenRemoveToggleOn"),
@@ -593,7 +593,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         key="camera_sleep",
         data_key="deviceStatus",
         addx_key="sleep.dormancySwitch",
-        name="Sleep Mode",
+        translation_key="camera_sleep",
         icon="mdi:power-sleep",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity: (
@@ -609,7 +609,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
             key=f"camera_ai_notification_{event_type}",
             data_key=f"aiNotification{_camel_suffix(event_type)}",
             addx_key=f"ai_notification.{event_type}",
-            name=_ai_notification_name(event_type),
+            translation_key=f"camera_ai_notification_{event_type}",
             icon="mdi:bell-badge",
             exists_fn=has_camera_ai_notification(event_type),
             value_fn=optional_data_bool(f"aiNotification{_camel_suffix(event_type)}"),
@@ -621,7 +621,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
             key=f"camera_ai_assistant_{event_object}",
             data_key=f"aiAssistant{_camel_suffix(event_object)}",
             addx_key=f"ai_assistant.{event_object}",
-            name=_ai_assistant_name(event_object),
+            translation_key=f"camera_ai_assistant_{event_object}",
             icon="mdi:brain",
             exists_fn=has_camera_ai_assistant(event_object),
             value_fn=optional_data_bool(f"aiAssistant{_camel_suffix(event_object)}"),
@@ -916,20 +916,18 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         """Return the current SBS50 light power entity or raise if unsupported."""
         entity = self._current_entity()
         if entity is None:
-            raise HomeAssistantError("X-Sense entity is no longer available")
+            raise xsense_error("entity_unavailable")
         if self.entity_description.data_key != "on" or getattr(
             entity, "entity_type", None
         ) != EntityType.LIGHT:
-            raise HomeAssistantError(
-                f"X-Sense {service_name} require a light power switch"
-            )
+            raise xsense_error("light_power_switch_required", service=service_name)
         station = getattr(entity, "station", None)
         if not station or station.type != "SBS50":
-            raise HomeAssistantError(f"X-Sense {service_name} require an SBS50 station")
+            raise xsense_error("sbs50_station_required", service=service_name)
         if not getattr(entity, "entity_id", None) or not getattr(
             station, "entity_id", None
         ):
-            raise HomeAssistantError(f"X-Sense {service_name} IDs are missing")
+            raise xsense_error("ids_missing", service=service_name)
         return entity
 
     def _schedule_time_zone(self, time_zone: str | None) -> str:
@@ -941,7 +939,7 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         xsense = self.coordinator.xsense
         entity = self._current_entity()
         if entity is None:
-            raise HomeAssistantError("X-Sense entity is no longer available")
+            raise xsense_error("entity_unavailable")
 
         if self.entity_description.data_key == "on":
             await xsense.update_light_power(entity, enabled)
@@ -1053,11 +1051,11 @@ def _schedule_time(value: str) -> str:
         hour, minute = text.split(":", 1)
         text = f"{hour.zfill(2)}{minute.zfill(2)}"
     if len(text) != 4 or not text.isdigit():
-        raise HomeAssistantError("X-Sense schedule time must be HH:MM or HHMM")
+        raise xsense_error("invalid_schedule_time_format")
     hour = int(text[:2])
     minute = int(text[2:])
     if hour > 23 or minute > 59:
-        raise HomeAssistantError("X-Sense schedule time is out of range")
+        raise xsense_error("schedule_time_out_of_range")
     return text
 
 
@@ -1065,10 +1063,10 @@ def _schedule_week_days(values: list[str]) -> list[str]:
     """Return APK weekday values, where 1 is Sunday and 7 is Saturday."""
     result = [str(value).strip() for value in values]
     if not result:
-        raise HomeAssistantError("X-Sense schedule must include at least one weekday")
+        raise xsense_error("schedule_weekday_required")
     invalid = [value for value in result if value not in {"1", "2", "3", "4", "5", "6", "7"}]
     if invalid:
-        raise HomeAssistantError("X-Sense schedule weekdays must be 1 through 7")
+        raise xsense_error("schedule_weekday_range")
     return result
 
 
@@ -1094,5 +1092,5 @@ def _non_empty_strings(values: list[str], field_name: str) -> list[str]:
     """Return stripped non-empty strings for service list fields."""
     result = [str(value).strip() for value in values if str(value).strip()]
     if not result:
-        raise HomeAssistantError(f"X-Sense {field_name} must include at least one ID")
+        raise xsense_error("ids_required", field=field_name)
     return result

@@ -9,7 +9,6 @@ from homeassistant import config_entries
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .python_xsense.async_xsense import is_camera_entity
@@ -24,6 +23,7 @@ from .entity import (
     coordinator_stations,
     device_station_id,
 )
+from .errors import xsense_error
 
 
 def has_data(key: str) -> Callable[[Entity], bool]:
@@ -114,7 +114,7 @@ def _required_bool_state(value) -> bool:
             return True
         if normalized in {"0", "false", "off"}:
             return False
-    raise HomeAssistantError("X-Sense cooldown enabled state is unknown")
+    raise xsense_error("cooldown_state_unknown")
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -410,7 +410,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_alarm_volume",
         data_key="alarmVol",
         addx_key="alarmVolume",
-        name="Alarm Volume",
+        translation_key="camera_alarm_volume",
         icon="mdi:volume-high",
         native_unit_of_measurement=PERCENTAGE,
         native_min_value=0,
@@ -422,7 +422,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_voice_volume",
         data_key="voiceVol",
         addx_key="voiceVolume",
-        name="Voice Volume",
+        translation_key="camera_voice_volume",
         icon="mdi:volume-high",
         native_unit_of_measurement=PERCENTAGE,
         native_min_value=0,
@@ -434,7 +434,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_live_speaker_volume",
         data_key="liveSpeakerVolume",
         addx_key="audio.liveSpeakerVolume",
-        name="Speaker Volume",
+        translation_key="camera_live_speaker_volume",
         icon="mdi:volume-high",
         native_unit_of_measurement=PERCENTAGE,
         native_min_value=0,
@@ -448,7 +448,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_alarm_seconds",
         data_key="alarmSeconds",
         addx_key="alarmSeconds",
-        name="Alarm Duration",
+        translation_key="camera_alarm_seconds",
         icon="mdi:timer-outline",
         native_min_value=0,
         native_max_value=300,
@@ -459,7 +459,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_night_threshold",
         data_key="nightThresholdLevel",
         addx_key="nightThresholdLevel",
-        name="Night Vision Sensitivity",
+        translation_key="camera_night_threshold",
         icon="mdi:weather-night",
         native_min_value=1,
         native_max_value=3,
@@ -470,7 +470,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_cry_detection_level",
         data_key="cryDetectLevel",
         addx_key="cryDetectLevel",
-        name="Cry Detection Sensitivity",
+        translation_key="camera_cry_detection_level",
         icon="mdi:baby-face-outline",
         native_min_value=1,
         native_max_value=3,
@@ -481,7 +481,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_cooldown",
         data_key="cooldownValue",
         addx_key="cooldown.value",
-        name="Cooldown",
+        translation_key="camera_cooldown",
         icon="mdi:timer-sand",
         native_min_value=5,
         native_max_value=300,
@@ -499,7 +499,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         key="camera_mechanical_ding_dong_duration",
         data_key="mechanicalDingDongDuration",
         addx_key="mechanicalDingDongDuration",
-        name="Mechanical Chime Duration",
+        translation_key="camera_mechanical_ding_dong_duration",
         icon="mdi:bell-ring",
         native_min_value=0,
         native_max_value=30,
@@ -586,7 +586,7 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         """Write the X-Sense numeric setting."""
         entity = self._current_entity()
         if entity is None:
-            raise HomeAssistantError("X-Sense entity is no longer available")
+            raise xsense_error("entity_unavailable")
 
         if self.entity_description.data_key in {"minRadon", "maxRadon"}:
             data_key = self.entity_description.data_key
@@ -606,7 +606,7 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
                     entity, min_radon=min_radon, max_radon=max_radon
                 )
             except ValueError as ex:
-                raise HomeAssistantError(str(ex)) from ex
+                raise xsense_error("invalid_radon_threshold") from ex
             entity.data[data_key] = int_value
         elif self.entity_description.data_key == "warnPeriod":
             int_value = round(value)
@@ -734,10 +734,10 @@ def _updated_shadow_array_values(
     """Return a paired APK range payload with one side updated."""
     values = _shadow_array_values(entity, description)
     if values is None or description.shadow_array_index is None:
-        raise HomeAssistantError("X-Sense range setting is missing its paired value")
+        raise xsense_error("range_pair_missing")
     values[description.shadow_array_index] = float(value)
     if values[0] > values[1]:
-        raise HomeAssistantError("X-Sense minimum cannot be greater than maximum")
+        raise xsense_error("minimum_greater_than_maximum")
     return values
 
 
