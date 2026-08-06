@@ -13,7 +13,7 @@ rules:
   docs-removal-instructions: todo
   entity-event-setup: todo
   entity-unique-id: todo
-  has-entity-name: todo
+  has-entity-name: done
   runtime-data: todo
   test-before-configure: todo
   test-before-setup: todo

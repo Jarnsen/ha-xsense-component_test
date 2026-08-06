@@ -350,7 +350,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_battery",
-        name="Battery Level",
+        translation_key="camera_battery",
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
@@ -370,7 +370,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="wifi_rssi_level",
-        name="Wi-Fi Signal Strength",
+        translation_key="wifi_rssi_level",
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:wifi-strength-2",
@@ -379,7 +379,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_signal_strength",
-        name="Wi-Fi Signal Strength",
+        translation_key="camera_signal_strength",
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
         state_class=SensorStateClass.MEASUREMENT,
@@ -389,7 +389,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_status_code",
-        name="Camera Status Code",
+        translation_key="camera_status_code",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:camera-metering-center",
         value_fn=data_value("cameraStatusCode"),
@@ -397,7 +397,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_firmware_version",
-        name="Firmware Version",
+        translation_key="camera_firmware_version",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:chip",
         value_fn=data_value("firmwareVersion"),
@@ -405,7 +405,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_firmware_status",
-        name="Camera Firmware Status",
+        translation_key="camera_firmware_status",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:update",
         value_fn=data_value("firmwareStatus"),
@@ -413,7 +413,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_network_name",
-        name="Wi-Fi Name (SSID)",
+        translation_key="camera_network_name",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:wifi",
         value_fn=data_value("networkName"),
@@ -421,7 +421,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_wifi_channel",
-        name="Wi-Fi Channel",
+        translation_key="camera_wifi_channel",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:wifi-cog",
         value_fn=data_value("wifiChannel"),
@@ -429,7 +429,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_wired_mac_address",
-        name="MAC Address",
+        translation_key="camera_wired_mac_address",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:ethernet",
         value_fn=data_value("wiredMacAddress"),
@@ -437,7 +437,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_sd_card_status",
-        name="SD Card Status",
+        translation_key="camera_sd_card_status",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:sd",
         value_fn=data_value("sdCardFormatStatus"),
@@ -445,7 +445,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_sd_card_total",
-        name="SD Card Total",
+        translation_key="camera_sd_card_total",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:sd",
         value_fn=data_value("sdCardTotal"),
@@ -453,7 +453,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_sd_card_used",
-        name="SD Card Used",
+        translation_key="camera_sd_card_used",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:sd",
         value_fn=data_value("sdCardUsed"),
@@ -461,7 +461,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_activated_time",
-        name="Camera Activated Time",
+        translation_key="camera_activated_time",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=data_timestamp("activatedTime"),
@@ -469,7 +469,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_offline_time",
-        name="Camera Offline Time",
+        translation_key="camera_offline_time",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=data_timestamp("offlineTime"),
@@ -477,7 +477,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_thumbnail_time",
-        name="Camera Thumbnail Time",
+        translation_key="camera_thumbnail_time",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=data_timestamp("thumbImgTime"),
@@ -485,7 +485,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_dormancy_wake_time",
-        name="Camera Dormancy Wake Time",
+        translation_key="camera_dormancy_wake_time",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=data_timestamp("deviceDormancyWakeTime"),
@@ -493,7 +493,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_dormancy_message",
-        name="Camera Dormancy Message",
+        translation_key="camera_dormancy_message",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:sleep",
         value_fn=data_value("deviceDormancyMessage"),
@@ -501,7 +501,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="camera_time_zone_area",
-        name="Device Time Zone",
+        translation_key="camera_time_zone_area",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:map-clock-outline",
         value_fn=data_value("timeZoneArea"),
@@ -509,7 +509,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="smoke_edition",
-        name="Smoke Edition",
+        translation_key="smoke_edition",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:smoke-detector-variant",
         value_fn=data_value("smokeEdition"),
@@ -517,7 +517,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="standard",
-        name="CO Alarm Standard",
+        translation_key="standard",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:certificate-outline",
         value_fn=co_alarm_standard,
@@ -525,7 +525,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="check_type",
-        name="Check Type",
+        translation_key="check_type",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:checkbox-marked-circle-outline",
         value_fn=data_value("checkType"),
@@ -533,7 +533,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="pir_interval",
-        name="PIR Interval",
+        translation_key="pir_interval",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:timer-outline",
         value_fn=data_value("pirInterval"),
@@ -541,7 +541,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="pir_sensitivity",
-        name="Sensor Sensitivity",
+        translation_key="pir_sensitivity",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:tune-variant",
         value_fn=data_value("pirSensitivity"),
@@ -549,28 +549,28 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="silence_time",
-        name="Silence Time",
+        translation_key="silence_time",
         icon="mdi:alarm-light-off",
         value_fn=data_value("silenceTime"),
         exists_fn=has_data("silenceTime"),
     ),
     XSenseSensorEntityDescription(
         key="temperature_mute_time",
-        name="Temperature Alarm Silence Time",
+        translation_key="temperature_mute_time",
         icon="mdi:thermometer-off",
         value_fn=data_value("tempMuteTime"),
         exists_fn=has_data("tempMuteTime"),
     ),
     XSenseSensorEntityDescription(
         key="water_mute_time",
-        name="Water Leak Alarm Silence Time",
+        translation_key="water_mute_time",
         icon="mdi:water-off",
         value_fn=data_value("waterMuteTime"),
         exists_fn=has_data("waterMuteTime"),
     ),
     XSenseSensorEntityDescription(
         key="short_warning",
-        name="Short-Term CO Warning",
+        translation_key="short_warning",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:alert-outline",
         value_fn=data_value("warnShort"),
@@ -578,7 +578,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="short_warning_co",
-        name="Short-Term CO Warning Level",
+        translation_key="short_warning_co",
         native_unit_of_measurement=UNIT_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
@@ -587,7 +587,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="long_warning",
-        name="Long-Term CO Warning",
+        translation_key="long_warning",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:alert",
         value_fn=data_value("warnLong"),
@@ -595,7 +595,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="long_warning_co",
-        name="Long-Term CO Warning Level",
+        translation_key="long_warning_co",
         native_unit_of_measurement=UNIT_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
@@ -604,7 +604,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="alarm_occur",
-        name="Alarm Occurrence",
+        translation_key="alarm_occur",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:alarm-light",
         value_fn=data_value("alarmOccur"),
@@ -612,7 +612,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="alarm_source",
-        name="Alarm Source",
+        translation_key="alarm_source",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:source-branch",
         value_fn=data_value("alarmSource"),
@@ -620,7 +620,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="re_alarm",
-        name="Repeated Alarm",
+        translation_key="re_alarm",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:alarm-light-outline",
         value_fn=data_value("reAlarm"),
@@ -628,7 +628,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="time",
-        name="Report Time",
+        translation_key="time",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=data_timestamp("time"),
@@ -636,7 +636,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="utc_time",
-        name="UTC Time",
+        translation_key="utc_time",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=data_timestamp("utcTime"),
@@ -644,7 +644,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="test_time",
-        name="Device Test Time",
+        translation_key="test_time",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=data_timestamp("testTime"),
@@ -668,7 +668,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="timezone",
-        name="Device Time Zone",
+        translation_key="timezone",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:map-clock-outline",
         value_fn=data_value("timeZone"),
@@ -676,7 +676,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="zone_name",
-        name="Voice Location",
+        translation_key="zone_name",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:map-marker-outline",
         value_fn=optional_data_value("zoneName"),
@@ -684,7 +684,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="location",
-        name="Location",
+        translation_key="location",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:map-marker-outline",
         value_fn=data_value("location"),
@@ -692,7 +692,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="color",
-        name="Color",
+        translation_key="color",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:palette",
         value_fn=data_value("color"),
@@ -700,7 +700,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="light_event",
-        name="Light Event",
+        translation_key="light_event",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:lightbulb-alert-outline",
         value_fn=data_value("onEvent"),
@@ -708,7 +708,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="device_type",
-        name="Device Type",
+        translation_key="device_type",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:shape-outline",
         value_fn=data_value("devType"),
@@ -716,7 +716,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="reported_device_type",
-        name="Reported Device Type",
+        translation_key="reported_device_type",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:shape-outline",
         value_fn=data_value("deviceType"),
@@ -724,7 +724,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="category",
-        name="Category",
+        translation_key="category",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:shape",
         value_fn=data_value("category"),
@@ -732,7 +732,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="safe_mode",
-        name="Security Mode",
+        translation_key="safe_mode",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:shield-home",
         value_fn=optional_data_value("safeMode"),

@@ -65,7 +65,6 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     XSenseButtonEntityDescription(
         key="test",
         translation_key="test",
-        name="Device Test",
         icon="mdi:bell-ring",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "test"),
@@ -74,7 +73,6 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     XSenseButtonEntityDescription(
         key="mute",
         translation_key="mute",
-        name="Mute",
         icon="mdi:volume-off",
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "mute"),
         press_fn=partial(run_action, action="mute"),
@@ -82,7 +80,6 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     XSenseButtonEntityDescription(
         key="fire_drill",
         translation_key="fire_drill",
-        name="Alarm Drill",
         icon="mdi:fire-alert",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "firedrill"),
@@ -90,7 +87,7 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
     ),
     XSenseButtonEntityDescription(
         key="camera_wake",
-        name="Wake Up",
+        translation_key="camera_wake",
         icon="mdi:power-sleep",
         entity_category=EntityCategory.CONFIG,
         exists_fn=can_wake_camera,

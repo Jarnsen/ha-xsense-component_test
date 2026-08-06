@@ -30,6 +30,8 @@ from custom_components.xsense import (
 from custom_components.xsense.const import CONF_RECORDING_MEDIA_SYNC_ENABLED, DOMAIN
 
 
+ROOT = Path(__file__).parents[1]
+
 ENTITY_PLATFORMS = (
     binary_sensor,
     button,
@@ -60,6 +62,13 @@ async def _setup_platform(module, coordinator):
 
     await module.async_setup_entry(hass, entry, async_add_entities)
     return calls
+
+
+def _translation_name(domain: str, key: str) -> str:
+    strings = json.loads(
+        (ROOT / "custom_components/xsense/strings.json").read_text(encoding="utf-8")
+    )
+    return strings["entity"][domain][key]["name"]
 
 
 async def test_entity_platform_setup_handles_empty_coordinator_data():
@@ -462,7 +471,8 @@ async def test_sbs50_station_entities_load_before_late_shadow_keys():
         entity
         for entity in sensor_calls[0]
         if entity.entity_description.key == "safe_mode"
-    ).entity_description.name == "Security Mode"
+    ).entity_description.translation_key == "safe_mode"
+    assert _translation_name("sensor", "safe_mode") == "Security Mode"
     assert {
         entity.entity_description.key for entity in select_calls[0]
     } >= {"alarm_tone", "led_brightness"}

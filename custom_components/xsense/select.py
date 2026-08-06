@@ -283,7 +283,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="deviceLanguage",
         addx_key="deviceLanguage",
         options_key="deviceSupportLanguage",
-        name="Language",
+        translation_key="camera_language",
         icon="mdi:translate",
         exists_fn=has_data("deviceLanguage", "deviceSupportLanguage"),
     ),
@@ -291,7 +291,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         key="camera_recording_resolution",
         data_key="recResolution",
         options_key="supportedRecordingResolutions",
-        name="Recording Resolution",
+        translation_key="camera_recording_resolution",
         icon="mdi:video",
         exists_fn=has_data("recResolution", "supportedRecordingResolutions"),
     ),
@@ -301,7 +301,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         addx_key="motionSensitivity",
         options_key="motionSensitivityOptionList",
         fixed_options=(0, 1, 2, 3),
-        name="Detection Sensitivity",
+        translation_key="camera_motion_sensitivity",
         icon="mdi:motion-sensor",
         exists_fn=has_camera_motion_sensitivity,
     ),
@@ -310,7 +310,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="videoSeconds",
         addx_key="videoSeconds",
         options_key="videoSecondsValues",
-        name="Video Duration",
+        translation_key="camera_video_seconds",
         icon="mdi:timer-outline",
         exists_fn=has_camera_video_seconds,
     ),
@@ -319,7 +319,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="antiflicker",
         addx_key="antiflicker",
         fixed_options=(50, 60),
-        name="Flicker Frequency",
+        translation_key="camera_antiflicker_rate",
         icon="mdi:lightbulb-on-10",
         exists_fn=has_supported_data("antiflicker", support_key="supportAntiFlicker"),
     ),
@@ -328,7 +328,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="defaultCodec",
         addx_key="defaultCodec",
         fixed_options=("h264", "h265"),
-        name="Default Codec",
+        translation_key="camera_default_codec",
         icon="mdi:video-settings",
         exists_fn=lambda entity: (
             is_camera_entity(entity)
@@ -342,7 +342,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="motionTrackMode",
         addx_key="motionTrackMode",
         fixed_options=(0, 1),
-        name="Motion Tracking",
+        translation_key="camera_motion_tracking_mode",
         icon="mdi:axis-arrow",
         exists_fn=has_supported_data(
             "motionTrackMode", support_key="supportMotionTrack"
@@ -353,7 +353,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="nightVisionMode",
         addx_key="nightVisionMode",
         fixed_options=(0, 1),
-        name="Night Vision Mode",
+        translation_key="camera_night_vision_mode",
         icon="mdi:weather-night",
         exists_fn=has_data("nightVisionMode"),
     ),
@@ -362,7 +362,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="cooldownValue",
         addx_key="cooldown.value",
         options_key="cooldownOptions",
-        name="Cloud Cool Down Time",
+        translation_key="camera_cooldown",
         icon="mdi:timer-sand",
         exists_fn=lambda entity: (
             is_camera_entity(entity)
@@ -378,7 +378,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="doorBellRingKey",
         addx_key="audio.doorBellRingKey",
         options_key="doorBellRingKeyOptions",
-        name="Doorbell Tone",
+        translation_key="camera_doorbell_ring_key",
         icon="mdi:bell-music",
         exists_fn=has_supported_data(
             "doorBellRingKey",
@@ -391,7 +391,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="chargeAutoPowerOnCapacity",
         addx_key="chargeAutoPowerOnCapacity",
         options_key="chargeAutoPowerOnCapacityOptions",
-        name="Auto Power-On Capacity",
+        translation_key="camera_auto_power_on_capacity",
         icon="mdi:battery-sync",
         exists_fn=has_supported_data(
             "chargeAutoPowerOnCapacity",
