@@ -4,6 +4,7 @@ from pathlib import Path
 from homeassistant.helpers.entity import UNDEFINED
 
 from custom_components.xsense import (
+    alarm_control_panel,
     binary_sensor,
     button,
     camera,
@@ -92,6 +93,14 @@ def test_entity_descriptions_have_translation_keys_or_core_device_class_names():
 
 def test_camera_entity_description_uses_device_name_only():
     assert camera.XSenseCameraEntityDescription(key="camera", name=None).name is None
+
+
+def test_alarm_control_panel_uses_translation_key():
+    source = (INTEGRATION / "alarm_control_panel.py").read_text(encoding="utf-8")
+
+    assert '_attr_translation_key = "alarm"' in source
+    assert "_attr_name" not in source
+    assert "alarm" in _entity_strings()["alarm_control_panel"]
 
 
 def test_action_exception_translation_keys_are_registered():

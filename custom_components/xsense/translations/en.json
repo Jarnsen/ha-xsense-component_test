@@ -692,6 +692,11 @@
       "camera_ai_assistant_package": {
         "name": "AI Assistant Package"
       }
+    },
+    "alarm_control_panel": {
+      "alarm": {
+        "name": "Alarm"
+      }
     }
   },
   "exceptions": {

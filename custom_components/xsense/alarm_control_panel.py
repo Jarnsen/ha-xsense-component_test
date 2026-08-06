@@ -88,7 +88,7 @@ class XSenseAlarmControlPanel(
     )
     _attr_code_arm_required = False
     _attr_has_entity_name = True
-    _attr_name = "Alarm"
+    _attr_translation_key = "alarm"
 
     def __init__(
         self,
