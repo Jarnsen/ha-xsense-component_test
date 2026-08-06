@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 import voluptuous as vol
 import voluptuous_serialize
+import homeassistant.helpers.config_validation as cv
 
 from custom_components.xsense.config_flow import (
     XSenseOptionsFlow,
@@ -89,15 +90,34 @@ def test_options_schema_accepts_recording_sync_options():
 
 
 def test_options_schema_can_be_serialized_for_home_assistant_options_ui():
-    converted = voluptuous_serialize.convert(options_schema({}))
+    converted = voluptuous_serialize.convert(
+        options_schema({}), custom_serializer=cv.custom_serializer
+    )
     storage_path_field = next(
         item
         for item in converted
         if item["name"] == CONF_RECORDING_MEDIA_STORAGE_PATH
     )
+    quality_field = next(
+        item for item in converted if item["name"] == CONF_RECORDING_NOTIFICATION_QUALITY
+    )
+    days_order_field = next(
+        item for item in converted if item["name"] == CONF_RECORDING_MEDIA_DAYS_ORDER
+    )
 
     assert storage_path_field["type"] == "string"
     assert storage_path_field["default"] == "/media/xsense_recordings"
+    assert quality_field["selector"]["select"]["translation_key"] == (
+        CONF_RECORDING_NOTIFICATION_QUALITY
+    )
+    assert quality_field["selector"]["select"]["options"] == ["HD", "SD"]
+    assert days_order_field["selector"]["select"]["translation_key"] == (
+        CONF_RECORDING_MEDIA_DAYS_ORDER
+    )
+    assert days_order_field["selector"]["select"]["options"] == [
+        "Ascending",
+        "Descending",
+    ]
 
 
 def test_options_schema_normalizes_stale_prerelease_options():

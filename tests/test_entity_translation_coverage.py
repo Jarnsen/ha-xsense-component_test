@@ -8,6 +8,7 @@ from custom_components.xsense import (
     binary_sensor,
     button,
     camera,
+    config_flow,
     number,
     select,
     sensor,
@@ -62,6 +63,11 @@ EXPECTED_EXCEPTION_KEYS = {
     "subscription_remove_twice",
     "unsupported_option",
 }
+EXPECTED_SELECTOR_KEYS = {
+    "recording_media_clips_order": {"Ascending", "Descending"},
+    "recording_media_days_order": {"Ascending", "Descending"},
+    "recording_notification_quality": {"HD", "SD"},
+}
 
 
 def _entity_strings() -> dict:
@@ -108,6 +114,23 @@ def test_action_exception_translation_keys_are_registered():
 
     assert set(exceptions) == EXPECTED_EXCEPTION_KEYS
     assert all(exceptions[key]["message"] for key in EXPECTED_EXCEPTION_KEYS)
+
+
+def test_recording_options_use_translatable_selectors():
+    strings = _strings()
+    selectors = strings["selector"]
+
+    assert set(selectors) == EXPECTED_SELECTOR_KEYS.keys()
+    for key, options in EXPECTED_SELECTOR_KEYS.items():
+        assert set(selectors[key]["options"]) == options
+
+    schema = config_flow.options_schema(include_recording_options=True)
+    for marker, validator in schema.schema.items():
+        key = marker.schema
+        if key not in EXPECTED_SELECTOR_KEYS:
+            continue
+        assert validator.config["translation_key"] == key
+        assert set(validator.config["options"]) == EXPECTED_SELECTOR_KEYS[key]
 
 
 def test_action_modules_do_not_raise_raw_homeassistant_errors():

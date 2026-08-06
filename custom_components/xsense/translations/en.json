@@ -763,5 +763,25 @@
     "mqtt_error": {
       "message": "Error talking to MQTT: {error}"
     }
+  },
+  "selector": {
+    "recording_notification_quality": {
+      "options": {
+        "HD": "HD",
+        "SD": "SD"
+      }
+    },
+    "recording_media_days_order": {
+      "options": {
+        "Ascending": "Ascending",
+        "Descending": "Descending"
+      }
+    },
+    "recording_media_clips_order": {
+      "options": {
+        "Ascending": "Ascending",
+        "Descending": "Descending"
+      }
+    }
   }
 }
