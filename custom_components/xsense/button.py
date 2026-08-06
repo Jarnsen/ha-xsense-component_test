@@ -14,7 +14,6 @@ from homeassistant import config_entries
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, LOGGER
@@ -26,6 +25,7 @@ from .entity import (
     coordinator_stations,
     device_station_id,
 )
+from .errors import xsense_error
 
 
 async def run_action(entity: Entity, xsense: AsyncXSense, action: str) -> None:
@@ -160,7 +160,7 @@ class XSenseButtonEntity(XSenseEntity, ButtonEntity):
         xsense = self.coordinator.xsense
         device = self._current_entity()
         if device is None:
-            raise HomeAssistantError("X-Sense entity is no longer available")
+            raise xsense_error("entity_unavailable")
 
         LOGGER.debug(
             "X-Sense button action requested: %s",

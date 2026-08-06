@@ -21,7 +21,6 @@ from homeassistant import config_entries
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_platform
@@ -34,6 +33,7 @@ from .entity import (
     coordinator_stations,
     device_station_id,
 )
+from .errors import xsense_error
 
 
 ATTR_ENABLED = "enabled"
@@ -916,20 +916,18 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         """Return the current SBS50 light power entity or raise if unsupported."""
         entity = self._current_entity()
         if entity is None:
-            raise HomeAssistantError("X-Sense entity is no longer available")
+            raise xsense_error("entity_unavailable")
         if self.entity_description.data_key != "on" or getattr(
             entity, "entity_type", None
         ) != EntityType.LIGHT:
-            raise HomeAssistantError(
-                f"X-Sense {service_name} require a light power switch"
-            )
+            raise xsense_error("light_power_switch_required", service=service_name)
         station = getattr(entity, "station", None)
         if not station or station.type != "SBS50":
-            raise HomeAssistantError(f"X-Sense {service_name} require an SBS50 station")
+            raise xsense_error("sbs50_station_required", service=service_name)
         if not getattr(entity, "entity_id", None) or not getattr(
             station, "entity_id", None
         ):
-            raise HomeAssistantError(f"X-Sense {service_name} IDs are missing")
+            raise xsense_error("ids_missing", service=service_name)
         return entity
 
     def _schedule_time_zone(self, time_zone: str | None) -> str:
@@ -941,7 +939,7 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         xsense = self.coordinator.xsense
         entity = self._current_entity()
         if entity is None:
-            raise HomeAssistantError("X-Sense entity is no longer available")
+            raise xsense_error("entity_unavailable")
 
         if self.entity_description.data_key == "on":
             await xsense.update_light_power(entity, enabled)
@@ -1053,11 +1051,11 @@ def _schedule_time(value: str) -> str:
         hour, minute = text.split(":", 1)
         text = f"{hour.zfill(2)}{minute.zfill(2)}"
     if len(text) != 4 or not text.isdigit():
-        raise HomeAssistantError("X-Sense schedule time must be HH:MM or HHMM")
+        raise xsense_error("invalid_schedule_time_format")
     hour = int(text[:2])
     minute = int(text[2:])
     if hour > 23 or minute > 59:
-        raise HomeAssistantError("X-Sense schedule time is out of range")
+        raise xsense_error("schedule_time_out_of_range")
     return text
 
 
@@ -1065,10 +1063,10 @@ def _schedule_week_days(values: list[str]) -> list[str]:
     """Return APK weekday values, where 1 is Sunday and 7 is Saturday."""
     result = [str(value).strip() for value in values]
     if not result:
-        raise HomeAssistantError("X-Sense schedule must include at least one weekday")
+        raise xsense_error("schedule_weekday_required")
     invalid = [value for value in result if value not in {"1", "2", "3", "4", "5", "6", "7"}]
     if invalid:
-        raise HomeAssistantError("X-Sense schedule weekdays must be 1 through 7")
+        raise xsense_error("schedule_weekday_range")
     return result
 
 
@@ -1094,5 +1092,5 @@ def _non_empty_strings(values: list[str], field_name: str) -> list[str]:
     """Return stripped non-empty strings for service list fields."""
     result = [str(value).strip() for value in values if str(value).strip()]
     if not result:
-        raise HomeAssistantError(f"X-Sense {field_name} must include at least one ID")
+        raise xsense_error("ids_required", field=field_name)
     return result

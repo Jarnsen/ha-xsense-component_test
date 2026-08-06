@@ -9,7 +9,6 @@ from homeassistant import config_entries
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
 from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .python_xsense.async_xsense import is_camera_entity
@@ -24,6 +23,7 @@ from .entity import (
     coordinator_stations,
     device_station_id,
 )
+from .errors import xsense_error
 
 
 def has_data(key: str) -> Callable[[Entity], bool]:
@@ -114,7 +114,7 @@ def _required_bool_state(value) -> bool:
             return True
         if normalized in {"0", "false", "off"}:
             return False
-    raise HomeAssistantError("X-Sense cooldown enabled state is unknown")
+    raise xsense_error("cooldown_state_unknown")
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -586,7 +586,7 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         """Write the X-Sense numeric setting."""
         entity = self._current_entity()
         if entity is None:
-            raise HomeAssistantError("X-Sense entity is no longer available")
+            raise xsense_error("entity_unavailable")
 
         if self.entity_description.data_key in {"minRadon", "maxRadon"}:
             data_key = self.entity_description.data_key
@@ -606,7 +606,7 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
                     entity, min_radon=min_radon, max_radon=max_radon
                 )
             except ValueError as ex:
-                raise HomeAssistantError(str(ex)) from ex
+                raise xsense_error("invalid_radon_threshold") from ex
             entity.data[data_key] = int_value
         elif self.entity_description.data_key == "warnPeriod":
             int_value = round(value)
@@ -734,10 +734,10 @@ def _updated_shadow_array_values(
     """Return a paired APK range payload with one side updated."""
     values = _shadow_array_values(entity, description)
     if values is None or description.shadow_array_index is None:
-        raise HomeAssistantError("X-Sense range setting is missing its paired value")
+        raise xsense_error("range_pair_missing")
     values[description.shadow_array_index] = float(value)
     if values[0] > values[1]:
-        raise HomeAssistantError("X-Sense minimum cannot be greater than maximum")
+        raise xsense_error("minimum_greater_than_maximum")
     return values
 
 

@@ -693,5 +693,70 @@
         "name": "AI Assistant Package"
       }
     }
+  },
+  "exceptions": {
+    "station_unavailable": {
+      "message": "X-Sense station is no longer available"
+    },
+    "entity_unavailable": {
+      "message": "X-Sense entity is no longer available"
+    },
+    "mqtt_not_connected": {
+      "message": "X-Sense MQTT is not connected"
+    },
+    "safe_mode_publish_failed": {
+      "message": "Could not publish X-Sense security mode command"
+    },
+    "cooldown_state_unknown": {
+      "message": "X-Sense cooldown enabled state is unknown"
+    },
+    "unsupported_option": {
+      "message": "{option} is not a supported X-Sense option"
+    },
+    "select_not_writable": {
+      "message": "X-Sense select cannot be written"
+    },
+    "invalid_radon_threshold": {
+      "message": "X-Sense radon threshold is not valid"
+    },
+    "range_pair_missing": {
+      "message": "X-Sense range setting is missing its paired value"
+    },
+    "minimum_greater_than_maximum": {
+      "message": "X-Sense minimum cannot be greater than maximum"
+    },
+    "light_power_switch_required": {
+      "message": "X-Sense {service} requires a light power switch"
+    },
+    "sbs50_station_required": {
+      "message": "X-Sense {service} requires an SBS50 station"
+    },
+    "ids_missing": {
+      "message": "X-Sense {service} IDs are missing"
+    },
+    "invalid_schedule_time_format": {
+      "message": "X-Sense schedule time must be HH:MM or HHMM"
+    },
+    "schedule_time_out_of_range": {
+      "message": "X-Sense schedule time is out of range"
+    },
+    "schedule_weekday_required": {
+      "message": "X-Sense schedule must include at least one weekday"
+    },
+    "schedule_weekday_range": {
+      "message": "X-Sense schedule weekdays must be 1 through 7"
+    },
+    "ids_required": {
+      "message": "X-Sense {field} must include at least one ID"
+    },
+    "subscription_remove_twice": {
+      "message": "Can't remove subscription twice"
+    },
+    "mqtt_topic_not_string": {
+      "message": "Topic needs to be a string"
+    },
+    "mqtt_error": {
+      "message": "Error talking to MQTT: {error}"
+    }
   }
 }

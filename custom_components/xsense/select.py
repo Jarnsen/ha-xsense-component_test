@@ -9,7 +9,6 @@ from homeassistant import config_entries
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .python_xsense.async_xsense import is_camera_entity
@@ -24,6 +23,7 @@ from .entity import (
     coordinator_stations,
     device_station_id,
 )
+from .errors import xsense_error
 
 
 def has_data(*keys: str) -> Callable[[Entity], bool]:
@@ -131,7 +131,7 @@ def _required_bool_state(value) -> bool:
             return True
         if normalized in {"0", "false", "off"}:
             return False
-    raise HomeAssistantError("X-Sense cooldown enabled state is unknown")
+    raise xsense_error("cooldown_state_unknown")
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -485,9 +485,9 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
         """Write the selected camera setting through the Android app endpoint."""
         entity = self._current_entity()
         if entity is None:
-            raise HomeAssistantError("X-Sense entity is no longer available")
+            raise xsense_error("entity_unavailable")
         if option not in self.options:
-            raise HomeAssistantError(f"{option} is not a supported X-Sense option")
+            raise xsense_error("unsupported_option", option=option)
 
         if self.entity_description.data_key == "recResolution":
             await self.coordinator.xsense.update_camera_recording_resolution(
@@ -537,7 +537,7 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
                     entity, self.entity_description.data_key, option
                 )
         else:
-            raise HomeAssistantError("X-Sense select cannot be written")
+            raise xsense_error("select_not_writable")
 
         entity.data[self.entity_description.data_key] = _typed_option(option)
         self.coordinator.async_update_listeners()
