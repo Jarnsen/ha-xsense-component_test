@@ -13,6 +13,7 @@ from .python_xsense.entity import Entity
 from .python_xsense.entity_map import EntityType, entities
 
 from homeassistant import config_entries
+from homeassistant import const as ha_const
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -20,7 +21,6 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.const import (
-    CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     EntityCategory,
@@ -36,6 +36,10 @@ from .entity import (
     coordinator_devices,
     coordinator_stations,
     device_station_id,
+)
+
+UNIT_PARTS_PER_MILLION = getattr(
+    getattr(ha_const, "UnitOfRatio", None), "PARTS_PER_MILLION", "ppm"
 )
 
 
@@ -267,7 +271,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="co",
         translation_key="co_reading",
-        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
+        native_unit_of_measurement=UNIT_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=optional_data_value("coPpm"),
@@ -276,7 +280,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="co_peak",
         translation_key="peak_co_level",
-        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
+        native_unit_of_measurement=UNIT_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=data_value("coPpmPeak"),
@@ -575,7 +579,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="short_warning_co",
         name="Short-Term CO Warning Level",
-        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
+        native_unit_of_measurement=UNIT_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=data_value("warnShortCoPpm"),
@@ -592,7 +596,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="long_warning_co",
         name="Long-Term CO Warning Level",
-        native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
+        native_unit_of_measurement=UNIT_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=data_value("warnLongCoPpm"),
