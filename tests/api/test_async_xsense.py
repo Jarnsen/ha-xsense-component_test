@@ -322,6 +322,42 @@ def _test_jwt(claims):
     return f"{header}.{payload}."
 
 
+def test_sync_login_truncates_password_to_app_limit(monkeypatch):
+    captured = {}
+
+    class CapturingAWSSRP(FakeAWSSRP):
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            super().__init__(**kwargs)
+
+    monkeypatch.setattr(base.boto3, "Session", lambda: FakeBotoSession())
+    monkeypatch.setattr(base, "AWSSRP", CapturingAWSSRP)
+
+    long_password = "Aa1!" + ("x" * 60)
+    client = _login_client()
+    client.sync_login("user@example.com", long_password)
+
+    assert captured["password"] == long_password.strip()[: base.COGNITO_PASSWORD_MAX_LENGTH]
+    assert len(captured["password"]) == base.COGNITO_PASSWORD_MAX_LENGTH
+
+
+def test_sync_login_strips_password_whitespace_before_truncation(monkeypatch):
+    captured = {}
+
+    class CapturingAWSSRP(FakeAWSSRP):
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            super().__init__(**kwargs)
+
+    monkeypatch.setattr(base.boto3, "Session", lambda: FakeBotoSession())
+    monkeypatch.setattr(base, "AWSSRP", CapturingAWSSRP)
+
+    client = _login_client()
+    client.sync_login("user@example.com", "  short-password  ")
+
+    assert captured["password"] == "short-password"
+
+
 def test_sync_login_uses_bounded_cognito_network_config(monkeypatch):
     session = FakeBotoSession()
     monkeypatch.setattr(base.boto3, "Session", lambda: session)

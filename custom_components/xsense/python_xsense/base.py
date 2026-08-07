@@ -63,6 +63,13 @@ _COGNITO_CLIENT_CONFIG = Config(
     retries={'total_max_attempts': 4, 'mode': 'standard'},
 )
 
+# APK 1400: login_password_et android:maxLength="@integer/max_psw_length" (50).
+COGNITO_PASSWORD_MAX_LENGTH = 50
+
+
+def _normalize_cognito_password(password: str) -> str:
+    return password.strip()[:COGNITO_PASSWORD_MAX_LENGTH]
+
 
 class XSenseBase:
     API = 'https://api.x-sense-iot.com'
@@ -118,6 +125,7 @@ class XSenseBase:
 
     def sync_login(self, username, password):
         self.username = username
+        password = _normalize_cognito_password(password)
         session = boto3.Session()
         cognito = session.client(
             'cognito-idp', region_name=self.region, config=_COGNITO_CLIENT_CONFIG
