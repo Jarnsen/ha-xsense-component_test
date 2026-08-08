@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import suppress
 from dataclasses import dataclass
 from importlib import import_module
 
@@ -187,8 +186,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
     @property
     def is_streaming(self) -> bool:
         """Return whether the camera has an active live stream session."""
-        entity = self._current_entity()
-        return entity is not None and bool(entity.data.get("cameraLiveUrl"))
+        return False
 
     async def async_camera_image(
         self, width: int | None = None, height: int | None = None
@@ -211,14 +209,6 @@ class XSenseCameraEntity(XSenseEntity, Camera):
     async def stream_source(self) -> str | None:
         """Return a live stream URL when the X-Sense camera service provides one."""
         return None
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Stop any live view session when Home Assistant removes the entity."""
-        entity = self._current_entity()
-        if entity is not None and entity.data.get("cameraLiveUrl"):
-            with suppress(Exception):
-                await self.coordinator.xsense.stop_camera_live(entity)
-        await super().async_will_remove_from_hass()
 
 
 class XSenseWebRTCCameraEntity(XSenseCameraEntity):

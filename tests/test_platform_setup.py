@@ -20,7 +20,7 @@ from custom_components.xsense import (
     camera,
     config_flow,
     event,
-    media_source,
+    recordings_media as media_source,
     number,
     repairs,
     select,
@@ -31,6 +31,22 @@ from custom_components.xsense.const import CONF_RECORDING_MEDIA_SYNC_ENABLED, DO
 
 
 ROOT = Path(__file__).parents[1]
+
+
+def _recordings_panel_test_hass(**kwargs):
+    """Return a hass stub that passes recordings HTTP runtime gating."""
+    coordinator = SimpleNamespace(
+        data={
+            "stations": {"camera": SimpleNamespace(type="SSC0A")},
+            "devices": {},
+        }
+    )
+    domain_data = {
+        "_recordings_http_views_registered": True,
+        "entry-id": coordinator,
+    }
+    return SimpleNamespace(data={DOMAIN: domain_data}, **kwargs)
+
 
 ENTITY_PLATFORMS = (
     binary_sensor,
@@ -903,12 +919,20 @@ def test_unload_cancels_pending_recording_cache_tasks(monkeypatch):
     assert DOMAIN not in hass.data
 
 
-def test_integration_setup_registers_global_recording_routes(monkeypatch):
+def test_integration_setup_registers_lifetime_recording_assets(monkeypatch):
     calls = []
 
-    async def async_register_recordings_http_views(hass):
-        calls.append(hass)
+    async def async_register_recordings_static_paths(hass):
+        calls.append(("static_paths", hass))
 
+    async def async_register_recordings_http_views(hass):
+        calls.append(("http_views", hass))
+
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recordings_static_paths",
+        async_register_recordings_static_paths,
+    )
     monkeypatch.setattr(
         xsense_module,
         "async_register_recordings_http_views",
@@ -917,7 +941,58 @@ def test_integration_setup_registers_global_recording_routes(monkeypatch):
     hass = SimpleNamespace()
 
     assert asyncio.run(xsense_module.async_setup(hass, {})) is True
-    assert calls == [hass]
+    assert calls == [("static_paths", hass), ("http_views", hass)]
+
+
+def test_media_source_platform_shim_exposes_async_get_media_source():
+    from custom_components.xsense import media_source as media_source_platform
+
+    assert hasattr(media_source_platform, "async_get_media_source")
+    assert media_source_platform.async_get_media_source.__module__.endswith(
+        "custom_components.xsense.media_source"
+    )
+
+
+def test_cleanup_recordings_runtime_clears_platform_registered_media_source(monkeypatch):
+    from custom_components.xsense.recordings_media import XSenseRecordingsMediaSource
+
+    class LazyPlatforms:
+        def __init__(self):
+            self._processed = {
+                DOMAIN: XSenseRecordingsMediaSource(SimpleNamespace(data={DOMAIN: {}}))
+            }
+
+    hass = SimpleNamespace(
+        data={
+            DOMAIN: {},
+            "media_source_platforms": LazyPlatforms(),
+        }
+    )
+
+    monkeypatch.setattr(
+        "homeassistant.components.media_source.const.DATA_MEDIA_SOURCE_PLATFORMS",
+        "media_source_platforms",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recordings_panel",
+        lambda hass: None,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recording_services",
+        lambda hass: None,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_clear_recording_event_clips",
+        lambda hass, entry_id=None: None,
+    )
+
+    xsense_module._cleanup_recordings_runtime(hass)
+
+    assert hass.data["media_source_platforms"]._processed[DOMAIN] is None
 
 
 def test_ai_notification_blueprint_filters_by_selected_event_entity():
@@ -1630,6 +1705,11 @@ def test_recordings_runtime_cleanup_removes_stale_non_camera_runtime(monkeypatch
 
     monkeypatch.setattr(
         xsense_module,
+        "async_stop_recording_media_sync",
+        lambda hass, entry_id: calls.append(("stop_sync", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
         "async_remove_recording_index",
         lambda hass, entry_id: calls.append(("remove_index", entry_id)),
     )
@@ -1643,13 +1723,27 @@ def test_recordings_runtime_cleanup_removes_stale_non_camera_runtime(monkeypatch
         "async_unregister_recording_services",
         lambda hass: calls.append("recording_services"),
     )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recordings_media_source",
+        lambda hass: calls.append("recording_media_source"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_clear_recording_event_clips",
+        lambda hass, entry_id=None: calls.append(("event_clips", entry_id)),
+    )
 
     xsense_module._cleanup_recordings_runtime(SimpleNamespace(), "xcom-entry")
 
     assert calls == [
+        ("stop_sync", "xcom-entry"),
         ("remove_index", "xcom-entry"),
+        ("event_clips", "xcom-entry"),
         "recordings_panel",
         "recording_services",
+        "recording_media_source",
+        ("event_clips", None),
     ]
 
 
@@ -1690,12 +1784,18 @@ def test_recordings_runtime_cleanup_keeps_shared_runtime_for_other_camera_entry(
         "async_unregister_recording_services",
         lambda hass: calls.append("recording_services"),
     )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_clear_recording_event_clips",
+        lambda hass, entry_id=None: calls.append(("event_clips", entry_id)),
+    )
 
     xsense_module._cleanup_recordings_runtime(hass, "sensor-only-entry")
 
     assert calls == [
         ("stop_sync", "sensor-only-entry"),
         ("remove_index", "sensor-only-entry"),
+        ("event_clips", "sensor-only-entry"),
     ]
 
 
@@ -1940,7 +2040,6 @@ def test_setup_entry_registers_recordings_runtime_with_cameras(monkeypatch):
     assert ("cleanup", "entry-camera") not in calls
     assert "recordings_panel" in calls
     assert "recordings_http_views" not in calls
-
     assert "recording_services" in calls
     assert "recording_media_sync" in calls
 
@@ -2063,7 +2162,6 @@ def test_setup_entry_registers_recordings_runtime_when_camera_appears_later(
 
     assert "recordings_panel" in calls
     assert "recordings_http_views" not in calls
-
     assert "recording_services" in calls
     assert "recording_media_sync" in calls
 
@@ -2080,8 +2178,23 @@ def test_recordings_runtime_unload_unregisters_after_last_camera(monkeypatch):
 
     monkeypatch.setattr(
         xsense_module,
+        "async_cancel_recording_cache_tasks",
+        lambda hass, entry_id: calls.append(("cancel_cache", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_stop_recording_media_sync",
+        lambda hass, entry_id: calls.append(("stop_sync", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
         "async_remove_recording_index",
         lambda hass, entry_id: calls.append(("remove_index", entry_id)),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_clear_recording_event_clips",
+        lambda hass, entry_id=None: calls.append(("event_clips", entry_id)),
     )
     monkeypatch.setattr(
         xsense_module,
@@ -2109,15 +2222,19 @@ def test_recordings_runtime_unload_unregisters_after_last_camera(monkeypatch):
 
     assert asyncio.run(xsense_module.async_unload_entry(hass, entry))
     assert calls == [
+        ("cancel_cache", "camera-entry"),
+        ("stop_sync", "camera-entry"),
         ("remove_index", "camera-entry"),
+        ("event_clips", "camera-entry"),
         "shutdown",
         "recordings_panel",
         "recording_services",
+        ("event_clips", None),
     ]
 
 
 def test_recordings_runtime_unregister_helpers(monkeypatch):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     removed_services = []
 
@@ -2208,6 +2325,149 @@ def test_recordings_panel_video_uses_authenticated_blob_playback():
     assert 'src="${clip.playback_url}"' not in panel
 
 
+def test_recordings_static_paths_register_once(monkeypatch):
+    from custom_components.xsense import frontend
+
+    static_paths = []
+
+    class Http:
+        async def async_register_static_paths(self, paths):
+            static_paths.extend(paths)
+
+    hass = SimpleNamespace(data={}, http=Http())
+
+    asyncio.run(frontend.async_register_recordings_static_paths(hass))
+    asyncio.run(frontend.async_register_recordings_static_paths(hass))
+
+    assert len(static_paths) == 1
+    assert hass.data[DOMAIN]["_recordings_static_paths_registered"] is True
+
+
+def test_recordings_entry_reload_reregisters_panel_without_duplicate_assets(monkeypatch):
+    calls = []
+
+    async def async_register_recordings_panel(hass):
+        calls.append("recordings_panel")
+
+    def async_unregister_recordings_panel(hass):
+        calls.append("recordings_panel_removed")
+
+    class Coordinator:
+        data = {
+            "stations": {},
+            "devices": {"camera": SimpleNamespace(type="SSC0A")},
+        }
+
+        def __init__(self, hass, entry):
+            self.hass = hass
+            self.entry = entry
+
+        async def async_config_entry_first_refresh(self):
+            return None
+
+        def async_start_camera_ai_history_polling(self, *, immediate=True):
+            return None
+
+        def async_schedule_deferred_refresh(self):
+            return None
+
+        async def async_shutdown(self):
+            return None
+
+    class ConfigEntries:
+        async def async_unload_platforms(self, entry, platforms):
+            return True
+
+        async def async_forward_entry_setups(self, entry, platforms):
+            return None
+
+    class Bus:
+        def async_listen_once(self, event, callback):
+            return lambda: None
+
+    class Entry:
+        entry_id = "camera-entry"
+        options = {}
+
+        def add_update_listener(self, listener):
+            return lambda: None
+
+        def async_on_unload(self, unload):
+            return None
+
+    monkeypatch.setattr(xsense_module, "XSenseDataUpdateCoordinator", Coordinator)
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recordings_panel",
+        async_register_recordings_panel,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recordings_panel",
+        async_unregister_recordings_panel,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "_cleanup_recordings_entry",
+        lambda hass, entry_id: None,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_cancel_recording_cache_tasks",
+        lambda hass, entry_id: None,
+    )
+    async def async_register_recording_services(hass):
+        calls.append("recording_services")
+
+    monkeypatch.setattr(
+        xsense_module,
+        "async_register_recording_services",
+        async_register_recording_services,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_unregister_recording_services",
+        lambda hass: calls.append("recording_services_removed"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_start_recording_media_sync",
+        lambda hass, entry: calls.append("recording_media_sync"),
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "_schedule_startup_maintenance",
+        lambda hass, entry, coordinator: None,
+    )
+    monkeypatch.setattr(xsense_module, "async_track_time_interval", lambda *args, **kwargs: lambda: None)
+
+    hass = SimpleNamespace(
+        config_entries=ConfigEntries(),
+        data={
+            DOMAIN: {
+                "_recordings_http_views_registered": True,
+                "_recordings_static_paths_registered": True,
+            }
+        },
+        bus=Bus(),
+        is_running=True,
+    )
+    entry = Entry()
+
+    assert asyncio.run(xsense_module.async_setup_entry(hass, entry))
+    assert "recordings_panel" in calls
+
+    assert asyncio.run(xsense_module.async_unload_entry(hass, entry))
+    assert "recordings_panel_removed" in calls
+    assert "recording_services_removed" in calls
+    assert hass.data[DOMAIN]["_recordings_http_views_registered"] is True
+
+    calls.clear()
+    assert asyncio.run(xsense_module.async_setup_entry(hass, entry))
+    assert calls.count("recordings_panel") == 1
+    assert "recordings_http_views" not in calls
+
+
 def test_recordings_http_registration_adds_panel_views():
     from custom_components.xsense import http
 
@@ -2288,7 +2548,9 @@ def test_recordings_panel_debug_view_logs_sanitized_payload(caplog):
 
     caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
 
-    response = asyncio.run(http.XSenseRecordingsPanelDebugView(None).post(Request()))
+    response = asyncio.run(
+        http.XSenseRecordingsPanelDebugView(_recordings_panel_test_hass()).post(Request())
+    )
 
     assert response.status == 200
     assert "X-Sense recordings panel frontend debug payload received" in caplog.text
@@ -2318,7 +2580,7 @@ def test_recordings_panel_data_exposes_cache_backed_clips(monkeypatch):
         "_file_size",
         lambda path: 123 if str(path).endswith(".mp4") else 45,
     )
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )
@@ -2382,7 +2644,7 @@ def test_recordings_panel_data_prefers_hls_over_legacy_mp4(monkeypatch):
     monkeypatch.setattr(http, "_hls_ready", lambda clip: True)
     monkeypatch.setattr(http, "_file_size", lambda path: 123)
     monkeypatch.setattr(http, "_directory_size", lambda path: 777)
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )
@@ -2427,7 +2689,7 @@ def test_recordings_panel_data_omits_missing_thumbnail_url(monkeypatch):
     from custom_components.xsense import http
 
     monkeypatch.setattr(http, "_path_ready", lambda path: False)
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )
@@ -2467,7 +2729,7 @@ def test_recordings_panel_data_counts_video_ready_without_thumbnail(monkeypatch)
     monkeypatch.setattr(http, "_path_ready", lambda path: False)
     monkeypatch.setattr(http, "_mp4_ready", lambda path: str(path).endswith(".mp4"))
     monkeypatch.setattr(http, "_file_size", lambda path: 123)
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )
@@ -2510,7 +2772,7 @@ def test_recordings_panel_data_hides_invalid_test_fixture_clips(monkeypatch):
     from custom_components.xsense import http
 
     monkeypatch.setattr(http, "_path_ready", lambda path: False)
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )
@@ -2549,7 +2811,7 @@ def test_recordings_panel_playback_serves_cached_file(monkeypatch, tmp_path):
     from aiohttp import web
 
     from custom_components.xsense import http
-    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
+    from custom_components.xsense.recordings_media import XSenseRecordingsMediaSource
 
     clip_path = tmp_path / "clip.mp4"
     clip_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00cached")
@@ -2582,7 +2844,7 @@ def test_recordings_panel_playback_serves_cached_file(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(http, "_clip_cache_path", lambda current_clip: clip_path)
     monkeypatch.setattr(http, "_path_ready", lambda path: path == clip_path)
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )
@@ -2608,8 +2870,8 @@ def test_recordings_panel_playback_serves_hls_before_legacy_mp4(
 ):
     from aiohttp import web
 
-    from custom_components.xsense import http, media_source
-    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
+    from custom_components.xsense import http, recordings_media as media_source
+    from custom_components.xsense.recordings_media import XSenseRecordingsMediaSource
 
     clip_path = tmp_path / "clip.mp4"
     clip_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00legacy")
@@ -2656,8 +2918,7 @@ def test_recordings_panel_playback_serves_hls_before_legacy_mp4(
         "_hls_playlist_cache_path",
         lambda current_clip: playlist,
     )
-    hass = SimpleNamespace(
-        data={},
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         ),
@@ -2687,7 +2948,7 @@ def test_recordings_panel_playback_ignores_capture_query_and_uses_direct_media(
     from aiohttp import web
 
     from custom_components.xsense import http
-    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
+    from custom_components.xsense.recordings_media import XSenseRecordingsMediaSource
 
     clip_path = tmp_path / "clip.mp4"
     clip_path.write_bytes(b"direct")
@@ -2726,7 +2987,7 @@ def test_recordings_panel_playback_ignores_capture_query_and_uses_direct_media(
     )
     monkeypatch.setattr(http, "_clip_cache_path", lambda current_clip: clip_path)
     monkeypatch.setattr(http, "_path_ready", lambda path: path == clip_path and path.exists())
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )
@@ -2758,7 +3019,7 @@ def test_recordings_panel_playback_waits_for_sync_when_sync_enabled(
 
     from custom_components.xsense import http
     from custom_components.xsense.const import CONF_RECORDING_MEDIA_SYNC_ENABLED
-    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
+    from custom_components.xsense.recordings_media import XSenseRecordingsMediaSource
 
     clip_path = tmp_path / "clip.mp4"
     clip = {
@@ -2790,7 +3051,7 @@ def test_recordings_panel_playback_waits_for_sync_when_sync_enabled(
         cached_url,
     )
     monkeypatch.setattr(http, "_clip_cache_path", lambda current_clip: clip_path)
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(
                 data={},
@@ -2818,7 +3079,7 @@ def test_recordings_panel_playback_rejects_missing_clip(
     from aiohttp import web
 
     from custom_components.xsense import http
-    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
+    from custom_components.xsense.recordings_media import XSenseRecordingsMediaSource
 
     async def load_index(self):
         return {
@@ -2833,7 +3094,7 @@ def test_recordings_panel_playback_rejects_missing_clip(
         }
 
     monkeypatch.setattr(XSenseRecordingsMediaSource, "_async_load_index", load_index)
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )
@@ -2857,7 +3118,7 @@ def test_recordings_panel_playback_does_not_redirect_to_external_media(
     from aiohttp import web
 
     from custom_components.xsense import http
-    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
+    from custom_components.xsense.recordings_media import XSenseRecordingsMediaSource
 
     clip_path = tmp_path / "clip.mp4"
     clip = {
@@ -2889,7 +3150,7 @@ def test_recordings_panel_playback_does_not_redirect_to_external_media(
     )
     monkeypatch.setattr(http, "_clip_cache_path", lambda current_clip: clip_path)
     monkeypatch.setattr(http, "_path_ready", lambda path: False)
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )
@@ -2915,7 +3176,7 @@ def test_recordings_panel_thumbnail_does_not_redirect_to_external_media(
     from aiohttp import web
 
     from custom_components.xsense import http
-    from custom_components.xsense.media_source import XSenseRecordingsMediaSource
+    from custom_components.xsense.recordings_media import XSenseRecordingsMediaSource
 
     thumb_path = tmp_path / "thumb.jpg"
     clip = {
@@ -2948,7 +3209,7 @@ def test_recordings_panel_thumbnail_does_not_redirect_to_external_media(
     )
     monkeypatch.setattr(http, "_clip_thumbnail_cache_path", lambda current_clip: thumb_path)
     monkeypatch.setattr(http, "_path_ready", lambda path: False)
-    hass = SimpleNamespace(
+    hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
             async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
         )

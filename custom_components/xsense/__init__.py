@@ -27,15 +27,24 @@ from .const import (
 )
 from .coordinator import XSenseDataUpdateCoordinator
 from .event import async_cancel_recording_cache_tasks
-from .frontend import async_register_recordings_panel, async_unregister_recordings_panel
+from .frontend import (
+    async_register_recordings_panel,
+    async_register_recordings_static_paths,
+    async_unregister_recordings_panel,
+)
 from .http import async_register_recordings_http_views
-from .media_source import (
+from .recordings_media import (
+    async_clear_recording_event_clips,
     async_register_recording_services,
+    async_register_recordings_media_source,
     async_remove_recording_index,
     async_start_recording_media_sync,
     async_stop_recording_media_sync,
     async_unregister_recording_services,
+    async_unregister_recordings_media_source,
+    _looks_like_coordinator,
 )
+from .recordings_gate import has_any_camera_entities, has_camera_entities
 from .repairs import async_check_stale_camera_blueprints
 
 PLATFORMS: list[Platform] = [
@@ -236,43 +245,70 @@ def _create_entry_task(
     return hass.create_task(coro)
 
 
+_LIFETIME_DOMAIN_KEYS = frozenset(
+    {
+        "_recordings_http_views_registered",
+        "_recordings_static_paths_registered",
+    }
+)
+
+
+def _prune_domain_data_after_unload(hass: HomeAssistant) -> None:
+    """Keep integration lifetime state while removing unloaded entry data."""
+    domain_data = hass.data.get(DOMAIN)
+    if not isinstance(domain_data, dict):
+        return
+    if any(
+        _looks_like_coordinator(value)
+        for value in domain_data.values()
+    ):
+        return
+    remaining = {
+        key: value
+        for key, value in domain_data.items()
+        if key in _LIFETIME_DOMAIN_KEYS
+    }
+    if remaining:
+        hass.data[DOMAIN] = remaining
+    else:
+        hass.data.pop(DOMAIN, None)
+
+
 def _has_camera_entities(data) -> bool:
     """Return whether refreshed X-Sense account data contains cameras."""
-    for entity in (
-        *data.get("stations", {}).values(),
-        *data.get("devices", {}).values(),
-    ):
-        with suppress(AttributeError):
-            if is_camera_entity(entity):
-                return True
-    return False
+    return has_camera_entities(data)
 
 
 def _has_any_camera_entities(hass: HomeAssistant) -> bool:
     """Return whether any loaded X-Sense entry currently contains cameras."""
-    for coordinator in getattr(hass, "data", {}).get(DOMAIN, {}).values():
-        data = getattr(coordinator, "data", None)
-        if isinstance(data, dict) and _has_camera_entities(data):
-            return True
-    return False
+    return has_any_camera_entities(hass)
+
+
+def _cleanup_recordings_entry(hass: HomeAssistant, entry_id: str) -> None:
+    """Stop entry-owned recordings work during unload or camera removal."""
+    async_stop_recording_media_sync(hass, entry_id)
+    async_remove_recording_index(hass, entry_id)
+    async_clear_recording_event_clips(hass, entry_id)
 
 
 def _cleanup_recordings_runtime(hass: HomeAssistant, entry_id: str | None = None) -> None:
-    """Remove recordings UI/runtime pieces when no X-Sense cameras are present."""
+    """Remove reloadable recordings UI/runtime pieces when no cameras are present."""
     if entry_id:
-        async_stop_recording_media_sync(hass, entry_id)
-        async_remove_recording_index(hass, entry_id)
+        _cleanup_recordings_entry(hass, entry_id)
     if not _has_any_camera_entities(hass):
         async_unregister_recordings_panel(hass)
         async_unregister_recording_services(hass)
+        async_unregister_recordings_media_source(hass)
+        async_clear_recording_event_clips(hass)
 
 
 async def _async_register_recordings_runtime(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> None:
-    """Register recordings UI/runtime pieces once cameras are present."""
+    """Register reloadable recordings UI/runtime pieces once cameras are present."""
     await async_register_recordings_panel(hass)
     await async_register_recording_services(hass)
+    async_register_recordings_media_source(hass)
     async_start_recording_media_sync(hass, entry)
 
 
@@ -809,6 +845,7 @@ def _schedule_startup_maintenance(
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up integration-wide X-Sense resources."""
+    await async_register_recordings_static_paths(hass)
     await async_register_recordings_http_views(hass)
     return True
 
@@ -889,13 +926,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry.entry_id, None
         )
         async_cancel_recording_cache_tasks(hass, entry.entry_id)
-        async_remove_recording_index(hass, entry.entry_id)
+        _cleanup_recordings_entry(hass, entry.entry_id)
         if coordinator is not None:
             await coordinator.async_shutdown()
         if not _has_any_camera_entities(hass):
             _cleanup_recordings_runtime(hass)
-        if not hass.data.get(DOMAIN):
-            hass.data.pop(DOMAIN, None)
+        _prune_domain_data_after_unload(hass)
 
     return unload_ok
 

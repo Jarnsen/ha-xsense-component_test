@@ -15,7 +15,7 @@ FRONTEND_URL_PATH = "xsense-recordings"
 STATIC_URL_PATH = f"/{DOMAIN}_recordings_static"
 PANEL_ELEMENT_NAME = "xsense-recordings-panel"
 PANEL_TITLE = "X-Sense Recordings"
-PANEL_ASSET_VERSION = "1.4.16.1"
+PANEL_ASSET_VERSION = "1.4.17"
 
 
 def _recordings_panel_module_url() -> str:
@@ -23,10 +23,10 @@ def _recordings_panel_module_url() -> str:
     return f"{STATIC_URL_PATH}/recordings-panel.js?v={PANEL_ASSET_VERSION}"
 
 
-async def async_register_recordings_panel(hass: HomeAssistant) -> None:
-    """Register the X-Sense recordings sidebar panel once."""
+async def async_register_recordings_static_paths(hass: HomeAssistant) -> None:
+    """Register recordings panel assets once for the lifetime of Home Assistant."""
     domain_data = hass.data.setdefault(DOMAIN, {})
-    if domain_data.get("_recordings_panel_registered"):
+    if domain_data.get("_recordings_static_paths_registered"):
         return
 
     frontend_path = Path(__file__).parent / "frontend"
@@ -39,6 +39,16 @@ async def async_register_recordings_panel(hass: HomeAssistant) -> None:
             )
         ]
     )
+    domain_data["_recordings_static_paths_registered"] = True
+
+
+async def async_register_recordings_panel(hass: HomeAssistant) -> None:
+    """Register the X-Sense recordings sidebar panel once cameras are present."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if domain_data.get("_recordings_panel_registered"):
+        return
+
+    await async_register_recordings_static_paths(hass)
     await panel_custom.async_register_panel(
         hass=hass,
         frontend_url_path=FRONTEND_URL_PATH,

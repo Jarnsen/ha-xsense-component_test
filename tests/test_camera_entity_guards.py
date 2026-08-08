@@ -36,6 +36,19 @@ def entity(device_type, data):
     return SimpleNamespace(type=device_type, data=data)
 
 
+def _recordings_media_source_hass(**kwargs):
+    """Return a hass stub that passes recordings media-source camera gating."""
+    from custom_components.xsense.const import DOMAIN
+
+    coordinator = SimpleNamespace(
+        data={
+            "stations": {"camera": SimpleNamespace(type="SSC0A")},
+            "devices": {},
+        }
+    )
+    return SimpleNamespace(data={DOMAIN: {"entry-id": coordinator}}, **kwargs)
+
+
 def routed_entity(device_type, data, *, station_type="SBS50"):
     station = SimpleNamespace(
         type=station_type,
@@ -1439,7 +1452,7 @@ def test_motion_event_entity_replaces_direct_recording_url_with_panel_link(monke
 
 
 def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     camera_entity = entity(
         "SSC0A",
@@ -1604,7 +1617,7 @@ def test_motion_event_entity_updates_state_only_when_recording_cache_returns_no_
     monkeypatch,
     caplog,
 ):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     camera_entity = entity(
         "SSC0A",
@@ -1697,7 +1710,7 @@ def test_motion_event_cache_replaces_absolute_recordings_panel_url(monkeypatch):
         return "/media/local/xsense_recordings/videos/clip.mp4"
 
     monkeypatch.setattr(
-        "custom_components.xsense.media_source.async_cache_recording_playback",
+        "custom_components.xsense.recordings_media.async_cache_recording_playback",
         cache_recording,
     )
 
@@ -1751,7 +1764,7 @@ def test_motion_event_cache_replaces_raw_recording_url_with_panel_link(
         return "/media/local/xsense_recordings/videos/clip.mp4"
 
     monkeypatch.setattr(
-        "custom_components.xsense.media_source.async_cache_recording_playback",
+        "custom_components.xsense.recordings_media.async_cache_recording_playback",
         cache_recording,
     )
 
@@ -1815,7 +1828,7 @@ def test_recordings_panel_url_detection_rejects_lookalikes():
 
 
 def test_recording_media_source_ignores_time_only_record_without_direct_video_url():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     cameras = [
         {
@@ -1840,7 +1853,7 @@ def test_recording_media_source_ignores_time_only_record_without_direct_video_ur
 
 
 def test_recording_clip_from_playback_accepts_raw_apk_time_fields():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     clip = media_source._recording_clip_from_playback(
         "entry-id",
@@ -1861,7 +1874,7 @@ def test_recording_clip_from_playback_accepts_raw_apk_time_fields():
 
 
 def test_recording_clip_from_playback_normalizes_ms_time_fields():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     clip = media_source._recording_clip_from_playback(
         "entry-id",
@@ -1881,7 +1894,7 @@ def test_recording_clip_from_playback_normalizes_ms_time_fields():
 
 
 def test_recording_media_source_preserves_direct_video_url():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     clip = media_source._recording_clip_from_record(
         "entry-id",
@@ -1908,7 +1921,7 @@ def test_recording_media_source_preserves_direct_video_url():
 
 
 def test_recording_media_source_prefers_hd_direct_video_candidate():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     clip = media_source._recording_clip_from_playback(
         "entry-id",
@@ -1938,7 +1951,7 @@ def test_recording_media_source_prefers_hd_direct_video_candidate():
 
 
 def test_recording_media_source_prefers_sd_direct_video_candidate_when_requested():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     clip = media_source._recording_clip_from_playback(
         "entry-id",
@@ -1970,7 +1983,7 @@ def test_recording_media_source_prefers_sd_direct_video_candidate_when_requested
 
 
 def test_recording_media_source_requires_direct_url_for_playable_clip():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     assert media_source._clip_media_playable(
         {"source": "video_url", "playback_url": "https://example.invalid/clip.mp4"}
@@ -1981,7 +1994,7 @@ def test_recording_media_source_requires_direct_url_for_playable_clip():
 
 
 def test_recording_media_source_clip_duration_uses_normalized_bounds():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     assert media_source._clip_duration({"start": 100, "end": 130}) == 30
     assert media_source._clip_duration({"start": 100, "end": 100}) is None
@@ -1989,7 +2002,7 @@ def test_recording_media_source_clip_duration_uses_normalized_bounds():
 
 
 def test_cache_recording_playback_returns_cached_media_url(monkeypatch, tmp_path):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     ready = False
 
@@ -2040,7 +2053,7 @@ def test_cache_recording_playback_does_not_trust_unvalidated_cache_url(
     monkeypatch,
     tmp_path,
 ):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     async def cached_url(self, clip):
         return "/media/local/xsense_custom/videos/not-actually-ready.mp4"
@@ -2075,7 +2088,7 @@ def test_cache_recording_playback_does_not_trust_unvalidated_cache_url(
 
 
 def test_cache_recording_playback_requires_linkable_media_url(monkeypatch, tmp_path):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     async def cached_url(self, clip):
         return "/media/local/xsense_custom/videos/clip.mp4"
@@ -2111,9 +2124,9 @@ def test_cache_recording_playback_requires_linkable_media_url(monkeypatch, tmp_p
 
 
 def test_recording_media_source_resolve_includes_local_path(monkeypatch, tmp_path):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
-    source = media_source.XSenseRecordingsMediaSource(SimpleNamespace())
+    source = media_source.XSenseRecordingsMediaSource(_recordings_media_source_hass())
     output_path = tmp_path / "clip.mp4"
     clip = {
         "entry_id": "entry-id",
@@ -2168,9 +2181,9 @@ def test_recording_media_source_does_not_fall_back_to_external_video_url(
     monkeypatch,
     tmp_path,
 ):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
-    source = media_source.XSenseRecordingsMediaSource(SimpleNamespace())
+    source = media_source.XSenseRecordingsMediaSource(_recordings_media_source_hass())
     clip = {
         "source": "video_url",
         "entry_id": "entry-id",
@@ -2192,7 +2205,7 @@ def test_recording_media_source_does_not_fall_back_to_external_video_url(
 
 
 def test_recording_media_source_rejects_non_mp4_direct_cache(tmp_path):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     empty_path = tmp_path / "empty.mp4"
     empty_path.write_bytes(b"")
@@ -2215,9 +2228,9 @@ def test_recording_media_source_does_not_fall_back_to_sd_when_direct_download_no
 ):
     from homeassistant.components.media_source.error import Unresolvable
 
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
-    source = media_source.XSenseRecordingsMediaSource(SimpleNamespace())
+    source = media_source.XSenseRecordingsMediaSource(_recordings_media_source_hass())
     output_path = tmp_path / "clip.mp4"
     clip = {
         "source": "video_url",
@@ -2284,9 +2297,9 @@ def test_recording_media_source_caches_hd_hls_without_sd_fallback(
     monkeypatch,
     tmp_path,
 ):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
-    source = media_source.XSenseRecordingsMediaSource(SimpleNamespace())
+    source = media_source.XSenseRecordingsMediaSource(_recordings_media_source_hass())
     output_path = tmp_path / "clip.mp4"
     clip = {
         "source": "video_url",
@@ -2384,9 +2397,9 @@ def test_recording_media_source_prefers_hls_cache_over_legacy_mp4(
     monkeypatch,
     tmp_path,
 ):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
-    source = media_source.XSenseRecordingsMediaSource(SimpleNamespace())
+    source = media_source.XSenseRecordingsMediaSource(_recordings_media_source_hass())
     output_path = tmp_path / "clip.mp4"
     output_path.write_bytes(b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00legacy")
     playlist = tmp_path / "hls" / "index.m3u8"
@@ -2434,7 +2447,7 @@ def test_recording_media_source_hls_master_ready_with_one_buffered_variant(
     monkeypatch,
     tmp_path,
 ):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     clip = {
         "entry_id": "entry-id",
@@ -2478,7 +2491,7 @@ def test_recording_media_source_lazy_shows_uncached_direct_clips_when_sync_disab
     monkeypatch,
     tmp_path,
 ):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     clip = {
         "entry_id": "entry-id",
@@ -2491,7 +2504,7 @@ def test_recording_media_source_lazy_shows_uncached_direct_clips_when_sync_disab
         "media_root": tmp_path.as_posix(),
     }
     source = media_source.XSenseRecordingsMediaSource(
-        SimpleNamespace(
+        _recordings_media_source_hass(
             config_entries=SimpleNamespace(
                 async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
             )
@@ -2532,7 +2545,7 @@ def test_recording_media_source_lazy_shows_uncached_direct_clips_when_sync_disab
 
 
 def test_recording_media_source_sync_hides_uncached_clips(monkeypatch, tmp_path):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
     from custom_components.xsense.const import CONF_RECORDING_MEDIA_SYNC_ENABLED
 
     clips = [
@@ -2556,7 +2569,7 @@ def test_recording_media_source_sync_hides_uncached_clips(monkeypatch, tmp_path)
         },
     ]
     source = media_source.XSenseRecordingsMediaSource(
-        SimpleNamespace(
+        _recordings_media_source_hass(
             config_entries=SimpleNamespace(
                 async_get_entry=lambda entry_id: SimpleNamespace(
                     data={},
@@ -2604,7 +2617,7 @@ def test_recording_media_source_sync_hides_uncached_clips(monkeypatch, tmp_path)
 
 
 def test_recording_media_source_sync_hides_uncached_dates(monkeypatch, tmp_path):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
     from custom_components.xsense.const import CONF_RECORDING_MEDIA_SYNC_ENABLED
 
     clips = [
@@ -2628,7 +2641,7 @@ def test_recording_media_source_sync_hides_uncached_dates(monkeypatch, tmp_path)
         },
     ]
     source = media_source.XSenseRecordingsMediaSource(
-        SimpleNamespace(
+        _recordings_media_source_hass(
             config_entries=SimpleNamespace(
                 async_get_entry=lambda entry_id: SimpleNamespace(
                     data={},
@@ -2680,7 +2693,7 @@ def test_recording_media_source_sync_hides_uncached_dates(monkeypatch, tmp_path)
 def test_recording_media_source_sync_rejects_uncached_resolve(monkeypatch, tmp_path):
     from homeassistant.components.media_source.error import Unresolvable
 
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
     from custom_components.xsense.const import CONF_RECORDING_MEDIA_SYNC_ENABLED
 
     clip = {
@@ -2692,7 +2705,7 @@ def test_recording_media_source_sync_rejects_uncached_resolve(monkeypatch, tmp_p
         "media_root": tmp_path.as_posix(),
     }
     source = media_source.XSenseRecordingsMediaSource(
-        SimpleNamespace(
+        _recordings_media_source_hass(
             config_entries=SimpleNamespace(
                 async_get_entry=lambda entry_id: SimpleNamespace(
                     data={},
@@ -2737,7 +2750,7 @@ def test_recording_media_source_sync_rejects_uncached_resolve(monkeypatch, tmp_p
 
 
 def test_recording_media_source_cache_path_uses_safe_filename():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     path = media_source._clip_cache_path_from_values("CAM/ERA SN", 1782049304, 1782049334)
     thumb_path = media_source._clip_thumbnail_cache_path_from_values(
@@ -2753,7 +2766,7 @@ def test_recording_media_source_cache_path_uses_safe_filename():
 
 
 def test_recording_media_root_rejects_media_prefix_lookalikes():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     assert media_source._recording_media_root_from_value("/media").as_posix() == "/media"
     assert (
@@ -2779,7 +2792,7 @@ def test_recording_media_root_rejects_media_prefix_lookalikes():
 
 
 def test_refresh_recording_indexes_filters_config_entry(monkeypatch):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     refreshed = []
 
@@ -2818,7 +2831,7 @@ def test_refresh_recording_indexes_filters_config_entry(monkeypatch):
 
 
 def test_remove_recording_index_cleans_empty_manager_store():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     hass = SimpleNamespace(
         data={media_source.DOMAIN: {"_recording_indexes": {"entry-id": object()}}}
@@ -2830,7 +2843,7 @@ def test_remove_recording_index_cleans_empty_manager_store():
 
 
 def test_cache_recording_media_caches_direct_and_skips_sd_capture(monkeypatch):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     async def refresh_indexes(hass, *, entry_id=None, force_refresh=False):
         return [
@@ -2904,7 +2917,7 @@ def test_cache_recording_media_caches_direct_and_skips_sd_capture(monkeypatch):
 
 
 def test_cache_recording_media_does_not_start_sd_capture_for_background_sync(monkeypatch):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     async def refresh_indexes(hass, *, entry_id=None, force_refresh=False):
         return [
@@ -2969,7 +2982,7 @@ def test_cache_recording_media_does_not_start_sd_capture_for_background_sync(mon
 
 
 def test_cache_recent_recording_media_force_refreshes_without_sd_capture(monkeypatch):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     now = 1_782_049_400
     calls = []
@@ -3042,8 +3055,40 @@ def test_cache_recent_recording_media_force_refreshes_without_sd_capture(monkeyp
     assert summary == {"downloaded": 0, "thumbnails": 0, "skipped": 2, "failed": 0}
 
 
+def test_event_recording_clip_does_not_create_camera_without_index():
+    from custom_components.xsense import recordings_media as media_source
+
+    hass = SimpleNamespace(data={media_source.DOMAIN: {}})
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "date": "2026-06-30",
+        "start": 1782049304,
+        "end": 1782049334,
+        "playback_url": "/xsense-recordings#entry_id=entry-id",
+    }
+
+    media_source._remember_event_recording_clip(hass, clip)
+    merged = media_source._merge_event_recording_clips(hass, [])
+
+    assert merged == []
+
+
+def test_recording_media_source_rejects_browse_without_cameras():
+    from homeassistant.components.media_source.error import Unresolvable
+
+    from custom_components.xsense import recordings_media as media_source
+
+    source = media_source.XSenseRecordingsMediaSource(
+        SimpleNamespace(data={media_source.DOMAIN: {}})
+    )
+
+    with pytest.raises(Unresolvable):
+        asyncio.run(source.async_browse_media(SimpleNamespace(identifier="")))
+
+
 def test_event_recording_clip_merges_into_recording_index():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     hass = SimpleNamespace(data={media_source.DOMAIN: {}})
     clip = {
@@ -3073,7 +3118,7 @@ def test_event_recording_clip_merges_into_recording_index():
 
 
 def test_event_recording_clip_updates_matching_index_clip():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     hass = SimpleNamespace(data={media_source.DOMAIN: {}})
     indexed_clip = {
@@ -3119,7 +3164,7 @@ def test_event_recording_clip_updates_matching_index_clip():
 
 
 def test_event_recording_clip_memory_is_bounded():
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     hass = SimpleNamespace(data={media_source.DOMAIN: {}})
     for start in range(100, 160):
@@ -3145,14 +3190,10 @@ def test_event_recording_clip_memory_is_bounded():
 
 
 def test_recording_thumbnail_warmup_schedules_missing_thumbnails(monkeypatch):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     scheduled = []
     cached = []
-
-    class Hass:
-        def async_create_task(self, coro):
-            scheduled.append(coro)
 
     async def cache_thumbnail(self, clip):
         cached.append(clip["start"])
@@ -3168,7 +3209,9 @@ def test_recording_thumbnail_warmup_schedules_missing_thumbnails(monkeypatch):
         "_path_ready",
         lambda path: str(path).endswith("1_2.jpg"),
     )
-    source = media_source.XSenseRecordingsMediaSource(Hass())
+    source = media_source.XSenseRecordingsMediaSource(
+        _recordings_media_source_hass(async_create_task=lambda coro: scheduled.append(coro))
+    )
     clips = [
         {
             "thumbnail_url": "https://example.invalid/already.jpg",
@@ -3196,7 +3239,7 @@ def test_recording_thumbnail_warmup_schedules_missing_thumbnails(monkeypatch):
 
 
 def test_clear_recording_caches_removes_managers_and_media(monkeypatch):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     cleared_media = []
 
@@ -3231,7 +3274,7 @@ def test_clear_recording_caches_removes_managers_and_media(monkeypatch):
 
 
 def test_clear_recording_caches_scopes_media_to_entry(monkeypatch):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
     from custom_components.xsense.const import CONF_RECORDING_MEDIA_STORAGE_PATH
 
     cleared_media = []
@@ -3262,7 +3305,7 @@ def test_clear_recording_caches_scopes_media_to_entry(monkeypatch):
 
 
 def test_clear_recording_caches_removes_scoped_capture_locks(monkeypatch):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
     from custom_components.xsense.const import CONF_RECORDING_MEDIA_STORAGE_PATH
 
     async def async_add_executor_job(func, *args):
@@ -3299,7 +3342,7 @@ def test_clear_recording_caches_removes_scoped_capture_locks(monkeypatch):
 
 
 def test_clear_media_cache_removes_recording_outputs(tmp_path):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
 
     videos = tmp_path / "videos"
     thumbs = tmp_path / "thumbs"
@@ -3321,7 +3364,7 @@ def test_clear_media_cache_removes_recording_outputs(tmp_path):
 
 
 def test_recording_media_sync_starts_only_when_enabled(monkeypatch):
-    from custom_components.xsense import media_source
+    from custom_components.xsense import recordings_media as media_source
     from custom_components.xsense.const import (
         CONF_RECORDING_MEDIA_SYNC_ENABLED,
         CONF_RECORDING_MEDIA_SYNC_HOURS,
@@ -3593,9 +3636,6 @@ async def test_webrtc_offer_uses_ticket_without_direct_stream_keepalive():
     camera_entity.online = True
 
     class XSense:
-        async def start_camera_live(self, entity):
-            raise AssertionError("WebRTC path should not start direct stream")
-
         async def get_camera_webrtc_ticket(self, entity, *, force_refresh=False):
             calls.append(("ticket", entity.sn, force_refresh))
             return None
@@ -4016,10 +4056,6 @@ async def test_unsupported_camera_type_has_no_stream_source():
     camera_entity.name = "Smoke"
     camera_entity.online = True
 
-    class XSense:
-        async def start_camera_live(self, entity):
-            raise AssertionError("Unsupported non-camera devices must not start live view")
-
     class Coordinator:
         def __init__(self):
             self.entry = SimpleNamespace(entry_id="entry-1")
@@ -4027,7 +4063,6 @@ async def test_unsupported_camera_type_has_no_stream_source():
                 "stations": {camera_entity.entity_id: camera_entity},
                 "devices": {},
             }
-            self.xsense = XSense()
 
         def async_add_listener(self, *args, **kwargs):
             return lambda: None

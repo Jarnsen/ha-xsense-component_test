@@ -539,7 +539,7 @@ def _trigger_event_after_recording_cache(
     event_data["recording_cache_ready"] = False
 
     async def _async_cache_then_trigger() -> None:
-        from .media_source import async_cache_recording_playback
+        from .recordings_media import async_cache_recording_playback
 
         cache_started_at = monotonic()
         LOGGER.debug(

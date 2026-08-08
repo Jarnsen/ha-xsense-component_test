@@ -18,7 +18,6 @@ from .station import Station
 LOGGER = logging.getLogger(__name__)
 
 CAMERA_TYPES = {"SSC0A", "SSC0B"}
-CAMERA_LIVE_URL_MAX_AGE_SECONDS = 240
 _CAMERA_VIDEO_RESOLUTIONS = {
     "auto",
     "640x360",
@@ -266,21 +265,6 @@ def camera_online(camera: Entity) -> bool:
     return camera.data.get("online") == 1
 
 
-def camera_stream_protocol(camera: Entity) -> str | None:
-    """Return the ADDX stream protocol from the camera device model."""
-    protocol = camera.data.get("streamProtocol")
-    if protocol is None:
-        return None
-    return str(protocol).lower()
-
-
-def stream_source_protocol(source: str | None) -> str | None:
-    """Return a stream source URL protocol without exposing the full source URL."""
-    if not isinstance(source, str) or "://" not in source:
-        return None
-    return source.split("://", 1)[0].lower()
-
-
 def schedule_time(value: str) -> str:
     """Return an APK schedule time in HHMM form."""
     text = str(value).strip()
@@ -351,22 +335,6 @@ def comfort_pair(value, default: list[float]) -> list[float]:
         except (TypeError, ValueError):
             pass
     return list(default)
-
-
-def is_native_stream_camera(camera: Entity) -> bool:
-    """Return whether the camera advertises a native stream protocol."""
-    protocol = camera_stream_protocol(camera)
-    if protocol is None:
-        return False
-    return "rtsp" in protocol or "rtmp" in protocol
-
-
-def is_webrtc_camera(camera: Entity) -> bool:
-    """Return whether the camera should use ADDX WebRTC signaling."""
-    protocol = camera_stream_protocol(camera)
-    if protocol is None:
-        return True
-    return "rtsp" not in protocol and "rtmp" not in protocol
 
 
 class AsyncXSense(XSenseBase):
@@ -1366,58 +1334,6 @@ class AsyncXSense(XSenseBase):
             return data
         return None
 
-    async def start_camera_live(self, camera: Entity) -> str | None:
-        """Return the direct live URL from the ADDX start-live endpoint."""
-        live_started_at = camera.data.get("cameraLiveStartedAt")
-        if (
-            (camera_live_url := camera.data.get("cameraLiveUrl"))
-            and isinstance(live_started_at, datetime)
-            and (datetime.now() - live_started_at).total_seconds()
-            < CAMERA_LIVE_URL_MAX_AGE_SECONDS
-        ):
-            return camera_live_url
-
-        data = await self.addx_call(
-            "/device/newstartlive",
-            serialNumber=camera.sn,
-            liveResolution=camera_live_resolution(camera),
-        )
-        if isinstance(data, dict):
-            live_url = _camera_live_url(data)
-            camera.set_data(
-                {
-                    "cameraAudioUrl": data.get("audioUrl"),
-                    "cameraLiveId": data.get("liveId"),
-                    "cameraLiveStartedAt": datetime.now(),
-                    "cameraLiveUrl": live_url,
-                    "cameraLiveProtocol": _url_scheme(live_url),
-                }
-            )
-            return live_url
-        return None
-
-    async def keep_camera_live_alive(self, camera: Entity) -> None:
-        """Send the APK camera live-view keepalive request."""
-        await self.addx_call(
-            "/device/keepalive", serialNumber=camera.sn, seconds=30
-        )
-
-    async def stop_camera_live(self, camera: Entity) -> None:
-        """Stop camera live view through the Android app endpoint."""
-        try:
-            await self.addx_call("/device/stoplive", serialNumber=camera.sn)
-        finally:
-            camera.set_data(
-                {
-                    "cameraAudioUrl": None,
-                    "cameraLiveId": None,
-                    "cameraLiveStartedAt": None,
-                    "cameraLiveUrl": None,
-                    "cameraLiveProtocol": None,
-                    "cameraWebrtcTicket": None,
-                }
-            )
-
     async def wake_camera(self, camera: Entity) -> None:
         """Wake a sleeping camera through the Android app endpoint."""
         await self.addx_call("/device/wakeupDevice", serialNumber=camera.sn)
@@ -2399,21 +2315,6 @@ class AsyncXSense(XSenseBase):
         if callable(shadow):
             shadow = shadow(entity)
         return await self.set_state(entity, shadow, topic, action_def)
-
-
-def _url_scheme(url: str | None) -> str | None:
-    """Return the URL scheme without logging or exposing the full URL."""
-    if not isinstance(url, str) or "://" not in url:
-        return None
-    return url.split("://", 1)[0].lower()
-
-
-def _camera_live_url(data: Dict) -> str | None:
-    """Return the live URL from the APK LiveResponse data model."""
-    live_url = data.get("liveUrl") or data.get("url")
-    if not isinstance(live_url, str) or not live_url:
-        return None
-    return live_url
 
 
 def _shadow_config_topic(entity: Entity) -> str:
