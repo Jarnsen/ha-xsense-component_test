@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import suppress
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from time import monotonic
