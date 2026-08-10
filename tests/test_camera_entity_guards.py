@@ -2372,6 +2372,11 @@ def test_recording_media_source_caches_hd_hls_without_sd_fallback(
     )
     monkeypatch.setattr(
         media_source,
+        "_repair_hls_leading_segment",
+        lambda path: "copy",
+    )
+    monkeypatch.setattr(
+        media_source,
         "async_get_clientsession",
         lambda hass: Session(),
     )
@@ -2391,6 +2396,195 @@ def test_recording_media_source_caches_hd_hls_without_sd_fallback(
     assert (playlist.parent / "segment_0002.ts").read_bytes() == b"segment-one"
     assert (playlist.parent / "segment_0003.ts").read_bytes() == b"segment-two"
     assert not (playlist.parent / "segment_0004.ts").exists()
+
+
+def test_recording_media_source_repairs_leading_hls_ts_segment(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    source = media_source.XSenseRecordingsMediaSource(_recordings_media_source_hass())
+    output_path = tmp_path / "clip.mp4"
+    clip = {
+        "source": "video_url",
+        "quality": "HD",
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "playback_url": "https://example.invalid/index.m3u8",
+        "media_root": tmp_path.as_posix(),
+    }
+    responses = {
+        "https://example.invalid/index.m3u8": (
+            "application/vnd.apple.mpegurl;charset=utf-8",
+            b"#EXTM3U\n#EXT-X-TARGETDURATION:4\nseg-1.ts\nseg-2.ts\n#EXT-X-ENDLIST\n",
+        ),
+        "https://example.invalid/seg-1.ts": ("video/mp2t", b"bad-leading-audio"),
+        "https://example.invalid/seg-2.ts": ("video/mp2t", b"good-audio-video"),
+    }
+    repaired = []
+
+    class Response:
+        def __init__(self, url):
+            self.content_type, self.payload = responses[url]
+            self.headers = {"content-type": self.content_type}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def raise_for_status(self):
+            return None
+
+        async def read(self):
+            return self.payload
+
+        async def text(self):
+            return self.payload.decode()
+
+    class Session:
+        def get(self, url):
+            return Response(url)
+
+    class Hass:
+        async def async_add_executor_job(self, func, *args):
+            return func(*args)
+
+    def repair(path):
+        repaired.append(path.name)
+        return "copy"
+
+    source.hass = Hass()
+    monkeypatch.setattr(
+        media_source,
+        "_hls_cache_dir",
+        lambda current_clip: tmp_path / "hls",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: tmp_path / "hls" / "index.m3u8",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_local_media_url",
+        lambda path: f"/media/local/test/{path.name}",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_clip_cache_path",
+        lambda current_clip: output_path,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_repair_hls_leading_segment",
+        repair,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "async_get_clientsession",
+        lambda hass: Session(),
+    )
+
+    result = asyncio.run(source._async_cached_playback_url(clip))
+
+    playlist = media_source._hls_playlist_cache_path(clip)
+    assert result == "/media/local/test/index.m3u8"
+    assert repaired == ["segment_0002.ts"]
+    assert playlist.read_text(encoding="utf-8") == (
+        "#EXTM3U\n"
+        "#EXT-X-TARGETDURATION:4\n"
+        "segment_0002.ts\n"
+        "segment_0003.ts\n"
+        "#EXT-X-ENDLIST\n"
+    )
+
+
+def test_recording_media_source_rejects_unrepaired_leading_hls_ts_segment(
+    monkeypatch,
+    tmp_path,
+):
+    from homeassistant.components.media_source.error import Unresolvable
+
+    from custom_components.xsense import recordings_media as media_source
+
+    source = media_source.XSenseRecordingsMediaSource(_recordings_media_source_hass())
+    clip = {
+        "source": "video_url",
+        "quality": "HD",
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "playback_url": "https://example.invalid/index.m3u8",
+        "media_root": tmp_path.as_posix(),
+    }
+    responses = {
+        "https://example.invalid/index.m3u8": (
+            "application/vnd.apple.mpegurl;charset=utf-8",
+            b"#EXTM3U\n#EXT-X-TARGETDURATION:4\nseg-1.ts\nseg-2.ts\n#EXT-X-ENDLIST\n",
+        ),
+        "https://example.invalid/seg-1.ts": ("video/mp2t", b"bad-leading-audio"),
+    }
+
+    class Response:
+        def __init__(self, url):
+            self.content_type, self.payload = responses[url]
+            self.headers = {"content-type": self.content_type}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def raise_for_status(self):
+            return None
+
+        async def read(self):
+            return self.payload
+
+        async def text(self):
+            return self.payload.decode()
+
+    class Session:
+        def get(self, url):
+            return Response(url)
+
+    class Hass:
+        async def async_add_executor_job(self, func, *args):
+            return func(*args)
+
+    source.hass = Hass()
+    monkeypatch.setattr(
+        media_source,
+        "_hls_cache_dir",
+        lambda current_clip: tmp_path / "hls",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: tmp_path / "hls" / "index.m3u8",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_repair_hls_leading_segment",
+        lambda path: "",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "async_get_clientsession",
+        lambda hass: Session(),
+    )
+
+    with pytest.raises(Unresolvable):
+        asyncio.run(source._async_cached_playback_url(clip))
+
+    assert not media_source._hls_playlist_cache_path(clip).exists()
 
 
 def test_recording_media_source_prefers_hls_cache_over_legacy_mp4(

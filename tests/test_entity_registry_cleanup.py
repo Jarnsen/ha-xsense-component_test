@@ -463,7 +463,6 @@ def test_obsolete_binary_sensor_keys_only_remove_removed_binary_sensors():
         "alarm_sound_enabled",
         "app_tip_enabled",
         "schedule_tip_enabled",
-        "test_active",
         "timezone_enabled",
         "timezone_valid",
     } <= set(OBSOLETE_BINARY_SENSOR_KEYS)
@@ -517,6 +516,15 @@ def test_raw_diagnostic_metadata_is_not_exposed_as_entities():
     assert NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS <= set(
         OBSOLETE_BINARY_SENSOR_KEYS
     )
+
+
+def test_reported_test_active_state_remains_available():
+    from custom_components.xsense.binary_sensor import SENSORS as BINARY_SENSORS
+
+    binary_sensor_keys = {description.key for description in BINARY_SENSORS}
+
+    assert "test_active" in binary_sensor_keys
+    assert "test_active" not in OBSOLETE_BINARY_SENSOR_KEYS
 
 
 def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
