@@ -79,7 +79,6 @@ NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS = frozenset(
         "alarm_sound_enabled",
         "app_tip_enabled",
         "schedule_tip_enabled",
-        "test_active",
         "timezone_enabled",
         "timezone_valid",
     }

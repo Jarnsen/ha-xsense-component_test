@@ -6,6 +6,7 @@ from custom_components.xsense.alarm_control_panel import (
 )
 from custom_components.xsense.python_xsense.station import Station
 from custom_components.xsense.binary_sensor import (
+    SENSORS as BINARY_SENSORS,
     XSenseBinarySensorEntity,
     XSenseBinarySensorEntityDescription,
     XSenseMQTTConnectedEntity,
@@ -119,6 +120,23 @@ def test_xs01_wx_shadow_data_entities_stay_available():
     assert binary_sensor.is_on is False
     assert connected.available
     assert connected.is_on is True
+
+
+def test_reported_test_active_state_is_exposed_from_device_data():
+    station = _xs01_wx_from_real_shadow()
+    description = next(item for item in BINARY_SENSORS if item.key == "test_active")
+
+    assert not description.exists_fn(station)
+
+    station.set_data({"test": "1"})
+
+    assert description.exists_fn(station)
+    assert description.value_fn(station) is True
+
+    station.set_data({"test": "0"})
+
+    assert description.exists_fn(station)
+    assert description.value_fn(station) is False
 
 
 def test_station_sensor_stays_available_when_station_id_alias_changes():

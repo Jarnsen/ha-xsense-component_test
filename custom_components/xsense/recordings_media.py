@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
+import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from time import monotonic
@@ -894,6 +896,7 @@ class XSenseRecordingsMediaSource(MediaSource):
         segment_count = 0
         key_count = 0
         child_playlist_count = 0
+        direct_media_segment_count = 0
         for index, line in enumerate(playlist_text.splitlines()):
             stripped = line.strip()
             if not stripped:
@@ -954,6 +957,23 @@ class XSenseRecordingsMediaSource(MediaSource):
                     segment_path,
                     payload,
                 )
+                if direct_media_segment_count == 0 and suffix.lower().endswith(".ts"):
+                    repair = await self._async_file_job(
+                        _repair_hls_leading_segment,
+                        segment_path,
+                    )
+                    if not repair:
+                        raise Unresolvable(
+                            "X-Sense HLS recording leading segment could not be repaired"
+                        )
+                    LOGGER.debug(
+                        "X-Sense HLS leading segment repaired: %s",
+                        {
+                            "depth": depth,
+                            "segment": segment_name,
+                            "repair": repair,
+                        },
+                    )
                 total_bytes += len(payload)
                 state["remaining_initial_segments"] = (
                     int(state.get("remaining_initial_segments") or 0) - 1
@@ -964,6 +984,7 @@ class XSenseRecordingsMediaSource(MediaSource):
             else:
                 state.setdefault("deferred", []).append((media_url, segment_path))
             rewritten.append(segment_name)
+            direct_media_segment_count += 1
 
         LOGGER.debug(
             "X-Sense HLS playlist cached: %s",
@@ -1940,6 +1961,51 @@ def _write_cache_file(path: Path, payload: bytes) -> None:
     temp_path = path.with_name(f"{path.stem}.tmp{path.suffix}")
     temp_path.write_bytes(payload)
     temp_path.replace(path)
+
+
+def _repair_hls_leading_segment(path: Path) -> str:
+    """Remux the first HLS TS segment so hls.js sees stable stream metadata."""
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg or not _path_ready(path):
+        return ""
+    if _ffmpeg_remux_hls_segment(ffmpeg, path):
+        return "copy"
+    return ""
+
+
+def _ffmpeg_remux_hls_segment(ffmpeg: str, path: Path) -> bool:
+    output_path = path.with_name(f"{path.stem}.copy.tmp{path.suffix}")
+    command = [
+        ffmpeg,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-i",
+        str(path),
+        "-map",
+        "0",
+        "-c",
+        "copy",
+        "-f",
+        "mpegts",
+        str(output_path),
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            check=False,
+            timeout=30,
+        )
+        if result.returncode != 0 or not _path_ready(output_path):
+            return False
+        output_path.replace(path)
+        return True
+    except (OSError, subprocess.SubprocessError):
+        return False
+    finally:
+        output_path.unlink(missing_ok=True)
 
 
 def _replace_cache_file(source: Path, target: Path) -> None:
