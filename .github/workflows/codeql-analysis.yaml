@@ -30,8 +30,6 @@ jobs:
             build-mode: none
           - language: javascript-typescript
             build-mode: none
-          - language: go
-            build-mode: autobuild
 
     steps:
       - name: Checkout
@@ -44,10 +42,6 @@ jobs:
           config-file: ./.github/codeql/codeql-config.yml
           queries: security-extended
           build-mode: ${{ matrix.build-mode }}
-
-      - name: Autobuild
-        if: matrix.build-mode == 'autobuild'
-        uses: github/codeql-action/autobuild@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
 
       - name: Analyze
         uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4

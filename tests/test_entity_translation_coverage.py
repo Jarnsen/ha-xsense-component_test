@@ -4,7 +4,6 @@ from pathlib import Path
 from homeassistant.helpers.entity import UNDEFINED
 
 from custom_components.xsense import (
-    alarm_control_panel,
     binary_sensor,
     button,
     camera,
