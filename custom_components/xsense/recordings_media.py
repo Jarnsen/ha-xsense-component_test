@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import shutil
-import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from time import monotonic
@@ -61,6 +59,8 @@ RECORDING_MEDIA_RECENT_LOOKBACK = timedelta(minutes=10)
 THUMBNAIL_WARMUP_LIMIT = 10
 EVENT_RECORDING_CLIP_LIMIT = 50
 HLS_INITIAL_SEGMENT_COUNT = 2
+HLS_CACHE_VERSION = 2
+HLS_CACHE_VERSION_FILE = ".xsense-hls-cache-version"
 SERVICE_REFRESH_RECORDINGS = "refresh_recordings"
 SERVICE_CACHE_RECORDINGS = "cache_recordings"
 SERVICE_CLEAR_RECORDINGS_CACHE = "clear_recordings_cache"
@@ -835,6 +835,7 @@ class XSenseRecordingsMediaSource(MediaSource):
     ) -> dict[str, Any]:
         """Cache one HLS playlist and its referenced media files."""
         cache_dir = _hls_cache_dir(clip)
+        staging_dir = _hls_staging_cache_dir(cache_dir)
         started_at = monotonic()
         state = {
             "remaining_initial_segments": HLS_INITIAL_SEGMENT_COUNT,
@@ -849,19 +850,36 @@ class XSenseRecordingsMediaSource(MediaSource):
                 "initial_segment_target": HLS_INITIAL_SEGMENT_COUNT,
             },
         )
-        await self._async_file_job(_clear_directory, cache_dir)
-        result = await self._async_cache_hls_playlist(
-            url,
-            _hls_playlist_cache_path(clip),
-            cache_dir,
-            prefix="segment",
-            depth=0,
-            state=state,
-        )
-        if not await self._async_hls_ready(clip):
-            raise Unresolvable("X-Sense HLS recording cache did not create media")
+        await self._async_file_job(_clear_directory, staging_dir)
+        try:
+            result = await self._async_cache_hls_playlist(
+                url,
+                staging_dir / "index.m3u8",
+                staging_dir,
+                prefix="segment",
+                depth=0,
+                state=state,
+            )
+            await self._async_file_job(_write_hls_cache_version, staging_dir)
+            if not await self._async_file_job(
+                _hls_cache_ready_at,
+                staging_dir,
+                staging_dir / "index.m3u8",
+            ):
+                raise Unresolvable("X-Sense HLS recording cache did not create media")
+            await self._async_file_job(_replace_hls_cache_dir, staging_dir, cache_dir)
+        except Exception:
+            await self._async_file_job(_remove_directory, staging_dir)
+            raise
         deferred = [
             item for item in state["deferred"] if isinstance(item, tuple) and len(item) == 2
+        ]
+        deferred = [
+            (
+                deferred_url,
+                cache_dir / deferred_path.relative_to(staging_dir),
+            )
+            for deferred_url, deferred_path in deferred
         ]
         if deferred:
             self._schedule_hls_background_cache(clip, deferred)
@@ -957,23 +975,6 @@ class XSenseRecordingsMediaSource(MediaSource):
                     segment_path,
                     payload,
                 )
-                if direct_media_segment_count == 0 and suffix.lower().endswith(".ts"):
-                    repair = await self._async_file_job(
-                        _repair_hls_leading_segment,
-                        segment_path,
-                    )
-                    if not repair:
-                        raise Unresolvable(
-                            "X-Sense HLS recording leading segment could not be repaired"
-                        )
-                    LOGGER.debug(
-                        "X-Sense HLS leading segment repaired: %s",
-                        {
-                            "depth": depth,
-                            "segment": segment_name,
-                            "repair": repair,
-                        },
-                    )
                 total_bytes += len(payload)
                 state["remaining_initial_segments"] = (
                     int(state.get("remaining_initial_segments") or 0) - 1
@@ -1923,6 +1924,10 @@ def _hls_cache_dir(clip: dict[str, Any]) -> Path:
     )
 
 
+def _hls_staging_cache_dir(cache_dir: Path) -> Path:
+    return cache_dir.with_name(f".{cache_dir.name}.staging")
+
+
 def _hls_playlist_cache_path(clip: dict[str, Any]) -> Path:
     """Return the cached HLS playlist path for one recording."""
     return _hls_cache_dir(clip) / "index.m3u8"
@@ -1963,51 +1968,6 @@ def _write_cache_file(path: Path, payload: bytes) -> None:
     temp_path.replace(path)
 
 
-def _repair_hls_leading_segment(path: Path) -> str:
-    """Remux the first HLS TS segment so hls.js sees stable stream metadata."""
-    ffmpeg = shutil.which("ffmpeg")
-    if not ffmpeg or not _path_ready(path):
-        return ""
-    if _ffmpeg_remux_hls_segment(ffmpeg, path):
-        return "copy"
-    return ""
-
-
-def _ffmpeg_remux_hls_segment(ffmpeg: str, path: Path) -> bool:
-    output_path = path.with_name(f"{path.stem}.copy.tmp{path.suffix}")
-    command = [
-        ffmpeg,
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-y",
-        "-i",
-        str(path),
-        "-map",
-        "0",
-        "-c",
-        "copy",
-        "-f",
-        "mpegts",
-        str(output_path),
-    ]
-    try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            check=False,
-            timeout=30,
-        )
-        if result.returncode != 0 or not _path_ready(output_path):
-            return False
-        output_path.replace(path)
-        return True
-    except (OSError, subprocess.SubprocessError):
-        return False
-    finally:
-        output_path.unlink(missing_ok=True)
-
-
 def _replace_cache_file(source: Path, target: Path) -> None:
     """Replace one cached recording file."""
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -2035,7 +1995,32 @@ def _mp4_ready(path: Path) -> bool:
 
 
 def _hls_ready(clip: dict[str, Any]) -> bool:
-    return _hls_playlist_ready(_hls_playlist_cache_path(clip))
+    playlist_path = _hls_playlist_cache_path(clip)
+    return _hls_cache_ready_at(playlist_path.parent, playlist_path)
+
+
+def _hls_cache_ready_at(cache_dir: Path, playlist_path: Path) -> bool:
+    if not _hls_cache_version_ready(cache_dir):
+        _remove_directory(cache_dir)
+        return False
+    return _hls_playlist_ready(playlist_path)
+
+
+def _write_hls_cache_version(cache_dir: Path) -> None:
+    _write_cache_file(
+        cache_dir / HLS_CACHE_VERSION_FILE,
+        f"{HLS_CACHE_VERSION}\n".encode(),
+    )
+
+
+def _hls_cache_version_ready(cache_dir: Path) -> bool:
+    try:
+        version = (cache_dir / HLS_CACHE_VERSION_FILE).read_text(
+            encoding="utf-8"
+        ).strip()
+    except OSError:
+        return False
+    return version == str(HLS_CACHE_VERSION)
 
 
 def _hls_playlist_ready(playlist_path: Path) -> bool:
@@ -2131,6 +2116,21 @@ def _clear_directory(path: Path) -> None:
         if child.is_dir():
             child.rmdir()
     path.mkdir(parents=True, exist_ok=True)
+
+
+def _remove_directory(path: Path) -> None:
+    if not path.exists():
+        return
+    _clear_directory(path)
+    path.rmdir()
+
+
+def _replace_hls_cache_dir(source: Path, target: Path) -> None:
+    if not _hls_cache_ready_at(source, source / "index.m3u8"):
+        raise OSError("Staged X-Sense HLS cache is not ready")
+    _remove_directory(target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    source.replace(target)
 
 
 def _clear_media_cache(roots: list[Path]) -> None:

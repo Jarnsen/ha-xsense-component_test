@@ -2402,6 +2402,7 @@ class XSenseRecordingsPanel extends HTMLElement {
     const hls = new Hls({
       enableWorker: false,
       lowLatencyMode: false,
+      defaultAudioCodec: "mp4a.40.2",
     });
     hls.on(Hls.Events.ERROR, (_event, data) => {
       this.logPanelEvent("playback_hls_js_error", this.clipDebugPayload(this.selectedClip, {

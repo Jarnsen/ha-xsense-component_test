@@ -2311,6 +2311,7 @@ def test_recordings_panel_video_uses_authenticated_blob_playback():
     assert "async loadHlsLibrary()" in panel
     assert "new Hls({" in panel
     assert "enableWorker: false" in panel
+    assert 'defaultAudioCodec: "mp4a.40.2"' in panel
     assert "setPlaybackUrl(key, url, type)" in panel
     assert "clearPlaybackUrl(key)" in panel
     assert "disposePlaybackResources()" in panel
@@ -2879,6 +2880,7 @@ def test_recordings_panel_playback_serves_hls_before_legacy_mp4(
     playlist.parent.mkdir(parents=True)
     playlist.write_text("#EXTM3U\n#EXT-X-TARGETDURATION:4\nsegment_0001.ts\n")
     (playlist.parent / "segment_0001.ts").write_bytes(b"segment")
+    media_source._write_hls_cache_version(playlist.parent)
     clip = {
         "entry_id": "entry-id",
         "serial": "CAMERA-SN",
