@@ -30,6 +30,29 @@ from custom_components.xsense import (
 from custom_components.xsense.const import CONF_RECORDING_MEDIA_SYNC_ENABLED, DOMAIN
 
 
+def _mock_hls_playback_profile_migration(monkeypatch, calls=None):
+    """Stub HLS playback profile migration so setup tests avoid HA event loop deps."""
+
+    def _schedule(hass, entry):
+        if calls is not None:
+            calls.append("hls_playback_profile_migration")
+
+    def _stop(hass):
+        if calls is not None:
+            calls.append("hls_playback_profile_migration_stop")
+
+    monkeypatch.setattr(
+        xsense_module,
+        "async_schedule_hls_playback_profile_migration",
+        _schedule,
+    )
+    monkeypatch.setattr(
+        xsense_module,
+        "async_stop_hls_playback_profile_migration",
+        _stop,
+    )
+
+
 ROOT = Path(__file__).parents[1]
 
 
@@ -1733,6 +1756,7 @@ def test_recordings_runtime_cleanup_removes_stale_non_camera_runtime(monkeypatch
         "async_clear_recording_event_clips",
         lambda hass, entry_id=None: calls.append(("event_clips", entry_id)),
     )
+    _mock_hls_playback_profile_migration(monkeypatch, calls)
 
     xsense_module._cleanup_recordings_runtime(SimpleNamespace(), "xcom-entry")
 
@@ -1740,6 +1764,7 @@ def test_recordings_runtime_cleanup_removes_stale_non_camera_runtime(monkeypatch
         ("stop_sync", "xcom-entry"),
         ("remove_index", "xcom-entry"),
         ("event_clips", "xcom-entry"),
+        "hls_playback_profile_migration_stop",
         "recordings_panel",
         "recording_services",
         "recording_media_source",
@@ -2022,6 +2047,7 @@ def test_setup_entry_registers_recordings_runtime_with_cameras(monkeypatch):
         "async_start_recording_media_sync",
         lambda hass, entry: calls.append("recording_media_sync"),
     )
+    _mock_hls_playback_profile_migration(monkeypatch, calls)
     monkeypatch.setattr(
         xsense_module,
         "_schedule_startup_maintenance",
@@ -2042,6 +2068,7 @@ def test_setup_entry_registers_recordings_runtime_with_cameras(monkeypatch):
     assert "recordings_http_views" not in calls
     assert "recording_services" in calls
     assert "recording_media_sync" in calls
+    assert "hls_playback_profile_migration" in calls
 
 
 def test_setup_entry_registers_recordings_runtime_when_camera_appears_later(
@@ -2141,6 +2168,7 @@ def test_setup_entry_registers_recordings_runtime_when_camera_appears_later(
         "async_start_recording_media_sync",
         lambda hass, entry: calls.append("recording_media_sync"),
     )
+    _mock_hls_playback_profile_migration(monkeypatch, calls)
     monkeypatch.setattr(
         xsense_module,
         "_schedule_startup_maintenance",
@@ -2312,9 +2340,12 @@ def test_recordings_panel_video_uses_authenticated_blob_playback():
     assert "new Hls({" in panel
     assert "enableWorker: false" in panel
     assert 'defaultAudioCodec: "mp4a.40.2"' in panel
-    assert "setPlaybackUrl(key, url, type)" in panel
+    assert "setPlaybackUrl(key, url, type, options = {})" in panel
     assert "clearPlaybackUrl(key)" in panel
     assert "disposePlaybackResources()" in panel
+    assert "this.playbackProfiles = new Map()" in panel
+    assert 'response.headers.get("X-XSense-HLS-Leading-AAC")' in panel
+    assert 'response.headers.get("X-XSense-HLS-Playback-Mode")' in panel
     assert 'this.logPanelEvent("playback_hls_js_attached"' in panel
     assert 'this.logPanelEvent("playback_hls_js_error"' in panel
     assert 'this.logPanelEvent("playback_hls_native_attached"' in panel
@@ -2435,6 +2466,7 @@ def test_recordings_entry_reload_reregisters_panel_without_duplicate_assets(monk
         "async_start_recording_media_sync",
         lambda hass, entry: calls.append("recording_media_sync"),
     )
+    _mock_hls_playback_profile_migration(monkeypatch, calls)
     monkeypatch.setattr(
         xsense_module,
         "_schedule_startup_maintenance",
@@ -2881,6 +2913,14 @@ def test_recordings_panel_playback_serves_hls_before_legacy_mp4(
     playlist.write_text("#EXTM3U\n#EXT-X-TARGETDURATION:4\nsegment_0001.ts\n")
     (playlist.parent / "segment_0001.ts").write_bytes(b"segment")
     media_source._write_hls_cache_version(playlist.parent)
+    media_source._write_hls_playback_profile(
+        playlist.parent,
+        {
+            "leading_aac": media_source.HLS_LEADING_AAC_OK,
+            "leading_segment": "segment_0001.ts",
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_NORMAL,
+        },
+    )
     clip = {
         "entry_id": "entry-id",
         "serial": "CAMERA-SN",

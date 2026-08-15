@@ -38,7 +38,9 @@ from .recordings_media import (
     async_register_recording_services,
     async_register_recordings_media_source,
     async_remove_recording_index,
+    async_schedule_hls_playback_profile_migration,
     async_start_recording_media_sync,
+    async_stop_hls_playback_profile_migration,
     async_stop_recording_media_sync,
     async_unregister_recording_services,
     async_unregister_recordings_media_source,
@@ -296,6 +298,7 @@ def _cleanup_recordings_runtime(hass: HomeAssistant, entry_id: str | None = None
     if entry_id:
         _cleanup_recordings_entry(hass, entry_id)
     if not _has_any_camera_entities(hass):
+        async_stop_hls_playback_profile_migration(hass)
         async_unregister_recordings_panel(hass)
         async_unregister_recording_services(hass)
         async_unregister_recordings_media_source(hass)
@@ -310,6 +313,7 @@ async def _async_register_recordings_runtime(
     await async_register_recording_services(hass)
     async_register_recordings_media_source(hass)
     async_start_recording_media_sync(hass, entry)
+    async_schedule_hls_playback_profile_migration(hass, entry)
 
 
 def _sensor_unique_id(entity_id: str, key: str) -> str:

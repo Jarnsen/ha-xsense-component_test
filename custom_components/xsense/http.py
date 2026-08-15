@@ -30,6 +30,7 @@ from .recordings_media import (
     _clip_start_for_sort,
     _clip_thumbnail_cache_path,
     _hls_playlist_cache_path,
+    _hls_playback_fields_for_clip,
     _hls_ready,
     _hls_attribute_uri,
     _local_media_url,
@@ -180,6 +181,7 @@ async def _async_build_panel_data_from_index(
                     "thumbnail_cached": thumb_cached,
                     "playable": playable,
                     "sync_enabled": sync_enabled,
+                    **_hls_playback_fields_for_clip(clip),
                     "playback_url": _playback_api_url(entry_id, serial, start, end)
                     if hls_cached
                     else _local_media_url(clip_path)
@@ -332,6 +334,7 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
                     "thumbnail_cached": thumb_cached,
                     "playable": playable,
                     "sync_enabled": sync_enabled,
+                    **_hls_playback_fields_for_clip(clip),
                     "playback_url": _playback_api_url(entry_id, serial, start, end)
                     if hls_cached
                     else _local_media_url(clip_path)
@@ -519,12 +522,17 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
                     **context,
                     "elapsed_ms": int((monotonic() - started_at) * 1000),
                     "content_type": HLS_MIME_TYPE,
+                    **_hls_playback_fields_for_clip(clip),
                 },
             )
+            headers = {
+                "Cache-Control": "private, max-age=300",
+                **_hls_playback_response_headers(clip),
+            }
             return web.Response(
                 text=playlist,
                 content_type=HLS_MIME_TYPE,
-                headers={"Cache-Control": "private, max-age=300"},
+                headers=headers,
             )
         if await source._async_mp4_ready(output_path):
             output_bytes = await source._async_file_size(output_path)
@@ -863,6 +871,19 @@ def _hls_playlist_for_response(playlist_path: Path, segment_base_url: str) -> st
             continue
         rewritten.append(f"{base}/{quote(stripped, safe='/')}")
     return "\n".join(rewritten) + "\n"
+
+
+def _hls_playback_response_headers(clip: dict[str, Any]) -> dict[str, str]:
+    """Return playback profile headers for one cached HLS clip."""
+    fields = _hls_playback_fields_for_clip(clip)
+    headers: dict[str, str] = {}
+    leading_aac = fields.get("hls_leading_aac")
+    playback_mode = fields.get("hls_playback_mode")
+    if leading_aac:
+        headers["X-XSense-HLS-Leading-AAC"] = leading_aac
+    if playback_mode:
+        headers["X-XSense-HLS-Playback-Mode"] = playback_mode
+    return headers
 
 
 def _clip_debug_context(
