@@ -2302,7 +2302,7 @@ def test_recording_media_source_caches_hd_hls_without_sd_fallback(
     monkeypatch.setattr(
         media_source,
         "_categorize_hls_leading_segment",
-        lambda path: {
+        lambda path, **kwargs: {
             "leading_aac": media_source.HLS_LEADING_AAC_OK,
             "leading_segment": path.name,
             "playback_mode": media_source.HLS_PLAYBACK_MODE_NORMAL,
@@ -2411,7 +2411,7 @@ def test_recording_media_source_preserves_original_leading_hls_ts_segment(
     monkeypatch.setattr(
         media_source,
         "_categorize_hls_leading_segment",
-        lambda path: {
+        lambda path, **kwargs: {
             "leading_aac": media_source.HLS_LEADING_AAC_OK,
             "leading_segment": path.name,
             "playback_mode": media_source.HLS_PLAYBACK_MODE_NORMAL,
@@ -2520,9 +2520,9 @@ def test_recording_media_source_prepares_broken_leading_hls_segment_for_playback
 ):
     from custom_components.xsense import recordings_media as media_source
 
-    def _broken_leading_profile(path):
+    def _broken_leading_profile(path, **kwargs):
         sidecar = media_source._hls_leading_playback_segment_path(path)
-        sidecar.write_bytes(b"video-only-sidecar")
+        sidecar.write_bytes(b"silent-aac-sidecar")
         return {
             "leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
             "leading_segment": path.name,
@@ -2530,6 +2530,23 @@ def test_recording_media_source_prepares_broken_leading_hls_segment_for_playback
             "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
         }
 
+    monkeypatch.setattr(
+        media_source,
+        "_probe_hls_ts_aac",
+        lambda path: (
+            media_source.HLS_LEADING_AAC_OK,
+            {
+                "stream": {
+                    "codec_name": "aac",
+                    "profile": "lc",
+                    "sample_rate": "16000",
+                    "channels": 1,
+                }
+            },
+        )
+        if ".playback." in path.name
+        else (media_source.HLS_LEADING_AAC_BROKEN, {}),
+    )
     monkeypatch.setattr(
         media_source,
         "_categorize_hls_leading_segment",
@@ -2618,7 +2635,7 @@ def test_recording_media_source_prepares_broken_leading_hls_segment_for_playback
     assert profile["leading_aac"] == media_source.HLS_LEADING_AAC_BROKEN
     assert profile["playback_mode"] == media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC
     assert (playlist.parent / "segment_0002.ts").read_bytes() == b"bad-leading-audio"
-    assert (playlist.parent / "segment_0002.playback.ts").read_bytes() == b"video-only-sidecar"
+    assert (playlist.parent / "segment_0002.playback.ts").read_bytes() == b"silent-aac-sidecar"
     assert playlist.read_text(encoding="utf-8") == (
         "#EXTM3U\n"
         "#EXT-X-TARGETDURATION:4\n"
@@ -2639,9 +2656,9 @@ def test_recording_media_source_migrates_v2_hls_cache_in_place(
 ):
     from custom_components.xsense import recordings_media as media_source
 
-    def _broken_leading_profile(path):
+    def _broken_leading_profile(path, **kwargs):
         sidecar = media_source._hls_leading_playback_segment_path(path)
-        sidecar.write_bytes(b"video-only-sidecar")
+        sidecar.write_bytes(b"silent-aac-sidecar")
         return {
             "leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
             "leading_segment": path.name,
@@ -2649,6 +2666,23 @@ def test_recording_media_source_migrates_v2_hls_cache_in_place(
             "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
         }
 
+    monkeypatch.setattr(
+        media_source,
+        "_probe_hls_ts_aac",
+        lambda path: (
+            media_source.HLS_LEADING_AAC_OK,
+            {
+                "stream": {
+                    "codec_name": "aac",
+                    "profile": "lc",
+                    "sample_rate": "16000",
+                    "channels": 1,
+                }
+            },
+        )
+        if ".playback." in path.name
+        else (media_source.HLS_LEADING_AAC_BROKEN, {}),
+    )
     monkeypatch.setattr(
         media_source,
         "_categorize_hls_leading_segment",
@@ -2680,7 +2714,7 @@ def test_recording_media_source_migrates_v2_hls_cache_in_place(
         playlist.parent / media_source.HLS_CACHE_VERSION_FILE
     ).read_text(encoding="utf-8").strip() == "3"
     assert (playlist.parent / "segment_0002.ts").read_bytes() == b"bad-leading-audio"
-    assert (playlist.parent / "segment_0002.playback.ts").read_bytes() == b"video-only-sidecar"
+    assert (playlist.parent / "segment_0002.playback.ts").read_bytes() == b"silent-aac-sidecar"
     assert "segment_0002.playback.ts" in playlist.read_text(encoding="utf-8")
 
 
@@ -2761,7 +2795,7 @@ def test_hls_playback_profile_migration_skips_completed_cache_dirs(
 ):
     from custom_components.xsense import recordings_media as media_source
 
-    def _ok_profile(path):
+    def _ok_profile(path, **kwargs):
         return {
             "leading_aac": media_source.HLS_LEADING_AAC_OK,
             "leading_segment": path.name,
@@ -2810,6 +2844,98 @@ def test_hls_playback_profile_migration_skips_completed_cache_dirs(
     assert (
         pending_dir / media_source.HLS_CACHE_VERSION_FILE
     ).read_text(encoding="utf-8").strip() == "3"
+
+
+def test_hls_leading_playback_segment_uses_silent_aac_from_reference(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    leading = tmp_path / "segment_0007.ts"
+    reference = tmp_path / "segment_0009.ts"
+    leading.write_bytes(b"broken-leading")
+    reference.write_bytes(b"good-audio-video")
+    playlist = tmp_path / "index.m3u8"
+    playlist.write_text(
+        "#EXTM3U\n#EXT-X-TARGETDURATION:4\n"
+        "segment_0007.ts\nsegment_0009.ts\n#EXT-X-ENDLIST\n"
+    )
+
+    monkeypatch.setattr(
+        media_source,
+        "_probe_hls_ts_aac",
+        lambda path: (
+            (
+                media_source.HLS_LEADING_AAC_BROKEN,
+                {"stream": {"codec_name": "aac", "profile": "unknown"}},
+            )
+            if path == leading
+            else (
+                media_source.HLS_LEADING_AAC_OK,
+                {
+                    "stream": {
+                        "codec_name": "aac",
+                        "profile": "lc",
+                        "sample_rate": "16000",
+                        "channels": 1,
+                    }
+                },
+            )
+        ),
+    )
+    commands = []
+
+    def _run(command, **kwargs):
+        commands.append(command)
+        sidecar = media_source._hls_leading_playback_segment_path(leading)
+        sidecar.write_bytes(b"silent-aac-sidecar")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(media_source.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(media_source.subprocess, "run", _run)
+
+    profile = media_source._categorize_hls_leading_segment(
+        leading,
+        playlist_path=playlist,
+    )
+
+    assert profile["reference_audio_segment"] == "segment_0009.ts"
+    assert profile["reference_audio"] == {
+        "sample_rate": 16000,
+        "channels": 1,
+    }
+    assert profile["leading_playback_segment"] == "segment_0007.playback.ts"
+    assert commands
+    command = commands[0]
+    assert "anullsrc=channel_layout=mono:sample_rate=16000" in command
+    assert command.count("-map") == 2
+    assert "-map" in command and "1:a:0" in command and "0:v:0" in command
+    assert "-c:a" in command and "aac" in command
+
+
+def test_hls_playback_profile_ready_rejects_video_only_sidecar(monkeypatch, tmp_path):
+    from custom_components.xsense import recordings_media as media_source
+
+    cache_dir = tmp_path / "clip"
+    cache_dir.mkdir()
+    sidecar = cache_dir / "segment_0007.playback.ts"
+    sidecar.write_bytes(b"video-only")
+    media_source._write_hls_playback_profile(
+        cache_dir,
+        {
+            "leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
+            "leading_playback_segment": sidecar.name,
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+        },
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_probe_hls_ts_aac",
+        lambda path: (media_source.HLS_LEADING_AAC_BROKEN, {}),
+    )
+
+    assert media_source._hls_playback_profile_ready(cache_dir) is False
 
 
 def test_recording_media_source_rejects_unversioned_hls_cache(

@@ -2172,12 +2172,97 @@ def _probe_hls_ts_aac(path: Path) -> tuple[str, dict[str, Any]]:
     return HLS_LEADING_AAC_OK, details
 
 
-def _create_hls_leading_playback_segment(path: Path) -> tuple[bool, dict[str, Any]]:
-    """Create a video-only playback sidecar for one leading HLS segment."""
+def _ffmpeg_channel_layout(channels: int) -> str:
+    """Return a lavfi channel_layout value for one AAC stream."""
+    if channels == 1:
+        return "mono"
+    if channels == 2:
+        return "stereo"
+    return f"{channels}c"
+
+
+def _audio_params_from_probe(probe: dict[str, Any]) -> tuple[int, int]:
+    """Return sample rate and channel count from one ffprobe payload."""
+    stream = probe.get("stream")
+    if not isinstance(stream, dict):
+        return 16000, 1
+    try:
+        sample_rate = int(stream.get("sample_rate") or 0)
+    except (TypeError, ValueError):
+        sample_rate = 0
+    try:
+        channels = int(stream.get("channels") or 0)
+    except (TypeError, ValueError):
+        channels = 0
+    if sample_rate <= 0:
+        sample_rate = 16000
+    if channels <= 0:
+        channels = 1
+    return sample_rate, channels
+
+
+def _iter_playlist_media_segment_paths(
+    cache_dir: Path,
+    playlist_path: Path,
+) -> list[Path]:
+    """Return original cached media segment paths referenced by one playlist."""
+    if not _path_ready(playlist_path):
+        return []
+    try:
+        lines = playlist_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    segment_paths: list[Path] = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if _is_hls_playlist_uri(stripped):
+            nested = _iter_playlist_media_segment_paths(
+                cache_dir,
+                playlist_path.parent / stripped,
+            )
+            segment_paths.extend(nested)
+            continue
+        if ".playback." in stripped:
+            original_name = stripped.replace(".playback.", ".", 1)
+            segment_paths.append(cache_dir / original_name)
+            continue
+        segment_paths.append(cache_dir / stripped)
+    return segment_paths
+
+
+def _hls_reference_audio_segment_path(
+    cache_dir: Path,
+    playlist_path: Path,
+    leading_path: Path,
+) -> Path | None:
+    """Return the first following segment with probeable AAC parameters."""
+    past_leading = False
+    for segment_path in _iter_playlist_media_segment_paths(cache_dir, playlist_path):
+        if segment_path.resolve() == leading_path.resolve():
+            past_leading = True
+            continue
+        if not past_leading:
+            continue
+        leading_aac, _probe = _probe_hls_ts_aac(segment_path)
+        if leading_aac == HLS_LEADING_AAC_OK:
+            return segment_path
+    return None
+
+
+def _create_hls_leading_playback_segment(
+    path: Path,
+    *,
+    sample_rate: int,
+    channels: int,
+) -> tuple[bool, dict[str, Any]]:
+    """Create a silent-AAC playback sidecar for one leading HLS segment."""
     ffmpeg = shutil.which("ffmpeg")
     output_path = _hls_leading_playback_segment_path(path)
     if not ffmpeg or not _path_ready(path):
         return False, {"reason": "ffmpeg_unavailable"}
+    channel_layout = _ffmpeg_channel_layout(channels)
     command = [
         ffmpeg,
         "-hide_banner",
@@ -2186,15 +2271,35 @@ def _create_hls_leading_playback_segment(path: Path) -> tuple[bool, dict[str, An
         "-y",
         "-i",
         str(path),
+        "-f",
+        "lavfi",
+        "-i",
+        f"anullsrc=channel_layout={channel_layout}:sample_rate={sample_rate}",
+        "-map",
+        "1:a:0",
         "-map",
         "0:v:0",
-        "-c",
+        "-shortest",
+        "-c:v",
         "copy",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "32k",
+        "-ar",
+        str(sample_rate),
+        "-ac",
+        str(channels),
         "-f",
         "mpegts",
         str(output_path),
     ]
-    details: dict[str, Any] = {"command": command}
+    details: dict[str, Any] = {
+        "command": command,
+        "sample_rate": sample_rate,
+        "channels": channels,
+        "channel_layout": channel_layout,
+    }
     try:
         result = subprocess.run(
             command,
@@ -2217,8 +2322,15 @@ def _create_hls_leading_playback_segment(path: Path) -> tuple[bool, dict[str, An
     return True, details
 
 
-def _categorize_hls_leading_segment(segment_path: Path) -> dict[str, Any]:
+def _categorize_hls_leading_segment(
+    segment_path: Path,
+    *,
+    playlist_path: Path | None = None,
+) -> dict[str, Any]:
     """Probe one leading segment and prepare playback metadata."""
+    if playlist_path is None:
+        playlist_path = segment_path.parent / "index.m3u8"
+    cache_dir = segment_path.parent
     leading_aac, probe = _probe_hls_ts_aac(segment_path)
     profile: dict[str, Any] = {
         "leading_aac": leading_aac,
@@ -2226,7 +2338,35 @@ def _categorize_hls_leading_segment(segment_path: Path) -> dict[str, Any]:
         "probe": probe,
     }
     if leading_aac == HLS_LEADING_AAC_BROKEN:
-        created, repair = _create_hls_leading_playback_segment(segment_path)
+        reference_path = _hls_reference_audio_segment_path(
+            cache_dir,
+            playlist_path,
+            segment_path,
+        )
+        if reference_path is not None:
+            _reference_aac, reference_probe = _probe_hls_ts_aac(reference_path)
+            sample_rate, channels = _audio_params_from_probe(reference_probe)
+            profile["reference_audio_segment"] = reference_path.name
+            profile["reference_audio"] = {
+                "sample_rate": sample_rate,
+                "channels": channels,
+            }
+        else:
+            sample_rate, channels = 16000, 1
+            profile["reference_audio"] = {
+                "sample_rate": sample_rate,
+                "channels": channels,
+                "fallback": True,
+            }
+            LOGGER.debug(
+                "X-Sense HLS leading segment sidecar uses fallback AAC params: %s",
+                {"segment": segment_path.name},
+            )
+        created, repair = _create_hls_leading_playback_segment(
+            segment_path,
+            sample_rate=sample_rate,
+            channels=channels,
+        )
         profile["repair"] = repair
         if not created:
             raise Unresolvable(
@@ -2237,10 +2377,11 @@ def _categorize_hls_leading_segment(segment_path: Path) -> dict[str, Any]:
         ).name
         profile["playback_mode"] = HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC
         LOGGER.debug(
-            "X-Sense HLS leading segment categorized for ignore-AAC playback: %s",
+            "X-Sense HLS leading segment categorized for silent-AAC playback: %s",
             {
                 "segment": segment_path.name,
                 "playback_segment": profile["leading_playback_segment"],
+                "reference_audio": profile.get("reference_audio"),
             },
         )
     else:
@@ -2394,7 +2535,10 @@ def _ensure_hls_playback_profile(cache_dir: Path, playlist_path: Path) -> bool:
     if not _path_ready(leading_path):
         return False
     try:
-        playback_profile = _categorize_hls_leading_segment(leading_path)
+        playback_profile = _categorize_hls_leading_segment(
+            leading_path,
+            playlist_path=leading_playlist,
+        )
     except Unresolvable:
         LOGGER.debug(
             "X-Sense HLS playback profile migration failed: %s",
@@ -2427,11 +2571,14 @@ def _finalize_hls_playback_profile(cache_dir: Path, state: dict[str, Any]) -> No
             },
         )
         return
-    profile = _categorize_hls_leading_segment(leading_path)
-    _write_hls_playback_profile(cache_dir, profile)
     playlist_path = state.get("leading_playlist_path")
     if not isinstance(playlist_path, Path):
         playlist_path = cache_dir / "index.m3u8"
+    profile = _categorize_hls_leading_segment(
+        leading_path,
+        playlist_path=playlist_path,
+    )
+    _write_hls_playback_profile(cache_dir, profile)
     _apply_hls_playback_profile_to_playlist(playlist_path, profile)
 
 
@@ -2444,7 +2591,11 @@ def _hls_playback_profile_ready(cache_dir: Path) -> bool:
     playback_segment = str(profile.get("leading_playback_segment") or "")
     if not playback_segment:
         return False
-    return _path_ready(cache_dir / playback_segment)
+    playback_path = cache_dir / playback_segment
+    if not _path_ready(playback_path):
+        return False
+    sidecar_aac, _probe = _probe_hls_ts_aac(playback_path)
+    return sidecar_aac == HLS_LEADING_AAC_OK
 
 
 def _hls_playback_fields_for_clip(clip: dict[str, Any]) -> dict[str, str]:
@@ -2502,7 +2653,7 @@ def _hls_cache_ready_at(cache_dir: Path, playlist_path: Path) -> bool:
     if not _read_hls_playback_profile(cache_dir):
         return _ensure_hls_playback_profile(cache_dir, playlist_path)
     if not _hls_playback_profile_ready(cache_dir):
-        return False
+        return _ensure_hls_playback_profile(cache_dir, playlist_path)
     return True
 
 
