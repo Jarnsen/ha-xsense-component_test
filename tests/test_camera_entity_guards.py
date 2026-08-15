@@ -2299,6 +2299,15 @@ def test_recording_media_source_caches_hd_hls_without_sd_fallback(
 ):
     from custom_components.xsense import recordings_media as media_source
 
+    monkeypatch.setattr(
+        media_source,
+        "_categorize_hls_leading_segment",
+        lambda path: {
+            "leading_aac": media_source.HLS_LEADING_AAC_OK,
+            "leading_segment": path.name,
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_NORMAL,
+        },
+    )
     source = media_source.XSenseRecordingsMediaSource(_recordings_media_source_hass())
     output_path = tmp_path / "clip.mp4"
     clip = {
@@ -2399,6 +2408,15 @@ def test_recording_media_source_preserves_original_leading_hls_ts_segment(
 ):
     from custom_components.xsense import recordings_media as media_source
 
+    monkeypatch.setattr(
+        media_source,
+        "_categorize_hls_leading_segment",
+        lambda path: {
+            "leading_aac": media_source.HLS_LEADING_AAC_OK,
+            "leading_segment": path.name,
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_NORMAL,
+        },
+    )
     source = media_source.XSenseRecordingsMediaSource(_recordings_media_source_hass())
     output_path = tmp_path / "clip.mp4"
     clip = {
@@ -2491,6 +2509,307 @@ def test_recording_media_source_preserves_original_leading_hls_ts_segment(
     )
     assert (playlist.parent / "segment_0002.ts").read_bytes() == b"bad-leading-audio"
     assert (playlist.parent / "segment_0003.ts").read_bytes() == b"good-audio-video"
+    profile = media_source._read_hls_playback_profile(playlist.parent)
+    assert profile["leading_aac"] == media_source.HLS_LEADING_AAC_OK
+    assert profile["playback_mode"] == media_source.HLS_PLAYBACK_MODE_NORMAL
+
+
+def test_recording_media_source_prepares_broken_leading_hls_segment_for_playback(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    def _broken_leading_profile(path):
+        sidecar = media_source._hls_leading_playback_segment_path(path)
+        sidecar.write_bytes(b"video-only-sidecar")
+        return {
+            "leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
+            "leading_segment": path.name,
+            "leading_playback_segment": sidecar.name,
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+        }
+
+    monkeypatch.setattr(
+        media_source,
+        "_categorize_hls_leading_segment",
+        _broken_leading_profile,
+    )
+    source = media_source.XSenseRecordingsMediaSource(_recordings_media_source_hass())
+    output_path = tmp_path / "clip.mp4"
+    clip = {
+        "source": "video_url",
+        "quality": "HD",
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "playback_url": "https://example.invalid/index.m3u8",
+        "media_root": tmp_path.as_posix(),
+    }
+    responses = {
+        "https://example.invalid/index.m3u8": (
+            "application/vnd.apple.mpegurl;charset=utf-8",
+            b"#EXTM3U\n#EXT-X-TARGETDURATION:4\nseg-1.ts\nseg-2.ts\n#EXT-X-ENDLIST\n",
+        ),
+        "https://example.invalid/seg-1.ts": ("video/mp2t", b"bad-leading-audio"),
+        "https://example.invalid/seg-2.ts": ("video/mp2t", b"good-audio-video"),
+    }
+
+    class Response:
+        def __init__(self, url):
+            self.content_type, self.payload = responses[url]
+            self.headers = {"content-type": self.content_type}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def raise_for_status(self):
+            return None
+
+        async def read(self):
+            return self.payload
+
+        async def text(self):
+            return self.payload.decode()
+
+    class Session:
+        def get(self, url):
+            return Response(url)
+
+    class Hass:
+        async def async_add_executor_job(self, func, *args):
+            return func(*args)
+
+    source.hass = Hass()
+    monkeypatch.setattr(
+        media_source,
+        "_hls_cache_dir",
+        lambda current_clip: tmp_path / "hls",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: tmp_path / "hls" / "index.m3u8",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_local_media_url",
+        lambda path: f"/media/local/test/{path.name}",
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_clip_cache_path",
+        lambda current_clip: output_path,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "async_get_clientsession",
+        lambda hass: Session(),
+    )
+
+    asyncio.run(source._async_cached_playback_url(clip))
+
+    playlist = media_source._hls_playlist_cache_path(clip)
+    profile = media_source._read_hls_playback_profile(playlist.parent)
+    assert profile["leading_aac"] == media_source.HLS_LEADING_AAC_BROKEN
+    assert profile["playback_mode"] == media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC
+    assert (playlist.parent / "segment_0002.ts").read_bytes() == b"bad-leading-audio"
+    assert (playlist.parent / "segment_0002.playback.ts").read_bytes() == b"video-only-sidecar"
+    assert playlist.read_text(encoding="utf-8") == (
+        "#EXTM3U\n"
+        "#EXT-X-TARGETDURATION:4\n"
+        "segment_0002.playback.ts\n"
+        "#EXT-X-DISCONTINUITY\n"
+        "segment_0003.ts\n"
+        "#EXT-X-ENDLIST\n"
+    )
+    assert media_source._hls_playback_fields_for_clip(clip) == {
+        "hls_leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
+        "hls_playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+    }
+
+
+def test_recording_media_source_migrates_v2_hls_cache_in_place(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    def _broken_leading_profile(path):
+        sidecar = media_source._hls_leading_playback_segment_path(path)
+        sidecar.write_bytes(b"video-only-sidecar")
+        return {
+            "leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
+            "leading_segment": path.name,
+            "leading_playback_segment": sidecar.name,
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+        }
+
+    monkeypatch.setattr(
+        media_source,
+        "_categorize_hls_leading_segment",
+        _broken_leading_profile,
+    )
+    playlist = tmp_path / "hls" / "index.m3u8"
+    playlist.parent.mkdir(parents=True)
+    playlist.write_text(
+        "#EXTM3U\n#EXT-X-TARGETDURATION:4\nsegment_0002.ts\nsegment_0003.ts\n#EXT-X-ENDLIST\n"
+    )
+    (playlist.parent / "segment_0002.ts").write_bytes(b"bad-leading-audio")
+    (playlist.parent / "segment_0003.ts").write_bytes(b"good-audio-video")
+    (playlist.parent / media_source.HLS_CACHE_VERSION_FILE).write_text("2\n")
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "media_root": tmp_path.as_posix(),
+    }
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: playlist,
+    )
+
+    assert media_source._hls_ready(clip)
+    assert (
+        playlist.parent / media_source.HLS_CACHE_VERSION_FILE
+    ).read_text(encoding="utf-8").strip() == "3"
+    assert (playlist.parent / "segment_0002.ts").read_bytes() == b"bad-leading-audio"
+    assert (playlist.parent / "segment_0002.playback.ts").read_bytes() == b"video-only-sidecar"
+    assert "segment_0002.playback.ts" in playlist.read_text(encoding="utf-8")
+
+
+def test_hls_playback_profile_migration_reschedules_on_reload(monkeypatch):
+    from custom_components.xsense import recordings_media as media_source
+    from custom_components.xsense.const import DOMAIN
+
+    scheduled = []
+    cancelled = []
+
+    def async_call_later(hass, delay, action):
+        scheduled.append(action)
+        return lambda: cancelled.append("pending")
+
+    class Task:
+        def __init__(self, coro):
+            self._coro = coro
+            self.done = MagicMock(return_value=False)
+            self.cancel = MagicMock()
+
+        def __await__(self):
+            return self._coro.__await__()
+
+    created_tasks = []
+
+    def async_create_task(coro):
+        task = Task(coro)
+        created_tasks.append(task)
+        return task
+
+    async def noop_migration(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(media_source, "async_call_later", async_call_later)
+    monkeypatch.setattr(
+        media_source,
+        "_configured_recording_media_roots",
+        lambda hass: [],
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_list_hls_cache_dirs",
+        lambda roots: [],
+    )
+
+    unloads = []
+    entry = SimpleNamespace(
+        entry_id="entry-id",
+        async_on_unload=unloads.append,
+    )
+    hass = SimpleNamespace(
+        data={DOMAIN: {}},
+        is_running=True,
+        bus=SimpleNamespace(
+            async_listen_once=lambda event, callback: lambda: cancelled.append(
+                "start-listener"
+            )
+        ),
+        async_add_executor_job=noop_migration,
+        async_create_task=async_create_task,
+    )
+
+    media_source.async_schedule_hls_playback_profile_migration(hass, entry)
+    first_generation = hass.data[DOMAIN]["_hls_playback_profile_migration"]["generation"]
+    assert len(scheduled) == 1
+
+    media_source.async_schedule_hls_playback_profile_migration(hass, entry)
+    second_generation = hass.data[DOMAIN]["_hls_playback_profile_migration"]["generation"]
+    assert second_generation == first_generation + 1
+    assert cancelled == ["pending"]
+    assert len(scheduled) == 2
+    assert len(unloads) == 2
+
+
+def test_hls_playback_profile_migration_skips_completed_cache_dirs(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    def _ok_profile(path):
+        return {
+            "leading_aac": media_source.HLS_LEADING_AAC_OK,
+            "leading_segment": path.name,
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_NORMAL,
+        }
+
+    monkeypatch.setattr(
+        media_source,
+        "_categorize_hls_leading_segment",
+        _ok_profile,
+    )
+
+    ready_dir = tmp_path / "hls" / "ready_clip"
+    ready_dir.mkdir(parents=True)
+    ready_playlist = ready_dir / "index.m3u8"
+    ready_playlist.write_text(
+        "#EXTM3U\n#EXT-X-TARGETDURATION:4\nsegment_0001.ts\n#EXT-X-ENDLIST\n"
+    )
+    (ready_dir / "segment_0001.ts").write_bytes(b"good-audio-video")
+    (ready_dir / media_source.HLS_CACHE_VERSION_FILE).write_text("3\n")
+    media_source._write_hls_playback_profile(ready_dir, _ok_profile(ready_dir / "segment_0001.ts"))
+
+    pending_dir = tmp_path / "hls" / "pending_clip"
+    pending_dir.mkdir(parents=True)
+    pending_playlist = pending_dir / "index.m3u8"
+    pending_playlist.write_text(
+        "#EXTM3U\n#EXT-X-TARGETDURATION:4\nsegment_0002.ts\n#EXT-X-ENDLIST\n"
+    )
+    (pending_dir / "segment_0002.ts").write_bytes(b"bad-leading-audio")
+    (pending_dir / media_source.HLS_CACHE_VERSION_FILE).write_text("2\n")
+
+    cache_dirs = media_source._list_hls_cache_dirs([tmp_path])
+    assert cache_dirs == [pending_dir, ready_dir]
+
+    assert media_source._hls_cache_dir_needs_playback_profile_migration(
+        ready_dir,
+        ready_playlist,
+    ) is False
+    assert media_source._hls_cache_dir_needs_playback_profile_migration(
+        pending_dir,
+        pending_playlist,
+    ) is True
+
+    assert media_source._migrate_hls_cache_dir(ready_dir) == "skipped"
+    assert media_source._migrate_hls_cache_dir(pending_dir) == "migrated"
+    assert (
+        pending_dir / media_source.HLS_CACHE_VERSION_FILE
+    ).read_text(encoding="utf-8").strip() == "3"
 
 
 def test_recording_media_source_rejects_unversioned_hls_cache(
@@ -2550,6 +2869,14 @@ def test_recording_media_source_prefers_hls_cache_over_legacy_mp4(
     playlist.write_text("#EXTM3U\n#EXT-X-TARGETDURATION:4\nsegment_0001.ts\n")
     (playlist.parent / "segment_0001.ts").write_bytes(b"segment")
     media_source._write_hls_cache_version(playlist.parent)
+    media_source._write_hls_playback_profile(
+        playlist.parent,
+        {
+            "leading_aac": media_source.HLS_LEADING_AAC_OK,
+            "leading_segment": "segment_0001.ts",
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_NORMAL,
+        },
+    )
     clip = {
         "source": "video_url",
         "quality": "HD",
@@ -2623,6 +2950,14 @@ def test_recording_media_source_hls_master_ready_with_one_buffered_variant(
         encoding="utf-8",
     )
     media_source._write_hls_cache_version(root)
+    media_source._write_hls_playback_profile(
+        root,
+        {
+            "leading_aac": media_source.HLS_LEADING_AAC_OK,
+            "leading_segment": "segment_0002.ts",
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_NORMAL,
+        },
+    )
     monkeypatch.setattr(
         media_source,
         "_hls_playlist_cache_path",
