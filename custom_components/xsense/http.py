@@ -31,7 +31,7 @@ from .recordings_media import (
     _clip_thumbnail_cache_path,
     _hls_playlist_cache_path,
     _hls_playback_fields_for_clip,
-    _hls_ready,
+    _hls_cache_playback_ready,
     _hls_attribute_uri,
     _local_media_url,
     _mp4_ready,
@@ -124,7 +124,7 @@ async def _async_build_panel_data_from_index(
             clip_path = _clip_cache_path(clip)
             thumb_path = _clip_thumbnail_cache_path(clip)
             mp4_cached = await source._async_mp4_ready(clip_path)
-            hls_cached = await source._async_hls_ready(clip)
+            hls_cached = await source._async_hls_cache_playback_ready(clip)
             if hls_cached and mp4_cached:
                 await source._async_cleanup_legacy_mp4_cache(clip)
                 mp4_cached = False
@@ -292,7 +292,7 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
             clip_path = _clip_cache_path(clip)
             thumb_path = _clip_thumbnail_cache_path(clip)
             mp4_cached = _mp4_ready(clip_path)
-            hls_cached = _hls_ready(clip)
+            hls_cached = _hls_cache_playback_ready(clip)
             clip_cached = mp4_cached or hls_cached
             thumb_cached = _path_ready(thumb_path)
             if clip_cached:

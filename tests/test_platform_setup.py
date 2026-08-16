@@ -2674,7 +2674,7 @@ def test_recordings_panel_data_prefers_hls_over_legacy_mp4(monkeypatch):
 
     monkeypatch.setattr(http, "_path_ready", lambda path: False)
     monkeypatch.setattr(http, "_mp4_ready", lambda path: True)
-    monkeypatch.setattr(http, "_hls_ready", lambda clip: True)
+    monkeypatch.setattr(http, "_hls_cache_playback_ready", lambda clip: True)
     monkeypatch.setattr(http, "_file_size", lambda path: 123)
     monkeypatch.setattr(http, "_directory_size", lambda path: 777)
     hass = _recordings_panel_test_hass(

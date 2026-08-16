@@ -2528,6 +2528,7 @@ def test_recording_media_source_prepares_broken_leading_hls_segment_for_playback
             "leading_segment": path.name,
             "leading_playback_segment": sidecar.name,
             "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+            "leading_playback_verified": True,
         }
 
     monkeypatch.setattr(
@@ -2650,6 +2651,270 @@ def test_recording_media_source_prepares_broken_leading_hls_segment_for_playback
     }
 
 
+def test_ensure_hls_playback_profile_backfills_leading_playback_verified(monkeypatch, tmp_path):
+    from custom_components.xsense import recordings_media as media_source
+
+    cache_dir = tmp_path / "clip"
+    cache_dir.mkdir()
+    playlist = cache_dir / "index.m3u8"
+    sidecar = cache_dir / "segment_0007.playback.ts"
+    sidecar.write_bytes(b"silent-aac")
+    playlist.write_text(
+        "#EXTM3U\nsegment_0007.playback.ts\n#EXT-X-DISCONTINUITY\nsegment_0009.ts\n"
+    )
+    (cache_dir / "segment_0009.ts").write_bytes(b"good")
+    (cache_dir / media_source.HLS_CACHE_VERSION_FILE).write_text("3\n")
+    media_source._write_hls_playback_profile(
+        cache_dir,
+        {
+            "leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
+            "leading_segment": "segment_0007.ts",
+            "leading_playback_segment": sidecar.name,
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+            "reference_audio": {"sample_rate": 16000, "channels": 1},
+        },
+    )
+    ffmpeg_calls = []
+
+    def _fail_ffmpeg(*args, **kwargs):
+        ffmpeg_calls.append(args)
+        raise AssertionError("ffmpeg must not run when sidecar already probes OK")
+
+    monkeypatch.setattr(
+        media_source,
+        "_probe_hls_ts_aac",
+        lambda path: (
+            media_source.HLS_LEADING_AAC_OK,
+            {
+                "stream": {
+                    "codec_name": "aac",
+                    "profile": "lc",
+                    "sample_rate": "16000",
+                    "channels": 1,
+                }
+            },
+        ),
+    )
+    monkeypatch.setattr(media_source.subprocess, "run", _fail_ffmpeg)
+
+    assert media_source._ensure_hls_playback_profile(cache_dir, playlist)
+    profile = media_source._read_hls_playback_profile(cache_dir)
+    assert profile["leading_playback_verified"] is True
+    assert ffmpeg_calls == []
+
+
+def test_hls_cache_present_does_not_run_migration(monkeypatch, tmp_path):
+    from custom_components.xsense import recordings_media as media_source
+
+    cache_dir = tmp_path / "clip"
+    cache_dir.mkdir()
+    playlist = cache_dir / "index.m3u8"
+    playlist.write_text("#EXTM3U\nsegment_0001.ts\n")
+    (cache_dir / "segment_0001.ts").write_bytes(b"segment")
+    (cache_dir / media_source.HLS_CACHE_VERSION_FILE).write_text("3\n")
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "media_root": tmp_path.as_posix(),
+    }
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: playlist,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_ensure_hls_playback_profile",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("_ensure_hls_playback_profile must not run")
+        ),
+    )
+
+    assert media_source._hls_cache_present(clip)
+
+
+def test_hls_cache_playback_ready_requires_persisted_profile(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    cache_dir = tmp_path / "clip"
+    cache_dir.mkdir()
+    playlist = cache_dir / "index.m3u8"
+    playlist.write_text("#EXTM3U\nsegment_0001.ts\n")
+    (cache_dir / "segment_0001.ts").write_bytes(b"segment")
+    (cache_dir / media_source.HLS_CACHE_VERSION_FILE).write_text("3\n")
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "media_root": tmp_path.as_posix(),
+    }
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: playlist,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_ensure_hls_playback_profile",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("_ensure_hls_playback_profile must not run")
+        ),
+    )
+
+    assert media_source._hls_cache_present(clip)
+    assert not media_source._hls_cache_playback_ready(clip)
+
+
+def test_hls_cache_playback_ready_rejects_incomplete_sidecar_profile(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    cache_dir = tmp_path / "clip"
+    cache_dir.mkdir()
+    playlist = cache_dir / "index.m3u8"
+    sidecar = cache_dir / "segment_0007.playback.ts"
+    sidecar.write_bytes(b"video-only")
+    playlist.write_text(
+        "#EXTM3U\nsegment_0007.playback.ts\n#EXT-X-DISCONTINUITY\nsegment_0009.ts\n"
+    )
+    (cache_dir / "segment_0009.ts").write_bytes(b"good")
+    (cache_dir / media_source.HLS_CACHE_VERSION_FILE).write_text("3\n")
+    media_source._write_hls_playback_profile(
+        cache_dir,
+        {
+            "leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
+            "leading_playback_segment": sidecar.name,
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+        },
+    )
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "media_root": tmp_path.as_posix(),
+    }
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: playlist,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_probe_hls_ts_aac",
+        lambda path: (_ for _ in ()).throw(
+            AssertionError("_probe_hls_ts_aac must not run on panel readiness checks")
+        ),
+    )
+
+    assert media_source._hls_cache_present(clip)
+    assert not media_source._hls_cache_playback_ready(clip)
+
+
+def test_hls_cache_playback_ready_accepts_legacy_silent_aac_profile(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    cache_dir = tmp_path / "clip"
+    cache_dir.mkdir()
+    playlist = cache_dir / "index.m3u8"
+    sidecar = cache_dir / "segment_0007.playback.ts"
+    sidecar.write_bytes(b"silent-aac")
+    playlist.write_text(
+        "#EXTM3U\nsegment_0007.playback.ts\n#EXT-X-DISCONTINUITY\nsegment_0009.ts\n"
+    )
+    (cache_dir / "segment_0009.ts").write_bytes(b"good")
+    (cache_dir / media_source.HLS_CACHE_VERSION_FILE).write_text("3\n")
+    media_source._write_hls_playback_profile(
+        cache_dir,
+        {
+            "leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
+            "leading_playback_segment": sidecar.name,
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+            "reference_audio": {"sample_rate": 16000, "channels": 1},
+        },
+    )
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "media_root": tmp_path.as_posix(),
+    }
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: playlist,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_probe_hls_ts_aac",
+        lambda path: (_ for _ in ()).throw(
+            AssertionError("_probe_hls_ts_aac must not run on panel readiness checks")
+        ),
+    )
+
+    assert media_source._hls_cache_playback_ready(clip)
+
+
+def test_hls_cache_playback_ready_accepts_persisted_verification_flag(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    cache_dir = tmp_path / "clip"
+    cache_dir.mkdir()
+    playlist = cache_dir / "index.m3u8"
+    sidecar = cache_dir / "segment_0007.playback.ts"
+    sidecar.write_bytes(b"silent-aac")
+    playlist.write_text(
+        "#EXTM3U\nsegment_0007.playback.ts\n#EXT-X-DISCONTINUITY\nsegment_0009.ts\n"
+    )
+    (cache_dir / "segment_0009.ts").write_bytes(b"good")
+    (cache_dir / media_source.HLS_CACHE_VERSION_FILE).write_text("3\n")
+    media_source._write_hls_playback_profile(
+        cache_dir,
+        {
+            "leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
+            "leading_playback_segment": sidecar.name,
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+            "leading_playback_verified": True,
+        },
+    )
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "media_root": tmp_path.as_posix(),
+    }
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: playlist,
+    )
+    monkeypatch.setattr(
+        media_source,
+        "_probe_hls_ts_aac",
+        lambda path: (_ for _ in ()).throw(
+            AssertionError("_probe_hls_ts_aac must not run on panel readiness checks")
+        ),
+    )
+
+    assert media_source._hls_cache_playback_ready(clip)
+
+
 def test_recording_media_source_migrates_v2_hls_cache_in_place(
     monkeypatch,
     tmp_path,
@@ -2664,6 +2929,7 @@ def test_recording_media_source_migrates_v2_hls_cache_in_place(
             "leading_segment": path.name,
             "leading_playback_segment": sidecar.name,
             "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+            "leading_playback_verified": True,
         }
 
     monkeypatch.setattr(
@@ -2914,7 +3180,7 @@ def test_hls_leading_playback_segment_uses_silent_aac_from_reference(
     assert "-c:a" in command and "aac" in command
 
 
-def test_hls_playback_profile_ready_rejects_video_only_sidecar(monkeypatch, tmp_path):
+def test_hls_playback_profile_ready_rejects_video_only_sidecar(tmp_path):
     from custom_components.xsense import recordings_media as media_source
 
     cache_dir = tmp_path / "clip"
@@ -2929,13 +3195,58 @@ def test_hls_playback_profile_ready_rejects_video_only_sidecar(monkeypatch, tmp_
             "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
         },
     )
-    monkeypatch.setattr(
-        media_source,
-        "_probe_hls_ts_aac",
-        lambda path: (media_source.HLS_LEADING_AAC_BROKEN, {}),
-    )
 
     assert media_source._hls_playback_profile_ready(cache_dir) is False
+
+
+def test_hls_playback_fields_for_clip_reads_profile_without_subprocess(
+    monkeypatch,
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    def _fail_subprocess(*args, **kwargs):
+        raise AssertionError("subprocess must not run on panel profile reads")
+
+    monkeypatch.setattr(media_source.subprocess, "run", _fail_subprocess)
+    monkeypatch.setattr(
+        media_source,
+        "_hls_ready",
+        lambda clip: (_ for _ in ()).throw(
+            AssertionError("_hls_ready must not run on panel profile reads")
+        ),
+    )
+
+    playlist = tmp_path / "hls" / "index.m3u8"
+    playlist.parent.mkdir(parents=True)
+    playlist.write_text("#EXTM3U\nsegment_0001.ts\n")
+    (playlist.parent / "segment_0001.ts").write_bytes(b"segment")
+    media_source._write_hls_playback_profile(
+        playlist.parent,
+        {
+            "leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
+            "leading_playback_segment": "segment_0001.playback.ts",
+            "playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+            "leading_playback_verified": True,
+        },
+    )
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "media_root": tmp_path.as_posix(),
+    }
+    monkeypatch.setattr(
+        media_source,
+        "_hls_playlist_cache_path",
+        lambda current_clip: playlist,
+    )
+
+    assert media_source._hls_playback_fields_for_clip(clip) == {
+        "hls_leading_aac": media_source.HLS_LEADING_AAC_BROKEN,
+        "hls_playback_mode": media_source.HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC,
+    }
 
 
 def test_recording_media_source_rejects_unversioned_hls_cache(

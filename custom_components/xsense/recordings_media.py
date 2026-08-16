@@ -1249,6 +1249,14 @@ class XSenseRecordingsMediaSource(MediaSource):
         """Return whether a cached HLS playlist and its media files are present."""
         return await self._async_file_job(_hls_ready, clip)
 
+    async def _async_hls_cache_present(self, clip: dict[str, Any]) -> bool:
+        """Return whether cached HLS files exist without upgrading them."""
+        return await self._async_file_job(_hls_cache_present, clip)
+
+    async def _async_hls_cache_playback_ready(self, clip: dict[str, Any]) -> bool:
+        """Return whether cached HLS is playback-ready without upgrading it."""
+        return await self._async_file_job(_hls_cache_playback_ready, clip)
+
     async def _async_cached_media_ready(self, clip: dict[str, Any]) -> bool:
         """Return whether cached MP4 or HLS media exists for a clip."""
         return await self._async_hls_ready(clip) or await self._async_mp4_ready(
@@ -2376,12 +2384,14 @@ def _categorize_hls_leading_segment(
             segment_path
         ).name
         profile["playback_mode"] = HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC
-        # The sidecar was just built and verified here, where blocking work is
-        # allowed. Record that so the readiness check never has to re-probe it:
-        # _hls_playback_profile_ready() runs on the event loop via the panel and
-        # play handlers, and an ffprobe there raises
-        # "Caught blocking call to sleep ... inside the event loop".
-        profile["leading_playback_verified"] = True
+        # The sidecar was just built here, where blocking work is allowed. Probe it
+        # once and record leading_playback_verified so _hls_playback_profile_ready()
+        # never re-probes on the event loop (panel/play handlers).
+        sidecar_path = _hls_leading_playback_segment_path(segment_path)
+        sidecar_aac, sidecar_probe = _probe_hls_ts_aac(sidecar_path)
+        profile["leading_playback_verified"] = sidecar_aac == HLS_LEADING_AAC_OK
+        if sidecar_probe:
+            profile["sidecar_probe"] = sidecar_probe
         LOGGER.debug(
             "X-Sense HLS leading segment categorized for silent-AAC playback: %s",
             {
@@ -2530,6 +2540,20 @@ def _migrate_hls_cache_dir(cache_dir: Path) -> str:
 def _ensure_hls_playback_profile(cache_dir: Path, playlist_path: Path) -> bool:
     """Probe a cached clip in place and add playback metadata when missing."""
     profile = _read_hls_playback_profile(cache_dir)
+    if profile and profile.get("leading_aac") == HLS_LEADING_AAC_BROKEN:
+        playback_segment = str(profile.get("leading_playback_segment") or "")
+        playback_path = cache_dir / playback_segment if playback_segment else None
+        if (
+            playback_path is not None
+            and _path_ready(playback_path)
+            and not profile.get("leading_playback_verified")
+        ):
+            sidecar_aac, sidecar_probe = _probe_hls_ts_aac(playback_path)
+            if sidecar_aac == HLS_LEADING_AAC_OK:
+                profile["leading_playback_verified"] = True
+                if sidecar_probe:
+                    profile["sidecar_probe"] = sidecar_probe
+                _write_hls_playback_profile(cache_dir, profile)
     if profile and _hls_playback_profile_ready(cache_dir):
         if _hls_cache_version_value(cache_dir) != str(HLS_CACHE_VERSION):
             _write_hls_cache_version(cache_dir)
@@ -2609,16 +2633,17 @@ def _hls_playback_profile_ready(cache_dir: Path) -> bool:
         return False
     if profile.get("leading_playback_verified"):
         return True
-    # Profile written by an older version: no verification flag. Accept the sidecar
-    # on presence rather than probing, and let the next regeneration stamp it.
-    return playback_path.stat().st_size > 0
+    # 1.4.17.4 silent-AAC profiles written before the verification flag existed.
+    # reference_audio distinguishes them from 1.4.17.3 video-only sidecars.
+    return bool(profile.get("reference_audio"))
 
 
 def _hls_playback_fields_for_clip(clip: dict[str, Any]) -> dict[str, str]:
     """Return playback profile fields exposed to the recordings panel."""
-    if not _hls_ready(clip):
+    playlist_path = _hls_playlist_cache_path(clip)
+    if not _path_ready(playlist_path):
         return {}
-    profile = _read_hls_playback_profile(_hls_playlist_cache_path(clip).parent)
+    profile = _read_hls_playback_profile(playlist_path.parent)
     leading_aac = str(profile.get("leading_aac") or "")
     playback_mode = str(profile.get("playback_mode") or "")
     if not leading_aac:
@@ -2658,6 +2683,33 @@ def _mp4_ready(path: Path) -> bool:
 def _hls_ready(clip: dict[str, Any]) -> bool:
     playlist_path = _hls_playlist_cache_path(clip)
     return _hls_cache_ready_at(playlist_path.parent, playlist_path)
+
+
+def _hls_cache_present(clip: dict[str, Any]) -> bool:
+    playlist_path = _hls_playlist_cache_path(clip)
+    return _hls_cache_present_at(playlist_path.parent, playlist_path)
+
+
+def _hls_cache_present_at(cache_dir: Path, playlist_path: Path) -> bool:
+    """Return whether cached HLS files exist without running probes or migration."""
+    if not _hls_cache_version_supported(cache_dir):
+        return False
+    return _hls_playlist_ready(playlist_path)
+
+
+def _hls_cache_playback_ready(clip: dict[str, Any]) -> bool:
+    playlist_path = _hls_playlist_cache_path(clip)
+    return _hls_cache_playback_ready_at(playlist_path.parent, playlist_path)
+
+
+def _hls_cache_playback_ready_at(cache_dir: Path, playlist_path: Path) -> bool:
+    """Return whether cached HLS is playback-ready without probes or migration."""
+    if not _hls_cache_present_at(cache_dir, playlist_path):
+        return False
+    profile = _read_hls_playback_profile(cache_dir)
+    if not profile:
+        return False
+    return _hls_playback_profile_ready(cache_dir)
 
 
 def _hls_cache_ready_at(cache_dir: Path, playlist_path: Path) -> bool:
