@@ -2376,6 +2376,12 @@ def _categorize_hls_leading_segment(
             segment_path
         ).name
         profile["playback_mode"] = HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC
+        # The sidecar was just built and verified here, where blocking work is
+        # allowed. Record that so the readiness check never has to re-probe it:
+        # _hls_playback_profile_ready() runs on the event loop via the panel and
+        # play handlers, and an ffprobe there raises
+        # "Caught blocking call to sleep ... inside the event loop".
+        profile["leading_playback_verified"] = True
         LOGGER.debug(
             "X-Sense HLS leading segment categorized for silent-AAC playback: %s",
             {
@@ -2583,6 +2589,13 @@ def _finalize_hls_playback_profile(cache_dir: Path, state: dict[str, Any]) -> No
 
 
 def _hls_playback_profile_ready(cache_dir: Path) -> bool:
+    """Return whether a cached clip is ready to play.
+
+    This is reached from the event loop (panel build and play handler), so it must
+    not run ffprobe: HA raises "Caught blocking call ... inside the event loop" and
+    the request fails with HTTP 500. The sidecar is verified once at creation time
+    and recorded as leading_playback_verified, so a file check is sufficient here.
+    """
     profile = _read_hls_playback_profile(cache_dir)
     if not profile:
         return False
@@ -2594,8 +2607,11 @@ def _hls_playback_profile_ready(cache_dir: Path) -> bool:
     playback_path = cache_dir / playback_segment
     if not _path_ready(playback_path):
         return False
-    sidecar_aac, _probe = _probe_hls_ts_aac(playback_path)
-    return sidecar_aac == HLS_LEADING_AAC_OK
+    if profile.get("leading_playback_verified"):
+        return True
+    # Profile written by an older version: no verification flag. Accept the sidecar
+    # on presence rather than probing, and let the next regeneration stamp it.
+    return playback_path.stat().st_size > 0
 
 
 def _hls_playback_fields_for_clip(clip: dict[str, Any]) -> dict[str, str]:
