@@ -938,6 +938,7 @@ class AsyncXSense(XSenseBase):
         async with session.get(url, headers=headers) as response:
             self._lastres = response
             if response.status in (401, 403) and _retry:
+                self._apply_clock_skew_from_response(response)
                 await self.load_aws()
                 return await self.get_house(house, page, _retry=False)
             return await response.json()
@@ -952,6 +953,7 @@ class AsyncXSense(XSenseBase):
         async with session.get(url, headers=headers) as response:
             self._lastres = response
             if response.status in (401, 403) and _retry:
+                self._apply_clock_skew_from_response(response)
                 await self.load_aws()
                 return await self.get_thing(station, page, _retry=False)
             return await response.json()
@@ -974,6 +976,7 @@ class AsyncXSense(XSenseBase):
                 and self.signer is not None
                 and self.aws_access_expiry is not None
             ):
+                self._apply_clock_skew_from_response(response)
                 await self.load_aws()
                 return await self.do_thing(station, page, data, _retry=False)
             if response.status >= 400:
