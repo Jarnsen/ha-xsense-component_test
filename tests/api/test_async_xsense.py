@@ -1,5 +1,6 @@
 import base64
 from collections import defaultdict
+from datetime import timedelta
 import hashlib
 import importlib
 import json
@@ -18,6 +19,7 @@ def load_api_module(module_name: str):
 
 async_xsense = load_api_module("async_xsense")
 base = importlib.import_module("custom_components.xsense.python_xsense.base")
+aws_signer = load_api_module("aws_signer")
 entity = load_api_module("entity")
 device_module = load_api_module("device")
 entity_map = load_api_module("entity_map")
@@ -2674,6 +2676,135 @@ async def test_do_thing_raises_on_shadow_update_failure():
             "2nd_selftest_device-sn",
             {"state": {"desired": {"a": 1}}},
         )
+
+
+class FakeGetResponse:
+    def __init__(self, status: int, headers: dict, payload: dict) -> None:
+        self.status = status
+        self.headers = headers
+        self._payload = payload
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def json(self):
+        return self._payload
+
+    async def text(self):
+        return json.dumps(self._payload)
+
+
+class FakeGetSession:
+    def __init__(self, responses) -> None:
+        self._responses = list(responses)
+        self.calls = []
+
+    def get(self, url, headers=None):
+        self.calls.append({"url": url, "headers": headers})
+        return self._responses.pop(0)
+
+
+def test_aws_signer_applies_global_time_offset():
+    signer = aws_signer.AWSSigner("client-id", "client-secret", "token")
+    try:
+        aws_signer.set_global_time_offset(0)
+        baseline = signer.sign_headers(
+            "GET", "https://example.invalid/things/x/shadow", "us-east-1", {}, None
+        )["X-Amz-Date"]
+
+        aws_signer.set_global_time_offset(-7200)
+        shifted = signer.sign_headers(
+            "GET", "https://example.invalid/things/x/shadow", "us-east-1", {}, None
+        )["X-Amz-Date"]
+    finally:
+        aws_signer.set_global_time_offset(0)
+
+    baseline_dt = async_xsense.datetime.strptime(baseline, "%Y%m%dT%H%M%SZ")
+    shifted_dt = async_xsense.datetime.strptime(shifted, "%Y%m%dT%H%M%SZ")
+    # A -7200s offset means the signer stamps two hours ahead of the raw clock.
+    assert 7100 <= (shifted_dt - baseline_dt).total_seconds() <= 7300
+
+
+def test_apply_clock_skew_from_response_learns_offset():
+    from email.utils import format_datetime
+
+    client = async_xsense.AsyncXSense()
+    server_date = async_xsense.datetime.now(async_xsense.timezone.utc) - timedelta(
+        hours=2
+    )
+    response = FakeGetResponse(403, {"Date": format_datetime(server_date)}, {})
+    try:
+        aws_signer.set_global_time_offset(0)
+        applied = client._apply_clock_skew_from_response(response)
+        offset = aws_signer.get_global_time_offset()
+    finally:
+        aws_signer.set_global_time_offset(0)
+
+    assert applied is True
+    assert 7100 <= offset <= 7300
+
+
+def test_apply_clock_skew_ignores_small_offset():
+    from email.utils import format_datetime
+
+    client = async_xsense.AsyncXSense()
+    server_date = async_xsense.datetime.now(async_xsense.timezone.utc)
+    response = FakeGetResponse(403, {"Date": format_datetime(server_date)}, {})
+    try:
+        aws_signer.set_global_time_offset(0)
+        applied = client._apply_clock_skew_from_response(response)
+        offset = aws_signer.get_global_time_offset()
+    finally:
+        aws_signer.set_global_time_offset(0)
+
+    assert applied is False
+    assert offset == 0
+
+
+@pytest.mark.asyncio
+async def test_get_thing_corrects_clock_skew_and_retries():
+    from email.utils import format_datetime
+
+    client = async_xsense.AsyncXSense()
+    client._aws_token_expiring = lambda: False
+
+    server_date = async_xsense.datetime.now(async_xsense.timezone.utc) - timedelta(
+        hours=2
+    )
+    session = FakeGetSession(
+        [
+            FakeGetResponse(403, {"Date": format_datetime(server_date)}, {}),
+            FakeGetResponse(200, {}, {"state": {"reported": {"ok": True}}}),
+        ]
+    )
+
+    async def get_session():
+        return session
+
+    client._get_session = get_session
+    client._thing_request = lambda station, page: ("https://example.invalid", {})
+
+    load_aws_calls = []
+
+    async def load_aws():
+        load_aws_calls.append(True)
+
+    client.load_aws = load_aws
+
+    try:
+        aws_signer.set_global_time_offset(0)
+        result = await client.get_thing(FakeXSenseStation("SBS50"), "2nd_mainpage")
+        offset = aws_signer.get_global_time_offset()
+    finally:
+        aws_signer.set_global_time_offset(0)
+
+    assert result == {"state": {"reported": {"ok": True}}}
+    assert len(session.calls) == 2
+    assert len(load_aws_calls) == 1
+    assert 7100 <= offset <= 7300
 
 
 async def _capture_volume_update(client, target, volume_key, volume):

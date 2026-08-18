@@ -3,7 +3,9 @@ import binascii
 import hashlib
 import hmac
 import json
+import logging
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from typing import Dict
 
 import boto3
@@ -11,11 +13,19 @@ from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
 from pycognito import AWSSRP
 
+from .aws_signer import get_global_time_offset, set_global_time_offset
 from .entity import Entity
 from .entity_map import entities
 from .exceptions import APIFailure, AuthFailed
 from .station import Station
 from .house import House
+
+LOGGER = logging.getLogger(__name__)
+
+# Ignore sub-minute differences: AWS SigV4 tolerates a few minutes of skew, so
+# only a genuinely wrong host clock (post-reboot, NTP not yet synced) needs the
+# correction. This keeps a normal 403 (e.g. bad credentials) on the same path.
+_CLOCK_SKEW_THRESHOLD_SECONDS = 60
 
 
 def _mac_json(value) -> str:
@@ -203,6 +213,43 @@ class XSenseBase:
 
     def _aws_token_expiring(self):
         return datetime.now(timezone.utc) > self.aws_access_expiry - timedelta(seconds=60)
+
+    def _apply_clock_skew_from_response(self, response) -> bool:
+        """Learn the host clock-skew offset from an AWS response Date header.
+
+        AWS IoT returns 403 when the SigV4 X-Amz-Date is outside its tolerance,
+        which happens when the Home Assistant host clock is wrong (commonly right
+        after a reboot before NTP resyncs). The server tells us the real time in
+        the Date header; we store the offset so every later signature is stamped
+        with the corrected time, matching the AWS Android SDK behaviour in the
+        X-Sense app. Returns True when a meaningful correction was applied.
+        """
+        headers = getattr(response, 'headers', None)
+        if not headers:
+            return False
+        server_date_raw = headers.get('Date')
+        if not server_date_raw:
+            return False
+        try:
+            server_date = parsedate_to_datetime(server_date_raw)
+        except (TypeError, ValueError):
+            return False
+        if server_date is None:
+            return False
+        if server_date.tzinfo is None:
+            server_date = server_date.replace(tzinfo=timezone.utc)
+        offset = (datetime.now(timezone.utc) - server_date).total_seconds()
+        if abs(offset) < _CLOCK_SKEW_THRESHOLD_SECONDS:
+            return False
+        if abs(offset - get_global_time_offset()) < 1:
+            return False
+        set_global_time_offset(offset)
+        LOGGER.warning(
+            'Corrected AWS request signing clock skew of %d seconds from server '
+            'Date header; check NTP time sync on the Home Assistant host.',
+            int(offset),
+        )
+        return True
 
     def _decode_secret(self, encoded):
         value = base64.b64decode(encoded)

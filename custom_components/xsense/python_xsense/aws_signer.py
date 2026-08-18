@@ -7,6 +7,33 @@ from typing import Dict
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit
 
 
+# Seconds to subtract from the local clock when stamping AWS SigV4 requests.
+# Mirrors the AWS Android SDK's SDKGlobalConfiguration.getGlobalTimeOffset():
+# when AWS IoT rejects a signature because the host clock is skewed (a common
+# situation right after a Raspberry Pi reboots before NTP resyncs), the offset
+# between the local clock and the server "Date" header is learned once and
+# applied to every subsequent signature so requests stop failing with 403.
+_GLOBAL_TIME_OFFSET_SECONDS = 0.0
+
+
+def get_global_time_offset() -> float:
+    """Return the learned clock-skew offset in seconds (local minus server)."""
+    return _GLOBAL_TIME_OFFSET_SECONDS
+
+
+def set_global_time_offset(seconds: float) -> None:
+    """Store the learned clock-skew offset applied to future signatures."""
+    global _GLOBAL_TIME_OFFSET_SECONDS
+    _GLOBAL_TIME_OFFSET_SECONDS = seconds
+
+
+def signing_now() -> datetime.datetime:
+    """Return the current UTC time corrected by the learned clock-skew offset."""
+    return datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        seconds=_GLOBAL_TIME_OFFSET_SECONDS
+    )
+
+
 class AWSSigner:
     algorithm = 'AWS4-HMAC-SHA256'
     service = 'iotdata'
@@ -79,7 +106,7 @@ class AWSSigner:
         parsed_url = urlsplit(url)
 
         result = {'host': parsed_url.netloc}
-        t = datetime.datetime.now(datetime.timezone.utc)
+        t = signing_now()
         amz_date = t.strftime('%Y%m%dT%H%M%SZ')
         date_stamp = t.strftime('%Y%m%d')
 
@@ -113,7 +140,7 @@ class AWSSigner:
         return result
 
     def presign_url(self, url, region):
-        t = datetime.datetime.now(datetime.timezone.utc)
+        t = signing_now()
         date_time = t.strftime('%Y%m%dT%H%M%SZ')
         date_stamp = t.strftime('%Y%m%d')
         credential_scope = f'{date_stamp}/{region}/{self.service}/aws4_request'
