@@ -170,7 +170,7 @@ automation:
 ### 엔티티, 카메라, 문제 해결
 - X-Sense가 실제로 보고하는 필드에 대해서만 엔티티를 만듭니다.
 - 진단 값은 Home Assistant에서 diagnostic으로 분류됩니다.
-- 지원 카메라는 카메라 엔티티, thumbnail, live stream, 상태, 지원 설정을 제공할 수 있습니다.
+- 지원 카메라는 카메라 엔티티, thumbnail, Home Assistant live view, 상태, 지원 설정을 제공할 수 있습니다.
 - 문제 보고 시 모델, 통합 버전, diagnostics, logs, 앱에서 값이 바뀌는지 여부를 포함하세요.
 
 ## 장치 및 엔티티 체크리스트

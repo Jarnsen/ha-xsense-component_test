@@ -28,7 +28,7 @@ Entity changes: [X-Sense Entity Changes](../ENTITY_CHANGES.md).
 - Support for automations based on X-Sense sensor data.
 - Support for the following device types: base stations, smoke detectors, carbon monoxide detectors, heat alarms, water leak detectors, hygrometers, door sensors, motion sensors, lights, keypads, mailbox sensors, audio monitoring devices, and supported cameras when they are available in the X-Sense account.
 - Real-time updates through X-Sense MQTT shadows, with periodic cloud polling as a fallback.
-- Supported cameras use native Home Assistant WebRTC signaling for WebRTC cameras and direct stream URLs for cameras that report RTSP/RTMP support.
+- Supported cameras use native Home Assistant WebRTC signaling when X-Sense reports live-view support for the device and account.
 - Supported camera SD-card recording history is available from the X-Sense Recordings sidebar viewer and Home Assistant's Media Browser when X-Sense reports APK playback metadata for the clips.
 - Supported cameras expose AI notification detections as Home Assistant event entities for use with the included automation blueprint. Supported camera setup and tuning controls are exposed in Home Assistant when the X-Sense app reports that the feature and account support it.
 - Easy setup through HACS (Home Assistant Community Store).
@@ -107,7 +107,7 @@ This integration supports a variety of X-Sense devices. Supported entities depen
 - **Hygrometer-thermometer (STH51, STH0A, STH0B, STH0C)**: Monitors temperature and humidity.
 - **Door sensor (SDS0A)**: Exposes door state when provided by the X-Sense account.
 - **Motion detector (SMS0A)**: Exposes motion alarm state when provided by the X-Sense account.
-- **Camera (SSC0A, SSC0B)**: Exposes camera entities, thumbnails, live stream URLs, status diagnostics, regular motion event reporting, and AI notification events when supported by the device and account.
+- **Camera (SSC0A, SSC0B)**: Exposes camera entities, thumbnails, native Home Assistant live view, status diagnostics, regular motion event reporting, and AI notification events when supported by the device and account.
 - **Other station-connected devices**: Light, keypad, mailbox, audio monitoring device, driveway alarm, smart delivery device, remote, and radon device data is exposed when the X-Sense API reports supported fields.
 
 These devices can be used to create automations and alerts after being integrated into Home Assistant.
@@ -127,7 +127,7 @@ Some entities are diagnostic or configuration-related and are grouped that way i
 ____________________________________________________________
 
 ## Camera Live View and AI Notifications
-Supported cameras use native Home Assistant WebRTC signaling for WebRTC cameras and direct stream URLs for cameras that report RTSP/RTMP support. Cameras also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
+Supported cameras use native Home Assistant WebRTC signaling when X-Sense reports live-view support for the device and account. Cameras also create `Motion` and `AI Detection` event entities, such as `event.front_camera_motion` and `event.front_camera_ai_detection`. Use these `event.*` entities for notification automations, and replace sample entity IDs with the actual entity IDs shown in your Home Assistant instance.
 
 When a Motion event includes X-Sense playback metadata, the integration immediately tries to cache the clip. With recording links enabled, the default camera-event blueprint waits until cached media is ready, then sends a mobile notification that opens the matching X-Sense Recordings clip. Turn recording links off if you want a plain motion notification without waiting for video. Manual automation runs use the selected event entity's latest recording data. Recording media sync can keep recent clips ready in the background. The integration updates older imported X-Sense camera-event blueprints automatically when Home Assistant starts or during the periodic blueprint maintenance check.
 

@@ -185,7 +185,7 @@ Når du rapporterer en fejl, så angiv enhedsmodellen, integrationsversionen, om
 - Test, mute, brandøvelse og kameravækning vises kun for understøttede modeller.
 
 ### Kamerareference
-- Understøttede kameraer kan vise kameraentitet, miniaturebillede, live stream og diagnostik.
+- Understøttede kameraer kan vise kameraentitet, miniaturebillede, Home Assistant-livevisning og diagnostik.
 - SD-kort, betalinger, firmware og kontoadministration bliver i X-Sense-appen.
 
 ### Tjekliste til fejlfinding

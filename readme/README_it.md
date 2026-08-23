@@ -103,7 +103,7 @@ Questa integrazione supporta diversi dispositivi X-Sense. Le entità disponibili
 - **Rilevatore di perdite d'acqua (SWS51)**: Rileva acqua in punti indesiderati.
 - **Igrometro-termometro (STH51, STH0A, STH0B, STH0C)**: Monitora temperatura e umidità.
 - **Sensore porta (SDS0A)** e **sensore movimento (SMS0A)**: Esposti quando X-Sense fornisce lo stato.
-- **Camera (SSC0A, SSC0B)**: Espone entità camera, miniature, URL live stream, diagnostica e impostazioni basate sull'app Android quando supportate da dispositivo e account.
+- **Camera (SSC0A, SSC0B)**: Espone entità camera, miniature, visualizzazione live nativa di Home Assistant, diagnostica e impostazioni basate sull'app Android quando supportate da dispositivo e account.
 - **Altri dispositivi collegati alla stazione**: Luce, tastiera, cassetta postale, dispositivo di ascolto, allarme vialetto, deposito intelligente, telecomando e dati radon sono esposti quando l'API riporta campi supportati.
 
 ### Entità e azioni disponibili
