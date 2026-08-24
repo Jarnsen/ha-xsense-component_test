@@ -2515,12 +2515,115 @@ def test_recordings_http_registration_adds_panel_views():
     asyncio.run(http.async_register_recordings_http_views(hass))
     asyncio.run(http.async_register_recordings_http_views(hass))
 
-    assert len(views) == 5
+    assert len(views) == 6
     assert isinstance(views[0], http.XSenseRecordingsPanelDataView)
     assert isinstance(views[1], http.XSenseRecordingsPanelDebugView)
     assert isinstance(views[2], http.XSenseRecordingsPanelPlaybackView)
     assert isinstance(views[3], http.XSenseRecordingsPanelThumbnailView)
     assert isinstance(views[4], http.XSenseRecordingsHlsSegmentView)
+    assert isinstance(views[5], http.XSenseForceArmView)
+
+
+def test_force_arm_view_sends_guarded_command_and_redirects(monkeypatch):
+    from aiohttp import web
+    from custom_components.xsense import http
+
+    class Api:
+        def __init__(self):
+            self.calls = []
+
+        async def set_station_mode(self, station, safe_mode, force_arm=None):
+            self.calls.append((station.sn, safe_mode, force_arm))
+
+    class Registry:
+        def async_get_entity_id(self, domain, platform, unique_id):
+            assert domain == "alarm_control_panel"
+            assert platform == DOMAIN
+            assert unique_id == "station-sn_alarm"
+            return "alarm_control_panel.base_station_alarm"
+
+    station = SimpleNamespace(
+        alarm_data={"forceReason": [{"deviceSN": "door-sn"}], "safeModeAim": "Away"},
+        entity_id="station-id",
+        name="Base Station",
+        sn="station-sn",
+    )
+    api = Api()
+    hass = SimpleNamespace(
+        data={
+            DOMAIN: {
+                "entry-id": SimpleNamespace(
+                    data={"stations": {"station-id": station}},
+                    xsense=api,
+                )
+            }
+        }
+    )
+    dismissed = []
+    monkeypatch.setattr(http.er, "async_get", lambda hass: Registry())
+    monkeypatch.setattr(
+        http.persistent_notification,
+        "async_dismiss",
+        lambda hass, notification_id: dismissed.append(notification_id),
+    )
+
+    with pytest.raises(web.HTTPFound) as exc:
+        asyncio.run(
+            http.XSenseForceArmView(hass).get(
+                SimpleNamespace(),
+                "entry-id",
+                "station-id",
+                "away",
+            )
+        )
+
+    assert api.calls == [("station-sn", "Away", "1")]
+    assert dismissed == ["xsense_force_arm_station-id"]
+    assert exc.value.location == (
+        "/?more-info-entity-id=alarm_control_panel.base_station_alarm"
+    )
+
+
+def test_force_arm_view_requires_matching_pending_prompt():
+    from aiohttp import web
+    from custom_components.xsense import http
+
+    class Api:
+        def __init__(self):
+            self.calls = []
+
+        async def set_station_mode(self, station, safe_mode, force_arm=None):
+            self.calls.append((station.sn, safe_mode, force_arm))
+
+    station = SimpleNamespace(
+        alarm_data={"forceReason": [{"deviceSN": "door-sn"}], "safeModeAim": "Home"},
+        entity_id="station-id",
+        name="Base Station",
+        sn="station-sn",
+    )
+    api = Api()
+    hass = SimpleNamespace(
+        data={
+            DOMAIN: {
+                "entry-id": SimpleNamespace(
+                    data={"stations": {"station-id": station}},
+                    xsense=api,
+                )
+            }
+        }
+    )
+
+    with pytest.raises(web.HTTPConflict):
+        asyncio.run(
+            http.XSenseForceArmView(hass).get(
+                SimpleNamespace(),
+                "entry-id",
+                "station-id",
+                "away",
+            )
+        )
+
+    assert api.calls == []
 
 
 def test_recordings_hls_playlist_rewrites_segments_to_token_route(tmp_path):

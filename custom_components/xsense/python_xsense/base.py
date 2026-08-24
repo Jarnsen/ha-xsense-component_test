@@ -380,6 +380,7 @@ class XSenseBase:
 
         _normalize_apk_alarm_status(station_data)
         has_alarm_status = 'alarmStatus' in station_data or 'a' in station_data
+        _apply_sbs50_force_arm_prompt(station, station_data)
         if station_data:
             station.set_data(station_data)
         if 'safeMode' in station_data:
@@ -558,6 +559,58 @@ def _child_state_identifiers(child_key, child_state) -> tuple[str, ...]:
             seen.add(text)
             result.append(text)
     return tuple(result)
+
+
+def _apply_sbs50_force_arm_prompt(station: Station, station_data: Dict) -> None:
+    """Track the APK bypass confirmation prompt for SBS50 arm requests."""
+    prompt = _sbs50_force_arm_prompt(station_data)
+    if prompt is not None:
+        station.set_alarm_data(prompt)
+        return
+
+    if "safeMode" in station_data:
+        station.set_alarm_data(
+            {
+                "forceReason": None,
+                "safeModeAim": None,
+                "exitDelay": None,
+            }
+        )
+
+
+def _sbs50_force_arm_prompt(station_data: Dict) -> Dict | None:
+    if "forceReason" in station_data:
+        force_reason = station_data.get("forceReason")
+        if force_reason:
+            return {
+                "forceReason": force_reason,
+                "safeModeAim": station_data.get("safeModeAim")
+                or station_data.get("safeMode"),
+                "exitDelay": station_data.get("exitDelay"),
+            }
+
+    notices = station_data.get("notices")
+    if not isinstance(notices, list):
+        return None
+
+    for notice in notices:
+        if not isinstance(notice, dict):
+            continue
+        event_param = notice.get("eventParam")
+        if not isinstance(event_param, dict):
+            continue
+        force_reason = event_param.get("forceReason")
+        if not force_reason:
+            continue
+        return {
+            "forceReason": force_reason,
+            "safeModeAim": event_param.get("safeModeAim")
+            or station_data.get("safeModeAim")
+            or station_data.get("safeMode"),
+            "exitDelay": event_param.get("exitDelay"),
+        }
+
+    return None
 
 
 def _apply_group_light_state(station: Station, station_data: Dict, children) -> bool:
