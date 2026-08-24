@@ -4088,7 +4088,11 @@ async def test_update_camera_data_updates_known_camera_from_addx_device_list():
     assert ("/device/listuserdevices", {}) in calls
     assert (
         "/device/getuserconfig",
-        {"serialNumber": "cam-sn", "voiceReminder": False},
+        {
+            "_house": test_house,
+            "serialNumber": "cam-sn",
+            "voiceReminder": False,
+        },
     ) in calls
 
 
@@ -4227,7 +4231,10 @@ async def test_update_camera_data_loads_apk_form_options():
     assert camera.data["videoSecondsValues"] == [-1]
     assert camera.data["cooldownOptions"] == [10]
     assert "cameraWebrtcTicket" not in camera.data
-    assert ("/user/getFormOptions", {"serialNumber": "cam-sn"}) in calls
+    assert (
+        "/user/getFormOptions",
+        {"_house": test_house, "serialNumber": "cam-sn"},
+    ) in calls
     assert ("/device/getWebrtcTicket", {"serialNumber": "cam-sn"}) not in calls
 
 
@@ -4308,7 +4315,10 @@ async def test_update_camera_data_queries_audio_when_apk_support_is_unspecified(
     assert camera.data["liveAudioToggleOn"] is True
     assert camera.data["recordingAudioToggleOn"] is True
     assert camera.data["liveSpeakerVolume"] == 80
-    assert ("/device/config/querydeviceaudio", {"serialNumber": "cam-sn"}) in calls
+    assert (
+        "/device/config/querydeviceaudio",
+        {"_house": test_house, "serialNumber": "cam-sn"},
+    ) in calls
 
 
 @pytest.mark.asyncio
@@ -5022,6 +5032,79 @@ async def test_register_ipc_uses_mqtt_region_and_app_language_like_apk():
             {"userName": "user@example.com", "nodeType": "EU", "language": "de"},
         )
     ]
+
+
+@pytest.mark.asyncio
+async def test_camera_webrtc_ticket_uses_camera_home_ipc_node_in_multi_home_account():
+    client = async_xsense.AsyncXSense(language="en-US")
+    client.username = "user@example.com"
+    sensor_house = house.House(
+        None, "sensor-house", "Sensors", "US", "us-east-1", "mqtt-us"
+    )
+    camera_house = house.House(
+        None, "camera-house", "Cameras", "Germany", "eu-central-1", "mqtt-eu"
+    )
+    client.houses = {
+        "sensor-house": sensor_house,
+        "camera-house": camera_house,
+    }
+    camera = entity.Entity()
+    camera.house = camera_house
+    camera.sn = "cam-sn"
+    camera.type = "SSC0A"
+    registrations = []
+
+    async def ipc_call(code, **kwargs):
+        registrations.append((code, kwargs))
+        return {
+            "token": f"{kwargs['nodeType'].lower()}-token",
+            "nodeType": kwargs["nodeType"],
+            "countryNo": kwargs["nodeType"],
+            "language": kwargs["language"],
+        }
+
+    captured_posts = []
+
+    class CaptureSession:
+        closed = False
+
+        def post(self, url, **kwargs):
+            captured_posts.append((url, kwargs))
+            return CapturePostResponse(
+                {
+                    "result": 0,
+                    "data": {
+                        "signalServer": "https://signal.example",
+                        "groupId": "group",
+                        "role": "viewer",
+                        "id": "client123",
+                        "traceId": "trace",
+                        "sign": "sig",
+                        "time": 123456,
+                        "expirationTime": 4102444800000,
+                        "iceServer": [],
+                    },
+                }
+            )
+
+    async def get_session():
+        return CaptureSession()
+
+    client.ipc_call = ipc_call
+    client._get_session = get_session
+
+    ticket = await client.get_camera_webrtc_ticket(camera)
+
+    assert ticket["signalServer"] == "https://signal.example"
+    assert registrations == [
+        (
+            "C10101",
+            {"userName": "user@example.com", "nodeType": "EU", "language": "en"},
+        )
+    ]
+    assert captured_posts[0][1]["headers"]["Authorization"] == "eu-token"
+    assert captured_posts[0][1]["json"]["serialNumber"] == "cam-sn"
+    assert "houseId" not in captured_posts[0][1]["json"]
 
 
 def test_ipc_language_uses_simple_apk_app_language_code():

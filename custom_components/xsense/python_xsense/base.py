@@ -129,6 +129,7 @@ class XSenseBase:
     def __init__(self):
         self.houses: Dict[str, House] = {}
         self._addx_session = None
+        self._addx_sessions_by_node: dict[str, dict] = {}
 
     def _parse_client_error(self, e: ClientError):
         return e.response.get('Error', {}).get('Message') or str(e)
