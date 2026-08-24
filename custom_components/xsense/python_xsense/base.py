@@ -564,29 +564,44 @@ def _child_state_identifiers(child_key, child_state) -> tuple[str, ...]:
 
 def _apply_sbs50_force_arm_prompt(station: Station, station_data: Dict) -> None:
     """Track the APK bypass confirmation prompt for SBS50 arm requests."""
-    prompt = _sbs50_force_arm_prompt(station_data)
+    current_alarm_data = getattr(station, "alarm_data", {}) or {}
+    prompt = _sbs50_force_arm_prompt(
+        station_data,
+        requested_mode=current_alarm_data.get("requestedSafeMode"),
+    )
     if prompt is not None:
         station.set_alarm_data(prompt)
         return
 
-    if "safeMode" in station_data:
+    force_reason_reported = "forceReason" in station_data
+    reported_mode = station_data.get("safeMode")
+    requested_mode = current_alarm_data.get("requestedSafeMode")
+    request_completed = reported_mode in ("Home", "Away") and (
+        requested_mode is None or reported_mode == requested_mode
+    )
+    if force_reason_reported or request_completed:
         station.set_alarm_data(
             {
                 "forceReason": None,
                 "safeModeAim": None,
+                "requestedSafeMode": None,
                 "exitDelay": None,
             }
         )
 
 
-def _sbs50_force_arm_prompt(station_data: Dict) -> Dict | None:
+def _sbs50_force_arm_prompt(
+    station_data: Dict, *, requested_mode: str | None = None
+) -> Dict | None:
     if "forceReason" in station_data:
         force_reason = station_data.get("forceReason")
         if force_reason:
             return {
                 "forceReason": force_reason,
                 "safeModeAim": station_data.get("safeModeAim")
+                or requested_mode
                 or station_data.get("safeMode"),
+                "requestedSafeMode": requested_mode,
                 "exitDelay": station_data.get("exitDelay"),
             }
 
@@ -606,8 +621,10 @@ def _sbs50_force_arm_prompt(station_data: Dict) -> Dict | None:
         return {
             "forceReason": force_reason,
             "safeModeAim": event_param.get("safeModeAim")
+            or requested_mode
             or station_data.get("safeModeAim")
             or station_data.get("safeMode"),
+            "requestedSafeMode": requested_mode,
             "exitDelay": event_param.get("exitDelay"),
         }
 

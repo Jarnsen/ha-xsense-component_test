@@ -2548,6 +2548,7 @@ def test_force_arm_view_sends_guarded_command_and_redirects(monkeypatch):
         name="Base Station",
         sn="station-sn",
     )
+    station.set_alarm_data = station.alarm_data.update
     api = Api()
     hass = SimpleNamespace(
         data={
@@ -2579,6 +2580,8 @@ def test_force_arm_view_sends_guarded_command_and_redirects(monkeypatch):
 
     assert api.calls == [("station-sn", "Away", "1")]
     assert dismissed == ["xsense_force_arm_station-id"]
+    assert station.alarm_data["forceReason"] is None
+    assert station.alarm_data["safeModeAim"] is None
     assert exc.value.location == (
         "/?more-info-entity-id=alarm_control_panel.base_station_alarm"
     )

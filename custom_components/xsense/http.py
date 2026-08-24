@@ -511,6 +511,14 @@ class XSenseForceArmView(http.HomeAssistantView):
             self.hass,
             f"{FORCE_ARM_NOTIFICATION_ID_PREFIX}{station_id}",
         )
+        station.set_alarm_data(
+            {
+                "forceReason": None,
+                "safeModeAim": None,
+                "requestedSafeMode": None,
+                "exitDelay": None,
+            }
+        )
         raise web.HTTPFound(location=_force_arm_redirect_url(self.hass, station))
 
 

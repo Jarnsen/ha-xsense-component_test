@@ -541,6 +541,7 @@ async def test_alarm_panel_uses_strict_arm_before_force_arm_confirmation():
         (station.sn, "Home", "0"),
         (station.sn, "Away", "0"),
     ]
+    assert station.alarm_data["requestedSafeMode"] == "Away"
 
 
 def test_force_arm_prompt_is_parsed_and_cleared_from_sbs50_notice():
@@ -575,6 +576,43 @@ def test_force_arm_prompt_is_parsed_and_cleared_from_sbs50_notice():
     assert station.alarm_data["forceReason"] is None
 
 
+def test_force_arm_prompt_preserves_locally_requested_mode_from_apk_response():
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    station.set_alarm_data({"requestedSafeMode": "Away"})
+    api = XSenseBase.__new__(XSenseBase)
+
+    api.parse_get_state(
+        station,
+        {
+            "safeMode": "Disarmed",
+            "forceReason": [{"deviceSN": "door-sn"}],
+            "exitDelay": "0",
+        },
+    )
+
+    assert pending_force_arm_mode(station) == "Away"
+    assert station.alarm_data["requestedSafeMode"] == "Away"
+
+
+def test_empty_force_arm_reason_clears_pending_request_without_mode_change():
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    station.set_alarm_data(
+        {
+            "forceReason": [{"deviceSN": "door-sn"}],
+            "safeModeAim": "Home",
+            "requestedSafeMode": "Home",
+        }
+    )
+    api = XSenseBase.__new__(XSenseBase)
+
+    api.parse_get_state(station, {"forceReason": []})
+
+    assert pending_force_arm_mode(station) is None
+    assert station.alarm_data["requestedSafeMode"] is None
+
+
 def test_force_arm_prompt_creates_and_clears_persistent_notification(monkeypatch):
     station = _xs01_wx_from_real_shadow()
     station.type = "SBS50"
@@ -585,6 +623,15 @@ def test_force_arm_prompt_creates_and_clears_persistent_notification(monkeypatch
     panel.async_write_ha_state = lambda: None
     created = []
     dismissed = []
+    monkeypatch.setitem(
+        panel._force_arm_url.__func__.__globals__,
+        "async_sign_path",
+        lambda hass, path, expiration, *, use_content_user=False: (
+            f"{path}?authSig=test"
+            if use_content_user
+            else pytest.fail("force-arm path must use the content user")
+        ),
+    )
     monkeypatch.setattr(
         "custom_components.xsense.alarm_control_panel.persistent_notification.async_create",
         lambda hass, message, title=None, notification_id=None: created.append(
@@ -612,7 +659,8 @@ def test_force_arm_prompt_creates_and_clears_persistent_notification(monkeypatch
             "message": (
                 "One or more sensors are open.\n\n"
                 "[**Force Arm Away**]"
-                f"(/api/xsense/force-arm/entry-id/{station.entity_id}/away)\n\n"
+                f"(/api/xsense/force-arm/entry-id/{station.entity_id}/away"
+                "?authSig=test)\n\n"
                 "This sends the guarded X-Sense force-arm command for the "
                 "pending arm request."
             ),

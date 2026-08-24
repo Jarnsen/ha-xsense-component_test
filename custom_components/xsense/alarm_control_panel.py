@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from urllib.parse import quote
 
 from homeassistant.components import persistent_notification
+from homeassistant.components.http.auth import async_sign_path
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
     AlarmControlPanelEntityFeature,
@@ -81,7 +83,11 @@ def pending_force_arm_mode(station) -> str | None:
     if not force_reason:
         return None
 
-    mode = alarm_data.get("safeModeAim") or alarm_data.get("safeMode")
+    mode = (
+        alarm_data.get("safeModeAim")
+        or alarm_data.get("requestedSafeMode")
+        or alarm_data.get("safeMode")
+    )
     if mode in ("Home", "Away"):
         return mode
     return None
@@ -233,17 +239,28 @@ class XSenseAlarmControlPanel(
 
     def _force_arm_url(self, safe_mode: str) -> str:
         """Return the authenticated force-arm confirmation URL."""
-        return (
+        path = (
             "/api/xsense/force-arm/"
             f"{quote(str(self._entry_id), safe='')}/"
             f"{quote(str(self._station_id), safe='')}/"
             f"{safe_mode.lower()}"
+        )
+        return async_sign_path(
+            self.hass,
+            path,
+            timedelta(minutes=10),
+            use_content_user=True,
         )
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to coordinator updates and read initial state."""
         await super().async_added_to_hass()
         self._handle_coordinator_update()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Dismiss entry-owned notifications when the entity unloads."""
+        self._async_clear_force_arm_notification()
+        await super().async_will_remove_from_hass()
 
     async def async_alarm_disarm(self, code: str | None = None) -> None:
         """Disarm the alarm."""
@@ -273,6 +290,18 @@ class XSenseAlarmControlPanel(
         coordinator: XSenseDataUpdateCoordinator = self.coordinator
         api = coordinator.xsense
 
+        if safe_mode in ("Home", "Away") and force_arm == "0":
+            station.set_alarm_data({"requestedSafeMode": safe_mode})
+        elif safe_mode == "Disarmed":
+            station.set_alarm_data(
+                {
+                    "forceReason": None,
+                    "safeModeAim": None,
+                    "requestedSafeMode": None,
+                    "exitDelay": None,
+                }
+            )
+
         try:
             await api.set_station_mode(station, safe_mode, force_arm=force_arm)
             LOGGER.debug(
@@ -283,6 +312,8 @@ class XSenseAlarmControlPanel(
             )
 
         except Exception as ex:  # noqa: BLE001
+            if force_arm == "0":
+                station.set_alarm_data({"requestedSafeMode": None})
             LOGGER.exception(
                 "Could not set safeMode %s forceArm=%s for station %s: %s",
                 safe_mode,

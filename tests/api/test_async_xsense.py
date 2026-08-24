@@ -5035,7 +5035,7 @@ async def test_register_ipc_uses_mqtt_region_and_app_language_like_apk():
 
 
 @pytest.mark.asyncio
-async def test_camera_webrtc_ticket_uses_camera_home_ipc_node_in_multi_home_account():
+async def test_camera_webrtc_ticket_uses_exact_addx_identity_in_multi_home_account():
     client = async_xsense.AsyncXSense(language="en-US")
     client.username = "user@example.com"
     sensor_house = house.House(
@@ -5050,8 +5050,14 @@ async def test_camera_webrtc_ticket_uses_camera_home_ipc_node_in_multi_home_acco
     }
     camera = entity.Entity()
     camera.house = camera_house
-    camera.sn = "cam-sn"
+    camera.sn = "CAM-SN"
     camera.type = "SSC0A"
+    camera.set_data(
+        {
+            "addxNodeType": "US",
+            "addxSerialNumber": "camsn",
+        }
+    )
     registrations = []
 
     async def ipc_call(code, **kwargs):
@@ -5099,12 +5105,134 @@ async def test_camera_webrtc_ticket_uses_camera_home_ipc_node_in_multi_home_acco
     assert registrations == [
         (
             "C10101",
-            {"userName": "user@example.com", "nodeType": "EU", "language": "en"},
+            {"userName": "user@example.com", "nodeType": "US", "language": "en"},
         )
     ]
-    assert captured_posts[0][1]["headers"]["Authorization"] == "eu-token"
-    assert captured_posts[0][1]["json"]["serialNumber"] == "cam-sn"
+    assert captured_posts[0][1]["headers"]["Authorization"] == "us-token"
+    assert captured_posts[0][1]["json"]["serialNumber"] == "camsn"
     assert "houseId" not in captured_posts[0][1]["json"]
+
+
+@pytest.mark.asyncio
+async def test_camera_discovery_lists_each_distinct_addx_node_once():
+    client = async_xsense.AsyncXSense()
+    us_house = house.House(
+        None, "us-house", "US Home", "US", "us-east-1", "mqtt-us"
+    )
+    second_us_house = house.House(
+        None, "second-us-house", "Second US Home", "US", "us-west-2", "mqtt-us-2"
+    )
+    eu_house = house.House(
+        None, "eu-house", "EU Home", "Germany", "eu-central-1", "mqtt-eu"
+    )
+    client.houses = {
+        "us-house": us_house,
+        "second-us-house": second_us_house,
+        "eu-house": eu_house,
+    }
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        if kwargs.get("_house") is eu_house:
+            return {"list": [{"serialNumber": "EU-CAM", "modelNo": "SSC0A"}]}
+        return {"list": [{"serialNumber": "US-CAM", "modelNo": "SSC0A"}]}
+
+    client.addx_call = addx_call
+
+    devices = await client._list_addx_camera_devices()
+
+    assert calls == [
+        ("/device/listuserdevices", {}),
+        ("/device/listuserdevices", {"_house": eu_house}),
+    ]
+    assert [(item["serialNumber"], item["addxNodeType"]) for item in devices] == [
+        ("US-CAM", "US"),
+        ("EU-CAM", "EU"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_camera_discovery_continues_when_an_earlier_addx_node_fails():
+    client = async_xsense.AsyncXSense()
+    us_house = house.House(
+        None, "us-house", "US Home", "US", "us-east-1", "mqtt-us"
+    )
+    eu_house = house.House(
+        None, "eu-house", "EU Home", "Germany", "eu-central-1", "mqtt-eu"
+    )
+    client.houses = {"us-house": us_house, "eu-house": eu_house}
+
+    async def addx_call(endpoint, **kwargs):
+        if not kwargs:
+            raise exceptions.APIFailure("US camera node unavailable")
+        return {"list": [{"serialNumber": "EU-CAM", "modelNo": "SSC0A"}]}
+
+    client.addx_call = addx_call
+
+    assert await client._list_addx_camera_devices() == [
+        {
+            "serialNumber": "EU-CAM",
+            "modelNo": "SSC0A",
+            "addxNodeType": "EU",
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_update_camera_data_preserves_exact_addx_serial_for_later_calls():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "cam-id",
+                    "ipcSn": "CAM-SN",
+                    "ipcName": "Camera",
+                    "category": "SSC0A",
+                }
+            ],
+        }
+    )
+    client.houses = {"house-id": test_house}
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "camsn",
+                        "deviceName": "Camera",
+                        "modelNo": "SSC0A",
+                        "online": 1,
+                    }
+                ]
+            }
+        if endpoint == "/device/getWebrtcTicket":
+            return {"signalServer": "https://signal.example"}
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+    camera = test_house.get_station_by_sn("CAM-SN")
+    assert camera.data["addxSerialNumber"] == "camsn"
+
+    await client.get_camera_webrtc_ticket(camera, force_refresh=True)
+
+    assert (
+        "/device/getWebrtcTicket",
+        {
+            "_house": test_house,
+            "serialNumber": "camsn",
+            "verifyDormancyStatus": True,
+        },
+    ) in calls
 
 
 def test_ipc_language_uses_simple_apk_app_language_code():

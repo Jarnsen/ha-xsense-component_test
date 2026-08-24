@@ -117,6 +117,7 @@ class Station(Entity):
             "forceArm",
             "forceReason",
             "safeModeAim",
+            "requestedSafeMode",
             "exitDelay",
         ]
 
