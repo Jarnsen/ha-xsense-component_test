@@ -129,6 +129,7 @@ class XSenseBase:
     def __init__(self):
         self.houses: Dict[str, House] = {}
         self._addx_session = None
+        self._addx_sessions_by_node: dict[str, dict] = {}
 
     def _parse_client_error(self, e: ClientError):
         return e.response.get('Error', {}).get('Message') or str(e)
@@ -380,6 +381,7 @@ class XSenseBase:
 
         _normalize_apk_alarm_status(station_data)
         has_alarm_status = 'alarmStatus' in station_data or 'a' in station_data
+        _apply_sbs50_force_arm_prompt(station, station_data)
         if station_data:
             station.set_data(station_data)
         if 'safeMode' in station_data:
@@ -558,6 +560,75 @@ def _child_state_identifiers(child_key, child_state) -> tuple[str, ...]:
             seen.add(text)
             result.append(text)
     return tuple(result)
+
+
+def _apply_sbs50_force_arm_prompt(station: Station, station_data: Dict) -> None:
+    """Track the APK bypass confirmation prompt for SBS50 arm requests."""
+    current_alarm_data = getattr(station, "alarm_data", {}) or {}
+    prompt = _sbs50_force_arm_prompt(
+        station_data,
+        requested_mode=current_alarm_data.get("requestedSafeMode"),
+    )
+    if prompt is not None:
+        station.set_alarm_data(prompt)
+        return
+
+    force_reason_reported = "forceReason" in station_data
+    reported_mode = station_data.get("safeMode")
+    requested_mode = current_alarm_data.get("requestedSafeMode")
+    request_completed = reported_mode in ("Home", "Away") and (
+        requested_mode is None or reported_mode == requested_mode
+    )
+    if force_reason_reported or request_completed:
+        station.set_alarm_data(
+            {
+                "forceReason": None,
+                "safeModeAim": None,
+                "requestedSafeMode": None,
+                "exitDelay": None,
+            }
+        )
+
+
+def _sbs50_force_arm_prompt(
+    station_data: Dict, *, requested_mode: str | None = None
+) -> Dict | None:
+    if "forceReason" in station_data:
+        force_reason = station_data.get("forceReason")
+        if force_reason:
+            return {
+                "forceReason": force_reason,
+                "safeModeAim": station_data.get("safeModeAim")
+                or requested_mode
+                or station_data.get("safeMode"),
+                "requestedSafeMode": requested_mode,
+                "exitDelay": station_data.get("exitDelay"),
+            }
+
+    notices = station_data.get("notices")
+    if not isinstance(notices, list):
+        return None
+
+    for notice in notices:
+        if not isinstance(notice, dict):
+            continue
+        event_param = notice.get("eventParam")
+        if not isinstance(event_param, dict):
+            continue
+        force_reason = event_param.get("forceReason")
+        if not force_reason:
+            continue
+        return {
+            "forceReason": force_reason,
+            "safeModeAim": event_param.get("safeModeAim")
+            or requested_mode
+            or station_data.get("safeModeAim")
+            or station_data.get("safeMode"),
+            "requestedSafeMode": requested_mode,
+            "exitDelay": event_param.get("exitDelay"),
+        }
+
+    return None
 
 
 def _apply_group_light_state(station: Station, station_data: Dict, children) -> bool:

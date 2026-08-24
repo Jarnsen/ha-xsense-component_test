@@ -116,6 +116,9 @@ class Station(Entity):
             "deviceSn",
             "forceArm",
             "forceReason",
+            "safeModeAim",
+            "requestedSafeMode",
+            "exitDelay",
         ]
 
         for k in keys:
