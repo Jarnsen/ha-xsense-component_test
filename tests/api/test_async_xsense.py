@@ -5114,7 +5114,7 @@ async def test_camera_webrtc_ticket_uses_exact_addx_identity_in_multi_home_accou
 
 
 @pytest.mark.asyncio
-async def test_camera_discovery_lists_each_distinct_addx_node_once():
+async def test_camera_discovery_lists_each_house_even_on_same_addx_node():
     client = async_xsense.AsyncXSense()
     us_house = house.House(
         None, "us-house", "US Home", "US", "us-east-1", "mqtt-us"
@@ -5134,6 +5134,8 @@ async def test_camera_discovery_lists_each_distinct_addx_node_once():
 
     async def addx_call(endpoint, **kwargs):
         calls.append((endpoint, kwargs))
+        if kwargs.get("_house") is second_us_house:
+            return {"list": [{"serialNumber": "US-CAM-2", "modelNo": "SSC0A"}]}
         if kwargs.get("_house") is eu_house:
             return {"list": [{"serialNumber": "EU-CAM", "modelNo": "SSC0A"}]}
         return {"list": [{"serialNumber": "US-CAM", "modelNo": "SSC0A"}]}
@@ -5144,11 +5146,16 @@ async def test_camera_discovery_lists_each_distinct_addx_node_once():
 
     assert calls == [
         ("/device/listuserdevices", {}),
+        ("/device/listuserdevices", {"_house": second_us_house}),
         ("/device/listuserdevices", {"_house": eu_house}),
     ]
-    assert [(item["serialNumber"], item["addxNodeType"]) for item in devices] == [
-        ("US-CAM", "US"),
-        ("EU-CAM", "EU"),
+    assert [
+        (item["serialNumber"], item["addxNodeType"], item["addxHouseId"])
+        for item in devices
+    ] == [
+        ("US-CAM", "US", "us-house"),
+        ("US-CAM-2", "US", "second-us-house"),
+        ("EU-CAM", "EU", "eu-house"),
     ]
 
 
@@ -5175,6 +5182,7 @@ async def test_camera_discovery_continues_when_an_earlier_addx_node_fails():
             "serialNumber": "EU-CAM",
             "modelNo": "SSC0A",
             "addxNodeType": "EU",
+            "addxHouseId": "eu-house",
         }
     ]
 
@@ -5222,6 +5230,7 @@ async def test_update_camera_data_preserves_exact_addx_serial_for_later_calls():
     await client.update_camera_data()
     camera = test_house.get_station_by_sn("CAM-SN")
     assert camera.data["addxSerialNumber"] == "camsn"
+    assert camera.data["addxHouseId"] == "house-id"
 
     await client.get_camera_webrtc_ticket(camera, force_refresh=True)
 
@@ -5233,6 +5242,166 @@ async def test_update_camera_data_preserves_exact_addx_serial_for_later_calls():
             "verifyDormancyStatus": True,
         },
     ) in calls
+
+
+@pytest.mark.asyncio
+async def test_camera_webrtc_ticket_falls_back_to_ipc_id_before_ipc_sn():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "addx-camera-id",
+                    "ipcSn": "label-or-ipc-sn",
+                    "ipcName": "Camera",
+                    "category": "SSC0A",
+                }
+            ],
+        }
+    )
+    client.houses = {"house-id": test_house}
+    camera = test_house.stations["addx-camera-id"]
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        return {"signalServer": "https://signal.example"}
+
+    client.addx_call = addx_call
+
+    await client.get_camera_webrtc_ticket(camera, force_refresh=True)
+
+    assert calls == [
+        (
+            "/device/getWebrtcTicket",
+            {
+                "_house": test_house,
+                "serialNumber": "addx-camera-id",
+                "verifyDormancyStatus": True,
+            },
+        )
+    ]
+    assert camera.data["cameraWebrtcTicket"]["serialNumber"] == "addx-camera-id"
+
+
+@pytest.mark.asyncio
+async def test_camera_webrtc_ticket_retries_ipc_id_after_rejected_cached_addx_serial():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "right-addx-camera-id",
+                    "ipcSn": "label-or-ipc-sn",
+                    "ipcName": "Camera",
+                    "category": "SSC0A",
+                }
+            ],
+        }
+    )
+    client.houses = {"house-id": test_house}
+    camera = test_house.stations["right-addx-camera-id"]
+    camera.set_data({"addxSerialNumber": "wrong-cached-id"})
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        if kwargs["serialNumber"] == "wrong-cached-id":
+            raise exceptions.APIFailure(
+                "ADDX request for /device/getWebrtcTicket failed with "
+                "error -2002/DEVICE_NO_ACCESS"
+            )
+        return {"signalServer": "https://signal.example"}
+
+    client.addx_call = addx_call
+
+    await client.get_camera_webrtc_ticket(camera, force_refresh=True)
+
+    assert [
+        kwargs["serialNumber"]
+        for endpoint, kwargs in calls
+        if endpoint == "/device/getWebrtcTicket"
+    ] == ["wrong-cached-id", "right-addx-camera-id"]
+    assert camera.data["addxSerialNumber"] == "right-addx-camera-id"
+    assert camera.data["cameraWebrtcTicket"]["serialNumber"] == "right-addx-camera-id"
+
+
+@pytest.mark.asyncio
+async def test_camera_webrtc_ticket_does_not_retry_unrelated_addx_failure():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "right-addx-camera-id",
+                    "ipcSn": "label-or-ipc-sn",
+                    "ipcName": "Camera",
+                    "category": "SSC0A",
+                }
+            ],
+        }
+    )
+    client.houses = {"house-id": test_house}
+    camera = test_house.stations["right-addx-camera-id"]
+    camera.set_data({"addxSerialNumber": "wrong-cached-id"})
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        raise exceptions.APIFailure(
+            "ADDX request for /device/getWebrtcTicket failed with error -1000/BOOM"
+        )
+
+    client.addx_call = addx_call
+
+    with pytest.raises(exceptions.APIFailure, match="-1000/BOOM"):
+        await client.get_camera_webrtc_ticket(camera, force_refresh=True)
+
+    assert [
+        kwargs["serialNumber"]
+        for endpoint, kwargs in calls
+        if endpoint == "/device/getWebrtcTicket"
+    ] == ["wrong-cached-id"]
+
+
+def test_camera_from_addx_device_matches_existing_house_camera_by_ipc_id():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "addx-camera-id",
+                    "ipcSn": "label-or-ipc-sn",
+                    "ipcName": "Camera",
+                    "category": "SSC0A",
+                }
+            ],
+        }
+    )
+    client.houses = {"house-id": test_house}
+
+    camera = client._camera_from_addx_device(
+        {
+            "serialNumber": "addx-camera-id",
+            "deviceName": "Camera",
+            "modelNo": "SSC0A",
+            "houseId": "addx-location-id",
+        }
+    )
+
+    assert camera is test_house.stations["addx-camera-id"]
 
 
 def test_ipc_language_uses_simple_apk_app_language_code():

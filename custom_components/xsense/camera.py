@@ -318,7 +318,9 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             import_module, __package__ + ".python_xsense.webrtc_signal"
         )
         try:
-            ticket = webrtc_signal.XSenseWebRTCTicket.from_api(entity.sn, ticket_data)
+            ticket = webrtc_signal.XSenseWebRTCTicket.from_api(
+                _camera_webrtc_ticket_serial(entity, ticket_data), ticket_data
+            )
         except (KeyError, TypeError, ValueError) as err:
             LOGGER.debug(
                 "X-Sense camera WebRTC ticket parse failed: %s",
@@ -547,6 +549,15 @@ def _ticket_data_debug_context(ticket_data):
         "ticket_id": _short_id(ticket_data.get("id")),
         "real_camera": _short_id(ticket_data.get("realCxSerialNumber")),
     }
+
+
+def _camera_webrtc_ticket_serial(entity, ticket_data) -> str:
+    """Return the camera identifier used for the accepted WebRTC ticket."""
+    if isinstance(ticket_data, dict):
+        serial = ticket_data.get("serialNumber")
+        if serial not in (None, ""):
+            return str(serial)
+    return str(entity.sn)
 
 
 def _send_remote_candidate(send_message, entity, session_id, candidate) -> None:
