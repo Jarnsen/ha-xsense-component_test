@@ -1692,6 +1692,36 @@ def test_recordings_panel_registration_is_concurrency_safe(monkeypatch):
     assert len(panels) == 1
 
 
+def test_recordings_panel_registration_adopts_existing_home_assistant_panel(
+    monkeypatch,
+):
+    from custom_components.xsense import frontend
+
+    panels = []
+    static_paths = []
+
+    class Http:
+        async def async_register_static_paths(self, paths):
+            static_paths.extend(paths)
+
+    async def register_panel(**kwargs):
+        panels.append(kwargs)
+
+    monkeypatch.setattr(frontend.panel_custom, "async_register_panel", register_panel)
+    monkeypatch.setattr(
+        frontend.frontend,
+        "async_panel_exists",
+        lambda hass, path: path == frontend.FRONTEND_URL_PATH,
+    )
+    hass = SimpleNamespace(data={}, http=Http())
+
+    asyncio.run(frontend.async_register_recordings_panel(hass))
+
+    assert panels == []
+    assert static_paths == []
+    assert hass.data[DOMAIN]["_recordings_panel_registered"] is True
+
+
 def test_recordings_static_path_registration_is_concurrency_safe():
     from custom_components.xsense import frontend
 
@@ -1753,6 +1783,31 @@ def test_force_arm_panel_is_hidden_camera_independent_and_reference_counted(
     assert removed == []
     frontend.async_unregister_force_arm_panel(hass, "entry-2")
     assert removed == ["xsense-force-arm"]
+
+
+def test_force_arm_panel_registration_adopts_existing_home_assistant_panel(
+    monkeypatch,
+):
+    from custom_components.xsense import frontend
+
+    panels = []
+
+    async def register_panel(**kwargs):
+        panels.append(kwargs)
+
+    monkeypatch.setattr(frontend.panel_custom, "async_register_panel", register_panel)
+    monkeypatch.setattr(
+        frontend.frontend,
+        "async_panel_exists",
+        lambda hass, path: path == frontend.FORCE_ARM_FRONTEND_URL_PATH,
+    )
+    hass = SimpleNamespace(data={})
+
+    asyncio.run(frontend.async_register_force_arm_panel(hass, "entry-1"))
+
+    assert panels == []
+    assert hass.data[DOMAIN]["_force_arm_panel_entries"] == {"entry-1"}
+    assert hass.data[DOMAIN]["_force_arm_panel_registered"] is True
 
 
 def test_force_arm_panel_calls_authenticated_entity_action():
