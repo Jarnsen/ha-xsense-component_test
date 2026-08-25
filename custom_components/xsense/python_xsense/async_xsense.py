@@ -966,11 +966,6 @@ class AsyncXSense(XSenseBase):
     def _camera_addx_house(self, camera: Entity) -> House | None:
         """Return a House on the ADDX node that discovered this camera."""
         data = getattr(camera, "data", {}) or {}
-        house_id = data.get("addxHouseId")
-        if house_id not in (None, ""):
-            house = self.houses.get(str(house_id))
-            if house is not None:
-                return house
         node_type = data.get("addxNodeType")
         if node_type:
             for house in self.houses.values():
@@ -1271,11 +1266,14 @@ class AsyncXSense(XSenseBase):
 
     async def _list_addx_camera_devices(self) -> list[dict]:
         """List cameras from every APK ADDX node represented by the account."""
+        houses_by_node: dict[str, House] = {}
+        for house in self.houses.values():
+            houses_by_node.setdefault(_ipc_node_type(house.mqtt_region), house)
+
         devices_by_serial: dict[str, dict] = {}
         first_error: APIFailure | None = None
-        successful_houses = 0
-        for index, house in enumerate(self.houses.values()):
-            node_type = _ipc_node_type(house.mqtt_region)
+        successful_nodes = 0
+        for index, (node_type, house) in enumerate(houses_by_node.items()):
             try:
                 data = await self.addx_call(
                     "/device/listuserdevices",
@@ -1291,17 +1289,16 @@ class AsyncXSense(XSenseBase):
                 )
                 continue
 
-            successful_houses += 1
+            successful_nodes += 1
             for raw_device in (data or {}).get("list") or []:
                 normalized = _normalized_camera_serial(raw_device.get("serialNumber"))
                 if normalized is None:
                     continue
                 device = dict(raw_device)
                 device["addxNodeType"] = node_type
-                device["addxHouseId"] = house.house_id
                 devices_by_serial.setdefault(normalized, device)
 
-        if successful_houses == 0 and first_error is not None:
+        if successful_nodes == 0 and first_error is not None:
             raise first_error
         return list(devices_by_serial.values())
 
@@ -2681,7 +2678,6 @@ def _camera_data(data: Dict) -> Dict:
 
     return {
         "activatedTime": data.get("activatedTime"),
-        "addxHouseId": data.get("addxHouseId"),
         "addxLocationId": data.get("locationId"),
         "addxNodeType": data.get("addxNodeType"),
         "addxSerialNumber": data.get("serialNumber"),

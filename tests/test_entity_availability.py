@@ -595,6 +595,68 @@ def test_force_arm_prompt_preserves_locally_requested_mode_from_apk_response():
     assert station.alarm_data["requestedSafeMode"] == "Away"
 
 
+async def test_alarm_panel_force_arm_requires_matching_pending_mode(monkeypatch):
+    class Api:
+        def __init__(self):
+            self.calls = []
+
+        async def set_station_mode(self, station, safe_mode, force_arm=None):
+            self.calls.append((station.sn, safe_mode, force_arm))
+
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    station.set_alarm_data(
+        {
+            "forceReason": [{"deviceSN": "door-sn"}],
+            "requestedSafeMode": "Away",
+        }
+    )
+    coordinator = Coordinator(station)
+    coordinator.xsense = Api()
+    panel = XSenseAlarmControlPanel(coordinator, station)
+    panel.hass = object()
+    panel.async_write_ha_state = lambda: None
+    dismissed = []
+    monkeypatch.setattr(
+        "custom_components.xsense.alarm_control_panel.persistent_notification.async_dismiss",
+        lambda hass, notification_id: dismissed.append(notification_id),
+    )
+
+    with pytest.raises(Exception):
+        await panel.async_force_arm("Home")
+
+    assert coordinator.xsense.calls == []
+    await panel.async_force_arm("Away")
+
+    assert coordinator.xsense.calls == [(station.sn, "Away", "1")]
+    assert station.alarm_data["forceReason"] is None
+    assert station.alarm_data["requestedSafeMode"] is None
+    assert dismissed == [f"xsense_force_arm_{station.entity_id}"]
+
+    with pytest.raises(Exception):
+        await panel.async_force_arm("Away")
+    assert coordinator.xsense.calls == [(station.sn, "Away", "1")]
+
+
+def test_force_arm_prompt_prefers_locally_requested_home_over_stale_away_target():
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    station.set_alarm_data({"requestedSafeMode": "Home"})
+    api = XSenseBase.__new__(XSenseBase)
+
+    api.parse_get_state(
+        station,
+        {
+            "safeMode": "Disarmed",
+            "safeModeAim": "Away",
+            "forceReason": [{"deviceSN": "door-sn"}],
+        },
+    )
+
+    assert pending_force_arm_mode(station) == "Home"
+    assert station.alarm_data["safeModeAim"] == "Home"
+
+
 def test_empty_force_arm_reason_clears_pending_request_without_mode_change():
     station = _xs01_wx_from_real_shadow()
     station.type = "SBS50"
@@ -619,19 +681,11 @@ def test_force_arm_prompt_creates_and_clears_persistent_notification(monkeypatch
     coordinator = Coordinator(station)
     coordinator.entry = type("Entry", (), {"entry_id": "entry-id"})()
     panel = XSenseAlarmControlPanel(coordinator, station)
+    panel.entity_id = "alarm_control_panel.base_station_alarm"
     panel.hass = object()
     panel.async_write_ha_state = lambda: None
     created = []
     dismissed = []
-    monkeypatch.setitem(
-        panel._force_arm_url.__func__.__globals__,
-        "async_sign_path",
-        lambda hass, path, expiration, *, use_content_user=False: (
-            f"{path}?authSig=test"
-            if use_content_user
-            else pytest.fail("force-arm path must use the content user")
-        ),
-    )
     monkeypatch.setattr(
         "custom_components.xsense.alarm_control_panel.persistent_notification.async_create",
         lambda hass, message, title=None, notification_id=None: created.append(
@@ -658,11 +712,9 @@ def test_force_arm_prompt_creates_and_clears_persistent_notification(monkeypatch
             "hass": panel.hass,
             "message": (
                 "One or more sensors are open.\n\n"
-                "[**Force Arm Away**]"
-                f"(/api/xsense/force-arm/entry-id/{station.entity_id}/away"
-                "?authSig=test)\n\n"
-                "This sends the guarded X-Sense force-arm command for the "
-                "pending arm request."
+                "[**Force Arm Away**](/xsense-force-arm#"
+                "entity_id=alarm_control_panel.base_station_alarm&mode=Away)\n\n"
+                "Select the link to confirm the pending X-Sense arm request."
             ),
             "title": "X-Sense arm blocked",
             "notification_id": f"xsense_force_arm_{station.entity_id}",

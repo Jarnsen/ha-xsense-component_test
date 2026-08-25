@@ -1662,6 +1662,112 @@ def test_recordings_panel_registration_adds_sidebar_panel(monkeypatch):
     )
 
 
+def test_recordings_panel_registration_is_concurrency_safe(monkeypatch):
+    from custom_components.xsense import frontend
+
+    static_paths = []
+    panels = []
+
+    class Http:
+        async def async_register_static_paths(self, paths):
+            await asyncio.sleep(0)
+            static_paths.extend(paths)
+
+    async def register_panel(**kwargs):
+        await asyncio.sleep(0)
+        panels.append(kwargs)
+
+    monkeypatch.setattr(frontend.panel_custom, "async_register_panel", register_panel)
+    hass = SimpleNamespace(data={}, http=Http())
+
+    async def register_concurrently():
+        await asyncio.gather(
+            frontend.async_register_recordings_panel(hass),
+            frontend.async_register_recordings_panel(hass),
+        )
+
+    asyncio.run(register_concurrently())
+
+    assert len(static_paths) == 1
+    assert len(panels) == 1
+
+
+def test_recordings_static_path_registration_is_concurrency_safe():
+    from custom_components.xsense import frontend
+
+    static_paths = []
+
+    class Http:
+        async def async_register_static_paths(self, paths):
+            await asyncio.sleep(0)
+            static_paths.extend(paths)
+
+    hass = SimpleNamespace(data={}, http=Http())
+
+    async def register_concurrently():
+        await asyncio.gather(
+            frontend.async_register_recordings_static_paths(hass),
+            frontend.async_register_recordings_static_paths(hass),
+        )
+
+    asyncio.run(register_concurrently())
+
+    assert len(static_paths) == 1
+
+
+def test_force_arm_panel_is_hidden_camera_independent_and_reference_counted(
+    monkeypatch,
+):
+    from custom_components.xsense import frontend
+
+    panels = []
+    removed = []
+
+    async def register_panel(**kwargs):
+        panels.append(kwargs)
+
+    async def register_static_paths(hass):
+        hass.data.setdefault(DOMAIN, {})["_recordings_static_paths_registered"] = True
+
+    monkeypatch.setattr(frontend.panel_custom, "async_register_panel", register_panel)
+    monkeypatch.setattr(
+        frontend, "async_register_recordings_static_paths", register_static_paths
+    )
+    monkeypatch.setattr(
+        frontend.frontend,
+        "async_remove_panel",
+        lambda hass, path, warn_if_unknown=False: removed.append(path),
+    )
+    hass = SimpleNamespace(data={})
+
+    asyncio.run(frontend.async_register_force_arm_panel(hass, "entry-1"))
+    asyncio.run(frontend.async_register_force_arm_panel(hass, "entry-2"))
+
+    assert len(panels) == 1
+    assert panels[0]["frontend_url_path"] == "xsense-force-arm"
+    assert panels[0]["webcomponent_name"] == "xsense-force-arm-panel"
+    assert panels[0].get("sidebar_title") is None
+    assert panels[0]["require_admin"] is False
+
+    frontend.async_unregister_force_arm_panel(hass, "entry-1")
+    assert removed == []
+    frontend.async_unregister_force_arm_panel(hass, "entry-2")
+    assert removed == ["xsense-force-arm"]
+
+
+def test_force_arm_panel_calls_authenticated_entity_action():
+    source = (
+        Path("custom_components/xsense/frontend/force-arm-panel.js")
+        .read_text(encoding="utf-8")
+    )
+
+    assert 'callService("xsense", "force_arm"' in source
+    assert "entity_id: entityId" in source
+    assert "mode," in source
+    assert "/api/xsense/force-arm" not in source
+    assert "authSig" not in source
+
+
 def test_recordings_panel_unregister_removes_sidebar_panel(monkeypatch):
     from custom_components.xsense import frontend
 
@@ -2515,118 +2621,12 @@ def test_recordings_http_registration_adds_panel_views():
     asyncio.run(http.async_register_recordings_http_views(hass))
     asyncio.run(http.async_register_recordings_http_views(hass))
 
-    assert len(views) == 6
+    assert len(views) == 5
     assert isinstance(views[0], http.XSenseRecordingsPanelDataView)
     assert isinstance(views[1], http.XSenseRecordingsPanelDebugView)
     assert isinstance(views[2], http.XSenseRecordingsPanelPlaybackView)
     assert isinstance(views[3], http.XSenseRecordingsPanelThumbnailView)
     assert isinstance(views[4], http.XSenseRecordingsHlsSegmentView)
-    assert isinstance(views[5], http.XSenseForceArmView)
-
-
-def test_force_arm_view_sends_guarded_command_and_redirects(monkeypatch):
-    from aiohttp import web
-    from custom_components.xsense import http
-
-    class Api:
-        def __init__(self):
-            self.calls = []
-
-        async def set_station_mode(self, station, safe_mode, force_arm=None):
-            self.calls.append((station.sn, safe_mode, force_arm))
-
-    class Registry:
-        def async_get_entity_id(self, domain, platform, unique_id):
-            assert domain == "alarm_control_panel"
-            assert platform == DOMAIN
-            assert unique_id == "station-sn_alarm"
-            return "alarm_control_panel.base_station_alarm"
-
-    station = SimpleNamespace(
-        alarm_data={"forceReason": [{"deviceSN": "door-sn"}], "safeModeAim": "Away"},
-        entity_id="station-id",
-        name="Base Station",
-        sn="station-sn",
-    )
-    station.set_alarm_data = station.alarm_data.update
-    api = Api()
-    hass = SimpleNamespace(
-        data={
-            DOMAIN: {
-                "entry-id": SimpleNamespace(
-                    data={"stations": {"station-id": station}},
-                    xsense=api,
-                )
-            }
-        }
-    )
-    dismissed = []
-    monkeypatch.setattr(http.er, "async_get", lambda hass: Registry())
-    monkeypatch.setattr(
-        http.persistent_notification,
-        "async_dismiss",
-        lambda hass, notification_id: dismissed.append(notification_id),
-    )
-
-    with pytest.raises(web.HTTPFound) as exc:
-        asyncio.run(
-            http.XSenseForceArmView(hass).get(
-                SimpleNamespace(),
-                "entry-id",
-                "station-id",
-                "away",
-            )
-        )
-
-    assert api.calls == [("station-sn", "Away", "1")]
-    assert dismissed == ["xsense_force_arm_station-id"]
-    assert station.alarm_data["forceReason"] is None
-    assert station.alarm_data["safeModeAim"] is None
-    assert exc.value.location == (
-        "/?more-info-entity-id=alarm_control_panel.base_station_alarm"
-    )
-
-
-def test_force_arm_view_requires_matching_pending_prompt():
-    from aiohttp import web
-    from custom_components.xsense import http
-
-    class Api:
-        def __init__(self):
-            self.calls = []
-
-        async def set_station_mode(self, station, safe_mode, force_arm=None):
-            self.calls.append((station.sn, safe_mode, force_arm))
-
-    station = SimpleNamespace(
-        alarm_data={"forceReason": [{"deviceSN": "door-sn"}], "safeModeAim": "Home"},
-        entity_id="station-id",
-        name="Base Station",
-        sn="station-sn",
-    )
-    api = Api()
-    hass = SimpleNamespace(
-        data={
-            DOMAIN: {
-                "entry-id": SimpleNamespace(
-                    data={"stations": {"station-id": station}},
-                    xsense=api,
-                )
-            }
-        }
-    )
-
-    with pytest.raises(web.HTTPConflict):
-        asyncio.run(
-            http.XSenseForceArmView(hass).get(
-                SimpleNamespace(),
-                "entry-id",
-                "station-id",
-                "away",
-            )
-        )
-
-    assert api.calls == []
 
 
 def test_recordings_hls_playlist_rewrites_segments_to_token_route(tmp_path):

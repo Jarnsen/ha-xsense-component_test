@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 from homeassistant.components import frontend
@@ -12,10 +13,12 @@ from homeassistant.core import HomeAssistant
 from .const import DOMAIN
 
 FRONTEND_URL_PATH = "xsense-recordings"
+FORCE_ARM_FRONTEND_URL_PATH = "xsense-force-arm"
 STATIC_URL_PATH = f"/{DOMAIN}_recordings_static"
 PANEL_ELEMENT_NAME = "xsense-recordings-panel"
+FORCE_ARM_PANEL_ELEMENT_NAME = "xsense-force-arm-panel"
 PANEL_TITLE = "X-Sense Recordings"
-PANEL_ASSET_VERSION = "1.4.18.1"
+PANEL_ASSET_VERSION = "1.4.18.2"
 
 
 def _recordings_panel_module_url() -> str:
@@ -23,42 +26,89 @@ def _recordings_panel_module_url() -> str:
     return f"{STATIC_URL_PATH}/recordings-panel.js?v={PANEL_ASSET_VERSION}"
 
 
+def _force_arm_panel_module_url() -> str:
+    """Return the force-arm action module URL with a release cache-buster."""
+    return f"{STATIC_URL_PATH}/force-arm-panel.js?v={PANEL_ASSET_VERSION}"
+
+
 async def async_register_recordings_static_paths(hass: HomeAssistant) -> None:
     """Register recordings panel assets once for the lifetime of Home Assistant."""
     domain_data = hass.data.setdefault(DOMAIN, {})
-    if domain_data.get("_recordings_static_paths_registered"):
-        return
+    lock = domain_data.setdefault("_recordings_static_paths_lock", asyncio.Lock())
+    async with lock:
+        if domain_data.get("_recordings_static_paths_registered"):
+            return
 
-    frontend_path = Path(__file__).parent / "frontend"
-    await hass.http.async_register_static_paths(
-        [
-            StaticPathConfig(
-                STATIC_URL_PATH,
-                str(frontend_path),
-                cache_headers=False,
-            )
-        ]
-    )
-    domain_data["_recordings_static_paths_registered"] = True
+        frontend_path = Path(__file__).parent / "frontend"
+        await hass.http.async_register_static_paths(
+            [
+                StaticPathConfig(
+                    STATIC_URL_PATH,
+                    str(frontend_path),
+                    cache_headers=False,
+                )
+            ]
+        )
+        domain_data["_recordings_static_paths_registered"] = True
 
 
 async def async_register_recordings_panel(hass: HomeAssistant) -> None:
     """Register the X-Sense recordings sidebar panel once cameras are present."""
     domain_data = hass.data.setdefault(DOMAIN, {})
-    if domain_data.get("_recordings_panel_registered"):
+    lock = domain_data.setdefault("_recordings_panel_lock", asyncio.Lock())
+    async with lock:
+        if domain_data.get("_recordings_panel_registered"):
+            return
+
+        await async_register_recordings_static_paths(hass)
+        await panel_custom.async_register_panel(
+            hass=hass,
+            frontend_url_path=FRONTEND_URL_PATH,
+            webcomponent_name=PANEL_ELEMENT_NAME,
+            sidebar_title=PANEL_TITLE,
+            sidebar_icon="mdi:video-box",
+            module_url=_recordings_panel_module_url(),
+            embed_iframe=False,
+        )
+        domain_data["_recordings_panel_registered"] = True
+
+
+async def async_register_force_arm_panel(
+    hass: HomeAssistant, entry_id: str
+) -> None:
+    """Register the hidden force-arm action panel for an alarm entry."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    entries = domain_data.setdefault("_force_arm_panel_entries", set())
+    entries.add(entry_id)
+    lock = domain_data.setdefault("_force_arm_panel_lock", asyncio.Lock())
+    async with lock:
+        if domain_data.get("_force_arm_panel_registered"):
+            return
+
+        await async_register_recordings_static_paths(hass)
+        await panel_custom.async_register_panel(
+            hass=hass,
+            frontend_url_path=FORCE_ARM_FRONTEND_URL_PATH,
+            webcomponent_name=FORCE_ARM_PANEL_ELEMENT_NAME,
+            module_url=_force_arm_panel_module_url(),
+            embed_iframe=False,
+            require_admin=False,
+        )
+        domain_data["_force_arm_panel_registered"] = True
+
+
+def async_unregister_force_arm_panel(hass: HomeAssistant, entry_id: str) -> None:
+    """Remove the hidden force-arm panel when no alarm entries remain."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    entries = domain_data.setdefault("_force_arm_panel_entries", set())
+    entries.discard(entry_id)
+    if entries or not domain_data.get("_force_arm_panel_registered"):
         return
 
-    await async_register_recordings_static_paths(hass)
-    await panel_custom.async_register_panel(
-        hass=hass,
-        frontend_url_path=FRONTEND_URL_PATH,
-        webcomponent_name=PANEL_ELEMENT_NAME,
-        sidebar_title=PANEL_TITLE,
-        sidebar_icon="mdi:video-box",
-        module_url=_recordings_panel_module_url(),
-        embed_iframe=False,
+    frontend.async_remove_panel(
+        hass, FORCE_ARM_FRONTEND_URL_PATH, warn_if_unknown=False
     )
-    domain_data["_recordings_panel_registered"] = True
+    domain_data.pop("_force_arm_panel_registered", None)
 
 
 def async_unregister_recordings_panel(hass: HomeAssistant) -> None:

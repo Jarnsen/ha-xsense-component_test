@@ -5114,7 +5114,7 @@ async def test_camera_webrtc_ticket_uses_exact_addx_identity_in_multi_home_accou
 
 
 @pytest.mark.asyncio
-async def test_camera_discovery_lists_each_house_even_on_same_addx_node():
+async def test_camera_discovery_lists_each_distinct_addx_node_once():
     client = async_xsense.AsyncXSense()
     us_house = house.House(
         None, "us-house", "US Home", "US", "us-east-1", "mqtt-us"
@@ -5134,8 +5134,6 @@ async def test_camera_discovery_lists_each_house_even_on_same_addx_node():
 
     async def addx_call(endpoint, **kwargs):
         calls.append((endpoint, kwargs))
-        if kwargs.get("_house") is second_us_house:
-            return {"list": [{"serialNumber": "US-CAM-2", "modelNo": "SSC0A"}]}
         if kwargs.get("_house") is eu_house:
             return {"list": [{"serialNumber": "EU-CAM", "modelNo": "SSC0A"}]}
         return {"list": [{"serialNumber": "US-CAM", "modelNo": "SSC0A"}]}
@@ -5146,16 +5144,11 @@ async def test_camera_discovery_lists_each_house_even_on_same_addx_node():
 
     assert calls == [
         ("/device/listuserdevices", {}),
-        ("/device/listuserdevices", {"_house": second_us_house}),
         ("/device/listuserdevices", {"_house": eu_house}),
     ]
-    assert [
-        (item["serialNumber"], item["addxNodeType"], item["addxHouseId"])
-        for item in devices
-    ] == [
-        ("US-CAM", "US", "us-house"),
-        ("US-CAM-2", "US", "second-us-house"),
-        ("EU-CAM", "EU", "eu-house"),
+    assert [(item["serialNumber"], item["addxNodeType"]) for item in devices] == [
+        ("US-CAM", "US"),
+        ("EU-CAM", "EU"),
     ]
 
 
@@ -5182,7 +5175,6 @@ async def test_camera_discovery_continues_when_an_earlier_addx_node_fails():
             "serialNumber": "EU-CAM",
             "modelNo": "SSC0A",
             "addxNodeType": "EU",
-            "addxHouseId": "eu-house",
         }
     ]
 
@@ -5230,7 +5222,6 @@ async def test_update_camera_data_preserves_exact_addx_serial_for_later_calls():
     await client.update_camera_data()
     camera = test_house.get_station_by_sn("CAM-SN")
     assert camera.data["addxSerialNumber"] == "camsn"
-    assert camera.data["addxHouseId"] == "house-id"
 
     await client.get_camera_webrtc_ticket(camera, force_refresh=True)
 

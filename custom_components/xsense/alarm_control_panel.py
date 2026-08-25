@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
-from urllib.parse import quote
+from urllib.parse import urlencode
 
+import voluptuous as vol
 from homeassistant.components import persistent_notification
-from homeassistant.components.http.auth import async_sign_path
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
     AlarmControlPanelEntityFeature,
@@ -15,6 +14,7 @@ from homeassistant.components.alarm_control_panel import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -22,6 +22,11 @@ from .const import DOMAIN, MANUFACTURER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import coordinator_stations
 from .errors import xsense_error
+from .frontend import (
+    FORCE_ARM_FRONTEND_URL_PATH,
+    async_register_force_arm_panel,
+    async_unregister_force_arm_panel,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +36,8 @@ SAFEMODE_TO_STATE: dict[str, AlarmControlPanelState] = {
     "Away": AlarmControlPanelState.ARMED_AWAY,
 }
 FORCE_ARM_NOTIFICATION_ID_PREFIX = "xsense_force_arm_"
+FORCE_ARM_SERVICE = "force_arm"
+FORCE_ARM_SCHEMA = {vol.Required("mode"): vol.In(("Home", "Away"))}
 
 
 async def async_setup_entry(
@@ -55,6 +62,17 @@ async def async_setup_entry(
                 entities.append(XSenseAlarmControlPanel(coordinator, station))
 
     if entities:
+        platform = entity_platform.current_platform.get()
+        if platform is not None:
+            platform.async_register_entity_service(
+                FORCE_ARM_SERVICE,
+                FORCE_ARM_SCHEMA,
+                "async_force_arm",
+            )
+        await async_register_force_arm_panel(hass, entry.entry_id)
+        entry.async_on_unload(
+            lambda: async_unregister_force_arm_panel(hass, entry.entry_id)
+        )
         async_add_entities(entities)
     else:
         LOGGER.debug(
@@ -84,8 +102,8 @@ def pending_force_arm_mode(station) -> str | None:
         return None
 
     mode = (
-        alarm_data.get("safeModeAim")
-        or alarm_data.get("requestedSafeMode")
+        alarm_data.get("requestedSafeMode")
+        or alarm_data.get("safeModeAim")
         or alarm_data.get("safeMode")
     )
     if mode in ("Home", "Away"):
@@ -213,8 +231,7 @@ class XSenseAlarmControlPanel(
             (
                 "One or more sensors are open.\n\n"
                 f"[**{button_name}**]({action_url})\n\n"
-                "This sends the guarded X-Sense force-arm command for the "
-                "pending arm request."
+                "Select the link to confirm the pending X-Sense arm request."
             ),
             title="X-Sense arm blocked",
             notification_id=self._force_arm_notification_id,
@@ -238,19 +255,14 @@ class XSenseAlarmControlPanel(
         return f"{FORCE_ARM_NOTIFICATION_ID_PREFIX}{self._station_id}"
 
     def _force_arm_url(self, safe_mode: str) -> str:
-        """Return the authenticated force-arm confirmation URL."""
-        path = (
-            "/api/xsense/force-arm/"
-            f"{quote(str(self._entry_id), safe='')}/"
-            f"{quote(str(self._station_id), safe='')}/"
-            f"{safe_mode.lower()}"
+        """Return the hidden HA action-panel URL for force-arm confirmation."""
+        params = urlencode(
+            {
+                "entity_id": self.entity_id,
+                "mode": safe_mode,
+            }
         )
-        return async_sign_path(
-            self.hass,
-            path,
-            timedelta(minutes=10),
-            use_content_user=True,
-        )
+        return f"/{FORCE_ARM_FRONTEND_URL_PATH}#{params}"
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to coordinator updates and read initial state."""
@@ -273,6 +285,29 @@ class XSenseAlarmControlPanel(
     async def async_alarm_arm_away(self, code: str | None = None) -> None:
         """Arm in away mode."""
         await self._set_safe_mode("Away", force_arm="0")
+
+    async def async_force_arm(self, mode: str) -> None:
+        """Confirm the exact Home or Away request currently awaiting bypass."""
+        station = self._station
+        if station is None:
+            raise xsense_error("station_unavailable")
+
+        pending_mode = pending_force_arm_mode(station)
+        if pending_mode != mode:
+            raise xsense_error("force_arm_not_pending", mode=mode)
+
+        await self._set_safe_mode(mode, force_arm="1")
+        station.set_alarm_data(
+            {
+                "forceReason": None,
+                "safeModeAim": None,
+                "requestedSafeMode": None,
+                "exitDelay": None,
+            }
+        )
+        self._pending_force_arm_mode = None
+        self._async_clear_force_arm_notification()
+        self.async_write_ha_state()
 
     async def _set_safe_mode(self, safe_mode: str, *, force_arm: str) -> None:
         """Request a safeMode change through the APK app-mode shadow."""

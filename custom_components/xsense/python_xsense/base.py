@@ -598,8 +598,8 @@ def _sbs50_force_arm_prompt(
         if force_reason:
             return {
                 "forceReason": force_reason,
-                "safeModeAim": station_data.get("safeModeAim")
-                or requested_mode
+                "safeModeAim": requested_mode
+                or station_data.get("safeModeAim")
                 or station_data.get("safeMode"),
                 "requestedSafeMode": requested_mode,
                 "exitDelay": station_data.get("exitDelay"),
@@ -620,8 +620,8 @@ def _sbs50_force_arm_prompt(
             continue
         return {
             "forceReason": force_reason,
-            "safeModeAim": event_param.get("safeModeAim")
-            or requested_mode
+            "safeModeAim": requested_mode
+            or event_param.get("safeModeAim")
             or station_data.get("safeModeAim")
             or station_data.get("safeMode"),
             "requestedSafeMode": requested_mode,
