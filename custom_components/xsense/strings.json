@@ -712,6 +712,9 @@
     "safe_mode_publish_failed": {
       "message": "Could not publish X-Sense security mode command"
     },
+    "force_arm_not_pending": {
+      "message": "X-Sense force arm is not pending for {mode} mode"
+    },
     "cooldown_state_unknown": {
       "message": "X-Sense cooldown enabled state is unknown"
     },

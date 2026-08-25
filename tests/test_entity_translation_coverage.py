@@ -42,6 +42,7 @@ ACTION_ERROR_FILES = (
 EXPECTED_EXCEPTION_KEYS = {
     "cooldown_state_unknown",
     "entity_unavailable",
+    "force_arm_not_pending",
     "ids_missing",
     "ids_required",
     "invalid_radon_threshold",

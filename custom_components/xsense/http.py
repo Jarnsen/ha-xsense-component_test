@@ -11,15 +11,8 @@ from typing import Any
 from urllib.parse import quote
 
 from aiohttp import web
-from homeassistant.components import http, persistent_notification
-from homeassistant.const import Platform
+from homeassistant.components import http
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
-
-from .alarm_control_panel import (
-    FORCE_ARM_NOTIFICATION_ID_PREFIX,
-    pending_force_arm_mode,
-)
 from .const import (
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
     CONF_RECORDING_MEDIA_DAYS_ORDER,
@@ -28,7 +21,6 @@ from .const import (
     DOMAIN,
     LOGGER,
 )
-from .entity import coordinator_stations
 from .recordings_media import (
     HLS_MIME_TYPE,
     XSenseRecordingsMediaSource,
@@ -66,7 +58,6 @@ async def async_register_recordings_http_views(hass: HomeAssistant) -> None:
     hass.http.register_view(XSenseRecordingsPanelPlaybackView(hass))
     hass.http.register_view(XSenseRecordingsPanelThumbnailView(hass))
     hass.http.register_view(XSenseRecordingsHlsSegmentView(hass))
-    hass.http.register_view(XSenseForceArmView(hass))
     domain_data["_recordings_http_views_registered"] = True
 
 
@@ -76,23 +67,6 @@ def _recordings_runtime_available(hass: HomeAssistant) -> bool:
     if not domain_data.get("_recordings_http_views_registered"):
         return False
     return has_any_camera_entities(hass)
-
-
-def _force_arm_redirect_url(hass: HomeAssistant, station) -> str:
-    """Return the HA frontend URL for the SBS50 alarm entity."""
-    entity_id = _alarm_panel_entity_id(hass, station)
-    if entity_id:
-        return f"/?more-info-entity-id={quote(entity_id, safe='')}"
-    return "/config/integrations/integration/xsense"
-
-
-def _alarm_panel_entity_id(hass: HomeAssistant, station) -> str | None:
-    """Return the HA entity id for the SBS50 alarm control panel."""
-    return er.async_get(hass).async_get_entity_id(
-        Platform.ALARM_CONTROL_PANEL,
-        DOMAIN,
-        f"{station.sn}_alarm",
-    )
 
 
 async def async_build_panel_data(hass: HomeAssistant) -> dict[str, Any]:
@@ -453,73 +427,6 @@ class XSenseRecordingsPanelDataView(http.HomeAssistantView):
             },
         )
         return web.json_response(data)
-
-
-class XSenseForceArmView(http.HomeAssistantView):
-    """Handle authenticated force-arm confirmation links."""
-
-    url = "/api/xsense/force-arm/{entry_id}/{station_id}/{mode}"
-    name = "api:xsense:force_arm"
-
-    def __init__(self, hass: HomeAssistant) -> None:
-        """Initialize the force-arm confirmation view."""
-        self.hass = hass
-
-    async def get(
-        self,
-        request: web.Request,
-        entry_id: str,
-        station_id: str,
-        mode: str,
-    ) -> web.Response:
-        """Confirm a pending SBS50 force-arm request."""
-        safe_mode = mode.title()
-        if safe_mode not in ("Home", "Away"):
-            raise web.HTTPBadRequest(reason="Invalid X-Sense arm mode")
-
-        coordinator = self.hass.data.get(DOMAIN, {}).get(entry_id)
-        if coordinator is None:
-            raise web.HTTPNotFound(reason="X-Sense account is not loaded")
-
-        station = coordinator_stations(coordinator).get(station_id)
-        if station is None:
-            raise web.HTTPNotFound(reason="X-Sense base station is not loaded")
-
-        if pending_force_arm_mode(station) != safe_mode:
-            raise web.HTTPConflict(
-                reason="X-Sense force arm is not pending for this mode"
-            )
-
-        try:
-            await coordinator.xsense.set_station_mode(
-                station,
-                safe_mode,
-                force_arm="1",
-            )
-        except Exception as err:  # noqa: BLE001
-            LOGGER.exception(
-                "X-Sense force-arm confirmation failed: station=%s mode=%s error=%s",
-                station.sn,
-                safe_mode,
-                err,
-            )
-            raise web.HTTPInternalServerError(
-                reason="X-Sense force-arm command failed"
-            ) from err
-
-        persistent_notification.async_dismiss(
-            self.hass,
-            f"{FORCE_ARM_NOTIFICATION_ID_PREFIX}{station_id}",
-        )
-        station.set_alarm_data(
-            {
-                "forceReason": None,
-                "safeModeAim": None,
-                "requestedSafeMode": None,
-                "exitDelay": None,
-            }
-        )
-        raise web.HTTPFound(location=_force_arm_redirect_url(self.hass, station))
 
 
 class XSenseRecordingsPanelDebugView(http.HomeAssistantView):

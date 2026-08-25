@@ -5066,6 +5066,103 @@ async def test_failed_webrtc_signal_start_is_removed_from_sessions(monkeypatch):
     assert messages[0].code == "xsense_webrtc_start_failed"
 
 
+async def test_webrtc_offer_uses_accepted_ticket_serial_for_signal_recipient(
+    monkeypatch,
+):
+    from custom_components.xsense import camera as camera_module
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseWebRTCCameraEntity,
+    )
+    from homeassistant.components.camera.webrtc import WebRTCAnswer
+
+    camera_entity = entity(
+        "SSC0A",
+        {
+            "streamProtocol": "webrtc",
+            "supportWebrtc": True,
+            "resolution": "1280x720",
+        },
+    )
+    camera_entity.entity_id = "right-addx-camera-id"
+    camera_entity.sn = "label-or-ipc-sn"
+    camera_entity.name = "Camera"
+    camera_entity.online = True
+    captured = {}
+
+    async def get_camera_webrtc_ticket(entity, *, force_refresh=False):
+        return {
+            "serialNumber": "right-addx-camera-id",
+            "signalServer": "wss://signal.example",
+        }
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+            self.xsense = SimpleNamespace(
+                get_camera_webrtc_ticket=get_camera_webrtc_ticket,
+            )
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    class FakeTicket:
+        is_valid = True
+
+    def from_api(serial_number, data):
+        captured["ticket_serial"] = serial_number
+        return FakeTicket()
+
+    class FakeSession:
+        def __init__(self, **kwargs):
+            captured["session_ticket"] = kwargs["ticket"]
+
+        async def add_candidate(self, candidate):
+            captured.setdefault("candidates", []).append(candidate)
+
+        async def start(self):
+            return "v=0\r\n"
+
+        async def close(self):
+            captured["closed"] = True
+
+        def start_forwarding_remote_candidates(self):
+            captured["forwarding"] = True
+
+    fake_module = SimpleNamespace(
+        XSenseWebRTCTicket=SimpleNamespace(from_api=from_api),
+        XSenseWebRTCSignalSession=FakeSession,
+    )
+
+    class FakeHass:
+        data = {}
+
+        async def async_add_import_executor_job(self, func, module):
+            return fake_module
+
+        def async_create_task(self, coro):
+            return asyncio.create_task(coro)
+
+    monkeypatch.setattr(
+        camera_module, "async_get_clientsession", lambda hass: SimpleNamespace()
+    )
+
+    camera = XSenseWebRTCCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.hass = FakeHass()
+    messages = []
+
+    await camera.async_handle_async_webrtc_offer(
+        "v=0\r\n", "session-1", messages.append
+    )
+
+    assert captured["ticket_serial"] == "right-addx-camera-id"
+    assert captured["forwarding"] is True
+    assert isinstance(messages[0], WebRTCAnswer)
+
+
 async def test_webrtc_candidate_is_forwarded_to_matching_signal_session():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
