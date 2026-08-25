@@ -1,3 +1,4 @@
+import asyncio
 import base64
 from collections import defaultdict
 from datetime import timedelta
@@ -7,7 +8,8 @@ import json
 import logging
 import sys
 import types
-from unittest.mock import AsyncMock
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -188,9 +190,37 @@ def _subscription_test_client():
     client._simple_subscriptions = defaultdict(set)
     client._wildcard_subscriptions = set()
     client._retained_topics = defaultdict(set)
+    client._matching_subscriptions_cache = {}
     client._subscription_id = 0
     client.connected = False
     return client
+
+
+@pytest.mark.asyncio
+async def test_xsense_mqtt_disconnect_releases_subscription_match_cache():
+    class Debouncer:
+        async def async_cleanup(self):
+            return None
+
+        def set_timeout(self, timeout):
+            return None
+
+    client = _subscription_test_client()
+    client._subscribe_debouncer = Debouncer()
+    client._unsubscribe_debouncer = Debouncer()
+    client._pending_operations = {}
+    client._connection_lock = asyncio.Lock()
+    client._should_reconnect = True
+    client._reconnect_task = None
+    client._async_perform_unsubscribes = AsyncMock()
+    client._mqttc = SimpleNamespace(disconnect=Mock())
+
+    client._matching_subscriptions("x/sense/one")
+    assert set(client._matching_subscriptions_cache) == {"x/sense/one"}
+
+    await client.async_disconnect()
+
+    assert client._matching_subscriptions_cache == {}
 
 
 @pytest.mark.asyncio

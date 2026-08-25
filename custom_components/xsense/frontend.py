@@ -18,7 +18,7 @@ STATIC_URL_PATH = f"/{DOMAIN}_recordings_static"
 PANEL_ELEMENT_NAME = "xsense-recordings-panel"
 FORCE_ARM_PANEL_ELEMENT_NAME = "xsense-force-arm-panel"
 PANEL_TITLE = "X-Sense Recordings"
-PANEL_ASSET_VERSION = "1.4.18.2"
+PANEL_ASSET_VERSION = "1.4.19"
 
 
 def _recordings_panel_module_url() -> str:
@@ -59,6 +59,9 @@ async def async_register_recordings_panel(hass: HomeAssistant) -> None:
     async with lock:
         if domain_data.get("_recordings_panel_registered"):
             return
+        if frontend.async_panel_exists(hass, FRONTEND_URL_PATH):
+            domain_data["_recordings_panel_registered"] = True
+            return
 
         await async_register_recordings_static_paths(hass)
         await panel_custom.async_register_panel(
@@ -83,6 +86,9 @@ async def async_register_force_arm_panel(
     lock = domain_data.setdefault("_force_arm_panel_lock", asyncio.Lock())
     async with lock:
         if domain_data.get("_force_arm_panel_registered"):
+            return
+        if frontend.async_panel_exists(hass, FORCE_ARM_FRONTEND_URL_PATH):
+            domain_data["_force_arm_panel_registered"] = True
             return
 
         await async_register_recordings_static_paths(hass)

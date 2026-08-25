@@ -4,7 +4,7 @@ import asyncio
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Callable, Coroutine, Iterable
 import contextlib
-from functools import lru_cache, partial
+from functools import partial
 from itertools import chain
 import inspect
 import logging
@@ -84,6 +84,7 @@ class XSenseMQTT:
         )
         self._wildcard_subscriptions: set[Subscription] = set()
         self._retained_topics: defaultdict[Subscription, set[str]] = defaultdict(set)
+        self._matching_subscriptions_cache: dict[str, list[Subscription]] = {}
 
         self._subscribe_debouncer = EnsureJobAfterCooldown(
             INITIAL_SUBSCRIBE_COOLDOWN, self._async_perform_subscriptions
@@ -395,6 +396,9 @@ class XSenseMQTT:
             if disconnect_paho_client:
                 self._mqttc.disconnect()
 
+        # Release cached subscription jobs when this config entry unloads.
+        self._matching_subscriptions_cache.clear()
+
     # unchanged
     @callback
     def async_restore_tracked_subscriptions(
@@ -403,7 +407,7 @@ class XSenseMQTT:
         """Restore tracked subscriptions after reload."""
         for subscription in subscriptions:
             self._async_track_subscription(subscription)
-        self._matching_subscriptions.cache_clear()
+        self._matching_subscriptions_cache.clear()
 
     # unchanged
     @callback
@@ -521,7 +525,7 @@ class XSenseMQTT:
         )
 
         self._async_track_subscription(subscription)
-        self._matching_subscriptions.cache_clear()
+        self._matching_subscriptions_cache.clear()
 
         if self.connected:
             self.config_entry.async_create_background_task(
@@ -537,7 +541,7 @@ class XSenseMQTT:
     def _async_remove(self, subscription: Subscription) -> None:
         """Remove subscription."""
         self._async_untrack_subscription(subscription)
-        self._matching_subscriptions.cache_clear()
+        self._matching_subscriptions_cache.clear()
         if subscription in self._retained_topics:
             del self._retained_topics[subscription]
         # Only unsubscribe if currently connected
@@ -650,8 +654,9 @@ class XSenseMQTT:
         self._async_connection_result(True)
 
     # def _async_queue_resubscribe
-    @lru_cache(None)  # pylint: disable=method-cache-max-size-none
     def _matching_subscriptions(self, topic: str) -> list[Subscription]:
+        if topic in self._matching_subscriptions_cache:
+            return self._matching_subscriptions_cache[topic]
         subscriptions: list[Subscription] = []
         if topic in self._simple_subscriptions:
             subscriptions.extend(self._simple_subscriptions[topic])
@@ -662,6 +667,7 @@ class XSenseMQTT:
             # is_simple_match is False
             if subscription.complex_matcher(topic)  # type: ignore[misc]
         )
+        self._matching_subscriptions_cache[topic] = subscriptions
         return subscriptions
 
     @callback
