@@ -1920,6 +1920,30 @@ def test_recording_media_source_preserves_direct_video_url():
     )
 
 
+def test_recording_media_source_matches_addx_camera_serial_alias():
+    from custom_components.xsense import recordings_media as media_source
+
+    clip = media_source._recording_clip_from_record(
+        "entry-id",
+        [
+            {
+                "entry_id": "entry-id",
+                "serial": "IPC-CAMERA-SN",
+                "addx_serial": "addx-camera-sn",
+                "entity_id": "camera.garden",
+            }
+        ],
+        {
+            "serialNumber": "ADDX_CAMERA_SN",
+            "timestamp": 1782049304000,
+            "videoUrl": "https://example.invalid/clip.m3u8",
+        },
+    )
+
+    assert clip is not None
+    assert clip["serial"] == "IPC-CAMERA-SN"
+
+
 def test_recording_media_source_prefers_hd_direct_video_candidate():
     from custom_components.xsense import recordings_media as media_source
 

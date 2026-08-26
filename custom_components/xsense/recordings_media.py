@@ -29,7 +29,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
 
-from .python_xsense.async_xsense import is_camera_entity
+from .python_xsense.async_xsense import camera_addx_serial, is_camera_entity
 from .recordings_gate import has_any_camera_entities
 from .const import (
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
@@ -1539,6 +1539,15 @@ class XSenseRecordingIndex:
 
     async def _async_refresh(self) -> dict[str, Any]:
         cameras = _coordinator_cameras(self.coordinator, self.entry_id)
+        camera_entities = [
+            entity
+            for camera in cameras
+            if (
+                entity := _coordinator_camera_entity(
+                    self.coordinator, str(camera.get("serial") or "")
+                )
+            )
+        ]
         serials = [camera["serial"] for camera in cameras if camera.get("serial")]
         if not serials:
             empty_index = {
@@ -1553,8 +1562,8 @@ class XSenseRecordingIndex:
 
         end = datetime.now(timezone.utc)
         start = end - timedelta(days=RECORDING_LOOKBACK_DAYS)
-        history = await self.coordinator.xsense.get_camera_event_history(
-            serials,
+        history = await self.coordinator.xsense.get_camera_event_history_for_cameras(
+            camera_entities,
             int(start.timestamp()),
             int(end.timestamp()),
             limit=RECORDING_PAGE_LIMIT,
@@ -1636,6 +1645,7 @@ def _coordinator_cameras(coordinator: Any, entry_id: str) -> list[dict[str, Any]
             {
                 "entry_id": entry_id,
                 "serial": serial,
+                "addx_serial": camera_addx_serial(entity),
                 "entity_id": str(getattr(entity, "entity_id", "") or ""),
                 "name": str(getattr(entity, "name", "") or serial),
                 "online": bool(getattr(entity, "online", False)),
@@ -1670,7 +1680,20 @@ def _recording_clip_from_record(
     )
     if not serial:
         return None
-    camera = next((item for item in cameras if item.get("serial") == serial), None)
+    normalized_serial = _normalized_recording_camera_identifier(serial)
+    camera = next(
+        (
+            item
+            for item in cameras
+            if normalized_serial
+            in {
+                _normalized_recording_camera_identifier(item.get("serial")),
+                _normalized_recording_camera_identifier(item.get("entity_id")),
+                _normalized_recording_camera_identifier(item.get("addx_serial")),
+            }
+        ),
+        None,
+    )
     if camera is None:
         return None
     media_root = media_root or _recording_media_root_from_value(None)
@@ -1683,7 +1706,7 @@ def _recording_clip_from_record(
     camera_entity_id = str(camera.get("entity_id") or "")
     return _recording_clip_from_playback(
         entry_id,
-        serial,
+        str(camera.get("serial") or serial),
         camera_entity_id,
         {
             **playback,
@@ -1691,6 +1714,15 @@ def _recording_clip_from_record(
             "end_time_s": end,
         },
         media_root,
+    )
+
+
+def _normalized_recording_camera_identifier(value: Any) -> str:
+    """Normalize X-Sense camera identifiers for history record matching."""
+    return "".join(
+        character
+        for character in str(value or "").lower()
+        if character.isalnum()
     )
 
 

@@ -187,7 +187,7 @@ def is_camera_entity(entity: Entity) -> bool:
     """Return if an entity came from the APK camera sources."""
     return (
         getattr(entity, "entity_type", None) == EntityType.CAMERA
-        or entity.type in CAMERA_TYPES
+        or getattr(entity, "type", None) in CAMERA_TYPES
     )
 
 
@@ -219,6 +219,22 @@ def _camera_addx_serial_candidates(camera: Entity) -> list[str]:
         if serial not in result:
             result.append(serial)
     return result or [""]
+
+
+def camera_addx_serial(camera: Entity) -> str:
+    """Return the APK ADDX serial used for account-level camera APIs."""
+    return _camera_addx_serial(camera)
+
+
+def camera_matches_identifier(camera: Entity, identifier: Any) -> bool:
+    """Return whether an APK event identifier belongs to this camera."""
+    normalized = _normalized_camera_serial(identifier)
+    if normalized is None:
+        return False
+    return any(
+        _normalized_camera_serial(candidate) == normalized
+        for candidate in _camera_addx_serial_candidates(camera)
+    )
 
 
 def _is_addx_device_no_access(error: Exception) -> bool:
@@ -528,6 +544,7 @@ class AsyncXSense(XSenseBase):
         start_timestamp: int,
         end_timestamp: int,
         *,
+        house: House | None = None,
         start: int = 0,
         limit: int = 20,
     ) -> dict:
@@ -543,6 +560,7 @@ class AsyncXSense(XSenseBase):
             serialNumber=serials,
             tags=[],
             marked=0,
+            **({"_house": house} if house is not None else {}),
             **{"from": start},
         )
         LOGGER.debug(
@@ -550,6 +568,63 @@ class AsyncXSense(XSenseBase):
             _debug_data_shape(data),
         )
         return data if isinstance(data, dict) else {}
+
+    async def get_camera_event_history_for_cameras(
+        self,
+        cameras: list[Entity],
+        start_timestamp: int,
+        end_timestamp: int,
+        *,
+        start: int = 0,
+        limit: int = 20,
+    ) -> dict:
+        """Return camera records through each camera's APK ADDX Home context."""
+        requests: list[tuple[House | None, str]] = []
+        seen_serials: set[str] = set()
+        for camera in cameras:
+            serial = _camera_addx_serial(camera)
+            normalized_serial = _normalized_camera_serial(serial) or serial
+            if not serial or normalized_serial in seen_serials:
+                continue
+            seen_serials.add(normalized_serial)
+            requests.append((self._camera_addx_house(camera), serial))
+
+        records: list[dict[str, Any]] = []
+        first_error: APIFailure | None = None
+        successful_requests = 0
+        for house, serial in requests:
+            try:
+                history = await self.get_camera_event_history(
+                    [serial],
+                    start_timestamp,
+                    end_timestamp,
+                    house=house,
+                    start=start,
+                    limit=limit,
+                )
+            except APIFailure as err:
+                if first_error is None:
+                    first_error = err
+                LOGGER.debug(
+                    "X-Sense camera record history unavailable on ADDX Home",
+                    exc_info=True,
+                )
+                continue
+            successful_requests += 1
+            data = (
+                history.get("data")
+                if isinstance(history.get("data"), dict)
+                else history
+            )
+            group_records = data.get("list") if isinstance(data, dict) else None
+            if isinstance(group_records, list):
+                records.extend(
+                    record for record in group_records if isinstance(record, dict)
+                )
+
+        if successful_requests == 0 and first_error is not None:
+            raise first_error
+        return {"list": records, "total": len(records)}
 
     async def get_camera_event_record_history(
         self,
@@ -966,6 +1041,11 @@ class AsyncXSense(XSenseBase):
     def _camera_addx_house(self, camera: Entity) -> House | None:
         """Return a House on the ADDX node that discovered this camera."""
         data = getattr(camera, "data", {}) or {}
+        addx_house_id = data.get("addxHouseId")
+        if addx_house_id not in (None, ""):
+            for house in self.houses.values():
+                if str(house.house_id) == str(addx_house_id):
+                    return house
         node_type = data.get("addxNodeType")
         if node_type:
             for house in self.houses.values():
@@ -2678,6 +2758,7 @@ def _camera_data(data: Dict) -> Dict:
 
     return {
         "activatedTime": data.get("activatedTime"),
+        "addxHouseId": data.get("houseId"),
         "addxLocationId": data.get("locationId"),
         "addxNodeType": data.get("addxNodeType"),
         "addxSerialNumber": data.get("serialNumber"),
