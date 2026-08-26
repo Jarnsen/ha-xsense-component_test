@@ -14,7 +14,7 @@ from homeassistant.components.alarm_control_panel import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_platform
+from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -37,7 +37,13 @@ SAFEMODE_TO_STATE: dict[str, AlarmControlPanelState] = {
 }
 FORCE_ARM_NOTIFICATION_ID_PREFIX = "xsense_force_arm_"
 FORCE_ARM_SERVICE = "force_arm"
+FORCE_ARM_NOW_SERVICE = "force_arm_now"
+TRIGGER_SOS_SERVICE = "trigger_sos"
+CANCEL_SOS_SERVICE = "cancel_sos"
+CANCEL_ALARM_SERVICE = "cancel_alarm"
+SET_SOS_SOUND_SERVICE = "set_sos_sound"
 FORCE_ARM_SCHEMA = {vol.Required("mode"): vol.In(("Home", "Away"))}
+SET_SOS_SOUND_SCHEMA = {vol.Required("audible"): cv.boolean}
 
 
 async def async_setup_entry(
@@ -68,6 +74,31 @@ async def async_setup_entry(
                 FORCE_ARM_SERVICE,
                 FORCE_ARM_SCHEMA,
                 "async_force_arm",
+            )
+            platform.async_register_entity_service(
+                FORCE_ARM_NOW_SERVICE,
+                FORCE_ARM_SCHEMA,
+                "async_force_arm_now",
+            )
+            platform.async_register_entity_service(
+                TRIGGER_SOS_SERVICE,
+                {},
+                "async_trigger_sos",
+            )
+            platform.async_register_entity_service(
+                CANCEL_SOS_SERVICE,
+                {},
+                "async_cancel_sos",
+            )
+            platform.async_register_entity_service(
+                CANCEL_ALARM_SERVICE,
+                {},
+                "async_cancel_alarm",
+            )
+            platform.async_register_entity_service(
+                SET_SOS_SOUND_SERVICE,
+                SET_SOS_SOUND_SCHEMA,
+                "async_set_sos_sound",
             )
         await async_register_force_arm_panel(hass, entry.entry_id)
         entry.async_on_unload(
@@ -295,6 +326,51 @@ class XSenseAlarmControlPanel(
         pending_mode = pending_force_arm_mode(station)
         if pending_mode != mode:
             raise xsense_error("force_arm_not_pending", mode=mode)
+
+        await self._async_force_arm_mode(mode)
+
+    async def async_force_arm_now(self, mode: str) -> None:
+        """Force arm directly for a Home Assistant automation."""
+        if self._station is None:
+            raise xsense_error("station_unavailable")
+
+        await self._async_force_arm_mode(mode)
+
+    async def async_trigger_sos(self) -> None:
+        """Trigger the SBS50 SOS alarm using the APK command."""
+        station = self._station
+        if station is None:
+            raise xsense_error("station_unavailable")
+        await self.coordinator.xsense.trigger_sos(station, sos_type="1")
+
+    async def async_cancel_sos(self) -> None:
+        """Cancel the SBS50 SOS alarm using the APK command."""
+        station = self._station
+        if station is None:
+            raise xsense_error("station_unavailable")
+        await self.coordinator.xsense.cancel_sos(station)
+
+    async def async_cancel_alarm(self) -> None:
+        """Cancel the active SBS50 sensor alarm using the APK command."""
+        station = self._station
+        if station is None:
+            raise xsense_error("station_unavailable")
+        await self.coordinator.xsense.cancel_alarm(station)
+
+    async def async_set_sos_sound(self, audible: bool) -> None:
+        """Choose flashing light only or flashing light plus buzzer for SOS."""
+        station = self._station
+        if station is None:
+            raise xsense_error("station_unavailable")
+        await self.coordinator.xsense.set_sos_sound(
+            station, "1" if audible else "0"
+        )
+
+    async def _async_force_arm_mode(self, mode: str) -> None:
+        """Send an APK force-arm command and clear any pending prompt."""
+        station = self._station
+        if station is None:
+            raise xsense_error("station_unavailable")
 
         await self._set_safe_mode(mode, force_arm="1")
         station.set_alarm_data(
