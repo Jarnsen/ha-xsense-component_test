@@ -18,7 +18,12 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.logging import catch_log_exception
 
-from .python_xsense import AsyncXSense, House
+from .python_xsense import (
+    AsyncXSense,
+    House,
+    camera_addx_serial,
+    camera_matches_identifier,
+)
 from .python_xsense.async_xsense import is_camera_entity
 from .python_xsense.event_parser import (
     camera_ai_history_event_key as _camera_ai_history_event_key,
@@ -70,6 +75,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_camera_update_attempt: datetime | None = None
         self._camera_station_cache: dict[str, Any] = {}
         self._camera_ai_history_seen: set[str] = set()
+        self._camera_ai_service_houses: dict[str, set[str]] = {}
         self._camera_ai_history_unsub = None
         self._camera_ai_history_lock = asyncio.Lock()
         self._startup_refresh_complete = False
@@ -469,6 +475,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             service_list_available = True
 
+        if service_list_available:
+            self._camera_ai_service_houses = _camera_ai_service_house_map(services)
+
         server_ids = [
             str(service.get("serverId"))
             for service in services
@@ -536,9 +545,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _update_camera_event_history(self, cameras: list[Any]) -> bool:
         """Poll APK ADDX camera record history for regular motion events."""
-        serial_numbers = [
-            str(camera.sn) for camera in cameras if getattr(camera, "sn", None)
-        ]
+        serial_numbers = [camera_addx_serial(camera) for camera in cameras]
+        serial_numbers = [serial for serial in serial_numbers if serial]
         if not serial_numbers:
             LOGGER.debug(
                 "X-Sense camera record history poll skipped: no serial numbers"
@@ -551,8 +559,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         seen_now: set[str] = set()
         now = int(datetime.now(timezone.utc).timestamp())
         try:
-            history = await self.xsense.get_camera_event_history(
-                serial_numbers,
+            history = await self.xsense.get_camera_event_history_for_cameras(
+                cameras,
                 now - 3600,
                 now,
             )
@@ -599,7 +607,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not isinstance(station_data, dict) or not station_data:
             return False
 
-        station = _camera_station_for_event_data(self, station_data, payload)
+        station = _camera_station_for_ai_server(self, server_id)
+        if station is None:
+            station = _camera_station_for_event_data(self, station_data, payload)
         if station is None:
             LOGGER.debug(
                 "No X-Sense camera found for AI history event: %s",
@@ -724,7 +734,20 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             station_sn = _mqtt_target_station_sn(station_data)
             device_sn = _mqtt_target_device_sn(station_data)
 
-        station = self._get_station_by_id(station_sn)
+        topic_kind = _mqtt_topic_kind(topic)
+        station = None
+        if topic_kind == "ai_plan":
+            server_id = data.get("serverId")
+            if server_id in (None, "") and isinstance(station_data, dict):
+                server_id = station_data.get("serverId")
+            station = _camera_station_for_ai_server(self, server_id)
+            if station is None:
+                station = _camera_station_for_identifiers(
+                    self,
+                    [device_sn, *_mqtt_identifier_candidates(station_data, data)],
+                )
+        if station is None:
+            station = self._get_station_by_id(station_sn)
         if station is None:
             station = self._get_station_by_device_sn(device_sn)
         identifier_candidates: list[str] = []
@@ -736,6 +759,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 station = self._get_station_by_id(identifier)
                 if station is None:
                     station = self._get_station_by_device_sn(identifier)
+                if station is None:
+                    station = _camera_station_for_identifiers(self, [identifier])
                 if station is not None:
                     break
 
@@ -1041,13 +1066,87 @@ def _camera_station_for_event_data(
 ):
     """Return the camera station matched by APK event identifiers."""
     identifiers = _mqtt_identifier_candidates(station_data, payload)
+    return _camera_station_for_identifiers(coordinator, identifiers)
+
+
+def _camera_station_for_identifiers(
+    coordinator: XSenseDataUpdateCoordinator,
+    identifiers: list[Any],
+):
+    """Return the camera matching X-Sense station, IPC, or ADDX identifiers."""
     for identifier in identifiers:
-        station = coordinator._get_station_by_id(identifier)
+        if identifier in (None, ""):
+            continue
+        station = coordinator._get_station_by_id(str(identifier))
         if station is None:
-            station = coordinator._get_station_by_device_sn(identifier)
+            station = coordinator._get_station_by_device_sn(str(identifier))
         if station is not None and is_camera_entity(station):
             return station
+        for camera in _camera_entities(coordinator):
+            if camera_matches_identifier(camera, identifier):
+                return camera
     return None
+
+
+def _camera_station_for_ai_server(
+    coordinator: XSenseDataUpdateCoordinator, server_id: Any
+):
+    """Return the unique camera in the APK AI service's Home."""
+    if server_id in (None, ""):
+        return None
+    house_ids = getattr(coordinator, "_camera_ai_service_houses", {}).get(
+        str(server_id)
+    )
+    if not house_ids:
+        return None
+    if isinstance(house_ids, str):
+        house_ids = {house_ids}
+
+    matches = []
+    for camera in _camera_entities(coordinator):
+        camera_house = getattr(camera, "house", None)
+        data = getattr(camera, "data", {}) or {}
+        camera_house_ids = {
+            str(value)
+            for value in (
+                getattr(camera_house, "house_id", None),
+                data.get("addxHouseId"),
+                data.get("addxLocationId"),
+            )
+            if value not in (None, "")
+        }
+        if camera_house_ids & set(house_ids):
+            matches.append(camera)
+    return matches[0] if len(matches) == 1 else None
+
+
+def _camera_ai_service_house_map(
+    services: Any,
+) -> dict[str, set[str]]:
+    """Return APK AI service Home coverage, including nested plan Homes."""
+    result: dict[str, set[str]] = {}
+    if not isinstance(services, list):
+        return result
+    for service in services:
+        if not isinstance(service, dict) or service.get("serverId") in (None, ""):
+            continue
+        house_ids = {
+            str(value)
+            for value in (service.get("houseId"),)
+            if value not in (None, "")
+        }
+        ai_plan = service.get("aiPlan")
+        if isinstance(ai_plan, dict):
+            plan_house_ids = ai_plan.get("houseIds")
+            if isinstance(plan_house_ids, list):
+                house_ids.update(
+                    str(value)
+                    for value in plan_house_ids
+                    if value not in (None, "")
+                )
+        if house_ids:
+            result[str(service["serverId"])] = house_ids
+    return result
 
 
 def _is_keypad_notice_topic(topic: str) -> bool:

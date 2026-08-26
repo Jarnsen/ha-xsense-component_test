@@ -18,7 +18,7 @@ STATIC_URL_PATH = f"/{DOMAIN}_recordings_static"
 PANEL_ELEMENT_NAME = "xsense-recordings-panel"
 FORCE_ARM_PANEL_ELEMENT_NAME = "xsense-force-arm-panel"
 PANEL_TITLE = "X-Sense Recordings"
-PANEL_ASSET_VERSION = "1.4.19"
+PANEL_ASSET_VERSION = "1.4.19.1"
 
 
 def _recordings_panel_module_url() -> str:
@@ -29,6 +29,12 @@ def _recordings_panel_module_url() -> str:
 def _force_arm_panel_module_url() -> str:
     """Return the force-arm action module URL with a release cache-buster."""
     return f"{STATIC_URL_PATH}/force-arm-panel.js?v={PANEL_ASSET_VERSION}"
+
+
+def _panel_exists(hass: HomeAssistant, frontend_url_path: str) -> bool:
+    """Return whether Home Assistant already owns this panel path."""
+    panels = hass.data.get(frontend.DATA_PANELS, {})
+    return isinstance(panels, dict) and frontend_url_path in panels
 
 
 async def async_register_recordings_static_paths(hass: HomeAssistant) -> None:
@@ -59,7 +65,7 @@ async def async_register_recordings_panel(hass: HomeAssistant) -> None:
     async with lock:
         if domain_data.get("_recordings_panel_registered"):
             return
-        if frontend.async_panel_exists(hass, FRONTEND_URL_PATH):
+        if _panel_exists(hass, FRONTEND_URL_PATH):
             domain_data["_recordings_panel_registered"] = True
             return
 
@@ -87,7 +93,7 @@ async def async_register_force_arm_panel(
     async with lock:
         if domain_data.get("_force_arm_panel_registered"):
             return
-        if frontend.async_panel_exists(hass, FORCE_ARM_FRONTEND_URL_PATH):
+        if _panel_exists(hass, FORCE_ARM_FRONTEND_URL_PATH):
             domain_data["_force_arm_panel_registered"] = True
             return
 

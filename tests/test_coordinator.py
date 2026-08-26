@@ -1458,6 +1458,7 @@ def test_mqtt_ai_plan_event_routes_by_nested_camera_identity():
     class Camera:
         sn = "camera-sn"
         shadow_name = "SSC0Acamera-sn"
+        type = "SSC0A"
 
         def __init__(self):
             self.data = {}
@@ -1501,6 +1502,203 @@ def test_mqtt_ai_plan_event_routes_by_nested_camera_identity():
     assert "isMoved" not in parsed[0][1]
     assert "lastMotionTime" not in parsed[0][1]
     assert updates == [True]
+
+
+def test_mqtt_ai_plan_event_prefers_addx_camera_over_dispatch_station():
+    """Route account AI events by ADDX camera id, not the dispatch station."""
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Camera:
+        sn = "camera-station-sn"
+        entity_id = "camera-station-id"
+        type = "SSC0A"
+        shadow_name = "SSC0Acamera-station-sn"
+
+        def __init__(self):
+            self.data = {"addxSerialNumber": "addx-camera-id"}
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    class BaseStation:
+        sn = "dispatch-station-sn"
+        entity_id = "dispatch-station-id"
+        type = "SBS50"
+        shadow_name = "SBS50dispatch-station-sn"
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    camera = Camera()
+    base_station = BaseStation()
+
+    class House:
+        def __init__(self, stations):
+            self.stations = stations
+
+        def get_station_by_sn(self, identifier):
+            return next(
+                (
+                    station
+                    for station in self.stations.values()
+                    if identifier in {station.sn, station.entity_id}
+                ),
+                None,
+            )
+
+    parsed = []
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={
+            "camera-house": House({"camera-station-id": camera}),
+            "sensor-house": House({"dispatch-station-id": base_station}),
+        },
+        parse_get_state=lambda station, data: parsed.append((station, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "@xsense/events/aiplan/user-id-code",
+        json.dumps(
+            {
+                "eventTime": "20260826050000",
+                "eventData": {
+                    "dispatchDevs": [
+                        {
+                            "stationSn": "dispatch-station-sn",
+                            "deviceSn": "addx-camera-id",
+                        }
+                    ],
+                    "eventItems": [
+                        {"eventType": "person", "eventTime": "20260826050001"}
+                    ],
+                },
+            }
+        ).encode(),
+    )
+
+    assert parsed[0][0] is camera
+    assert parsed[0][1]["lastAiDetection"] == "person"
+
+
+def test_mqtt_ai_plan_event_uses_apk_service_home_before_dispatch_device():
+    """Route APK AI events by serviceId when dispatchDevs targets an alarm device."""
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Camera:
+        sn = "camera-sn"
+        entity_id = "camera-id"
+        type = "SSC0A"
+        shadow_name = "SSC0Acamera-sn"
+
+        def __init__(self, house):
+            self.house = house
+            self.data = {}
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    class BaseStation:
+        sn = "dispatch-station-sn"
+        entity_id = "dispatch-station-id"
+        type = "SBS50"
+        shadow_name = "SBS50dispatch-station-sn"
+
+        def get_device_by_sn(self, identifier):
+            return self if identifier == "dispatch-device-sn" else None
+
+    class House:
+        def __init__(self, house_id):
+            self.house_id = house_id
+            self.stations = {}
+
+        def get_station_by_sn(self, identifier):
+            return next(
+                (
+                    station
+                    for station in self.stations.values()
+                    if identifier in {station.sn, station.entity_id}
+                ),
+                None,
+            )
+
+    camera_house = House("camera-house-id")
+    camera = Camera(camera_house)
+    camera_house.stations = {"camera-id": camera}
+    sensor_house = House("sensor-house-id")
+    sensor_house.stations = {"dispatch-station-id": BaseStation()}
+    parsed = []
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={"camera-house-id": camera_house, "sensor-house-id": sensor_house},
+        parse_get_state=lambda station, data: parsed.append((station, data)),
+    )
+    coordinator._camera_ai_service_houses = {"service-id": {"camera-house-id"}}
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "@xsense/events/aiplan/user-id-code",
+        json.dumps(
+            {
+                "eventTime": "20260826050000",
+                "eventData": {
+                    "serverId": "service-id",
+                    "dispatchDevs": [
+                        {
+                            "stationSn": "dispatch-station-sn",
+                            "deviceSn": "dispatch-device-sn",
+                        }
+                    ],
+                    "eventItems": [
+                        {"eventType": "person", "eventTime": "20260826050001"}
+                    ],
+                },
+            }
+        ).encode(),
+    )
+
+    assert parsed[0][0] is camera
+    assert parsed[0][1]["lastAiDetection"] == "person"
+
+
+def test_camera_ai_service_house_map_includes_nested_apk_plan_homes():
+    from custom_components.xsense.coordinator import _camera_ai_service_house_map
+
+    assert _camera_ai_service_house_map(
+        [
+            {
+                "serverId": "service-id",
+                "houseId": "billing-house",
+                "aiPlan": {"houseIds": ["camera-house", "other-house"]},
+            }
+        ]
+    ) == {
+        "service-id": {"billing-house", "camera-house", "other-house"}
+    }
+
+
+def test_camera_ai_server_routes_unique_camera_from_nested_plan_home():
+    from custom_components.xsense.coordinator import _camera_station_for_ai_server
+
+    camera_house = SimpleNamespace(house_id="camera-house")
+    camera = SimpleNamespace(
+        sn="camera-sn",
+        entity_id="camera-id",
+        type="SSC0A",
+        house=camera_house,
+        data={"addxHouseId": "camera-house"},
+    )
+    coordinator = SimpleNamespace(
+        xsense=SimpleNamespace(
+            houses={"camera-house": SimpleNamespace(stations={"camera-id": camera})}
+        ),
+        _camera_ai_service_houses={
+            "service-id": {"billing-house", "camera-house"}
+        },
+    )
+
+    assert _camera_station_for_ai_server(coordinator, "service-id") is camera
 
 
 async def test_camera_ai_history_poll_routes_apk_alarm_items():
@@ -1561,7 +1759,10 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
                 ]
             }
 
-        async def get_camera_event_history(self, serial_numbers, start_timestamp, end_timestamp):
+        async def get_camera_event_history_for_cameras(
+            self, cameras, start_timestamp, end_timestamp
+        ):
+            assert cameras == [house.stations["camera-id"]]
             return {}
 
         def parse_get_state(self, station_arg, data):
@@ -1598,7 +1799,7 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
         shadow_name = "SSC0Acamera-sn"
 
         def __init__(self):
-            self.data = {}
+            self.data = {"addxSerialNumber": "addx-camera-id"}
 
         def get_device_by_sn(self, _identifier):
             return None
@@ -1622,15 +1823,15 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
         async def get_ai_service_list(self):
             return []
 
-        async def get_camera_event_history(
-            self, serial_numbers, start_timestamp, end_timestamp
+        async def get_camera_event_history_for_cameras(
+            self, cameras, start_timestamp, end_timestamp
         ):
-            assert serial_numbers == ["camera-sn"]
+            assert cameras == [house.stations["camera-id"]]
             assert end_timestamp > start_timestamp
             return {
                 "list": [
                     {
-                        "serialNumber": "camera-sn",
+                        "serialNumber": "addx-camera-id",
                         "timestamp": 1781478300,
                         "startTime": 1781478300,
                         "endTime": 1781478310,
@@ -1745,9 +1946,10 @@ async def test_camera_event_history_does_not_mark_unapplied_records_seen(caplog)
         async def get_ai_service_list(self):
             return []
 
-        async def get_camera_event_history(
-            self, serial_numbers, start_timestamp, end_timestamp
+        async def get_camera_event_history_for_cameras(
+            self, cameras, start_timestamp, end_timestamp
         ):
+            assert cameras == [self.houses["house-id"].stations["camera-id"]]
             return {
                 "list": [
                     {

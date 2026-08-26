@@ -4793,6 +4793,114 @@ async def test_camera_event_history_uses_apk_addx_library_record_path():
 
 
 @pytest.mark.asyncio
+async def test_camera_event_history_uses_requested_addx_home():
+    client = async_xsense.AsyncXSense()
+    house = SimpleNamespace(house_id="house-2", mqtt_region="eu-west-1")
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        return {"list": []}
+
+    client.addx_call = addx_call
+
+    await client.get_camera_event_history(
+        ["camera-sn"],
+        1781484300,
+        1781487900,
+        house=house,
+    )
+
+    assert calls[0][1]["_house"] is house
+
+
+@pytest.mark.asyncio
+async def test_camera_event_history_groups_cameras_by_addx_home():
+    client = async_xsense.AsyncXSense()
+    house_1 = SimpleNamespace(house_id="house-1", mqtt_region="us-east-1")
+    house_2 = SimpleNamespace(house_id="house-2", mqtt_region="eu-west-1")
+    client.houses = {"house-1": house_1, "house-2": house_2}
+    camera_1 = SimpleNamespace(
+        sn="ipc-camera-1",
+        entity_id="ipc-camera-1",
+        data={"addxSerialNumber": "addx-camera-1"},
+        house=house_1,
+    )
+    camera_2 = SimpleNamespace(
+        sn="ipc-camera-2",
+        entity_id="ipc-camera-2",
+        data={"addxSerialNumber": "addx-camera-2"},
+        house=house_2,
+    )
+    calls = []
+
+    async def get_history(serials, start_timestamp, end_timestamp, **kwargs):
+        calls.append((serials, kwargs["house"]))
+        return {"list": [{"serialNumber": serials[0]}]}
+
+    client.get_camera_event_history = get_history
+
+    result = await client.get_camera_event_history_for_cameras(
+        [camera_1, camera_2], 1781484300, 1781487900
+    )
+
+    assert calls == [
+        (["addx-camera-1"], house_1),
+        (["addx-camera-2"], house_2),
+    ]
+    assert [record["serialNumber"] for record in result["list"]] == [
+        "addx-camera-1",
+        "addx-camera-2",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_camera_event_history_queries_each_camera_without_shared_page_limit():
+    client = async_xsense.AsyncXSense()
+    house = SimpleNamespace(house_id="house-1", mqtt_region="us-east-1")
+    client.houses = {"house-1": house}
+    cameras = [
+        SimpleNamespace(
+            sn=f"ipc-camera-{index}",
+            entity_id=f"ipc-camera-{index}",
+            data={"addxSerialNumber": f"addx-camera-{index}"},
+            house=house,
+        )
+        for index in (1, 2)
+    ]
+    calls = []
+
+    async def get_history(serials, start_timestamp, end_timestamp, **kwargs):
+        calls.append((serials, kwargs["house"], kwargs["limit"]))
+        return {"list": [{"serialNumber": serials[0]}]}
+
+    client.get_camera_event_history = get_history
+
+    result = await client.get_camera_event_history_for_cameras(
+        cameras, 1781484300, 1781487900, limit=25
+    )
+
+    assert calls == [
+        (["addx-camera-1"], house, 25),
+        (["addx-camera-2"], house, 25),
+    ]
+    assert len(result["list"]) == 2
+
+
+def test_camera_addx_house_prefers_exact_addx_house_id_before_node():
+    client = async_xsense.AsyncXSense()
+    house_1 = SimpleNamespace(house_id="house-1", mqtt_region="us-east-1")
+    house_2 = SimpleNamespace(house_id="house-2", mqtt_region="us-east-1")
+    client.houses = {"house-1": house_1, "house-2": house_2}
+    camera = SimpleNamespace(
+        data={"addxHouseId": "house-2", "addxNodeType": "US"},
+        house=house_1,
+    )
+
+    assert client._camera_addx_house(camera) is house_2
+
+
+@pytest.mark.asyncio
 async def test_camera_event_record_history_uses_apk_event_filter_path():
     client = async_xsense.AsyncXSense()
     calls = []

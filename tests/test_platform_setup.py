@@ -1708,12 +1708,10 @@ def test_recordings_panel_registration_adopts_existing_home_assistant_panel(
         panels.append(kwargs)
 
     monkeypatch.setattr(frontend.panel_custom, "async_register_panel", register_panel)
-    monkeypatch.setattr(
-        frontend.frontend,
-        "async_panel_exists",
-        lambda hass, path: path == frontend.FRONTEND_URL_PATH,
+    hass = SimpleNamespace(
+        data={frontend.frontend.DATA_PANELS: {frontend.FRONTEND_URL_PATH: object()}},
+        http=Http(),
     )
-    hass = SimpleNamespace(data={}, http=Http())
 
     asyncio.run(frontend.async_register_recordings_panel(hass))
 
@@ -1796,12 +1794,13 @@ def test_force_arm_panel_registration_adopts_existing_home_assistant_panel(
         panels.append(kwargs)
 
     monkeypatch.setattr(frontend.panel_custom, "async_register_panel", register_panel)
-    monkeypatch.setattr(
-        frontend.frontend,
-        "async_panel_exists",
-        lambda hass, path: path == frontend.FORCE_ARM_FRONTEND_URL_PATH,
+    hass = SimpleNamespace(
+        data={
+            frontend.frontend.DATA_PANELS: {
+                frontend.FORCE_ARM_FRONTEND_URL_PATH: object()
+            }
+        }
     )
-    hass = SimpleNamespace(data={})
 
     asyncio.run(frontend.async_register_force_arm_panel(hass, "entry-1"))
 
