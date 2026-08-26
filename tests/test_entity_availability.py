@@ -638,6 +638,140 @@ async def test_alarm_panel_force_arm_requires_matching_pending_mode(monkeypatch)
     assert coordinator.xsense.calls == [(station.sn, "Away", "1")]
 
 
+async def test_alarm_panel_force_arm_now_does_not_require_pending_prompt(monkeypatch):
+    """The automation action force arms without first creating a prompt."""
+
+    class API:
+        def __init__(self):
+            self.calls = []
+
+        async def set_station_mode(self, station, safe_mode, force_arm=None):
+            self.calls.append((station.sn, safe_mode, force_arm))
+
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    station.set_alarm_data(
+        {
+            "forceReason": None,
+            "safeModeAim": None,
+            "requestedSafeMode": None,
+        }
+    )
+    assert pending_force_arm_mode(station) is None
+    api = API()
+    coordinator = Coordinator(station)
+    coordinator.xsense = api
+    panel = XSenseAlarmControlPanel(coordinator, station)
+    panel.hass = object()
+    panel.async_write_ha_state = lambda: None
+    dismissed = []
+    monkeypatch.setattr(
+        "custom_components.xsense.alarm_control_panel.persistent_notification.async_dismiss",
+        lambda hass, notification_id: dismissed.append(notification_id),
+    )
+
+    await panel.async_force_arm_now("Away")
+
+    assert api.calls == [(station.sn, "Away", "1")]
+    assert station.alarm_data["forceReason"] is None
+    assert station.alarm_data["requestedSafeMode"] is None
+    assert dismissed == [f"xsense_force_arm_{station.entity_id}"]
+
+
+async def test_alarm_panel_exposes_apk_sos_and_alarm_actions():
+    """Security actions use the exact SBS50 APK client commands."""
+
+    class API:
+        def __init__(self):
+            self.calls = []
+
+        async def trigger_sos(self, station, sos_type="1"):
+            self.calls.append(("trigger_sos", station.sn, sos_type))
+
+        async def cancel_sos(self, station):
+            self.calls.append(("cancel_sos", station.sn))
+
+        async def cancel_alarm(self, station):
+            self.calls.append(("cancel_alarm", station.sn))
+
+        async def set_sos_sound(self, station, sound):
+            self.calls.append(("set_sos_sound", station.sn, sound))
+
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    api = API()
+    coordinator = Coordinator(station)
+    coordinator.xsense = api
+    panel = XSenseAlarmControlPanel(coordinator, station)
+
+    await panel.async_trigger_sos()
+    await panel.async_cancel_sos()
+    await panel.async_cancel_alarm()
+    await panel.async_set_sos_sound(audible=False)
+    await panel.async_set_sos_sound(audible=True)
+
+    assert api.calls == [
+        ("trigger_sos", station.sn, "1"),
+        ("cancel_sos", station.sn),
+        ("cancel_alarm", station.sn),
+        ("set_sos_sound", station.sn, "0"),
+        ("set_sos_sound", station.sn, "1"),
+    ]
+
+
+async def test_light_group_power_action_uses_apk_group_shadow():
+    """The light-group action resolves the SBS50 parent and member serials."""
+
+    class API:
+        def __init__(self):
+            self.calls = []
+
+        async def set_light_group_power(
+            self, station, group_id, device_sns, on
+        ):
+            self.calls.append((station.sn, group_id, device_sns, on))
+
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    station.set_devices(
+        {
+            "devices": [
+                {
+                    "deviceId": "light-id",
+                    "deviceName": "Porch Light",
+                    "deviceSn": "light-sn",
+                    "deviceType": "SPL51",
+                    "roomName": "Porch",
+                }
+            ]
+        }
+    )
+    light = station.get_device_by_sn("light-sn")
+    api = API()
+    coordinator = Coordinator(station, {light.entity_id: light})
+    coordinator.xsense = api
+    switch = XSenseSwitchEntity(
+        coordinator,
+        light,
+        XSenseSwitchEntityDescription(
+            key="light_power",
+            data_key="on",
+            exists_fn=lambda current: True,
+            value_fn=lambda current: False,
+        ),
+        station_id=station.entity_id,
+    )
+
+    await switch.async_set_light_group_power(
+        group_id=" group-1 ", device_ids=[" light-sn ", "light-2"], enabled=True
+    )
+
+    assert api.calls == [
+        (station.sn, "group-1", ["light-sn", "light-2"], True)
+    ]
+    assert coordinator.update_listener_calls == 1
+
+
 def test_force_arm_prompt_prefers_locally_requested_home_over_stale_away_target():
     station = _xs01_wx_from_real_shadow()
     station.type = "SBS50"

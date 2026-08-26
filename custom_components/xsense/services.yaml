@@ -14,6 +14,61 @@ force_arm:
             - Home
             - Away
 
+force_arm_now:
+  name: Force arm now
+  description: Force arm an X-Sense system in Home or Away mode without waiting for or showing a confirmation prompt. Open sensors are bypassed.
+  target:
+    entity:
+      integration: xsense
+      domain: alarm_control_panel
+  fields:
+    mode:
+      required: true
+      selector:
+        select:
+          options:
+            - Home
+            - Away
+
+trigger_sos:
+  name: Trigger SOS alarm
+  description: Trigger the X-Sense SBS50 SOS alarm. This sounds the physical alarm immediately.
+  target:
+    entity:
+      integration: xsense
+      domain: alarm_control_panel
+
+cancel_sos:
+  name: Cancel SOS alarm
+  description: Cancel an active X-Sense SBS50 SOS alarm.
+  target:
+    entity:
+      integration: xsense
+      domain: alarm_control_panel
+
+cancel_alarm:
+  name: Cancel active alarm
+  description: Cancel an active X-Sense SBS50 sensor alarm using the same command as the X-Sense app.
+  target:
+    entity:
+      integration: xsense
+      domain: alarm_control_panel
+
+set_sos_sound:
+  name: Set SOS sound
+  description: Choose whether an SBS50 SOS alarm flashes its light only or also sounds its buzzer.
+  target:
+    entity:
+      integration: xsense
+      domain: alarm_control_panel
+  fields:
+    audible:
+      name: Audible alarm
+      description: Enable the SBS50 buzzer as well as the flashing light for SOS alarms.
+      required: true
+      selector:
+        boolean:
+
 refresh_recordings:
   name: Refresh recordings
   description: Refresh the cached X-Sense camera recording index used by the X-Sense Recordings sidebar and Home Assistant Media Browser.
@@ -238,3 +293,28 @@ remove_light_group_devices:
       required: true
       selector:
         object:
+
+set_light_group_power:
+  name: Set light group power
+  description: Turn an X-Sense SBS50 light group on or off.
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    group_id:
+      name: Group ID
+      required: true
+      selector:
+        text:
+    device_ids:
+      name: Device serial numbers
+      description: Serial numbers of the lights in the group.
+      required: true
+      selector:
+        object:
+    enabled:
+      name: Power
+      required: true
+      selector:
+        boolean:

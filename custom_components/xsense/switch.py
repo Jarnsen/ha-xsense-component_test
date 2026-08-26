@@ -103,6 +103,13 @@ LIGHT_GROUP_REMOVE_DEVICES_SCHEMA = {
     vol.Required(ATTR_DEVICE_IDS): vol.All(cv.ensure_list, [cv.string]),
 }
 
+LIGHT_GROUP_POWER_SCHEMA = {
+    vol.Required(ATTR_GROUP_ID): cv.string,
+    vol.Required(ATTR_DEVICE_IDS): vol.All(cv.ensure_list, [cv.string]),
+    vol.Required(ATTR_ENABLED): cv.boolean,
+}
+
+
 def boolean_state(value) -> bool | None:
     """Return the normalized state for explicit X-Sense boolean payload values."""
     if isinstance(value, bool):
@@ -702,6 +709,11 @@ async def async_setup_entry(
             LIGHT_GROUP_REMOVE_DEVICES_SCHEMA,
             "async_remove_light_group_devices",
         )
+        platform.async_register_entity_service(
+            "set_light_group_power",
+            LIGHT_GROUP_POWER_SCHEMA,
+            "async_set_light_group_power",
+        )
 
     for station in coordinator_stations(coordinator).values():
         seen_entity_ids.add(station.entity_id)
@@ -901,6 +913,20 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         entity = self._light_group_entity()
         await self.coordinator.xsense.remove_light_group_devices(
             entity, device_ids=_non_empty_strings(device_ids, "device_ids")
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_set_light_group_power(
+        self, group_id: str, device_ids: list[str], enabled: bool
+    ) -> None:
+        """Turn an SBS50 light group on or off through the APK group shadow."""
+        entity = self._light_group_entity()
+        station = entity.station
+        await self.coordinator.xsense.set_light_group_power(
+            station,
+            group_id=str(group_id).strip(),
+            device_sns=_non_empty_strings(device_ids, "device_ids"),
+            on=enabled,
         )
         self.coordinator.async_update_listeners()
 
