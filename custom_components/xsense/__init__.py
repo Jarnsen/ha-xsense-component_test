@@ -231,6 +231,8 @@ OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
 }
 OBSOLETE_SENSOR_KEYS_BY_DEVICE_TYPE = {}
 OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE = {
+    "SMA0A": ("mute_status",),
+    "SMA51": ("mute_status",),
     "SMS01": ("alarm_status",),
     "SDA51": ("mute_status",),
     "STH0A": ("mute_status",),

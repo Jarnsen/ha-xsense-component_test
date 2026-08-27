@@ -1012,7 +1012,7 @@ def test_parse_get_state_updates_child_status_when_apk_key_is_device_id():
 
     child = station_obj.devices["00000007"]
     assert child.data["alarmStatus"] is True
-    assert child.data["muteStatus"] is False
+    assert child.data["muteStatus"] == 0
     assert "00000007" not in station_obj.data
 
 
@@ -1169,7 +1169,7 @@ def test_parse_get_state_accepts_apk_reported_device_list():
     child = station_obj.devices["device-id"]
     assert child.online is True
     assert child.data["alarmStatus"] is False
-    assert child.data["muteStatus"] is True
+    assert child.data["muteStatus"] == 1
 
 
 def test_parse_get_state_updates_sbs10_child_from_apk_device_list():
@@ -1213,7 +1213,7 @@ def test_parse_get_state_updates_sbs10_child_from_apk_device_list():
     child = station_obj.devices["device-id"]
     assert child.online is True
     assert child.data["alarmStatus"] is False
-    assert child.data["muteStatus"] is True
+    assert child.data["muteStatus"] == 1
 
 
 def test_parse_get_state_does_not_use_stale_alarm_status_when_missing():
@@ -1425,28 +1425,20 @@ def test_xc0m_ir_maps_compact_temperature_and_humidity_fields():
     assert data["time"] == "20260705090102"
 
 
-@pytest.mark.parametrize("value", ("1", "2", 1, 2, True))
-def test_alarm_silence_states_include_apk_remind_later_mode(value):
-    assert mapping.map_type("waterMuteStatus", value) is True
-    assert mapping.map_type("tempMuteStatus", value) is True
+@pytest.mark.parametrize(
+    ("value", "expected"), (("0", 0), ("1", 1), ("2", 2), (0, 0), (1, 1))
+)
+def test_alarm_silence_status_preserves_apk_code(value, expected):
+    assert mapping.map_type("waterMuteStatus", value) == expected
+    assert mapping.map_type("tempMuteStatus", value) == expected
 
 
-@pytest.mark.parametrize("value", ("0", 0, False))
-def test_alarm_silence_states_report_inactive(value):
-    assert mapping.map_type("waterMuteStatus", value) is False
-    assert mapping.map_type("tempMuteStatus", value) is False
-
-
-@pytest.mark.parametrize("value", ("1", "2", "3", 1, 2, 3, True))
-def test_detector_mute_codes_report_silenced(value):
-    """APK detector mute codes 1-3 represent an active silence period."""
-    assert mapping.map_type("muteStatus", value) is True
-
-
-@pytest.mark.parametrize("value", ("0", "4", "5", 0, 4, 5, False))
-def test_detector_mute_codes_report_not_silenced(value):
-    """APK detector mute code 0 and active-alarm codes 4+ are not silenced."""
-    assert mapping.map_type("muteStatus", value) is False
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    (("0", 0), ("1", 1), ("2", 2), ("3", 3), ("4", 4), (0, 0), (1, 1)),
+)
+def test_detector_mute_status_preserves_apk_code(value, expected):
+    assert mapping.map_type("muteStatus", value) == expected
 
 
 @pytest.mark.parametrize("value", ("1", "2", "3", 1, 2, 3, True))
@@ -1647,7 +1639,7 @@ async def test_get_state_reads_sws51_sbs50_child_info_like_apk():
     ]
     assert device.data["batInfo"] == 3
     assert device.data["alarmStatus"] is False
-    assert device.data["muteStatus"] is True
+    assert device.data["muteStatus"] == 1
 
 
 @pytest.mark.asyncio
@@ -1711,7 +1703,7 @@ async def test_get_state_reads_xc01m_sbs50_child_info_like_apk():
     assert device.data["coPpmPeak"] == 6
     assert device.data["coPpmPeakTime"] == "20260709111213"
     assert device.data["isLifeEnd"] is False
-    assert device.data["muteStatus"] is False
+    assert device.data["muteStatus"] == 0
 
 
 @pytest.mark.asyncio

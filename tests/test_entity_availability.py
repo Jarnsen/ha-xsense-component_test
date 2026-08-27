@@ -10,7 +10,11 @@ from custom_components.xsense.alarm_control_panel import (
 from custom_components.xsense.python_xsense.base import XSenseBase
 from custom_components.xsense.python_xsense.station import Station
 from custom_components.xsense.binary_sensor import (
+    CODED_MUTE_STATUS_DEVICE_TYPES,
+    COMMAND_ONLY_MUTE_STATUS_DEVICE_TYPES,
+    MUTE_STATUS_DEVICE_TYPES,
     SENSORS as BINARY_SENSORS,
+    ZERO_CODE_MUTE_STATUS_DEVICE_TYPES,
     XSenseBinarySensorEntity,
     XSenseBinarySensorEntityDescription,
     XSenseMQTTConnectedEntity,
@@ -143,26 +147,113 @@ def test_reported_test_active_state_is_exposed_from_device_data():
     assert description.value_fn(station) is False
 
 
-def test_sws51_uses_apk_generic_alarm_and_silence_states():
-    """APK 1400 maps SWS51 to alarmStatus/muteStatus, not SWS0B fields."""
+@pytest.mark.parametrize(
+    ("alarm_status", "mute_status", "silence_time", "expected"),
+    (
+        (False, "1", "0", False),
+        (False, "0", "0", False),
+        (True, "1", "0", False),
+        (True, "0", "0", True),
+        (True, "0", "600", True),
+    ),
+)
+def test_sws51_uses_apk_alarm_and_silence_conditions(
+    alarm_status, mute_status, silence_time, expected
+):
+    """Mirror APK 1400 S1.F for triggered, silenced, and remind-later states."""
     device = SimpleNamespace(
         type="SWS51",
         data={
-            "alarmStatus": True,
-            "muteStatus": True,
+            "alarmStatus": alarm_status,
+            "muteStatus": mute_status,
+            "silenceTime": silence_time,
         },
     )
     descriptions = {description.key: description for description in BINARY_SENSORS}
 
     assert descriptions["alarm_status"].exists_fn(device)
-    assert descriptions["alarm_status"].value_fn(device) is True
+    assert descriptions["alarm_status"].value_fn(device) is alarm_status
     assert "mute" not in descriptions
     assert descriptions["mute_status"].exists_fn(device)
-    assert descriptions["mute_status"].value_fn(device) is True
+    assert descriptions["mute_status"].value_fn(device) is expected
     assert not descriptions["water_alarm_status"].exists_fn(device)
     assert not descriptions["water_mute_status"].exists_fn(device)
     assert not descriptions["temperature_alarm_status"].exists_fn(device)
     assert not descriptions["temperature_mute_status"].exists_fn(device)
+
+
+@pytest.mark.parametrize(
+    ("model", "alarm_status", "mute_status", "expected"),
+    (
+        ("XS01-M", True, "0", True),
+        ("XS01-M", True, "1", False),
+        ("XS01-M", False, "0", False),
+        ("SC07-MR", True, "1", True),
+        ("SC07-MR", True, "3", True),
+        ("SC07-MR", True, "4", False),
+        ("SC07-MR", False, "1", False),
+    ),
+)
+def test_apk_detector_families_use_their_own_mute_status_codes(
+    model, alarm_status, mute_status, expected
+):
+    device = SimpleNamespace(
+        type=model,
+        data={
+            "alarmStatus": alarm_status,
+            "muteStatus": mute_status,
+        },
+    )
+    description = next(
+        item for item in BINARY_SENSORS if item.key == "mute_status"
+    )
+
+    assert description.value_fn(device) is expected
+
+
+def test_apk_mute_status_model_families_are_exhaustive_and_disjoint():
+    assert CODED_MUTE_STATUS_DEVICE_TYPES.isdisjoint(
+        ZERO_CODE_MUTE_STATUS_DEVICE_TYPES
+    )
+    assert (
+        CODED_MUTE_STATUS_DEVICE_TYPES
+        | ZERO_CODE_MUTE_STATUS_DEVICE_TYPES
+    ) == MUTE_STATUS_DEVICE_TYPES
+    assert COMMAND_ONLY_MUTE_STATUS_DEVICE_TYPES == {"SMA0A", "SMA51"}
+
+
+def test_vendored_entity_preserves_raw_apk_mute_status_code():
+    station = Station(
+        House(),
+        stationId="station-id",
+        stationName="Water Leak Sensor",
+        stationSn="SWS51SN",
+        category="SWS51",
+        online=1,
+    )
+
+    station.set_data(
+        {
+            "status": {
+                "alarmStatus": "0",
+                "muteStatus": "1",
+                "silenceTime": "0",
+            }
+        }
+    )
+
+    assert station.data["muteStatus"] == 1
+    description = next(
+        item for item in BINARY_SENSORS if item.key == "mute_status"
+    )
+    assert description.value_fn(station) is False
+
+    station.set_data(
+        {"status": {"alarmStatus": "1", "muteStatus": "0", "silenceTime": "0"}}
+    )
+
+    assert station.data["muteStatus"] == 0
+    assert description.value_fn(station) is True
 
 
 def test_sws0b_uses_apk_dual_water_and_temperature_states():
@@ -170,9 +261,9 @@ def test_sws0b_uses_apk_dual_water_and_temperature_states():
         type="SWS0B",
         data={
             "waterAlarmStatus": False,
-            "waterMuteStatus": False,
+            "waterMuteStatus": 0,
             "tempAlarmStatus": True,
-            "tempMuteStatus": True,
+            "tempMuteStatus": 1,
         },
     )
     descriptions = {description.key: description for description in BINARY_SENSORS}
@@ -181,6 +272,36 @@ def test_sws0b_uses_apk_dual_water_and_temperature_states():
     assert descriptions["water_mute_status"].value_fn(device) is False
     assert descriptions["temperature_alarm_status"].value_fn(device) is True
     assert descriptions["temperature_mute_status"].value_fn(device) is True
+
+
+@pytest.mark.parametrize(
+    ("alarm_key", "mute_key", "alarm_status", "mute_status", "expected"),
+    (
+        ("waterAlarmStatus", "waterMuteStatus", False, 1, False),
+        ("waterAlarmStatus", "waterMuteStatus", True, 0, False),
+        ("waterAlarmStatus", "waterMuteStatus", True, 1, True),
+        ("waterAlarmStatus", "waterMuteStatus", True, 2, True),
+        ("tempAlarmStatus", "tempMuteStatus", False, 2, False),
+        ("tempAlarmStatus", "tempMuteStatus", True, 1, True),
+    ),
+)
+def test_sws0b_silence_states_require_the_corresponding_active_alarm(
+    alarm_key, mute_key, alarm_status, mute_status, expected
+):
+    device = SimpleNamespace(
+        type="SWS0B",
+        data={alarm_key: alarm_status, mute_key: mute_status},
+    )
+    description_key = (
+        "water_mute_status"
+        if mute_key == "waterMuteStatus"
+        else "temperature_mute_status"
+    )
+    description = next(
+        item for item in BINARY_SENSORS if item.key == description_key
+    )
+
+    assert description.value_fn(device) is expected
 
 
 @pytest.mark.parametrize(
@@ -223,17 +344,16 @@ def test_unexpected_cloud_state_remains_payload_gated(model, key, description_ke
     assert descriptions[description_key].value_fn(device) is True
 
 
-def test_generic_mute_payload_uses_single_canonical_silence_entity():
+def test_mailbox_mute_command_does_not_create_fake_silence_state():
     device = SimpleNamespace(type="SMA51", data={"mute": True})
     descriptions = {description.key: description for description in BINARY_SENSORS}
 
-    assert descriptions["mute_status"].exists_fn(device)
-    assert descriptions["mute_status"].value_fn(device) is True
+    assert not descriptions["mute_status"].exists_fn(device)
     assert "mute" not in descriptions
 
 
 def test_empty_canonical_mute_status_falls_back_to_raw_mute_state():
-    device = SimpleNamespace(type="SMA51", data={"muteStatus": "", "mute": True})
+    device = SimpleNamespace(type="UNKNOWN", data={"muteStatus": "", "mute": True})
     descriptions = {description.key: description for description in BINARY_SENSORS}
 
     assert descriptions["mute_status"].value_fn(device) is True
