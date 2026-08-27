@@ -1,2 +1,8 @@
 pytest==9.1.1
 pytest-asyncio==1.4.0
+homeassistant==2026.8.3
+paho-mqtt==2.1.0
+numpy==2.3.2
+PyTurboJPEG==1.8.3
+av==17.0.1
+ha-ffmpeg==3.2.2
