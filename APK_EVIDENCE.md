@@ -74,6 +74,12 @@ Current local APK evidence:
   while SBS50 sends `sosType` through its second-generation path. The existing
   client helper only implements the latter shape, so no generic SOS entity is
   exposed until both model routes are represented and guarded independently.
+- `SWS51` uses separate `waterMuteStatus` and `tempMuteStatus` fields in its
+  reachable device UI (`s1/C.java` and `s1/D.java`); it does not use the generic
+  `mute` or `muteStatus` fields for display. Values `1` (silenced) and `2`
+  (remind later) both suppress the corresponding alarm indication. Home
+  Assistant therefore exposes the water and temperature silence states, treats
+  both values as active, and removes stale generic Device Silenced entities.
 
 ## APK 1400 entity naming policy
 

@@ -12,6 +12,7 @@ if not hasattr(sys.modules.get("custom_components"), "__path__"):
 from custom_components.xsense import (
     OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE,
     OBSOLETE_BINARY_SENSOR_KEYS,
+    OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE,
     LEGACY_OBSOLETE_BINARY_SENSOR_KEYS,
     OBSOLETE_NUMBER_KEYS,
     OBSOLETE_SELECT_KEYS,
@@ -22,6 +23,7 @@ from custom_components.xsense import (
     _camera_ai_detection_unique_ids_by_service_state,
     _migrate_legacy_none_entity_ids,
     _obsolete_action_unique_ids,
+    _obsolete_binary_sensor_unique_ids,
     _obsolete_camera_motion_unique_ids,
     _obsolete_sensor_unique_ids,
     _unsupported_led_light_switch_unique_ids,
@@ -96,6 +98,26 @@ def test_obsolete_action_unique_ids_target_removed_model_actions_only():
         "kitchen-smoke-test",
         "office-smoke-test",
     }
+
+
+def test_sws51_generic_mute_entities_are_removed_without_touching_specific_states():
+    sws51 = SimpleNamespace(entity_id="basement_leak", type="SWS51")
+    sws0b = SimpleNamespace(entity_id="utility_leak", type="SWS0B")
+
+    unique_ids = _obsolete_binary_sensor_unique_ids(
+        {"stations": {}, "devices": {"sws51": sws51, "sws0b": sws0b}}
+    )
+
+    assert OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE["SWS51"] == (
+        "mute_status",
+        "mute",
+    )
+    assert "basement-leak-mute-status" in unique_ids
+    assert "basement-leak-mute" in unique_ids
+    assert "basement-leak-water-mute-status" not in unique_ids
+    assert "basement-leak-temperature-mute-status" not in unique_ids
+    assert "utility-leak-mute-status" not in unique_ids
+    assert "utility-leak-mute" not in unique_ids
 
 
 def test_xs01_wx_self_test_report_entities_are_not_obsolete():

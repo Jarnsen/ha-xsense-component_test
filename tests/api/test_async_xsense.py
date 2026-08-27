@@ -1425,6 +1425,18 @@ def test_xc0m_ir_maps_compact_temperature_and_humidity_fields():
     assert data["time"] == "20260705090102"
 
 
+@pytest.mark.parametrize("value", ("1", "2", 1, 2, True))
+def test_alarm_silence_states_include_apk_remind_later_mode(value):
+    assert mapping.map_type("waterMuteStatus", value) is True
+    assert mapping.map_type("tempMuteStatus", value) is True
+
+
+@pytest.mark.parametrize("value", ("0", 0, False))
+def test_alarm_silence_states_report_inactive(value):
+    assert mapping.map_type("waterMuteStatus", value) is False
+    assert mapping.map_type("tempMuteStatus", value) is False
+
+
 @pytest.mark.asyncio
 async def test_get_station_state_uses_second_info_for_xc0m_ir():
     client = async_xsense.AsyncXSense()

@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from custom_components.xsense.alarm_control_panel import (
@@ -139,6 +141,27 @@ def test_reported_test_active_state_is_exposed_from_device_data():
 
     assert description.exists_fn(station)
     assert description.value_fn(station) is False
+
+
+def test_sws51_exposes_specific_silence_states_without_generic_duplicates():
+    """SWS51 uses separate APK water and temperature silence states."""
+    device = SimpleNamespace(
+        type="SWS51",
+        data={
+            "mute": True,
+            "muteStatus": True,
+            "waterMuteStatus": False,
+            "tempMuteStatus": True,
+        },
+    )
+    descriptions = {description.key: description for description in BINARY_SENSORS}
+
+    assert not descriptions["mute"].exists_fn(device)
+    assert not descriptions["mute_status"].exists_fn(device)
+    assert descriptions["water_mute_status"].exists_fn(device)
+    assert descriptions["water_mute_status"].value_fn(device) is False
+    assert descriptions["temperature_mute_status"].exists_fn(device)
+    assert descriptions["temperature_mute_status"].value_fn(device) is True
 
 
 def test_station_sensor_stays_available_when_station_id_alias_changes():
