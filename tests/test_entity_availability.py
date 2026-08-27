@@ -143,25 +143,49 @@ def test_reported_test_active_state_is_exposed_from_device_data():
     assert description.value_fn(station) is False
 
 
-def test_sws51_exposes_specific_silence_states_without_generic_duplicates():
-    """SWS51 uses separate APK water and temperature silence states."""
+def test_sws51_exposes_specific_alarm_states_without_generic_duplicates():
+    """SWS51 uses separate APK water and temperature alarm states."""
     device = SimpleNamespace(
         type="SWS51",
         data={
+            "alarmStatus": True,
             "mute": True,
             "muteStatus": True,
+            "waterAlarmStatus": False,
             "waterMuteStatus": False,
+            "tempAlarmStatus": True,
             "tempMuteStatus": True,
         },
     )
     descriptions = {description.key: description for description in BINARY_SENSORS}
 
-    assert not descriptions["mute"].exists_fn(device)
+    assert not descriptions["alarm_status"].exists_fn(device)
+    assert "mute" not in descriptions
     assert not descriptions["mute_status"].exists_fn(device)
+    assert descriptions["water_alarm_status"].exists_fn(device)
+    assert descriptions["water_alarm_status"].value_fn(device) is False
     assert descriptions["water_mute_status"].exists_fn(device)
     assert descriptions["water_mute_status"].value_fn(device) is False
+    assert descriptions["temperature_alarm_status"].exists_fn(device)
+    assert descriptions["temperature_alarm_status"].value_fn(device) is True
     assert descriptions["temperature_mute_status"].exists_fn(device)
     assert descriptions["temperature_mute_status"].value_fn(device) is True
+
+
+def test_generic_mute_payload_uses_single_canonical_silence_entity():
+    device = SimpleNamespace(type="SMA51", data={"mute": True})
+    descriptions = {description.key: description for description in BINARY_SENSORS}
+
+    assert descriptions["mute_status"].exists_fn(device)
+    assert descriptions["mute_status"].value_fn(device) is True
+    assert "mute" not in descriptions
+
+
+def test_empty_canonical_mute_status_falls_back_to_raw_mute_state():
+    device = SimpleNamespace(type="SMA51", data={"muteStatus": "", "mute": True})
+    descriptions = {description.key: description for description in BINARY_SENSORS}
+
+    assert descriptions["mute_status"].value_fn(device) is True
 
 
 def test_station_sensor_stays_available_when_station_id_alias_changes():

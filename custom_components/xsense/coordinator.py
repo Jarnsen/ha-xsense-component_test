@@ -75,6 +75,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_camera_update_attempt: datetime | None = None
         self._camera_station_cache: dict[str, Any] = {}
         self._camera_ai_history_seen: set[str] = set()
+        self._camera_event_history_initialized = False
+        self._camera_event_history_last_poll: int | None = None
         self._camera_ai_service_houses: dict[str, set[str]] = {}
         self._camera_ai_history_unsub = None
         self._camera_ai_history_lock = asyncio.Lock()
@@ -553,20 +555,30 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
             return False
 
-        first_poll = not self._camera_ai_history_seen
+        first_poll = not getattr(self, "_camera_event_history_initialized", False)
         applied = 0
         skipped = 0
         seen_now: set[str] = set()
         now = int(datetime.now(timezone.utc).timestamp())
+        last_poll = getattr(self, "_camera_event_history_last_poll", None)
+        if first_poll:
+            start_timestamp = now - 86400
+        elif isinstance(last_poll, int):
+            start_timestamp = min(now, last_poll) - 60
+        else:
+            start_timestamp = now - 300
         try:
             history = await self.xsense.get_camera_event_history_for_cameras(
                 cameras,
-                now - 3600,
+                start_timestamp,
                 now,
             )
         except APIFailure as ex:
             LOGGER.debug("Could not update X-Sense camera record history: %s", ex)
             return False
+
+        self._camera_event_history_initialized = True
+        self._camera_event_history_last_poll = now
 
         records = _camera_event_history_records(history)
         for record in reversed(records):
@@ -585,13 +597,14 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._camera_ai_history_seen.update(seen_now)
         LOGGER.debug(
-            "X-Sense camera record history poll: cameras=%s records=%s seen=%s applied=%s skipped=%s first_poll=%s",
+            "X-Sense camera record history poll: cameras=%s records=%s seen=%s applied=%s skipped=%s first_poll=%s window_s=%s",
             len(serial_numbers),
             len(records),
             len(self._camera_ai_history_seen),
             applied,
             skipped,
             first_poll,
+            now - start_timestamp,
         )
         return applied > 0
 

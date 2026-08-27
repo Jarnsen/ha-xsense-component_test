@@ -100,7 +100,7 @@ def test_obsolete_action_unique_ids_target_removed_model_actions_only():
     }
 
 
-def test_sws51_generic_mute_entities_are_removed_without_touching_specific_states():
+def test_sws51_generic_alarm_entities_are_removed_without_touching_specific_states():
     sws51 = SimpleNamespace(entity_id="basement_leak", type="SWS51")
     sws0b = SimpleNamespace(entity_id="utility_leak", type="SWS0B")
 
@@ -109,15 +109,24 @@ def test_sws51_generic_mute_entities_are_removed_without_touching_specific_state
     )
 
     assert OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE["SWS51"] == (
+        "alarm_status",
         "mute_status",
-        "mute",
     )
+    assert "basement-leak-alarm-status" in unique_ids
     assert "basement-leak-mute-status" in unique_ids
     assert "basement-leak-mute" in unique_ids
     assert "basement-leak-water-mute-status" not in unique_ids
+    assert "basement-leak-water-alarm-status" not in unique_ids
     assert "basement-leak-temperature-mute-status" not in unique_ids
+    assert "basement-leak-temperature-alarm-status" not in unique_ids
     assert "utility-leak-mute-status" not in unique_ids
-    assert "utility-leak-mute" not in unique_ids
+    assert "utility-leak-mute" in unique_ids
+
+
+def test_raw_state_aliases_are_removed_after_canonical_normalization():
+    assert {"alarm_active", "activated", "mute"} <= set(
+        OBSOLETE_BINARY_SENSOR_KEYS
+    )
 
 
 def test_xs01_wx_self_test_report_entities_are_not_obsolete():
