@@ -1,6 +1,7 @@
 pytest==9.1.1
 pytest-asyncio==1.4.0
-homeassistant==2026.8.3
+homeassistant==2026.2.3; python_version < "3.14"
+homeassistant==2026.8.3; python_version >= "3.14"
 paho-mqtt==2.1.0
 numpy==2.3.2
 PyTurboJPEG==1.8.3
