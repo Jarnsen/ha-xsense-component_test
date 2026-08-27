@@ -119,10 +119,17 @@ def has_alarm_status(entity: Entity) -> bool:
 
 def has_mute_status(entity: Entity) -> bool:
     """Return if an X-Sense entity should expose mute status."""
+    if entity.type == "SWS51":
+        return False
     entity_def = entities.get(entity.type) or {}
     return entity.type == "XS01-WX" or "muteStatus" in entity.data or any(
         action.get("action") == "mute" for action in entity_def.get("actions", ())
     )
+
+
+def has_generic_mute_state(entity: Entity) -> bool:
+    """Return if a device uses the generic APK mute state."""
+    return entity.type != "SWS51" and "mute" in entity.data
 
 
 def has_life_end_status(entity: Entity) -> bool:
@@ -320,7 +327,7 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="mute",
         translation_key="mute",
         icon="mdi:volume-off",
-        exists_fn=has_data("mute"),
+        exists_fn=has_generic_mute_state,
         value_fn=data_bool("mute"),
     ),
     XSenseBinarySensorEntityDescription(

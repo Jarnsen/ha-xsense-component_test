@@ -230,6 +230,9 @@ OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
     "XS0B-iR": ("test",),
 }
 OBSOLETE_SENSOR_KEYS_BY_DEVICE_TYPE = {}
+OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE = {
+    "SWS51": ("mute_status", "mute"),
+}
 BLUEPRINT_MAINTENANCE_CHECK_INTERVAL = timedelta(minutes=5)
 STARTUP_MAINTENANCE_DELAY = 30
 
@@ -342,14 +345,22 @@ def _obsolete_sensor_unique_ids(data) -> set[str]:
 
 def _obsolete_binary_sensor_unique_ids(data) -> set[str]:
     """Return exact obsolete binary-sensor unique IDs for known devices."""
-    return {
-        _sensor_unique_id(entity.entity_id, key)
-        for entity in (
-            *data.get("stations", {}).values(),
-            *data.get("devices", {}).values(),
+    unique_ids: set[str] = set()
+    for entity in (
+        *data.get("stations", {}).values(),
+        *data.get("devices", {}).values(),
+    ):
+        unique_ids.update(
+            _sensor_unique_id(entity.entity_id, key)
+            for key in OBSOLETE_BINARY_SENSOR_KEYS
         )
-        for key in OBSOLETE_BINARY_SENSOR_KEYS
-    }
+        unique_ids.update(
+            _sensor_unique_id(entity.entity_id, key)
+            for key in OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE.get(
+                getattr(entity, "type", None), ()
+            )
+        )
+    return unique_ids
 
 
 def _obsolete_action_unique_ids(data) -> set[str]:
