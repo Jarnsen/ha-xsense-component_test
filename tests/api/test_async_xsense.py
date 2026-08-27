@@ -1437,6 +1437,46 @@ def test_alarm_silence_states_report_inactive(value):
     assert mapping.map_type("tempMuteStatus", value) is False
 
 
+@pytest.mark.parametrize("value", ("1", "2", "3", 1, 2, 3, True))
+def test_detector_mute_codes_report_silenced(value):
+    """APK detector mute codes 1-3 represent an active silence period."""
+    assert mapping.map_type("muteStatus", value) is True
+
+
+@pytest.mark.parametrize("value", ("0", "4", "5", 0, 4, 5, False))
+def test_detector_mute_codes_report_not_silenced(value):
+    """APK detector mute code 0 and active-alarm codes 4+ are not silenced."""
+    assert mapping.map_type("muteStatus", value) is False
+
+
+@pytest.mark.parametrize("value", ("1", "2", "3", 1, 2, 3, True))
+def test_alarm_status_codes_report_active(value):
+    """APK alarm codes distinguish causes but every positive code is active."""
+    assert mapping.map_type("alarmStatus", value) is True
+
+
+@pytest.mark.parametrize("value", ("0", 0, False))
+def test_alarm_status_zero_reports_inactive(value):
+    assert mapping.map_type("alarmStatus", value) is False
+
+
+@pytest.mark.parametrize("value", ("1", "2", 1, 2, True))
+def test_activation_codes_report_active(value):
+    """APK activation state treats every positive code as activated."""
+    assert mapping.map_type("activate", value) is True
+
+
+@pytest.mark.parametrize("value", ("0", 0, False))
+def test_activation_zero_reports_inactive(value):
+    assert mapping.map_type("activate", value) is False
+
+
+@pytest.mark.parametrize("key", ("alarmStatus", "activate"))
+@pytest.mark.parametrize("value", ("", "invalid", "-1", -1, None))
+def test_coded_states_keep_invalid_values_unknown(key, value):
+    assert mapping.map_type(key, value) is None
+
+
 @pytest.mark.asyncio
 async def test_get_station_state_uses_second_info_for_xc0m_ir():
     client = async_xsense.AsyncXSense()
@@ -4837,12 +4877,14 @@ async def test_camera_event_history_groups_cameras_by_addx_home():
         entity_id="ipc-camera-1",
         data={"addxSerialNumber": "addx-camera-1"},
         house=house_1,
+        set_data=lambda data: None,
     )
     camera_2 = SimpleNamespace(
         sn="ipc-camera-2",
         entity_id="ipc-camera-2",
         data={"addxSerialNumber": "addx-camera-2"},
         house=house_2,
+        set_data=lambda data: None,
     )
     calls = []
 
@@ -4877,6 +4919,7 @@ async def test_camera_event_history_queries_each_camera_without_shared_page_limi
             entity_id=f"ipc-camera-{index}",
             data={"addxSerialNumber": f"addx-camera-{index}"},
             house=house,
+            set_data=lambda data: None,
         )
         for index in (1, 2)
     ]
@@ -4897,6 +4940,38 @@ async def test_camera_event_history_queries_each_camera_without_shared_page_limi
         (["addx-camera-2"], house, 25),
     ]
     assert len(result["list"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_camera_event_history_tries_apk_identity_alias_after_empty_result():
+    client = async_xsense.AsyncXSense()
+    house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
+    client.houses = {"house-1": house}
+    updates = []
+    camera = SimpleNamespace(
+        sn="camera-label",
+        entity_id="camera-access-id",
+        data={"addxSerialNumber": "camera-list-id"},
+        house=house,
+        set_data=lambda data: updates.append(data),
+    )
+    calls = []
+
+    async def get_history(serials, start_timestamp, end_timestamp, **kwargs):
+        calls.append(serials)
+        if serials == ["camera-access-id"]:
+            return {"list": [{"serialNumber": "camera-access-id"}]}
+        return {"list": []}
+
+    client.get_camera_event_history = get_history
+
+    result = await client.get_camera_event_history_for_cameras(
+        [camera], 1781484300, 1781487900
+    )
+
+    assert calls == [["camera-list-id"], ["camera-access-id"]]
+    assert result["list"] == [{"serialNumber": "camera-access-id"}]
+    assert updates == [{"addxSerialNumber": "camera-access-id"}]
 
 
 def test_camera_addx_house_prefers_exact_addx_house_id_before_node():

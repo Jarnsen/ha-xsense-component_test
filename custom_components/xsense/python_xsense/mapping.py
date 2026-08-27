@@ -82,6 +82,57 @@ def bool_state(value: typing.Any) -> bool | None:
     return None
 
 
+def positive_code_state(value: typing.Any) -> bool | None:
+    """Normalize APK status codes where zero is clear and positive is active."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value == 0:
+            return False
+        return True if value > 0 else None
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "on"}:
+            return True
+        if normalized in {"false", "off"}:
+            return False
+        try:
+            code = int(normalized)
+        except ValueError:
+            return None
+        if code == 0:
+            return False
+        return True if code > 0 else None
+    return None
+
+
+def detector_silence_state(value: typing.Any) -> bool | None:
+    """Normalize APK detector mute codes into a silenced state."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value == 0 or value >= 4:
+            return False
+        if value > 0:
+            return True
+        return None
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "on"}:
+            return True
+        if normalized in {"false", "off"}:
+            return False
+        try:
+            code = int(normalized)
+        except ValueError:
+            return None
+        if code == 0 or code >= 4:
+            return False
+        if code > 0:
+            return True
+    return None
+
+
 def alarm_silence_state(value: typing.Any) -> bool | None:
     """Normalize APK alarm silence states, including remind-later mode."""
     if isinstance(value, bool):
@@ -151,11 +202,11 @@ type_mapping: dict[str, Callable[[typing.Any], typing.Any]] = {
     "batInfo": safe_int,
     "rfLevel": safe_int,
     "wifiRSSI": safe_int,
-    "alarmStatus": bool_state,
+    "alarmStatus": positive_code_state,
     "alarmEnabled": bool_state,
     "alarmEnable": bool_state,
     "alarmWhenRemoveToggleOn": bool_state,
-    "activate": bool_state,
+    "activate": positive_code_state,
     "alarmSound": bool_state,
     "appTip": bool_state,
     "awaitEnable": bool_state,
@@ -184,7 +235,7 @@ type_mapping: dict[str, Callable[[typing.Any], typing.Any]] = {
     "mechanicalDingDongSwitch": bool_state,
     "mirrorFlip": bool_state,
     "mute": bool_state,
-    "muteStatus": bool_state,
+    "muteStatus": detector_silence_state,
     "needAlarm": bool_state,
     "needMotion": bool_state,
     "needNightVision": bool_state,

@@ -110,6 +110,8 @@ def alarm_device_class(entity: Entity) -> BinarySensorDeviceClass | None:
 
 def has_alarm_status(entity: Entity) -> bool:
     """Return if an XSense entity should expose an alarm status sensor."""
+    if entity.type == "SWS51":
+        return False
     return (
         "alarmStatus" in entity.data
         or alarm_device_class(entity) is not None
@@ -122,14 +124,23 @@ def has_mute_status(entity: Entity) -> bool:
     if entity.type == "SWS51":
         return False
     entity_def = entities.get(entity.type) or {}
-    return entity.type == "XS01-WX" or "muteStatus" in entity.data or any(
-        action.get("action") == "mute" for action in entity_def.get("actions", ())
+    return (
+        entity.type == "XS01-WX"
+        or "muteStatus" in entity.data
+        or "mute" in entity.data
+        or any(
+            action.get("action") == "mute"
+            for action in entity_def.get("actions", ())
+        )
     )
 
 
-def has_generic_mute_state(entity: Entity) -> bool:
-    """Return if a device uses the generic APK mute state."""
-    return entity.type != "SWS51" and "mute" in entity.data
+def mute_status(entity: Entity) -> bool | None:
+    """Return the canonical APK silence state across payload variants."""
+    value = entity.data.get("muteStatus")
+    if value in (None, ""):
+        value = entity.data.get("mute")
+    return boolean_state(value)
 
 
 def has_life_end_status(entity: Entity) -> bool:
@@ -180,6 +191,11 @@ def has_data(key: str) -> Callable[[Entity], bool]:
     return lambda entity: key in entity.data
 
 
+def has_sws51_data(key: str) -> Callable[[Entity], bool]:
+    """Create SWS51 alarm states before its first complete shadow arrives."""
+    return lambda entity: entity.type == "SWS51" or key in entity.data
+
+
 def has_camera_data(key: str) -> Callable[[Entity], bool]:
     """Return an exists function for an IPC camera data key."""
     return lambda entity: is_camera_entity(entity) and key in entity.data
@@ -210,7 +226,7 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         translation_key="mute_status",
         icon="mdi:alarm-light-off",
         exists_fn=has_mute_status,
-        value_fn=lambda entity: boolean_state(entity.data.get("muteStatus")),
+        value_fn=mute_status,
     ),
     XSenseBinarySensorEntityDescription(
         key="activate",
@@ -327,7 +343,7 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="mute",
         translation_key="mute",
         icon="mdi:volume-off",
-        exists_fn=has_generic_mute_state,
+        exists_fn=has_data("mute"),
         value_fn=data_bool("mute"),
     ),
     XSenseBinarySensorEntityDescription(
@@ -368,29 +384,29 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="water_alarm_status",
         translation_key="water_alarm_status",
         device_class=BinarySensorDeviceClass.MOISTURE,
-        exists_fn=has_data("waterAlarmStatus"),
-        value_fn=data_bool("waterAlarmStatus"),
+        exists_fn=has_sws51_data("waterAlarmStatus"),
+        value_fn=optional_data_bool("waterAlarmStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="water_mute_status",
         translation_key="water_mute_status",
         icon="mdi:water-off",
-        exists_fn=has_data("waterMuteStatus"),
-        value_fn=data_bool("waterMuteStatus"),
+        exists_fn=has_sws51_data("waterMuteStatus"),
+        value_fn=optional_data_bool("waterMuteStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="temperature_alarm_status",
         translation_key="temperature_alarm_status",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        exists_fn=has_data("tempAlarmStatus"),
-        value_fn=data_bool("tempAlarmStatus"),
+        exists_fn=has_sws51_data("tempAlarmStatus"),
+        value_fn=optional_data_bool("tempAlarmStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="temperature_mute_status",
         translation_key="temperature_mute_status",
         icon="mdi:thermometer-off",
-        exists_fn=has_data("tempMuteStatus"),
-        value_fn=data_bool("tempMuteStatus"),
+        exists_fn=has_sws51_data("tempMuteStatus"),
+        value_fn=optional_data_bool("tempMuteStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="timezone_enabled",

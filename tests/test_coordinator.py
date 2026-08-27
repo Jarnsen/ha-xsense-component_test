@@ -1848,6 +1848,8 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
     coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
     coordinator.xsense = Client()
     coordinator._camera_ai_history_seen = set()
+    coordinator._camera_event_history_initialized = False
+    coordinator._camera_event_history_last_poll = None
     coordinator._camera_ai_history_lock = asyncio.Lock()
 
     assert await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
@@ -1869,6 +1871,54 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
     assert "isMoved" not in parsed[0][1]
     assert "lastMotionTime" not in parsed[0][1]
     assert len(parsed) == 1
+    assert coordinator._camera_event_history_initialized is True
+    assert coordinator._camera_event_history_last_poll is not None
+
+
+async def test_camera_event_history_uses_initial_lookback_then_incremental_window():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Camera:
+        sn = "camera-sn"
+        type = "SSC0A"
+        shadow_name = "SSC0Acamera-sn"
+        data = {"addxSerialNumber": "camera-sn"}
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    class House:
+        stations = {"camera-id": Camera()}
+
+        def get_station_by_sn(self, _identifier):
+            return None
+
+    windows = []
+
+    class Client:
+        houses = {"house-id": House()}
+
+        async def get_ai_service_list(self):
+            return []
+
+        async def get_camera_event_history_for_cameras(
+            self, cameras, start_timestamp, end_timestamp
+        ):
+            windows.append((start_timestamp, end_timestamp))
+            return {"list": []}
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = Client()
+    coordinator._camera_ai_history_seen = set()
+    coordinator._camera_event_history_initialized = False
+    coordinator._camera_event_history_last_poll = None
+    coordinator._camera_ai_history_lock = asyncio.Lock()
+
+    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
+    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
+
+    assert windows[0][1] - windows[0][0] == 86400
+    assert 60 <= windows[1][1] - windows[1][0] <= 62
 
 
 def test_camera_event_history_station_data_preserves_direct_video_url():

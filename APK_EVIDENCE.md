@@ -43,6 +43,17 @@ Current local APK evidence:
 - `SC06-WX` and `XS0B-iR` retain their APK alarm-mute route but do not expose a remote self-test route in APK 1400. Stale `test` buttons are removed while their physical self-test report sensors remain model-backed.
 - `@claybox/events/keyboard/{requestId}` is a temporary PIN-creation confirmation subscription, not a live keypad-code event stream. Runtime SKP0A code events remain sourced from the APK `2nd_safenotice` path.
 - Camera ticket fields, signal URL construction, peer/offer/answer ordering, direct `liveUrl`/`url` handling, recording endpoints, and ADDX metadata were rechecked against APK 1400 with no new camera protocol delta found.
+- APK camera history uses `/library/newselectlibrary` with `FilterEntry` fields
+  `startTimestamp`, `endTimestamp`, `from`, `to`, `serialNumber`, `tags`, and
+  `marked` (`F0/InterfaceC2232a.java`, `C/t0.java`, and `U2/p.java`). The
+  timestamps are epoch seconds: `F3/C2264I.java` adds
+  `TimeUnit.DAYS.toSeconds(1)` to the selected day start. The integration must
+  not convert this request to milliseconds.
+- The APK requests camera history for a selected day and filters by the exact
+  camera serials selected from its device list. The integration uses a bounded
+  24-hour initialization window, then advances from the last successful poll
+  with a one-minute overlap. Multi-Home camera aliases are tried independently
+  when the preferred camera identity returns an empty library response.
 - APK 1400 parses both `peak.coPpmPeak` and `peak.radonPeak`, assigning the same
   nested `peak.time` to the matching peak-time field. The integration now
   preserves `radonPeak` and `radonPeakTime` instead of discarding them when it
@@ -80,6 +91,26 @@ Current local APK evidence:
   (remind later) both suppress the corresponding alarm indication. Home
   Assistant therefore exposes the water and temperature silence states, treats
   both values as active, and removes stale generic Device Silenced entities.
+- Generic detector `alarmStatus` is a coded alarm cause, not a strict boolean.
+  APK 1400 treats every positive value as an active alarm and uses values `2`
+  and `3` for CO/combined alarm cases. The adapter therefore maps `0` to clear
+  and every positive code to active for Home Assistant's binary alarm entity.
+- Newer detector `muteStatus` is also coded. APK 1400 presents a detector as
+  silenced while the value is `1`, `2`, or `3`; values `4` and above represent
+  an active, unsilenced alarm. The adapter preserves that distinction instead
+  of passing the field through generic `0`/`1` boolean conversion.
+- Device `activate` is not limited to `0`/`1`: APK 1400 sends `2` in supported
+  activation/install flows and treats nonzero activation values as active in
+  its device-status path. The adapter therefore maps every positive activation
+  code to active instead of exposing code `2` as unknown.
+- The adapter mirrors raw `isAlarm` and `isActivate` transport aliases into the
+  canonical `alarmStatus` and `activate` fields. Home Assistant exposes only the
+  canonical entities and removes stale duplicate Alarm Active/Activated entity
+  registry entries.
+- APK payload variants report the generic silence state as either `muteStatus`
+  or `mute`. Home Assistant folds both into one canonical Device Silenced
+  entity and removes the duplicate raw `mute` entity, while SWS51 retains only
+  its distinct Water Leak Silenced and Temperature Alarm Silenced states.
 
 ## APK 1400 entity naming policy
 

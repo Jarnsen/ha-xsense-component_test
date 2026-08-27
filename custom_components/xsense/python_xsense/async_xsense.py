@@ -579,48 +579,68 @@ class AsyncXSense(XSenseBase):
         limit: int = 20,
     ) -> dict:
         """Return camera records through each camera's APK ADDX Home context."""
-        requests: list[tuple[House | None, str]] = []
-        seen_serials: set[str] = set()
+        requests: list[tuple[Entity, House | None, list[str]]] = []
+        seen_cameras: set[str] = set()
         for camera in cameras:
-            serial = _camera_addx_serial(camera)
-            normalized_serial = _normalized_camera_serial(serial) or serial
-            if not serial or normalized_serial in seen_serials:
+            serials = [
+                serial
+                for serial in _camera_addx_serial_candidates(camera)
+                if serial
+            ]
+            if not serials:
                 continue
-            seen_serials.add(normalized_serial)
-            requests.append((self._camera_addx_house(camera), serial))
+            camera_key = _normalized_camera_serial(serials[0]) or serials[0]
+            if camera_key in seen_cameras:
+                continue
+            seen_cameras.add(camera_key)
+            requests.append((camera, self._camera_addx_house(camera), serials))
 
         records: list[dict[str, Any]] = []
         first_error: APIFailure | None = None
         successful_requests = 0
-        for house, serial in requests:
-            try:
-                history = await self.get_camera_event_history(
-                    [serial],
-                    start_timestamp,
-                    end_timestamp,
-                    house=house,
-                    start=start,
-                    limit=limit,
+        for camera, house, serials in requests:
+            camera_request_succeeded = False
+            for serial_index, serial in enumerate(serials):
+                try:
+                    history = await self.get_camera_event_history(
+                        [serial],
+                        start_timestamp,
+                        end_timestamp,
+                        house=house,
+                        start=start,
+                        limit=limit,
+                    )
+                except APIFailure as err:
+                    if first_error is None:
+                        first_error = err
+                    LOGGER.debug(
+                        "X-Sense camera record history unavailable: %s",
+                        {
+                            "identity_index": serial_index,
+                            "identity_count": len(serials),
+                            "error_type": type(err).__name__,
+                        },
+                    )
+                    continue
+
+                camera_request_succeeded = True
+                data = (
+                    history.get("data")
+                    if isinstance(history.get("data"), dict)
+                    else history
                 )
-            except APIFailure as err:
-                if first_error is None:
-                    first_error = err
-                LOGGER.debug(
-                    "X-Sense camera record history unavailable on ADDX Home",
-                    exc_info=True,
-                )
-                continue
-            successful_requests += 1
-            data = (
-                history.get("data")
-                if isinstance(history.get("data"), dict)
-                else history
-            )
-            group_records = data.get("list") if isinstance(data, dict) else None
-            if isinstance(group_records, list):
+                group_records = data.get("list") if isinstance(data, dict) else None
+                if not isinstance(group_records, list) or not group_records:
+                    continue
+
+                camera.set_data({"addxSerialNumber": serial})
                 records.extend(
                     record for record in group_records if isinstance(record, dict)
                 )
+                break
+
+            if camera_request_succeeded:
+                successful_requests += 1
 
         if successful_requests == 0 and first_error is not None:
             raise first_error
