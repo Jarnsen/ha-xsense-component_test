@@ -4171,6 +4171,66 @@ async def test_update_camera_data_updates_known_camera_from_addx_device_list():
 
 
 @pytest.mark.asyncio
+async def test_update_camera_data_keeps_proven_addx_access_identity():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "camera-list-id",
+                    "ipcSn": "camera-label",
+                    "ipcName": "Front Camera",
+                    "category": "SSC0A",
+                }
+            ],
+        }
+    )
+    client.houses = {"house-id": test_house}
+    camera = test_house.stations["camera-list-id"]
+    camera.set_data({"addxAccessSerialNumber": "working-camera-id"})
+    calls = []
+
+    async def addx_call(endpoint, **kwargs):
+        calls.append((endpoint, kwargs))
+        if endpoint == "/device/listuserdevices":
+            return {
+                "list": [
+                    {
+                        "serialNumber": "camera-list-id",
+                        "deviceName": "Front Camera",
+                        "houseId": "house-id",
+                        "modelNo": "SSC0A",
+                        "deviceSupport": {
+                            "supportLiveAudio": 0,
+                            "supportLiveSpeakerVolume": 0,
+                            "supportRecordingAudio": 0,
+                            "supportPersonDetect": 0,
+                        },
+                    }
+                ]
+            }
+        return {}
+
+    client.addx_call = addx_call
+
+    await client.update_camera_data()
+
+    assert camera.data["addxAccessSerialNumber"] == "working-camera-id"
+    assert camera.data["addxSerialNumber"] == "camera-list-id"
+    assert (
+        "/device/getuserconfig",
+        {
+            "_house": test_house,
+            "serialNumber": "working-camera-id",
+            "voiceReminder": False,
+        },
+    ) in calls
+
+
+@pytest.mark.asyncio
 async def test_update_camera_data_keeps_existing_home_camera_entries_not_in_addx_list():
     client = async_xsense.AsyncXSense()
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
@@ -4963,7 +5023,35 @@ async def test_camera_event_history_tries_apk_identity_alias_after_empty_result(
 
     assert calls == [["camera-list-id"], ["camera-access-id"]]
     assert result["list"] == [{"serialNumber": "camera-access-id"}]
-    assert updates == [{"addxSerialNumber": "camera-access-id"}]
+    assert updates == [
+        {
+            "addxAccessSerialNumber": "camera-access-id",
+            "addxSerialNumber": "camera-access-id",
+        }
+    ]
+
+
+def test_camera_addx_serial_candidates_keep_proven_access_identity_first():
+    camera = SimpleNamespace(
+        sn="camera-label",
+        entity_id="camera-access-id",
+        data={
+            "addxAccessSerialNumber": "working-camera-id",
+            "addxSerialNumber": "camera-list-id",
+            "cameraWebrtcTicket": {
+                "serialNumber": "working-camera-id",
+                "realCxSerialNumber": "real-camera-id",
+            },
+        },
+    )
+
+    assert async_xsense._camera_addx_serial_candidates(camera) == [
+        "working-camera-id",
+        "real-camera-id",
+        "camera-list-id",
+        "camera-access-id",
+        "camera-label",
+    ]
 
 
 def test_camera_addx_house_prefers_exact_addx_house_id_before_node():
@@ -5537,7 +5625,48 @@ async def test_camera_webrtc_ticket_retries_ipc_id_after_rejected_cached_addx_se
         if endpoint == "/device/getWebrtcTicket"
     ] == ["wrong-cached-id", "right-addx-camera-id"]
     assert camera.data["addxSerialNumber"] == "right-addx-camera-id"
+    assert camera.data["addxAccessSerialNumber"] == "right-addx-camera-id"
     assert camera.data["cameraWebrtcTicket"]["serialNumber"] == "right-addx-camera-id"
+
+
+@pytest.mark.asyncio
+async def test_camera_webrtc_ticket_retains_real_camera_identity_as_fallback():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "camera-access-id",
+                    "ipcSn": "camera-label",
+                    "ipcName": "Camera",
+                    "category": "SSC0A",
+                }
+            ],
+        }
+    )
+    client.houses = {"house-id": test_house}
+    camera = test_house.stations["camera-access-id"]
+    camera.set_data({"addxSerialNumber": "camera-list-id"})
+
+    async def addx_call(endpoint, **kwargs):
+        return {
+            "signalServer": "https://signal.example",
+            "realCxSerialNumber": "real-camera-id",
+        }
+
+    client.addx_call = addx_call
+
+    await client.get_camera_webrtc_ticket(camera, force_refresh=True)
+
+    assert camera.data["addxAccessSerialNumber"] == "camera-list-id"
+    assert camera.data["addxRealSerialNumber"] == "real-camera-id"
+    assert async_xsense._camera_addx_serial_candidates(camera)[:2] == [
+        "camera-list-id",
+        "real-camera-id",
+    ]
 
 
 @pytest.mark.asyncio

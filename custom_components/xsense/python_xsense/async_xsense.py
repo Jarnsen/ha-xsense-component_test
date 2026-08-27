@@ -207,8 +207,15 @@ def _camera_addx_serial(camera: Entity) -> str:
 def _camera_addx_serial_candidates(camera: Entity) -> list[str]:
     """Return APK camera identifiers in ADDX preference order."""
     data = getattr(camera, "data", {}) or {}
+    ticket = data.get("cameraWebrtcTicket")
+    if not isinstance(ticket, dict):
+        ticket = {}
     result: list[str] = []
     for value in (
+        data.get("addxAccessSerialNumber"),
+        ticket.get("serialNumber"),
+        data.get("addxRealSerialNumber"),
+        ticket.get("realCxSerialNumber"),
         data.get("addxSerialNumber"),
         getattr(camera, "entity_id", None),
         getattr(camera, "sn", None),
@@ -633,7 +640,12 @@ class AsyncXSense(XSenseBase):
                 if not isinstance(group_records, list) or not group_records:
                     continue
 
-                camera.set_data({"addxSerialNumber": serial})
+                camera.set_data(
+                    {
+                        "addxAccessSerialNumber": serial,
+                        "addxSerialNumber": serial,
+                    }
+                )
                 records.extend(
                     record for record in group_records if isinstance(record, dict)
                 )
@@ -1593,7 +1605,12 @@ class AsyncXSense(XSenseBase):
                     serialNumber=serial,
                     verifyDormancyStatus=True,
                 )
-                camera.set_data({"addxSerialNumber": serial})
+                camera.set_data(
+                    {
+                        "addxAccessSerialNumber": serial,
+                        "addxSerialNumber": serial,
+                    }
+                )
                 break
             except APIFailure as err:
                 last_error = err
@@ -1611,8 +1628,16 @@ class AsyncXSense(XSenseBase):
             raise last_error
         if isinstance(data, dict):
             data = dict(data)
-            data["serialNumber"] = _camera_addx_serial(camera)
-            camera.set_data({"cameraWebrtcTicket": data})
+            accepted_serial = _camera_addx_serial(camera)
+            data["serialNumber"] = accepted_serial
+            camera_data = {
+                "addxAccessSerialNumber": accepted_serial,
+                "cameraWebrtcTicket": data,
+            }
+            real_serial = data.get("realCxSerialNumber")
+            if real_serial not in (None, ""):
+                camera_data["addxRealSerialNumber"] = str(real_serial)
+            camera.set_data(camera_data)
             return data
         return None
 
