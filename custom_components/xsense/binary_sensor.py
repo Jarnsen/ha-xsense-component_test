@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from .python_xsense.async_xsense import is_camera_entity
 from .python_xsense.device import Device
 from .python_xsense.entity import Entity
-from .python_xsense.entity_map import EntityType, entities
+from .python_xsense.entity_map import EntityType
 from .python_xsense.station import Station
 
 from homeassistant import config_entries
@@ -99,6 +99,123 @@ LIFE_END_STATUS_DEVICE_TYPES = frozenset(
     }
 )
 
+ALARM_STATUS_DEVICE_TYPES = frozenset(
+    {
+        "CB0Z-3S",
+        "LP/N-SA-0B",
+        "LP/N-SCA-0A",
+        "SAL100",
+        "SAL51",
+        "SBS50",
+        "SC01-MN",
+        "SC01-MR",
+        "SC06-WX",
+        "SC07-MR",
+        "SC07-WX",
+        "SC07-iA",
+        "SD11-MR",
+        "SD19-MN",
+        "SDA51",
+        "SDS0A",
+        "SK0Z-3S",
+        "SKP0A",
+        "SMA0A",
+        "SMA51",
+        "SMS0A",
+        "STH0A",
+        "STH0B",
+        "STH51",
+        "SWS0A",
+        "SWS51",
+        "XC01-M",
+        "XC04-WX",
+        "XC0C-MR",
+        "XC0C-iA",
+        "XC0C-iR",
+        "XC0M-iR",
+        "XH02-M",
+        "XP02S-MR",
+        "XP0A-MR",
+        "XP0A-iR",
+        "XP0H-MR",
+        "XP0H-iR",
+        "XP0J-iA",
+        "XP0P-MR",
+        "XP0S-iA",
+        "XP0T-iA",
+        "XP0V-iA",
+        "XP0W-iA",
+        "XR0A-iR",
+        "XS01-M",
+        "XS01-WX",
+        "XS03-WX",
+        "XS03-iWX",
+        "XS0AA-iA",
+        "XS0AB-iA",
+        "XS0B-MR",
+        "XS0B-iR",
+        "XS0D-MR",
+        "XS0E-iR",
+        "XS0F-PMA",
+        "XS0R-iA",
+        "XS0X-MN",
+    }
+)
+
+MUTE_STATUS_DEVICE_TYPES = frozenset(
+    {
+        "CB0Z-3S",
+        "LP/N-SA-0B",
+        "LP/N-SCA-0A",
+        "SAL100",
+        "SAL51",
+        "SC01-MN",
+        "SC01-MR",
+        "SC06-WX",
+        "SC07-MR",
+        "SC07-WX",
+        "SC07-iA",
+        "SD11-MR",
+        "SD19-MN",
+        "SK0Z-3S",
+        "SMA0A",
+        "SMA51",
+        "SWS0A",
+        "SWS51",
+        "XC01-M",
+        "XC04-WX",
+        "XC0C-MR",
+        "XC0C-iA",
+        "XC0C-iR",
+        "XC0M-iR",
+        "XH02-M",
+        "XP02S-MR",
+        "XP0A-MR",
+        "XP0A-iR",
+        "XP0H-MR",
+        "XP0H-iR",
+        "XP0J-iA",
+        "XP0P-MR",
+        "XP0S-iA",
+        "XP0T-iA",
+        "XP0V-iA",
+        "XP0W-iA",
+        "XS01-M",
+        "XS01-WX",
+        "XS03-WX",
+        "XS03-iWX",
+        "XS0AA-iA",
+        "XS0AB-iA",
+        "XS0B-MR",
+        "XS0B-iR",
+        "XS0D-MR",
+        "XS0E-iR",
+        "XS0F-PMA",
+        "XS0R-iA",
+        "XS0X-MN",
+    }
+)
+
 
 def alarm_device_class(entity: Entity) -> BinarySensorDeviceClass | None:
     """Return the Home Assistant device class for an XSense alarm state."""
@@ -110,28 +227,15 @@ def alarm_device_class(entity: Entity) -> BinarySensorDeviceClass | None:
 
 def has_alarm_status(entity: Entity) -> bool:
     """Return if an XSense entity should expose an alarm status sensor."""
-    if entity.type == "SWS51":
-        return False
-    return (
-        "alarmStatus" in entity.data
-        or alarm_device_class(entity) is not None
-        or entity.type == "SBS50"
-    )
+    return "alarmStatus" in entity.data or entity.type in ALARM_STATUS_DEVICE_TYPES
 
 
 def has_mute_status(entity: Entity) -> bool:
     """Return if an X-Sense entity should expose mute status."""
-    if entity.type == "SWS51":
-        return False
-    entity_def = entities.get(entity.type) or {}
     return (
-        entity.type == "XS01-WX"
-        or "muteStatus" in entity.data
+        "muteStatus" in entity.data
         or "mute" in entity.data
-        or any(
-            action.get("action") == "mute"
-            for action in entity_def.get("actions", ())
-        )
+        or entity.type in MUTE_STATUS_DEVICE_TYPES
     )
 
 
@@ -189,11 +293,6 @@ def optional_data_bool(key: str) -> Callable[[Entity], bool | None]:
 def has_data(key: str) -> Callable[[Entity], bool]:
     """Return an exists function for a X-Sense data key."""
     return lambda entity: key in entity.data
-
-
-def has_sws51_data(key: str) -> Callable[[Entity], bool]:
-    """Create SWS51 alarm states before its first complete shadow arrives."""
-    return lambda entity: entity.type == "SWS51" or key in entity.data
 
 
 def has_camera_data(key: str) -> Callable[[Entity], bool]:
@@ -384,29 +483,29 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="water_alarm_status",
         translation_key="water_alarm_status",
         device_class=BinarySensorDeviceClass.MOISTURE,
-        exists_fn=has_sws51_data("waterAlarmStatus"),
-        value_fn=optional_data_bool("waterAlarmStatus"),
+        exists_fn=has_data("waterAlarmStatus"),
+        value_fn=data_bool("waterAlarmStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="water_mute_status",
         translation_key="water_mute_status",
         icon="mdi:water-off",
-        exists_fn=has_sws51_data("waterMuteStatus"),
-        value_fn=optional_data_bool("waterMuteStatus"),
+        exists_fn=has_data("waterMuteStatus"),
+        value_fn=data_bool("waterMuteStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="temperature_alarm_status",
         translation_key="temperature_alarm_status",
         device_class=BinarySensorDeviceClass.PROBLEM,
-        exists_fn=has_sws51_data("tempAlarmStatus"),
-        value_fn=optional_data_bool("tempAlarmStatus"),
+        exists_fn=has_data("tempAlarmStatus"),
+        value_fn=data_bool("tempAlarmStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="temperature_mute_status",
         translation_key="temperature_mute_status",
         icon="mdi:thermometer-off",
-        exists_fn=has_sws51_data("tempMuteStatus"),
-        value_fn=optional_data_bool("tempMuteStatus"),
+        exists_fn=has_data("tempMuteStatus"),
+        value_fn=data_bool("tempMuteStatus"),
     ),
     XSenseBinarySensorEntityDescription(
         key="timezone_enabled",

@@ -295,13 +295,12 @@ async def test_water_does_not_create_device_status_before_payload_key():
     binary_keys = {entity.entity_description.key for entity in binary_calls[0]}
 
     assert "is_life_end" not in binary_keys
-    assert "alarm_status" not in binary_keys
-    assert {
-        "water_alarm_status",
-        "water_mute_status",
-        "temperature_alarm_status",
-        "temperature_mute_status",
-    } <= binary_keys
+    assert "alarm_status" in binary_keys
+    assert "mute_status" in binary_keys
+    assert "water_alarm_status" not in binary_keys
+    assert "water_mute_status" not in binary_keys
+    assert "temperature_alarm_status" not in binary_keys
+    assert "temperature_mute_status" not in binary_keys
 
 
 async def test_detector_lifecycle_fields_remain_entities():

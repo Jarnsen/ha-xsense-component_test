@@ -143,14 +143,32 @@ def test_reported_test_active_state_is_exposed_from_device_data():
     assert description.value_fn(station) is False
 
 
-def test_sws51_exposes_specific_alarm_states_without_generic_duplicates():
-    """SWS51 uses separate APK water and temperature alarm states."""
+def test_sws51_uses_apk_generic_alarm_and_silence_states():
+    """APK 1400 maps SWS51 to alarmStatus/muteStatus, not SWS0B fields."""
     device = SimpleNamespace(
         type="SWS51",
         data={
             "alarmStatus": True,
-            "mute": True,
             "muteStatus": True,
+        },
+    )
+    descriptions = {description.key: description for description in BINARY_SENSORS}
+
+    assert descriptions["alarm_status"].exists_fn(device)
+    assert descriptions["alarm_status"].value_fn(device) is True
+    assert "mute" not in descriptions
+    assert descriptions["mute_status"].exists_fn(device)
+    assert descriptions["mute_status"].value_fn(device) is True
+    assert not descriptions["water_alarm_status"].exists_fn(device)
+    assert not descriptions["water_mute_status"].exists_fn(device)
+    assert not descriptions["temperature_alarm_status"].exists_fn(device)
+    assert not descriptions["temperature_mute_status"].exists_fn(device)
+
+
+def test_sws0b_uses_apk_dual_water_and_temperature_states():
+    device = SimpleNamespace(
+        type="SWS0B",
+        data={
             "waterAlarmStatus": False,
             "waterMuteStatus": False,
             "tempAlarmStatus": True,
@@ -159,17 +177,50 @@ def test_sws51_exposes_specific_alarm_states_without_generic_duplicates():
     )
     descriptions = {description.key: description for description in BINARY_SENSORS}
 
-    assert not descriptions["alarm_status"].exists_fn(device)
-    assert "mute" not in descriptions
-    assert not descriptions["mute_status"].exists_fn(device)
-    assert descriptions["water_alarm_status"].exists_fn(device)
     assert descriptions["water_alarm_status"].value_fn(device) is False
-    assert descriptions["water_mute_status"].exists_fn(device)
     assert descriptions["water_mute_status"].value_fn(device) is False
-    assert descriptions["temperature_alarm_status"].exists_fn(device)
     assert descriptions["temperature_alarm_status"].value_fn(device) is True
-    assert descriptions["temperature_mute_status"].exists_fn(device)
     assert descriptions["temperature_mute_status"].value_fn(device) is True
+
+
+@pytest.mark.parametrize(
+    ("model", "unsupported_key"),
+    (
+        ("SMS01", "alarm_status"),
+        ("SDA51", "mute_status"),
+        ("STH0A", "mute_status"),
+        ("STH0B", "mute_status"),
+        ("STH0C", "mute_status"),
+        ("STH51", "mute_status"),
+        ("SWS0B", "alarm_status"),
+        ("SWS0B", "mute_status"),
+        ("XR0A-iR", "mute_status"),
+    ),
+)
+def test_apk_view_does_not_create_unsupported_generic_state(
+    model, unsupported_key
+):
+    device = SimpleNamespace(type=model, data={})
+    descriptions = {description.key: description for description in BINARY_SENSORS}
+
+    assert not descriptions[unsupported_key].exists_fn(device)
+
+
+@pytest.mark.parametrize(
+    ("model", "key", "description_key"),
+    (
+        ("SMS01", "alarmStatus", "alarm_status"),
+        ("SWS0B", "alarmStatus", "alarm_status"),
+        ("STH51", "muteStatus", "mute_status"),
+        ("SWS0B", "muteStatus", "mute_status"),
+    ),
+)
+def test_unexpected_cloud_state_remains_payload_gated(model, key, description_key):
+    device = SimpleNamespace(type=model, data={key: True})
+    descriptions = {description.key: description for description in BINARY_SENSORS}
+
+    assert descriptions[description_key].exists_fn(device)
+    assert descriptions[description_key].value_fn(device) is True
 
 
 def test_generic_mute_payload_uses_single_canonical_silence_entity():

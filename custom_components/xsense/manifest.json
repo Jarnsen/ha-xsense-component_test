@@ -17,12 +17,9 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/Jarnsen/ha-xsense-component_test/issues",
   "requirements": [
-    "boto3",
-    "botocore",
-    "pycognito",
-    "paho-mqtt>=2.1.0,<3"
+    "pycognito==2024.5.1"
   ],
   "ssdp": [],
-  "version": "1.4.19.2",
+  "version": "1.4.19.3",
   "zeroconf": []
 }

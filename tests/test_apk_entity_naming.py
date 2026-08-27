@@ -48,6 +48,9 @@ def test_detector_names_match_apk_1400_terms():
         "binary_sensor", binary_sensor.SENSORS, "mute_status"
     ) == "Device Silenced"
     assert _description_name(
+        "binary_sensor", binary_sensor.SENSORS, "water_mute_status"
+    ) == "Water Leak Alarm Silenced"
+    assert _description_name(
         "binary_sensor", binary_sensor.SENSORS, "is_life_end"
     ) == "End-of-Life"
     assert _description_name("button", button.BUTTONS, "test") == "Device Test"
