@@ -178,8 +178,6 @@ MUTE_STATUS_DEVICE_TYPES = frozenset(
         "SD11-MR",
         "SD19-MN",
         "SK0Z-3S",
-        "SMA0A",
-        "SMA51",
         "SWS0A",
         "SWS51",
         "XC01-M",
@@ -216,6 +214,39 @@ MUTE_STATUS_DEVICE_TYPES = frozenset(
     }
 )
 
+# APK 1400 handlers C0876k, C0877l, O, and P use muteStatus 1-3 for
+# silenced alarms and 4+ for alarms that are still sounding.
+CODED_MUTE_STATUS_DEVICE_TYPES = frozenset(
+    {
+        "CB0Z-3S",
+        "LP/N-SCA-0A",
+        "SC01-MN",
+        "SC01-MR",
+        "SC06-WX",
+        "SC07-MR",
+        "SC07-WX",
+        "SC07-iA",
+        "XP0A-MR",
+        "XP0A-iR",
+        "XP0H-MR",
+        "XP0H-iR",
+        "XP0J-iA",
+        "XP0P-MR",
+        "XP0S-iA",
+        "XP0T-iA",
+        "XP0V-iA",
+        "XP0W-iA",
+    }
+)
+
+# The remaining detector handlers expose an alarm as silenced only while the
+# alarm is active and muteStatus is 0.
+ZERO_CODE_MUTE_STATUS_DEVICE_TYPES = MUTE_STATUS_DEVICE_TYPES.difference(
+    CODED_MUTE_STATUS_DEVICE_TYPES,
+)
+
+COMMAND_ONLY_MUTE_STATUS_DEVICE_TYPES = frozenset({"SMA0A", "SMA51"})
+
 
 def alarm_device_class(entity: Entity) -> BinarySensorDeviceClass | None:
     """Return the Home Assistant device class for an XSense alarm state."""
@@ -232,6 +263,8 @@ def has_alarm_status(entity: Entity) -> bool:
 
 def has_mute_status(entity: Entity) -> bool:
     """Return if an X-Sense entity should expose mute status."""
+    if entity.type in COMMAND_ONLY_MUTE_STATUS_DEVICE_TYPES:
+        return False
     return (
         "muteStatus" in entity.data
         or "mute" in entity.data
@@ -240,11 +273,56 @@ def has_mute_status(entity: Entity) -> bool:
 
 
 def mute_status(entity: Entity) -> bool | None:
-    """Return the canonical APK silence state across payload variants."""
-    value = entity.data.get("muteStatus")
-    if value in (None, ""):
-        value = entity.data.get("mute")
-    return boolean_state(value)
+    """Return the model-specific silence state used by APK 1400."""
+    raw_value = entity.data.get("muteStatus")
+
+    model = str(getattr(entity, "type", "") or "")
+    if raw_value not in (None, "") and model in MUTE_STATUS_DEVICE_TYPES:
+        alarm_active = boolean_state(entity.data.get("alarmStatus"))
+        if alarm_active is False:
+            return False
+        if alarm_active is None:
+            return None
+
+        code = status_code(raw_value)
+        if code is None:
+            return None
+        if model in CODED_MUTE_STATUS_DEVICE_TYPES:
+            return 1 <= code <= 3
+        if model in ZERO_CODE_MUTE_STATUS_DEVICE_TYPES:
+            return code == 0
+
+    fallback = entity.data.get("mute")
+    if fallback in (None, ""):
+        fallback = raw_value
+    return boolean_state(fallback)
+
+
+def status_code(value) -> int | None:
+    """Return an integer APK status code without applying boolean semantics."""
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value.strip())
+        except ValueError:
+            return None
+    return None
+
+
+def alarm_silence_status(
+    entity: Entity, alarm_key: str, mute_key: str
+) -> bool | None:
+    """Return APK silence/remind-later state for a specific active alarm."""
+    alarm_active = boolean_state(entity.data.get(alarm_key))
+    if alarm_active is False:
+        return False
+    if alarm_active is None:
+        return None
+    code = status_code(entity.data.get(mute_key))
+    return code in {1, 2} if code is not None else None
 
 
 def has_life_end_status(entity: Entity) -> bool:
@@ -491,7 +569,9 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         translation_key="water_mute_status",
         icon="mdi:water-off",
         exists_fn=has_data("waterMuteStatus"),
-        value_fn=data_bool("waterMuteStatus"),
+        value_fn=lambda entity: alarm_silence_status(
+            entity, "waterAlarmStatus", "waterMuteStatus"
+        ),
     ),
     XSenseBinarySensorEntityDescription(
         key="temperature_alarm_status",
@@ -505,7 +585,9 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         translation_key="temperature_mute_status",
         icon="mdi:thermometer-off",
         exists_fn=has_data("tempMuteStatus"),
-        value_fn=data_bool("tempMuteStatus"),
+        value_fn=lambda entity: alarm_silence_status(
+            entity, "tempAlarmStatus", "tempMuteStatus"
+        ),
     ),
     XSenseBinarySensorEntityDescription(
         key="timezone_enabled",

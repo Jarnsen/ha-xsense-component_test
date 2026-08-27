@@ -91,6 +91,14 @@ Current local APK evidence:
   shown by `s1/a0.java`. Home Assistant therefore exposes one alarm and one
   silence state for SWS51, while dual water/temperature states remain
   payload-gated for SWS0B.
+- `s1/F.java` labels SWS51 as `Silenced` only when `alarmStatus == 1` and
+  `muteStatus == 0`. A nonzero `silenceTime` with `muteStatus == 0` is the
+  separate `Remind Me Later Enabled` state. When the alarm is clear, neither
+  condition is active, regardless of the retained mute code.
+- `s1/D.java` and `s1/E.java` label each SWS0B water/temperature alarm as
+  `Silenced` for mute code `1` and `Remind Me Later` for code `2`, but only
+  while that specific alarm status is active. The mute codes are not
+  standalone boolean states.
 - APK 1400's `s1/a0.java` model-to-view registry also confirms that `SMS01`
   displays motion against the system security mode rather than a device
   `alarmStatus`. Models `SDA51`, `STH0A`, `STH0B`, `STH0C`, `STH51`, `SWS0B`,
@@ -102,10 +110,12 @@ Current local APK evidence:
   APK 1400 treats every positive value as an active alarm and uses values `2`
   and `3` for CO/combined alarm cases. The adapter therefore maps `0` to clear
   and every positive code to active for Home Assistant's binary alarm entity.
-- Newer detector `muteStatus` is also coded. APK 1400 presents a detector as
-  silenced while the value is `1`, `2`, or `3`; values `4` and above represent
-  an active, unsilenced alarm. The adapter preserves that distinction instead
-  of passing the field through generic `0`/`1` boolean conversion.
+- Detector `muteStatus` is model-specific. APK 1400 handlers `C0876k`,
+  `C0877l`, `O`, and `P` present an active alarm as silenced for values `1`,
+  `2`, or `3`, while values `4` and above represent an unsilenced alarm. The
+  older detector handlers present an active alarm as silenced at value `0` and
+  unsilenced at value `1`. The adapter preserves the numeric code; the HA
+  entity applies the matching model handler and requires an active alarm.
 - Device `activate` is not limited to `0`/`1`: APK 1400 sends `2` in supported
   activation/install flows and treats nonzero activation values as active in
   its device-status path. The adapter therefore maps every positive activation
@@ -114,11 +124,12 @@ Current local APK evidence:
   canonical `alarmStatus` and `activate` fields. Home Assistant exposes only the
   canonical entities and removes stale duplicate Alarm Active/Activated entity
   registry entries.
-- APK payload variants report the generic silence state as either `muteStatus`
-  or `mute`. Home Assistant folds both into one canonical Device Silenced
-  entity and removes the duplicate raw `mute` entity. SWS51 uses this canonical
-  generic silence entity; SWS0B retains its distinct water and temperature
-  silence states when those APK fields are present.
+- A direct `mute` event field can feed the canonical Device Silenced entity
+  when it is actually reported. `muteStatus` remains a model-specific APK code
+  and is never treated as a generic boolean. SMA0A/SMA51 use it to decide when
+  the mailbox mute command is available, so they do not expose a persistent
+  Device Silenced entity. SWS51 uses its alarm-aware generic silence entity;
+  SWS0B retains its separate alarm-aware water and temperature silence states.
 
 ## APK 1400 entity naming policy
 
