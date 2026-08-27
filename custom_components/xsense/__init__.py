@@ -231,7 +231,20 @@ OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE = {
 }
 OBSOLETE_SENSOR_KEYS_BY_DEVICE_TYPE = {}
 OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE = {
-    "SWS51": ("alarm_status", "mute_status"),
+    "SMS01": ("alarm_status",),
+    "SDA51": ("mute_status",),
+    "STH0A": ("mute_status",),
+    "STH0B": ("mute_status",),
+    "STH0C": ("mute_status",),
+    "STH51": ("mute_status",),
+    "SWS0B": ("alarm_status", "mute_status"),
+    "SWS51": (
+        "water_alarm_status",
+        "water_mute_status",
+        "temperature_alarm_status",
+        "temperature_mute_status",
+    ),
+    "XR0A-iR": ("mute_status",),
 }
 BLUEPRINT_MAINTENANCE_CHECK_INTERVAL = timedelta(minutes=5)
 STARTUP_MAINTENANCE_DELAY = 30

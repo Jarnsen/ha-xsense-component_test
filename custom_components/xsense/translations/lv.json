@@ -144,7 +144,7 @@
         "name": "Water Leak Alarm"
       },
       "water_mute_status": {
-        "name": "Water Leak Silenced"
+        "name": "Water Leak Alarm Silenced"
       },
       "temperature_alarm_status": {
         "name": "Temperature Alarm"

@@ -12,9 +12,12 @@ from custom_components.xsense.python_xsense.async_xsense import (
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_NOTES = ROOT / ".github" / "release-notes"
 MANIFEST = ROOT / "custom_components" / "xsense" / "manifest.json"
+RUNTIME_REQUIREMENTS = ROOT / "requirements-runtime.txt"
 INTEGRATION = MANIFEST.parent
 FRONTEND = ROOT / "custom_components" / "xsense" / "frontend.py"
 RECORDINGS_PANEL = INTEGRATION / "frontend" / "recordings-panel.js"
+HLS_JS = INTEGRATION / "frontend" / "vendor" / "hls.light.min.js"
+PACKAGE_JSON = ROOT / "package.json"
 CHANGELOG = ROOT / "CHANGELOG.md"
 HACS = ROOT / "hacs.json"
 ISSUE_TEMPLATE = ROOT / ".github" / "ISSUE_TEMPLATE" / "custom.md"
@@ -101,6 +104,15 @@ def test_frontend_panel_asset_version_matches_manifest():
     assert match.group(1) == _manifest_version()
 
 
+def test_vendored_hls_js_version_is_current():
+    source = HLS_JS.read_text(encoding="utf-8")
+    package = json.loads(PACKAGE_JSON.read_text(encoding="utf-8"))
+    version = package["devDependencies"]["hls.js"]
+
+    assert source.count(f'"{version}"') == 1
+    assert "sourceMappingURL=" not in source
+
+
 def test_changelog_top_entry_matches_manifest_version():
     version = _manifest_version()
     changelog = CHANGELOG.read_text(encoding="utf-8").splitlines()
@@ -127,6 +139,27 @@ def test_manifest_does_not_use_direct_wheel_requirement():
         or "github.com/Wheemer/python-xsense" in requirement
         for requirement in manifest["requirements"]
     )
+
+
+def test_runtime_requirements_match_manifest():
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    requirements = [
+        line.strip()
+        for line in RUNTIME_REQUIREMENTS.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+    assert requirements == manifest["requirements"]
+
+
+def test_manifest_does_not_reinstall_home_assistant_core_requirements():
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    requirement_names = {
+        re.split(r"[<>=!~]", requirement, maxsplit=1)[0].lower()
+        for requirement in manifest["requirements"]
+    }
+
+    assert requirement_names.isdisjoint({"boto3", "botocore", "paho-mqtt"})
 
 
 def test_legacy_pion_adapter_binaries_are_not_packaged():

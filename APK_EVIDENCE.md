@@ -85,12 +85,19 @@ Current local APK evidence:
   while SBS50 sends `sosType` through its second-generation path. The existing
   client helper only implements the latter shape, so no generic SOS entity is
   exposed until both model routes are represented and guarded independently.
-- `SWS51` uses separate `waterMuteStatus` and `tempMuteStatus` fields in its
-  reachable device UI (`s1/C.java` and `s1/D.java`); it does not use the generic
-  `mute` or `muteStatus` fields for display. Values `1` (silenced) and `2`
-  (remind later) both suppress the corresponding alarm indication. Home
-  Assistant therefore exposes the water and temperature silence states, treats
-  both values as active, and removes stale generic Device Silenced entities.
+- APK 1400 maps `SWS51` to `s1/F.java`, which reads `alarmStatus`, `muteStatus`,
+  and `silenceTime`. The dual `waterAlarmStatus`/`waterMuteStatus` and
+  `tempAlarmStatus`/`tempMuteStatus` UI in `s1/D.java` belongs to `SWS0B`, as
+  shown by `s1/a0.java`. Home Assistant therefore exposes one alarm and one
+  silence state for SWS51, while dual water/temperature states remain
+  payload-gated for SWS0B.
+- APK 1400's `s1/a0.java` model-to-view registry also confirms that `SMS01`
+  displays motion against the system security mode rather than a device
+  `alarmStatus`. Models `SDA51`, `STH0A`, `STH0B`, `STH0C`, `STH51`, `SWS0B`,
+  and `XR0A-iR` expose mute commands without displaying a persistent generic
+  `muteStatus` in their selected device views. Generic alarm and silence
+  entities for those paths remain payload-gated instead of being manufactured
+  from model capability alone.
 - Generic detector `alarmStatus` is a coded alarm cause, not a strict boolean.
   APK 1400 treats every positive value as an active alarm and uses values `2`
   and `3` for CO/combined alarm cases. The adapter therefore maps `0` to clear
@@ -109,8 +116,9 @@ Current local APK evidence:
   registry entries.
 - APK payload variants report the generic silence state as either `muteStatus`
   or `mute`. Home Assistant folds both into one canonical Device Silenced
-  entity and removes the duplicate raw `mute` entity, while SWS51 retains only
-  its distinct Water Leak Silenced and Temperature Alarm Silenced states.
+  entity and removes the duplicate raw `mute` entity. SWS51 uses this canonical
+  generic silence entity; SWS0B retains its distinct water and temperature
+  silence states when those APK fields are present.
 
 ## APK 1400 entity naming policy
 

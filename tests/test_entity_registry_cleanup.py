@@ -100,7 +100,7 @@ def test_obsolete_action_unique_ids_target_removed_model_actions_only():
     }
 
 
-def test_sws51_generic_alarm_entities_are_removed_without_touching_specific_states():
+def test_sws51_incorrect_dual_channel_entities_are_removed():
     sws51 = SimpleNamespace(entity_id="basement_leak", type="SWS51")
     sws0b = SimpleNamespace(entity_id="utility_leak", type="SWS0B")
 
@@ -109,18 +109,48 @@ def test_sws51_generic_alarm_entities_are_removed_without_touching_specific_stat
     )
 
     assert OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE["SWS51"] == (
-        "alarm_status",
-        "mute_status",
+        "water_alarm_status",
+        "water_mute_status",
+        "temperature_alarm_status",
+        "temperature_mute_status",
     )
-    assert "basement-leak-alarm-status" in unique_ids
-    assert "basement-leak-mute-status" in unique_ids
+    assert "basement-leak-alarm-status" not in unique_ids
+    assert "basement-leak-mute-status" not in unique_ids
     assert "basement-leak-mute" in unique_ids
-    assert "basement-leak-water-mute-status" not in unique_ids
-    assert "basement-leak-water-alarm-status" not in unique_ids
-    assert "basement-leak-temperature-mute-status" not in unique_ids
-    assert "basement-leak-temperature-alarm-status" not in unique_ids
-    assert "utility-leak-mute-status" not in unique_ids
+    assert "basement-leak-water-mute-status" in unique_ids
+    assert "basement-leak-water-alarm-status" in unique_ids
+    assert "basement-leak-temperature-mute-status" in unique_ids
+    assert "basement-leak-temperature-alarm-status" in unique_ids
+    assert "utility-leak-mute-status" in unique_ids
     assert "utility-leak-mute" in unique_ids
+
+
+def test_apk_unsupported_generic_states_are_removed_by_model():
+    entities = {
+        model: SimpleNamespace(entity_id=model.lower(), type=model)
+        for model in (
+            "SMS01",
+            "SDA51",
+            "STH0A",
+            "STH0B",
+            "STH0C",
+            "STH51",
+            "SWS0B",
+            "XR0A-iR",
+        )
+    }
+
+    unique_ids = _obsolete_binary_sensor_unique_ids(
+        {"stations": {}, "devices": entities}
+    )
+
+    assert "sms01-alarm-status" in unique_ids
+    for model in ("SDA51", "STH0A", "STH0B", "STH0C", "STH51", "XR0A-iR"):
+        assert f"{model.lower()}-mute-status" in unique_ids
+    assert "sws0b-alarm-status" in unique_ids
+    assert "sws0b-mute-status" in unique_ids
+    assert "sws0b-water-alarm-status" not in unique_ids
+    assert "sws0b-temperature-alarm-status" not in unique_ids
 
 
 def test_raw_state_aliases_are_removed_after_canonical_normalization():

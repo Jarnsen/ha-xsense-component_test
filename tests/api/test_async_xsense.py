@@ -1627,8 +1627,8 @@ async def test_get_state_reads_sws51_sbs50_child_info_like_apk():
                 "state": {
                     "reported": {
                         "batInfo": "3",
-                        "waterAlarmStatus": "0",
-                        "waterMuteStatus": "1",
+                        "alarmStatus": "0",
+                        "muteStatus": "1",
                     }
                 }
             }
@@ -1646,8 +1646,8 @@ async def test_get_state_reads_sws51_sbs50_child_info_like_apk():
         ("SBS50station-sn", "2nd_mainpage"),
     ]
     assert device.data["batInfo"] == 3
-    assert device.data["waterAlarmStatus"] is False
-    assert device.data["waterMuteStatus"] is True
+    assert device.data["alarmStatus"] is False
+    assert device.data["muteStatus"] is True
 
 
 @pytest.mark.asyncio
