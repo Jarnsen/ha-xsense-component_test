@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 import inspect
 import json
 import logging
@@ -1875,7 +1876,7 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
     assert coordinator._camera_event_history_last_poll is not None
 
 
-async def test_camera_event_history_uses_initial_lookback_then_incremental_window():
+async def test_camera_event_history_keeps_apk_calendar_day_window():
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     class Camera:
@@ -1918,7 +1919,22 @@ async def test_camera_event_history_uses_initial_lookback_then_incremental_windo
     assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
 
     assert windows[0][1] - windows[0][0] == 86400
-    assert 60 <= windows[1][1] - windows[1][0] <= 62
+    assert windows[1] == windows[0]
+
+
+def test_camera_event_history_day_window_uses_home_assistant_time_zone():
+    from custom_components.xsense.coordinator import _apk_camera_history_day_window
+
+    coordinator = SimpleNamespace(
+        hass=SimpleNamespace(config=SimpleNamespace(time_zone="Europe/Berlin"))
+    )
+
+    start, end = _apk_camera_history_day_window(coordinator, 1787927696)
+
+    assert datetime.fromtimestamp(start, timezone.utc).isoformat() == (
+        "2026-08-27T22:00:00+00:00"
+    )
+    assert end - start == 86400
 
 
 def test_camera_event_history_station_data_preserves_direct_video_url():
