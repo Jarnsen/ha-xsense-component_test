@@ -132,11 +132,7 @@ def pending_force_arm_mode(station) -> str | None:
     if not force_reason:
         return None
 
-    mode = (
-        alarm_data.get("requestedSafeMode")
-        or alarm_data.get("safeModeAim")
-        or alarm_data.get("safeMode")
-    )
+    mode = alarm_data.get("requestedSafeMode")
     if mode in ("Home", "Away"):
         return mode
     return None
@@ -372,7 +368,6 @@ class XSenseAlarmControlPanel(
         if station is None:
             raise xsense_error("station_unavailable")
 
-        await self._set_safe_mode(mode, force_arm="1")
         station.set_alarm_data(
             {
                 "forceReason": None,
@@ -383,6 +378,7 @@ class XSenseAlarmControlPanel(
         )
         self._pending_force_arm_mode = None
         self._async_clear_force_arm_notification()
+        await self._set_safe_mode(mode, force_arm="1")
         self.async_write_ha_state()
 
     async def _set_safe_mode(self, safe_mode: str, *, force_arm: str) -> None:
