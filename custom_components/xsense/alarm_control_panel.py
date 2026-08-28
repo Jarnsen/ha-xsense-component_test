@@ -16,6 +16,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
@@ -36,6 +37,7 @@ SAFEMODE_TO_STATE: dict[str, AlarmControlPanelState] = {
     "Away": AlarmControlPanelState.ARMED_AWAY,
 }
 FORCE_ARM_NOTIFICATION_ID_PREFIX = "xsense_force_arm_"
+ARM_REQUEST_TIMEOUT_SECONDS = 60
 FORCE_ARM_SERVICE = "force_arm"
 FORCE_ARM_NOW_SERVICE = "force_arm_now"
 TRIGGER_SOS_SERVICE = "trigger_sos"
@@ -174,6 +176,7 @@ class XSenseAlarmControlPanel(
         }
         self._safemode: str | None = None
         self._pending_force_arm_mode: str | None = None
+        self._cancel_arm_request_timeout = None
 
     @property
     def _station(self):
@@ -221,11 +224,15 @@ class XSenseAlarmControlPanel(
         station = self._station
         if station is None:
             self._safemode = None
+            self._async_cancel_arm_request_timeout()
             self._async_clear_force_arm_notification()
             self.async_write_ha_state()
             return
 
         pending_mode = pending_force_arm_mode(station)
+        alarm_data = getattr(station, "alarm_data", {}) or {}
+        if pending_mode is not None or not alarm_data.get("requestedSafeMode"):
+            self._async_cancel_arm_request_timeout()
         if pending_mode != self._pending_force_arm_mode:
             self._pending_force_arm_mode = pending_mode
             if pending_mode is None:
@@ -298,6 +305,7 @@ class XSenseAlarmControlPanel(
 
     async def async_will_remove_from_hass(self) -> None:
         """Dismiss entry-owned notifications when the entity unloads."""
+        self._async_cancel_arm_request_timeout()
         self._async_clear_force_arm_notification()
         await super().async_will_remove_from_hass()
 
@@ -368,6 +376,14 @@ class XSenseAlarmControlPanel(
         if station is None:
             raise xsense_error("station_unavailable")
 
+        self._async_clear_arm_request(station)
+        await self._set_safe_mode(mode, force_arm="1")
+        self.async_write_ha_state()
+
+    @callback
+    def _async_clear_arm_request(self, station) -> None:
+        """Clear local state for an APK-style mode request."""
+        self._async_cancel_arm_request_timeout()
         station.set_alarm_data(
             {
                 "forceReason": None,
@@ -378,8 +394,37 @@ class XSenseAlarmControlPanel(
         )
         self._pending_force_arm_mode = None
         self._async_clear_force_arm_notification()
-        await self._set_safe_mode(mode, force_arm="1")
+
+    @callback
+    def _async_cancel_arm_request_timeout(self) -> None:
+        """Cancel the active normal-arm response timeout."""
+        if self._cancel_arm_request_timeout is not None:
+            self._cancel_arm_request_timeout()
+            self._cancel_arm_request_timeout = None
+
+    @callback
+    def _async_arm_request_timed_out(self, _now) -> None:
+        """Expire an unanswered mode request like the APK's 60-second timer."""
+        self._cancel_arm_request_timeout = None
+        station = self._station
+        if station is None:
+            return
+        alarm_data = getattr(station, "alarm_data", {}) or {}
+        if not alarm_data.get("requestedSafeMode") or alarm_data.get("forceReason"):
+            return
+        LOGGER.debug("Station %s arm request timed out", station.sn)
+        self._async_clear_arm_request(station)
         self.async_write_ha_state()
+
+    @callback
+    def _async_start_arm_request_timeout(self) -> None:
+        """Start the APK-aligned normal-arm response timeout."""
+        self._async_cancel_arm_request_timeout()
+        self._cancel_arm_request_timeout = async_call_later(
+            self.hass,
+            ARM_REQUEST_TIMEOUT_SECONDS,
+            self._async_arm_request_timed_out,
+        )
 
     async def _set_safe_mode(self, safe_mode: str, *, force_arm: str) -> None:
         """Request a safeMode change through the APK app-mode shadow."""
@@ -398,16 +443,23 @@ class XSenseAlarmControlPanel(
         api = coordinator.xsense
 
         if safe_mode in ("Home", "Away") and force_arm == "0":
-            station.set_alarm_data({"requestedSafeMode": safe_mode})
-        elif safe_mode == "Disarmed":
+            current_mode = getattr(station, "alarm_mode", None)
+            if current_mode == safe_mode:
+                self._async_clear_arm_request(station)
+                return
             station.set_alarm_data(
                 {
                     "forceReason": None,
                     "safeModeAim": None,
-                    "requestedSafeMode": None,
+                    "requestedSafeMode": safe_mode,
                     "exitDelay": None,
                 }
             )
+            self._pending_force_arm_mode = None
+            self._async_clear_force_arm_notification()
+            self._async_start_arm_request_timeout()
+        elif safe_mode == "Disarmed":
+            self._async_clear_arm_request(station)
 
         try:
             await api.set_station_mode(station, safe_mode, force_arm=force_arm)
@@ -420,7 +472,7 @@ class XSenseAlarmControlPanel(
 
         except Exception as ex:  # noqa: BLE001
             if force_arm == "0":
-                station.set_alarm_data({"requestedSafeMode": None})
+                self._async_clear_arm_request(station)
             LOGGER.exception(
                 "Could not set safeMode %s forceArm=%s for station %s: %s",
                 safe_mode,

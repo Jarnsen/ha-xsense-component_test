@@ -1398,6 +1398,70 @@ async def test_get_station_state_uses_second_info_for_new_wifi_devices_like_apk(
     assert station.data == {"temperature": 21}
 
 
+@pytest.mark.asyncio
+async def test_get_alarm_state_ignores_stale_force_reason_without_local_request():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+
+    async def get_thing(station_arg, page):
+        client._lastres = FakeResponse(200)
+        return {
+            "state": {
+                "reported": {
+                    "safeMode": "Disarmed",
+                    "forceReason": [{"door-sn": "1"}],
+                    "exitDelay": "0",
+                }
+            }
+        }
+
+    client.get_thing = get_thing
+
+    await client.get_alarm_state(station_obj)
+
+    assert station_obj.safe_mode == "Disarmed"
+    assert station_obj.alarm_data["safeMode"] == "Disarmed"
+    assert station_obj.alarm_data.get("forceReason") is None
+
+
+@pytest.mark.asyncio
+async def test_get_alarm_state_keeps_force_reason_for_active_local_request():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_alarm_data({"requestedSafeMode": "Away"})
+
+    async def get_thing(station_arg, page):
+        client._lastres = FakeResponse(200)
+        return {
+            "state": {
+                "reported": {
+                    "safeMode": "Disarmed",
+                    "forceReason": [{"door-sn": "1"}],
+                    "exitDelay": "0",
+                }
+            }
+        }
+
+    client.get_thing = get_thing
+
+    await client.get_alarm_state(station_obj)
+
+    assert station_obj.alarm_data["requestedSafeMode"] == "Away"
+    assert station_obj.alarm_data["forceReason"] == [{"door-sn": "1"}]
+
+
 def test_xc0m_ir_maps_compact_temperature_and_humidity_fields():
     data = mapping.map_values(
         "XC0M-iR",

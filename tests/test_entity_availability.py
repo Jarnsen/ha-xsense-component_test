@@ -96,6 +96,15 @@ def _xs01_wx_from_real_shadow():
     return station
 
 
+def _patch_alarm_call_later(monkeypatch, replacement):
+    """Patch the timer global used by the collected entity class."""
+    monkeypatch.setitem(
+        XSenseAlarmControlPanel._async_start_arm_request_timeout.__globals__,
+        "async_call_later",
+        replacement,
+    )
+
+
 def test_xs01_wx_online_time_report_marks_station_online():
     station = _xs01_wx_from_real_shadow()
 
@@ -724,7 +733,7 @@ def test_alarm_control_panel_requires_security_device_family():
         assert station_supports_alarm_panel(security_station)
 
 
-async def test_alarm_panel_uses_strict_arm_before_force_arm_confirmation():
+async def test_alarm_panel_uses_strict_arm_before_force_arm_confirmation(monkeypatch):
     class Api:
         def __init__(self):
             self.calls = []
@@ -751,6 +760,14 @@ async def test_alarm_panel_uses_strict_arm_before_force_arm_confirmation():
     coordinator = Coordinator(station)
     coordinator.xsense = api
     panel = XSenseAlarmControlPanel(coordinator, station)
+    panel.hass = object()
+    _patch_alarm_call_later(
+        monkeypatch, lambda hass, delay, action: lambda: None
+    )
+    monkeypatch.setattr(
+        "custom_components.xsense.alarm_control_panel.persistent_notification.async_dismiss",
+        lambda hass, notification_id: None,
+    )
 
     await panel.async_alarm_arm_home()
     await panel.async_alarm_arm_away()
@@ -760,6 +777,196 @@ async def test_alarm_panel_uses_strict_arm_before_force_arm_confirmation():
         (station.sn, "Away", "0"),
     ]
     assert station.alarm_data["requestedSafeMode"] == "Away"
+
+
+async def test_normal_arm_clears_stale_bypass_state_before_publish(monkeypatch):
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    station.set_alarm_data(
+        {
+            "forceReason": [{"door-sn": "1"}],
+            "safeModeAim": "Home",
+            "requestedSafeMode": None,
+            "exitDelay": "0",
+        }
+    )
+    state_during_publish = []
+
+    class API:
+        async def set_station_mode(self, station, safe_mode, force_arm=None):
+            state_during_publish.append(dict(station.alarm_data))
+
+    coordinator = Coordinator(station)
+    coordinator.xsense = API()
+    panel = XSenseAlarmControlPanel(coordinator, station)
+    panel.hass = object()
+    _patch_alarm_call_later(
+        monkeypatch, lambda hass, delay, action: lambda: None
+    )
+    monkeypatch.setattr(
+        "custom_components.xsense.alarm_control_panel.persistent_notification.async_dismiss",
+        lambda hass, notification_id: None,
+    )
+
+    await panel.async_alarm_arm_home()
+
+    assert state_during_publish == [
+        {
+            "forceReason": None,
+            "safeModeAim": None,
+            "requestedSafeMode": "Home",
+            "exitDelay": None,
+        }
+    ]
+
+
+async def test_normal_arm_request_expires_after_apk_timeout(monkeypatch):
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    callbacks = []
+    cancelled = []
+
+    class API:
+        async def set_station_mode(self, station, safe_mode, force_arm=None):
+            return None
+
+    def schedule(hass, delay, action):
+        callbacks.append((delay, action))
+
+        def cancel():
+            cancelled.append(True)
+
+        return cancel
+
+    coordinator = Coordinator(station)
+    coordinator.xsense = API()
+    panel = XSenseAlarmControlPanel(coordinator, station)
+    panel.hass = object()
+    panel.async_write_ha_state = lambda: None
+    dismissed = []
+    _patch_alarm_call_later(monkeypatch, schedule)
+    monkeypatch.setattr(
+        "custom_components.xsense.alarm_control_panel.persistent_notification.async_dismiss",
+        lambda hass, notification_id: dismissed.append(notification_id),
+    )
+
+    await panel.async_alarm_arm_away()
+    assert callbacks[0][0] == 60
+    assert station.alarm_data["requestedSafeMode"] == "Away"
+
+    callbacks[0][1](None)
+
+    assert station.alarm_data["requestedSafeMode"] is None
+    assert station.alarm_data["forceReason"] is None
+    assert panel._cancel_arm_request_timeout is None
+    assert dismissed == [
+        f"xsense_force_arm_{station.entity_id}",
+        f"xsense_force_arm_{station.entity_id}",
+    ]
+    assert cancelled == []
+
+
+async def test_force_arm_prompt_stops_request_timeout(monkeypatch):
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    cancelled = []
+
+    class API:
+        async def set_station_mode(self, station, safe_mode, force_arm=None):
+            return None
+
+    coordinator = Coordinator(station)
+    coordinator.xsense = API()
+    panel = XSenseAlarmControlPanel(coordinator, station)
+    panel.hass = object()
+    panel.async_write_ha_state = lambda: None
+    _patch_alarm_call_later(
+        monkeypatch, lambda hass, delay, action: lambda: cancelled.append(True)
+    )
+    monkeypatch.setattr(
+        "custom_components.xsense.alarm_control_panel.persistent_notification.async_create",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "custom_components.xsense.alarm_control_panel.persistent_notification.async_dismiss",
+        lambda hass, notification_id: None,
+    )
+
+    await panel.async_alarm_arm_home()
+    XSenseBase.__new__(XSenseBase).parse_get_state(
+        station,
+        {
+            "safeMode": "Disarmed",
+            "forceReason": [{"door-sn": "1"}],
+            "exitDelay": "0",
+        },
+    )
+    panel._handle_coordinator_update()
+
+    assert cancelled == [True]
+    assert panel._cancel_arm_request_timeout is None
+    assert pending_force_arm_mode(station) == "Home"
+
+
+async def test_normal_arm_is_noop_when_station_already_reports_target_mode(
+    monkeypatch,
+):
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    station.safe_mode = "Home"
+    calls = []
+
+    class API:
+        async def set_station_mode(self, station, safe_mode, force_arm=None):
+            calls.append((safe_mode, force_arm))
+
+    coordinator = Coordinator(station)
+    coordinator.xsense = API()
+    panel = XSenseAlarmControlPanel(coordinator, station)
+    panel.hass = object()
+    monkeypatch.setattr(
+        "custom_components.xsense.alarm_control_panel.persistent_notification.async_dismiss",
+        lambda hass, notification_id: None,
+    )
+
+    await panel.async_alarm_arm_home()
+
+    assert calls == []
+    assert station.alarm_data.get("requestedSafeMode") is None
+
+
+async def test_alarm_panel_unload_cancels_request_timeout(monkeypatch):
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    cancelled = []
+
+    class API:
+        async def set_station_mode(self, station, safe_mode, force_arm=None):
+            return None
+
+    async def super_remove(self):
+        return None
+
+    coordinator = Coordinator(station)
+    coordinator.xsense = API()
+    panel = XSenseAlarmControlPanel(coordinator, station)
+    panel.hass = object()
+    _patch_alarm_call_later(
+        monkeypatch, lambda hass, delay, action: lambda: cancelled.append(True)
+    )
+    monkeypatch.setattr(
+        "custom_components.xsense.alarm_control_panel.persistent_notification.async_dismiss",
+        lambda hass, notification_id: None,
+    )
+    monkeypatch.setattr(
+        "homeassistant.helpers.update_coordinator.CoordinatorEntity.async_will_remove_from_hass",
+        super_remove,
+    )
+
+    await panel.async_alarm_arm_home()
+    await panel.async_will_remove_from_hass()
+
+    assert cancelled == [True]
 
 
 def test_force_arm_prompt_is_parsed_and_cleared_from_sbs50_mode_result():
