@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, EVENT_HOMEASSISTANT_STARTED
@@ -560,18 +561,12 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         skipped = 0
         seen_now: set[str] = set()
         now = int(datetime.now(timezone.utc).timestamp())
-        last_poll = getattr(self, "_camera_event_history_last_poll", None)
-        if first_poll:
-            start_timestamp = now - 86400
-        elif isinstance(last_poll, int):
-            start_timestamp = min(now, last_poll) - 60
-        else:
-            start_timestamp = now - 300
+        start_timestamp, end_timestamp = _apk_camera_history_day_window(self, now)
         try:
             history = await self.xsense.get_camera_event_history_for_cameras(
                 cameras,
                 start_timestamp,
-                now,
+                end_timestamp,
             )
         except APIFailure as ex:
             LOGGER.debug("Could not update X-Sense camera record history: %s", ex)
@@ -604,7 +599,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             applied,
             skipped,
             first_poll,
-            now - start_timestamp,
+            end_timestamp - start_timestamp,
         )
         return applied > 0
 
@@ -1046,6 +1041,25 @@ def _set_camera_ai_service_available(cameras: list[Any], available: bool) -> Non
         data = getattr(camera, "data", None)
         if isinstance(data, dict):
             data[CAMERA_AI_SERVICE_AVAILABLE] = available
+
+
+def _apk_camera_history_day_window(
+    coordinator: XSenseDataUpdateCoordinator, now: int
+) -> tuple[int, int]:
+    """Return the local calendar-day epoch window used by the X-Sense app."""
+    time_zone = "UTC"
+    hass = getattr(coordinator, "hass", None)
+    config = getattr(hass, "config", None)
+    if configured_time_zone := getattr(config, "time_zone", None):
+        time_zone = configured_time_zone
+    try:
+        zone = ZoneInfo(time_zone)
+    except ZoneInfoNotFoundError:
+        zone = timezone.utc
+    local_now = datetime.fromtimestamp(now, zone)
+    day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    start_timestamp = int(day_start.timestamp())
+    return start_timestamp, start_timestamp + 86400
 
 
 def _camera_record_history_debug_context(
