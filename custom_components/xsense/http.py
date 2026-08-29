@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import secrets
 from datetime import datetime
 from pathlib import Path
@@ -44,8 +43,6 @@ from .recordings_gate import has_any_camera_entities
 
 
 HLS_SEGMENT_TOKEN_TTL = 3600
-HLS_SEGMENT_WAIT_TIMEOUT = 10
-HLS_SEGMENT_WAIT_INTERVAL = 0.25
 
 
 async def async_register_recordings_http_views(hass: HomeAssistant) -> None:
@@ -617,14 +614,10 @@ class XSenseRecordingsHlsSegmentView(http.HomeAssistantView):
         except ValueError as exc:
             raise web.HTTPNotFound(reason="Invalid X-Sense HLS segment") from exc
         source = XSenseRecordingsMediaSource(self.hass)
-        waited_ms = await _async_wait_for_hls_path(source, path)
-        if waited_ms is None:
+        if not await source._async_path_ready(path):
             LOGGER.debug(
-                "X-Sense recordings HLS segment not ready after wait: %s",
-                {
-                    "filename": _log_safe_str(filename, 160),
-                    "wait_timeout_s": HLS_SEGMENT_WAIT_TIMEOUT,
-                },
+                "X-Sense recordings HLS cache is incomplete: %s",
+                {"filename": _log_safe_str(filename, 160)},
             )
             raise web.HTTPNotFound(reason="X-Sense HLS segment is not ready")
         headers = {"Cache-Control": "private, max-age=3600"}
@@ -649,7 +642,6 @@ class XSenseRecordingsHlsSegmentView(http.HomeAssistantView):
             {
                 "filename": _log_safe_str(filename, 160),
                 "bytes": size,
-                "waited_ms": waited_ms,
             },
         )
         return web.FileResponse(path, headers=headers)
@@ -820,21 +812,6 @@ def _create_hls_segment_token(hass: HomeAssistant, root: Path) -> str:
         "expires": now + HLS_SEGMENT_TOKEN_TTL,
     }
     return token
-
-
-async def _async_wait_for_hls_path(
-    source: XSenseRecordingsMediaSource,
-    path: Path,
-) -> int | None:
-    """Wait briefly for the progressive HLS cache to produce a requested path."""
-    started_at = monotonic()
-    deadline = monotonic() + HLS_SEGMENT_WAIT_TIMEOUT
-    while True:
-        if await source._async_path_ready(path):
-            return int((monotonic() - started_at) * 1000)
-        if monotonic() >= deadline:
-            return None
-        await asyncio.sleep(HLS_SEGMENT_WAIT_INTERVAL)
 
 
 def _hls_segment_root(hass: HomeAssistant, token: str) -> Path | None:

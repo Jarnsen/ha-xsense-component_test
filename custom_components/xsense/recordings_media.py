@@ -63,7 +63,6 @@ RECORDING_MEDIA_RECENT_SYNC_INTERVAL = timedelta(minutes=2)
 RECORDING_MEDIA_RECENT_LOOKBACK = timedelta(minutes=10)
 THUMBNAIL_WARMUP_LIMIT = 10
 EVENT_RECORDING_CLIP_LIMIT = 50
-HLS_INITIAL_SEGMENT_COUNT = 2
 HLS_CACHE_VERSION = 3
 HLS_CACHE_VERSION_FILE = ".xsense-hls-cache-version"
 HLS_CACHE_SUPPORTED_LEGACY_VERSIONS = frozenset({"2"})
@@ -847,8 +846,7 @@ class XSenseRecordingsMediaSource(MediaSource):
                     {
                         **_clip_log_context(clip),
                         "segments": hls.get("segments"),
-                        "initial_segments": hls.get("initial_segments"),
-                        "deferred_segments": hls.get("deferred_segments"),
+                        "segments_cached": hls.get("segments_cached"),
                         "playlists": hls.get("playlists"),
                         "bytes": hls.get("bytes"),
                         "download_elapsed_ms": hls.get("elapsed_ms"),
@@ -909,8 +907,7 @@ class XSenseRecordingsMediaSource(MediaSource):
                         **_clip_log_context(clip),
                         "content_type": download.get("content_type"),
                         "segments": hls.get("segments"),
-                        "initial_segments": hls.get("initial_segments"),
-                        "deferred_segments": hls.get("deferred_segments"),
+                        "segments_cached": hls.get("segments_cached"),
                         "playlists": hls.get("playlists"),
                         "bytes": hls.get("bytes"),
                         "download_elapsed_ms": hls.get("elapsed_ms"),
@@ -960,17 +957,12 @@ class XSenseRecordingsMediaSource(MediaSource):
         staging_dir = _hls_staging_cache_dir(cache_dir)
         started_at = monotonic()
         state = {
-            "remaining_initial_segments": HLS_INITIAL_SEGMENT_COUNT,
-            "initial_segments_cached": 0,
-            "deferred": [],
+            "segments_cached": 0,
             "playlists": 0,
         }
         LOGGER.debug(
             "X-Sense HLS recording cache starting: %s",
-            {
-                **_clip_log_context(clip),
-                "initial_segment_target": HLS_INITIAL_SEGMENT_COUNT,
-            },
+            {**_clip_log_context(clip), "cache_mode": "complete"},
         )
         await self._async_file_job(_clear_directory, staging_dir)
         try:
@@ -994,21 +986,8 @@ class XSenseRecordingsMediaSource(MediaSource):
         except Exception:
             await self._async_file_job(_remove_directory, staging_dir)
             raise
-        deferred = [
-            item for item in state["deferred"] if isinstance(item, tuple) and len(item) == 2
-        ]
-        deferred = [
-            (
-                deferred_url,
-                cache_dir / deferred_path.relative_to(staging_dir),
-            )
-            for deferred_url, deferred_path in deferred
-        ]
-        if deferred:
-            self._schedule_hls_background_cache(clip, deferred)
         result["elapsed_ms"] = int((monotonic() - started_at) * 1000)
-        result["deferred_segments"] = len(deferred)
-        result["initial_segments"] = int(state.get("initial_segments_cached") or 0)
+        result["segments_cached"] = int(state.get("segments_cached") or 0)
         result["playlists"] = int(state.get("playlists") or 0)
         return result
 
@@ -1065,12 +1044,36 @@ class XSenseRecordingsMediaSource(MediaSource):
                 total_bytes += map_bytes
                 rewritten.append(updated)
                 continue
+            if stripped.startswith("#") and "URI=" in stripped:
+                uri = _hls_attribute_uri(stripped)
+                attribute_url = urljoin(url, uri)
+                if uri and _is_hls_playlist_uri(attribute_url):
+                    child_dir = cache_dir / f"{prefix}_attribute_{index}"
+                    child_playlist = child_dir / "index.m3u8"
+                    child_result = await self._async_cache_hls_playlist(
+                        attribute_url,
+                        child_playlist,
+                        child_dir,
+                        prefix=f"{prefix}_attribute_{index}",
+                        depth=depth + 1,
+                        state=state,
+                    )
+                    total_bytes += int(child_result.get("bytes") or 0)
+                    segment_count += int(child_result.get("segments") or 0)
+                    child_playlist_count += 1
+                    rewritten.append(
+                        line.replace(
+                            f'URI="{uri}"',
+                            f'URI="{prefix}_attribute_{index}/index.m3u8"',
+                        )
+                    )
+                    continue
             if stripped.startswith("#"):
                 rewritten.append(line)
                 continue
 
             media_url = urljoin(url, stripped)
-            if depth == 0 and _is_hls_playlist_uri(media_url):
+            if _is_hls_playlist_uri(media_url):
                 child_dir = cache_dir / f"{prefix}_{index}"
                 child_playlist = child_dir / "index.m3u8"
                 child_result = await self._async_cache_hls_playlist(
@@ -1097,22 +1100,14 @@ class XSenseRecordingsMediaSource(MediaSource):
             ):
                 state["leading_segment_path"] = segment_path
                 state["leading_playlist_path"] = playlist_path
-            if int(state.get("remaining_initial_segments") or 0) > 0:
-                payload = await self._async_download_hls_part(media_url)
-                await self._async_file_job(
-                    _write_cache_file,
-                    segment_path,
-                    payload,
-                )
-                total_bytes += len(payload)
-                state["remaining_initial_segments"] = (
-                    int(state.get("remaining_initial_segments") or 0) - 1
-                )
-                state["initial_segments_cached"] = (
-                    int(state.get("initial_segments_cached") or 0) + 1
-                )
-            else:
-                state.setdefault("deferred", []).append((media_url, segment_path))
+            payload = await self._async_download_hls_part(media_url)
+            await self._async_file_job(
+                _write_cache_file,
+                segment_path,
+                payload,
+            )
+            total_bytes += len(payload)
+            state["segments_cached"] = int(state.get("segments_cached") or 0) + 1
             rewritten.append(segment_name)
             direct_media_segment_count += 1
 
@@ -1125,10 +1120,7 @@ class XSenseRecordingsMediaSource(MediaSource):
                 "segments": segment_count,
                 "child_playlists": child_playlist_count,
                 "keys": key_count,
-                "initial_segments_cached": int(
-                    state.get("initial_segments_cached") or 0
-                ),
-                "deferred_segments": len(state.get("deferred", [])),
+                "segments_cached": int(state.get("segments_cached") or 0),
             },
         )
         await self._async_file_job(
@@ -1141,54 +1133,6 @@ class XSenseRecordingsMediaSource(MediaSource):
             "bytes": total_bytes,
             "segments": segment_count,
         }
-
-    def _schedule_hls_background_cache(
-        self,
-        clip: dict[str, Any],
-        deferred: list[tuple[str, Path]],
-    ) -> None:
-        """Continue caching HLS segments after the first playable buffer exists."""
-        if not hasattr(self.hass, "async_create_task"):
-            return
-
-        async def _async_background_cache() -> None:
-            started_at = monotonic()
-            cached = 0
-            failed = 0
-            bytes_written = 0
-            for url, path in deferred:
-                if await self._async_path_ready(path):
-                    cached += 1
-                    continue
-                try:
-                    payload = await self._async_download_hls_part(url)
-                    await self._async_file_job(_write_cache_file, path, payload)
-                except Exception as exc:  # noqa: BLE001
-                    failed += 1
-                    LOGGER.debug(
-                        "Could not cache deferred X-Sense HLS segment: %s",
-                        {**_clip_log_context(clip), "error": str(exc)},
-                    )
-                    continue
-                cached += 1
-                bytes_written += len(payload)
-            LOGGER.debug(
-                "X-Sense HLS recording background cache finished: %s",
-                {
-                    **_clip_log_context(clip),
-                    "cached_segments": cached,
-                    "failed_segments": failed,
-                    "bytes": bytes_written,
-                    "elapsed_ms": int((monotonic() - started_at) * 1000),
-                },
-            )
-
-        _create_recording_background_task(
-            self.hass,
-            str(clip.get("entry_id") or ""),
-            _async_background_cache(),
-            "X-Sense HLS recording cache",
-        )
 
     async def _async_cache_hls_attribute_uri(
         self,
@@ -2749,6 +2693,8 @@ def _hls_cache_ready_at(cache_dir: Path, playlist_path: Path) -> bool:
         _remove_directory(cache_dir)
         return False
     if not _hls_playlist_ready(playlist_path):
+        if _path_ready(playlist_path):
+            _remove_directory(cache_dir)
         return False
     if not _read_hls_playback_profile(cache_dir):
         return _ensure_hls_playback_profile(cache_dir, playlist_path)
@@ -2789,23 +2735,37 @@ def _hls_playlist_ready(playlist_path: Path) -> bool:
         lines = playlist_path.read_text(encoding="utf-8").splitlines()
     except OSError:
         return False
-    media_lines = [
-        line.strip()
-        for line in lines
-        if line.strip() and not line.lstrip().startswith("#")
-    ]
+    media_lines = []
+    attribute_uris = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            uri = _hls_attribute_uri(stripped)
+            if uri:
+                attribute_uris.append(uri)
+            continue
+        media_lines.append(stripped)
     if not media_lines:
         return False
-    for line in media_lines:
-        path = playlist_path.parent / line
-        if _is_hls_playlist_uri(line):
-            if _hls_playlist_ready(path):
-                return True
+    for uri in attribute_uris:
+        path = playlist_path.parent / uri
+        if _is_hls_playlist_uri(uri):
+            if not _hls_playlist_ready(path):
+                return False
             continue
         if not _path_ready(path):
             return False
-        return True
-    return False
+    for line in media_lines:
+        path = playlist_path.parent / line
+        if _is_hls_playlist_uri(line):
+            if not _hls_playlist_ready(path):
+                return False
+            continue
+        if not _path_ready(path):
+            return False
+    return True
 
 
 def _mp4_signature_present(path: Path) -> bool:
