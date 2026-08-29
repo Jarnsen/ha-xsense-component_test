@@ -4,6 +4,7 @@ import inspect
 import json
 import logging
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -1935,6 +1936,29 @@ def test_camera_event_history_day_window_uses_home_assistant_time_zone():
         "2026-08-27T22:00:00+00:00"
     )
     assert end - start == 86400
+
+
+@pytest.mark.parametrize(
+    ("local_time", "expected_seconds"),
+    (
+        (datetime(2026, 3, 29, 12, tzinfo=ZoneInfo("Europe/Berlin")), 23 * 3600),
+        (datetime(2026, 10, 25, 12, tzinfo=ZoneInfo("Europe/Berlin")), 25 * 3600),
+    ),
+)
+def test_camera_event_history_day_window_tracks_dst_boundaries(
+    local_time, expected_seconds
+):
+    from custom_components.xsense.coordinator import _apk_camera_history_day_window
+
+    coordinator = SimpleNamespace(
+        hass=SimpleNamespace(config=SimpleNamespace(time_zone="Europe/Berlin"))
+    )
+
+    start, end = _apk_camera_history_day_window(
+        coordinator, int(local_time.timestamp())
+    )
+
+    assert end - start == expected_seconds
 
 
 def test_camera_event_history_station_data_preserves_direct_video_url():

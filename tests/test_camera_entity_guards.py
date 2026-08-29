@@ -3446,7 +3446,8 @@ def test_recording_media_source_hls_ready_requires_attribute_playlists_and_keys(
     audio.mkdir(parents=True)
     video.mkdir(parents=True)
     (root / "index.m3u8").write_text(
-        '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="audio/index.m3u8"\n'
+        '#EXTM3U\n#EXT-X-SESSION-DATA:DATA-ID="metadata",URI="https://example.invalid/info.json"\n'
+        '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="audio/index.m3u8"\n'
         '#EXT-X-STREAM-INF:BANDWIDTH=1000000,AUDIO="audio"\nvideo/index.m3u8\n',
         encoding="utf-8",
     )

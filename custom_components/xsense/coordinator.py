@@ -1058,8 +1058,9 @@ def _apk_camera_history_day_window(
         zone = timezone.utc
     local_now = datetime.fromtimestamp(now, zone)
     day_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    next_day_start = day_start + timedelta(days=1)
     start_timestamp = int(day_start.timestamp())
-    return start_timestamp, start_timestamp + 86400
+    return start_timestamp, int(next_day_start.timestamp())
 
 
 def _camera_record_history_debug_context(

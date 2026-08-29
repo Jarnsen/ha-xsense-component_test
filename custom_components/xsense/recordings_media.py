@@ -2743,7 +2743,10 @@ def _hls_playlist_ready(playlist_path: Path) -> bool:
             continue
         if stripped.startswith("#"):
             uri = _hls_attribute_uri(stripped)
-            if uri:
+            if uri and (
+                stripped.startswith(("#EXT-X-KEY", "#EXT-X-MAP"))
+                or _is_hls_playlist_uri(uri)
+            ):
                 attribute_uris.append(uri)
             continue
         media_lines.append(stripped)
