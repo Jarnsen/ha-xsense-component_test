@@ -2423,7 +2423,7 @@ def test_recording_media_source_caches_hd_hls_without_sd_fallback(
     )
     assert (playlist.parent / "segment_0002.ts").read_bytes() == b"segment-one"
     assert (playlist.parent / "segment_0003.ts").read_bytes() == b"segment-two"
-    assert not (playlist.parent / "segment_0004.ts").exists()
+    assert (playlist.parent / "segment_0004.ts").read_bytes() == b"segment-three"
 
 
 def test_recording_media_source_preserves_original_leading_hls_ts_segment(
@@ -3375,7 +3375,7 @@ def test_recording_media_source_prefers_hls_cache_over_legacy_mp4(
     assert not output_path.exists()
 
 
-def test_recording_media_source_hls_master_ready_with_one_buffered_variant(
+def test_recording_media_source_hls_master_requires_every_variant_and_segment(
     monkeypatch,
     tmp_path,
 ):
@@ -3425,7 +3425,47 @@ def test_recording_media_source_hls_master_ready_with_one_buffered_variant(
         lambda current_clip: root / "index.m3u8",
     )
 
+    assert not media_source._hls_playlist_ready(root / "index.m3u8")
+    (variant_a / "segment_0003.ts").write_bytes(b"segment-two")
+    (variant_b / "segment_0004.ts").write_bytes(b"segment-three")
     assert media_source._hls_ready(clip)
+
+    (variant_a / "segment_0003.ts").unlink()
+    assert not media_source._hls_ready(clip)
+    assert not root.exists()
+
+
+def test_recording_media_source_hls_ready_requires_attribute_playlists_and_keys(
+    tmp_path,
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    root = tmp_path / "hls"
+    audio = root / "audio"
+    video = root / "video"
+    audio.mkdir(parents=True)
+    video.mkdir(parents=True)
+    (root / "index.m3u8").write_text(
+        '#EXTM3U\n#EXT-X-SESSION-DATA:DATA-ID="metadata",URI="https://example.invalid/info.json"\n'
+        '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",URI="audio/index.m3u8"\n'
+        '#EXT-X-STREAM-INF:BANDWIDTH=1000000,AUDIO="audio"\nvideo/index.m3u8\n',
+        encoding="utf-8",
+    )
+    (audio / "index.m3u8").write_text(
+        "#EXTM3U\naudio_0001.ts\n#EXT-X-ENDLIST\n",
+        encoding="utf-8",
+    )
+    (audio / "audio_0001.ts").write_bytes(b"audio")
+    (video / "index.m3u8").write_text(
+        '#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n'
+        "video_0001.ts\n#EXT-X-ENDLIST\n",
+        encoding="utf-8",
+    )
+    (video / "video_0001.ts").write_bytes(b"video")
+
+    assert not media_source._hls_playlist_ready(root / "index.m3u8")
+    (video / "key.bin").write_bytes(b"key")
+    assert media_source._hls_playlist_ready(root / "index.m3u8")
 
 
 def test_recording_media_source_lazy_shows_uncached_direct_clips_when_sync_disabled(
