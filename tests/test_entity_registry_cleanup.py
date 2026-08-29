@@ -234,6 +234,54 @@ def test_static_identifiers_are_not_exposed_in_device_info():
     assert "connections" not in device_info
 
 
+def test_device_info_fields_are_strings_before_home_assistant_registry_validation():
+    from custom_components.xsense.entity import XSenseEntity
+
+    class ProbeEntity(XSenseEntity):
+        entity_description = SimpleNamespace(key="probe")
+
+    source = SimpleNamespace(
+        entity_id="station_1",
+        data={"sw": 101},
+        sn="serial-number",
+        type=50,
+        name=12345,
+    )
+
+    device_info = ProbeEntity(SimpleNamespace(), source).device_info
+
+    assert device_info["model"] == "50"
+    assert device_info["name"] == "12345"
+    assert device_info["sw_version"] == "101"
+
+
+def test_device_info_software_version_accepts_string_prefix_and_ignores_empty_values():
+    from custom_components.xsense.entity import XSenseEntity
+
+    class ProbeEntity(XSenseEntity):
+        entity_description = SimpleNamespace(key="probe")
+
+    versioned = SimpleNamespace(
+        entity_id="station_1",
+        data={"sw": "v2.3.4"},
+        sn="serial-number",
+        type="SBS50",
+        name="Base Station",
+    )
+    missing = SimpleNamespace(
+        entity_id="station_2",
+        data={"sw": None},
+        sn="serial-number-2",
+        type="SBS50",
+        name="Base Station 2",
+    )
+
+    assert (
+        ProbeEntity(SimpleNamespace(), versioned).device_info["sw_version"] == "2.3.4"
+    )
+    assert "sw_version" not in ProbeEntity(SimpleNamespace(), missing).device_info
+
+
 def test_alarm_panel_device_info_does_not_expose_serial_number():
     from custom_components.xsense.alarm_control_panel import XSenseAlarmControlPanel
 
@@ -249,6 +297,22 @@ def test_alarm_panel_device_info_does_not_expose_serial_number():
     assert device_info["identifiers"] == {("xsense", "station_1")}
     assert device_info["model"] == "SBS50"
     assert "serial_number" not in device_info
+
+
+def test_alarm_panel_device_info_fields_are_strings():
+    from custom_components.xsense.alarm_control_panel import XSenseAlarmControlPanel
+
+    station = SimpleNamespace(
+        entity_id="station_1",
+        name=12345,
+        type=50,
+        sn="serial-number",
+    )
+
+    device_info = XSenseAlarmControlPanel(SimpleNamespace(), station).device_info
+
+    assert device_info["name"] == "12345"
+    assert device_info["model"] == "50"
 
 
 def test_visible_identifier_connections_are_removed_from_registry_metadata():

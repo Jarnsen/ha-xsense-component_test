@@ -22,6 +22,21 @@ _APK_CAMERA_NON_OFFLINE_STATUSES = {11, 12}
 DEVICE_ENTITY_WITHOUT_STATION = ""
 
 
+def _device_info_str(value: object) -> str | None:
+    """Return a Home Assistant DeviceInfo-safe string value."""
+    if value in (None, ""):
+        return None
+    return str(value)
+
+
+def _software_version(value: object) -> str | None:
+    """Return a normalized firmware/software version string."""
+    version = _device_info_str(value)
+    if version is None:
+        return None
+    return version.removeprefix("v")
+
+
 def _apk_entity_is_available(entity: Entity) -> bool:
     """Return whether the APK treats this entity as not offline."""
     if getattr(entity, "entity_type", None) == EntityType.CAMERA:
@@ -69,11 +84,11 @@ class XSenseEntity(CoordinatorEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entity.entity_id)},
             manufacturer=MANUFACTURER,
-            model=entity.type,
-            name=entity.name,
+            model=_device_info_str(entity.type),
+            name=_device_info_str(entity.name),
         )
-        if "sw" in entity.data and entity.data["sw"]:
-            self._attr_device_info["sw_version"] = entity.data["sw"].removeprefix("v")
+        if sw_version := _software_version(entity.data.get("sw")):
+            self._attr_device_info["sw_version"] = sw_version
         if station_id:
             parent = (DOMAIN, station_id)
             self._attr_device_info.update({ATTR_VIA_DEVICE: parent})

@@ -21,7 +21,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import XSenseDataUpdateCoordinator
-from .entity import coordinator_stations
+from .entity import _device_info_str, coordinator_stations
 from .errors import xsense_error
 from .frontend import (
     FORCE_ARM_FRONTEND_URL_PATH,
@@ -170,9 +170,9 @@ class XSenseAlarmControlPanel(
         self._attr_unique_id = f"{station.sn}_alarm"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, station.entity_id)},
-            "name": station.name,
+            "name": _device_info_str(station.name),
             "manufacturer": MANUFACTURER,
-            "model": station.type,
+            "model": _device_info_str(station.type),
         }
         self._safemode: str | None = None
         self._pending_force_arm_mode: str | None = None
