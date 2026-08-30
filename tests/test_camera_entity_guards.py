@@ -5467,6 +5467,29 @@ def test_camera_thumbnail_urls_follow_apk_thumbnail_and_event_fallback_order():
     )
 
 
+def test_camera_thumbnail_urls_prefer_newer_event_image():
+    from custom_components.xsense.python_xsense.async_xsense import (
+        camera_thumbnail_urls,
+    )
+
+    camera_entity = entity(
+        "SSC0A",
+        {
+            "thumbImgUrl": "https://example.invalid/current.jpg",
+            "thumbImgTime": 1_700_000_000,
+            "playback": {
+                "image_url": "https://example.invalid/event.jpg",
+                "timestamp_s": 1_700_000_100,
+            },
+        },
+    )
+
+    assert camera_thumbnail_urls(camera_entity) == (
+        "https://example.invalid/event.jpg",
+        "https://example.invalid/current.jpg",
+    )
+
+
 async def test_camera_image_uses_adapter_and_keeps_last_good_image():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
