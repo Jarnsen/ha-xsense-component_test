@@ -161,6 +161,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         """Set up the camera entity."""
         Camera.__init__(self)
         self.entity_description = entity_description
+        self._last_camera_image: bytes | None = None
         super().__init__(coordinator, entity, station_id=station_id)
 
     @callback
@@ -195,15 +196,10 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         if entity is None:
             return None
 
-        thumbnail_url = entity.data.get("thumbImgUrl")
-        if not thumbnail_url:
-            return None
-
-        session = async_get_clientsession(self.hass)
-        async with session.get(thumbnail_url) as response:
-            if response.status >= 400:
-                return None
-            return await response.read()
+        image = await self.coordinator.xsense.get_camera_thumbnail(entity)
+        if image:
+            self._last_camera_image = image
+        return self._last_camera_image
 
     async def stream_source(self) -> str | None:
         """Return a live stream URL when the X-Sense camera service provides one."""

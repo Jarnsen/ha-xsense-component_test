@@ -5442,6 +5442,67 @@ async def test_unsupported_camera_type_has_no_stream_source():
     assert await camera.stream_source() is None
 
 
+def test_camera_thumbnail_urls_follow_apk_thumbnail_and_event_fallback_order():
+    from custom_components.xsense.python_xsense.async_xsense import (
+        camera_thumbnail_urls,
+    )
+
+    camera_entity = entity(
+        "SSC0A",
+        {
+            "thumbImgUrl": "https://example.invalid/current.jpg",
+            "playback": {
+                "image_url": "https://example.invalid/event.jpg",
+                "package_image_url": "https://example.invalid/package.jpg",
+            },
+            "imageUrl": "https://example.invalid/direct.jpg",
+        },
+    )
+
+    assert camera_thumbnail_urls(camera_entity) == (
+        "https://example.invalid/current.jpg",
+        "https://example.invalid/event.jpg",
+        "https://example.invalid/package.jpg",
+        "https://example.invalid/direct.jpg",
+    )
+
+
+async def test_camera_image_uses_adapter_and_keeps_last_good_image():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseCameraEntity,
+    )
+
+    camera_entity = entity("SSC0A", {})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    images = iter((b"jpeg-image", None))
+
+    async def get_camera_thumbnail(current):
+        assert current is camera_entity
+        return next(images)
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+            self.xsense = SimpleNamespace(
+                get_camera_thumbnail=get_camera_thumbnail,
+            )
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+    camera.entity_id = "camera.camera_test"
+
+    assert await camera.async_camera_image() == b"jpeg-image"
+    assert await camera.async_camera_image() == b"jpeg-image"
+
+
 async def test_failed_webrtc_signal_start_is_removed_from_sessions(monkeypatch):
     from custom_components.xsense import camera as camera_module
     from custom_components.xsense.camera import (

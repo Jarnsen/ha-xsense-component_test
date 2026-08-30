@@ -1464,17 +1464,20 @@ class AsyncXSense(XSenseBase):
         return list(devices_by_serial.values())
 
     async def get_camera_thumbnail(self, camera: Entity) -> bytes | None:
-        """Return the latest camera thumbnail bytes from the APK thumbnail URL."""
-        thumbnail_url = camera.data.get("thumbImgUrl")
-        if not thumbnail_url:
-            return None
-
+        """Return camera image bytes using the APK thumbnail fallback order."""
         session = await self._get_session()
-        async with session.get(thumbnail_url) as response:
-            self._lastres = response
-            if response.status >= 400:
-                return None
-            return await response.read()
+        for thumbnail_url in camera_thumbnail_urls(camera):
+            try:
+                async with session.get(thumbnail_url) as response:
+                    self._lastres = response
+                    if response.status >= 400:
+                        continue
+                    image = await response.read()
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                continue
+            if image:
+                return image
+        return None
 
     def _camera_from_addx_device(self, data: Dict) -> Station | None:
         """Return the X-Sense camera entity backed by an ADDX DeviceBean."""
@@ -2845,6 +2848,35 @@ def _camera_type(data: Dict) -> str | None:
         if model:
             return model
     return None
+
+
+def camera_thumbnail_urls(camera: Entity) -> tuple[str, ...]:
+    """Return current and event thumbnail URLs in APK display order."""
+    data = camera.data
+    candidates: list[Any] = [data.get("thumbImgUrl")]
+    playback = data.get("playback")
+    if isinstance(playback, dict):
+        candidates.extend(
+            (playback.get("image_url"), playback.get("package_image_url"))
+        )
+    candidates.extend(
+        (
+            data.get("image_url"),
+            data.get("package_image_url"),
+            data.get("imageUrl"),
+            data.get("packageImageUrl"),
+        )
+    )
+
+    urls: list[str] = []
+    for value in candidates:
+        if not isinstance(value, str):
+            continue
+        url = value.strip()
+        if not url.startswith(("http://", "https://")) or url in urls:
+            continue
+        urls.append(url)
+    return tuple(urls)
 
 
 def _camera_data(data: Dict) -> Dict:

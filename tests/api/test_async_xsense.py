@@ -4851,6 +4851,52 @@ async def test_get_client_info_uses_apk_1400_client_metadata():
 
 
 @pytest.mark.asyncio
+async def test_camera_thumbnail_falls_back_from_device_thumbnail_to_event_image():
+    class ThumbnailResponse:
+        def __init__(self, status, body=b""):
+            self.status = status
+            self.body = body
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def read(self):
+            return self.body
+
+    class ThumbnailSession:
+        closed = False
+
+        def __init__(self):
+            self.urls = []
+            self.responses = [
+                ThumbnailResponse(403),
+                ThumbnailResponse(200, b"event-jpeg"),
+            ]
+
+        def get(self, url):
+            self.urls.append(url)
+            return self.responses.pop(0)
+
+    session = ThumbnailSession()
+    client = async_xsense.AsyncXSense(session)
+    camera = SimpleNamespace(
+        data={
+            "thumbImgUrl": "https://example.invalid/current.jpg",
+            "playback": {"image_url": "https://example.invalid/event.jpg"},
+        }
+    )
+
+    assert await client.get_camera_thumbnail(camera) == b"event-jpeg"
+    assert session.urls == [
+        "https://example.invalid/current.jpg",
+        "https://example.invalid/event.jpg",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_authenticated_app_call_uses_apk_1400_client_metadata():
     session = CapturePostSession({"reCode": 200, "reData": {"ok": True}})
     client = async_xsense.AsyncXSense(session)
