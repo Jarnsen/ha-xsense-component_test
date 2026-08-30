@@ -32,6 +32,7 @@ from custom_components.xsense.const import (
     CONF_RECORDING_MEDIA_SYNC_ENABLED,
     DOMAIN,
 )
+from custom_components.xsense.python_xsense.station import Station
 
 
 def _mock_hls_playback_profile_migration(monkeypatch, calls=None):
@@ -86,6 +87,16 @@ ENTITY_PLATFORMS = (
     switch,
 )
 
+DYNAMIC_ENTITY_PLATFORMS = (
+    binary_sensor,
+    button,
+    event,
+    number,
+    select,
+    sensor,
+    switch,
+)
+
 class BlueprintLoader(SafeLoader):
     """YAML loader that tolerates Home Assistant blueprint tags."""
 
@@ -123,6 +134,42 @@ async def test_entity_platform_setup_handles_empty_coordinator_data():
 
     for module in ENTITY_PLATFORMS:
         assert await _setup_platform(module, coordinator) == [[]]
+
+
+@pytest.mark.parametrize("module", DYNAMIC_ENTITY_PLATFORMS)
+async def test_non_camera_entity_platforms_watch_for_late_discovery(module):
+    """Entity platforms subscribe for stations and devices discovered later."""
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {"stations": {}, "devices": {}}
+            self.last_update_success = True
+            self.xsense = None
+            self.listeners = []
+
+        def async_add_listener(self, listener):
+            self.listeners.append(listener)
+            return lambda: None
+
+    class Entry:
+        entry_id = "entry-id"
+
+        def __init__(self):
+            self.unload_callbacks = []
+
+        def async_on_unload(self, callback):
+            self.unload_callbacks.append(callback)
+
+    coordinator = Coordinator()
+    entry = Entry()
+    hass = SimpleNamespace(data={DOMAIN: {entry.entry_id: coordinator}})
+    calls = []
+
+    await module.async_setup_entry(hass, entry, lambda entities: calls.append(list(entities)))
+
+    assert calls == [[]]
+    assert len(coordinator.listeners) == 1
+    assert len(entry.unload_callbacks) == 1
 
 
 async def test_alarm_panel_setup_handles_missing_xsense_client():
@@ -238,6 +285,109 @@ async def test_supported_co_status_loads_before_payload_keys():
 
     assert {"alarm_status", "mute_status"} <= binary_keys
     assert {"co", "co_level", "device_status"} <= sensor_keys
+
+
+@pytest.mark.parametrize("device_type", ["XC0C-iR", "XS0B-iR"])
+async def test_standalone_detector_station_creates_reported_entities(device_type):
+    """Standalone Wi-Fi detectors expose station-backed HA entities."""
+    station = Station(
+        None,
+        stationId=f"{device_type}-station-id",
+        stationName=f"{device_type} Detector",
+        stationSn=f"{device_type}-station-sn",
+        category=device_type,
+        online=True,
+    )
+    station.set_data(
+        {
+            "safeMode": "Disarmed",
+            "wifiRSSI": -44,
+            "batInfo": 3,
+            "alarmStatus": False,
+            "muteStatus": 0,
+        }
+    )
+
+    class Coordinator:
+        data = {"stations": {station.entity_id: station}, "devices": {}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    binary_calls = await _setup_platform(binary_sensor, Coordinator())
+    sensor_calls = await _setup_platform(sensor, Coordinator())
+
+    binary_keys = {entity.entity_description.key for entity in binary_calls[0]}
+    sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
+
+    assert {"alarm_status", "mute_status"} <= binary_keys
+    assert {"battery", "wifi_rssi", "device_status", "safe_mode"} <= sensor_keys
+
+
+@pytest.mark.parametrize(
+    ("module", "expected_keys"),
+    [
+        (binary_sensor, {"alarm_status", "mute_status"}),
+        (sensor, {"battery", "wifi_rssi", "device_status", "safe_mode"}),
+    ],
+)
+async def test_standalone_stations_discovered_after_setup_add_entities_once(
+    module, expected_keys
+):
+    """Late standalone station discovery registers entities without duplicates."""
+    station = Station(
+        None,
+        stationId="standalone-station-id",
+        stationName="Standalone Detector",
+        stationSn="standalone-station-sn",
+        category="XS0B-iR",
+        online=True,
+    )
+    station.set_data(
+        {
+            "safeMode": "Disarmed",
+            "wifiRSSI": -54,
+            "batInfo": 3,
+            "alarmStatus": False,
+            "muteStatus": 0,
+        }
+    )
+
+    class Coordinator:
+        data = {"stations": {}, "devices": {}}
+        last_update_success = True
+        xsense = None
+        listeners = []
+
+        def async_add_listener(self, listener):
+            self.listeners.append(listener)
+            return lambda: None
+
+    class Entry:
+        entry_id = "entry-id"
+        unload_callbacks = []
+
+        def async_on_unload(self, callback):
+            self.unload_callbacks.append(callback)
+
+    coordinator = Coordinator()
+    entry = Entry()
+    hass = SimpleNamespace(data={DOMAIN: {entry.entry_id: coordinator}})
+    calls = []
+
+    await module.async_setup_entry(hass, entry, lambda entities: calls.append(list(entities)))
+    assert calls == [[]]
+
+    coordinator.data = {"stations": {station.entity_id: station}, "devices": {}}
+    coordinator.listeners[0]()
+    assert expected_keys <= {
+        entity.entity_description.key for entity in calls[1]
+    }
+
+    coordinator.listeners[0]()
+    assert len(calls) == 2
 
 
 async def test_supported_combo_co_status_loads_before_payload_keys():

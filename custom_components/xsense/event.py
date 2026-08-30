@@ -24,7 +24,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_registry as er
 
 from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN, LOGGER
-from .entity import XSenseEntity, coordinator_devices
+from .entity import XSenseEntity, coordinator_devices, setup_dynamic_entities
 from .frontend import recordings_panel_url
 
 if TYPE_CHECKING:
@@ -97,11 +97,14 @@ async def async_setup_entry(
     """Set up X-Sense event entities."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        [
+    setup_dynamic_entities(
+        entry,
+        coordinator,
+        async_add_entities,
+        lambda: [
             *_ai_detection_event_entities(coordinator),
             *_motion_event_entities(coordinator),
-        ]
+        ],
     )
 
 

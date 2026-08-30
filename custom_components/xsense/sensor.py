@@ -36,6 +36,7 @@ from .entity import (
     coordinator_devices,
     coordinator_stations,
     device_station_id,
+    setup_dynamic_entities,
 )
 
 UNIT_PARTS_PER_MILLION = getattr(
@@ -753,25 +754,27 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the xsense sensor entry."""
-    devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    for station in coordinator_stations(coordinator).values():
-        devices.extend(
-            XSenseSensorEntity(coordinator, station, description)
-            for description in SENSORS
-            if description.exists_fn(station)
-        )
-    for dev in coordinator_devices(coordinator).values():
-        devices.extend(
-            XSenseSensorEntity(
-                coordinator, dev, description, station_id=device_station_id(dev)
+    def _entities() -> list[Device]:
+        devices: list[Device] = []
+        for station in coordinator_stations(coordinator).values():
+            devices.extend(
+                XSenseSensorEntity(coordinator, station, description)
+                for description in SENSORS
+                if description.exists_fn(station)
             )
-            for description in SENSORS
-            if description.exists_fn(dev)
-        )
+        for dev in coordinator_devices(coordinator).values():
+            devices.extend(
+                XSenseSensorEntity(
+                    coordinator, dev, description, station_id=device_station_id(dev)
+                )
+                for description in SENSORS
+                if description.exists_fn(dev)
+            )
+        return devices
 
-    async_add_entities(devices)
+    setup_dynamic_entities(entry, coordinator, async_add_entities, _entities)
 
 
 class XSenseSensorEntity(XSenseEntity, SensorEntity):

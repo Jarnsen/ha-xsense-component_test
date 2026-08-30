@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from .python_xsense.entity import Entity
 from .python_xsense.entity_map import EntityType
@@ -20,6 +21,35 @@ if TYPE_CHECKING:
 OFFLINE_STATES = {False, 0, "0", "false", "False", "offline", "Offline"}
 _APK_CAMERA_NON_OFFLINE_STATUSES = {11, 12}
 DEVICE_ENTITY_WITHOUT_STATION = ""
+
+
+def setup_dynamic_entities(
+    entry,
+    coordinator: XSenseDataUpdateCoordinator,
+    async_add_entities,
+    entity_factory: Callable[[], list[Any]],
+) -> None:
+    """Add current entities and any new entities discovered on later refreshes."""
+    added_unique_ids: set[str] = set()
+
+    def _new_entities() -> list[Any]:
+        entities = []
+        for entity in entity_factory():
+            unique_id = str(entity.unique_id)
+            if unique_id in added_unique_ids:
+                continue
+            added_unique_ids.add(unique_id)
+            entities.append(entity)
+        return entities
+
+    async_add_entities(_new_entities())
+
+    def _async_add_new_entities() -> None:
+        if entities := _new_entities():
+            async_add_entities(entities)
+
+    if hasattr(entry, "async_on_unload") and hasattr(coordinator, "async_add_listener"):
+        entry.async_on_unload(coordinator.async_add_listener(_async_add_new_entities))
 
 
 def _device_info_str(value: object) -> str | None:
