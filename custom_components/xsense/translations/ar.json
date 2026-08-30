@@ -44,7 +44,9 @@
           "recording_media_storage_path": "تسجيل مجلد ذاكرة التخزين المؤقت",
           "recording_notification_quality": "جودة تسجيل الإخطار",
           "recording_media_days_order": "تسجيل ترتيب اليوم",
-          "recording_media_clips_order": "تسجيل ترتيب المقطع"
+          "recording_media_clips_order": "تسجيل ترتيب المقطع",
+          "recording_cache_retention_days": "تسجيل الاحتفاظ بذاكرة التخزين المؤقت",
+          "recording_cache_max_size_mb": "الحد الأقصى لحجم ذاكرة التخزين المؤقت للتسجيل"
         },
         "data_description": {
           "recording_media_sync_enabled": "تخزين التسجيلات الأخيرة تلقائيًا. يستخدم هذا مساحة تخزين وقد يقوم بتنشيط الكاميرات في كثير من الأحيان.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "استخدم مجلدًا ضمن /media. يتم تخزين مقاطع الفيديو والصور المصغرة الجديدة المخزنة مؤقتًا هنا.",
           "recording_notification_quality": "اختر HD لتفضيل عناوين URL المباشرة/عالية الدقة لمقاطع X-Sense لإشعارات الهاتف المحمول. اختر SD لاستخدام مسار التقاط تشغيل الكاميرا عندما يكون ذلك متاحًا.",
           "recording_media_days_order": "اختر ما إذا كانت الأيام الأحدث أو الأقدم ستظهر أولاً في عارض التسجيلات.",
-          "recording_media_clips_order": "اختر ما إذا كانت المقاطع الأحدث أو الأقدم ستظهر أولاً خلال كل يوم."
+          "recording_media_clips_order": "اختر ما إذا كانت المقاطع الأحدث أو الأقدم ستظهر أولاً خلال كل يوم.",
+          "recording_cache_retention_days": "احذف التسجيلات المحلية المخزنة مؤقتًا بعد هذه الأيام العديدة. لا يتم تغيير تسجيلات X-Sense السحابية وبطاقة SD.",
+          "recording_cache_max_size_mb": "الحد الأقصى لحجم ذاكرة التخزين المؤقت المحلية بالميجابايت. عند الوصول إلى الحد الأقصى، تتم إزالة التسجيلات الأقل مشاهدة مؤخرًا أولاً."
         }
       },
       "confirm_recording_media_storage_path": {

@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Dossier de cache d'enregistrement",
           "recording_notification_quality": "Qualité d'enregistrement des notifications",
           "recording_media_days_order": "Ordre du jour d'enregistrement",
-          "recording_media_clips_order": "Ordre des clips d’enregistrement"
+          "recording_media_clips_order": "Ordre des clips d’enregistrement",
+          "recording_cache_retention_days": "Rétention du cache d'enregistrement",
+          "recording_cache_max_size_mb": "Taille maximale du cache d'enregistrement"
         },
         "data_description": {
           "recording_media_sync_enabled": "Mettez automatiquement en cache les enregistrements récents. Cela utilise de l'espace de stockage et peut réveiller les caméras plus souvent.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Utilisez un dossier sous /media. Les nouvelles vidéos et miniatures mises en cache sont stockées ici.",
           "recording_notification_quality": "Choisissez HD pour préférer les URL de clips directs/haute résolution de X-Sense pour les notifications mobiles. Choisissez SD pour utiliser le chemin de capture de lecture de la caméra lorsqu'il est disponible.",
           "recording_media_days_order": "Choisissez si les jours les plus récents ou les plus anciens apparaissent en premier dans la visionneuse d'enregistrements.",
-          "recording_media_clips_order": "Choisissez si les clips les plus récents ou les plus anciens apparaissent en premier chaque jour."
+          "recording_media_clips_order": "Choisissez si les clips les plus récents ou les plus anciens apparaissent en premier chaque jour.",
+          "recording_cache_retention_days": "Supprimez les enregistrements locaux en cache après ce nombre de jours. Les enregistrements sur le cloud X-Sense et sur la carte SD ne sont pas modifiés.",
+          "recording_cache_max_size_mb": "Taille maximale du cache local en Mo. Lorsque la limite est atteinte, les enregistrements visionnés les moins récemment sont supprimés en premier."
         }
       },
       "confirm_recording_media_storage_path": {

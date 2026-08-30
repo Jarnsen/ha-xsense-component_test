@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Rögzítési gyorsítótár mappa",
           "recording_notification_quality": "Értesítés rögzítési minősége",
           "recording_media_days_order": "Felvételi napi rendelés",
-          "recording_media_clips_order": "Klip rendelés rögzítése"
+          "recording_media_clips_order": "Klip rendelés rögzítése",
+          "recording_cache_retention_days": "Rögzítés gyorsítótár megőrzése",
+          "recording_cache_max_size_mb": "Maximális rögzítési gyorsítótár mérete"
         },
         "data_description": {
           "recording_media_sync_enabled": "A legutóbbi felvételek automatikus gyorsítótárazása. Ez tárhelyet foglal el, és gyakrabban ébresztheti fel a kamerákat.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Használjon egy mappát a /media alatt. Az új gyorsítótárazott videók és miniatűrök itt tárolódnak.",
           "recording_notification_quality": "Válassza a HD lehetőséget, ha előnyben szeretné részesíteni az X-Sense közvetlen/nagy felbontású klip URL-jeit a mobil értesítésekhez. Válassza az SD lehetőséget a kamera lejátszási rögzítési útvonalának használatához, ha elérhető.",
           "recording_media_days_order": "Válassza ki, hogy az újabb vagy a régebbi napok jelenjenek meg először a felvételnézőben.",
-          "recording_media_clips_order": "Válassza ki, hogy az újabb vagy a régebbi klipek jelenjenek meg először minden napon."
+          "recording_media_clips_order": "Válassza ki, hogy az újabb vagy a régebbi klipek jelenjenek meg először minden napon.",
+          "recording_cache_retention_days": "Törölje a helyi gyorsítótárazott felvételeket ennyi nap elteltével. Az X-Sense felhő és az SD-kártya felvételei nem változnak.",
+          "recording_cache_max_size_mb": "A helyi gyorsítótár maximális mérete MB-ban. A korlát elérésekor először a legutóbb megtekintett felvételek törlődnek."
         }
       },
       "confirm_recording_media_storage_path": {

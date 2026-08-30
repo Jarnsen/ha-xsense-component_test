@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Opnamecachemap",
           "recording_notification_quality": "Opnamekwaliteit van meldingen",
           "recording_media_days_order": "Dagvolgorde opnemen",
-          "recording_media_clips_order": "Volgorde van opnameclips"
+          "recording_media_clips_order": "Volgorde van opnameclips",
+          "recording_cache_retention_days": "Retentie van opnamecache",
+          "recording_cache_max_size_mb": "Maximale grootte van de opnamecache"
         },
         "data_description": {
           "recording_media_sync_enabled": "Cache recente opnames automatisch. Dit gebruikt opslagruimte en kan camera's vaker activeren.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Gebruik een map onder /media. Nieuwe in de cache opgeslagen video's en thumbnails worden hier opgeslagen.",
           "recording_notification_quality": "Kies HD om de voorkeur te geven aan de directe clip-URL's/clip-URL's van X-Sense voor mobiele meldingen. Kies SD om het opnamepad voor het afspelen van de camera te gebruiken, indien beschikbaar.",
           "recording_media_days_order": "Kies of nieuwere of oudere dagen eerst verschijnen in de opnameviewer.",
-          "recording_media_clips_order": "Kies of nieuwere of oudere clips elke dag als eerste verschijnen."
+          "recording_media_clips_order": "Kies of nieuwere of oudere clips elke dag als eerste verschijnen.",
+          "recording_cache_retention_days": "Verwijder lokale opnamen in de cache na dit aantal dagen. X-Sense cloud- en SD-kaartopnamen worden niet gewijzigd.",
+          "recording_cache_max_size_mb": "Maximale lokale cachegrootte in MB. Wanneer de limiet is bereikt, worden de minst recent bekeken opnames als eerste verwijderd."
         }
       },
       "confirm_recording_media_storage_path": {

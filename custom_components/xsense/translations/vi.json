@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Ghi thư mục bộ đệm",
           "recording_notification_quality": "Chất lượng ghi thông báo",
           "recording_media_days_order": "Ghi thứ tự ngày",
-          "recording_media_clips_order": "Thứ tự ghi clip"
+          "recording_media_clips_order": "Thứ tự ghi clip",
+          "recording_cache_retention_days": "Ghi lại việc lưu giữ bộ nhớ đệm",
+          "recording_cache_max_size_mb": "Kích thước bộ đệm ghi tối đa"
         },
         "data_description": {
           "recording_media_sync_enabled": "Tự động lưu trữ các bản ghi gần đây. Điều này sử dụng không gian lưu trữ và có thể đánh thức camera thường xuyên hơn.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Sử dụng thư mục trong /media. Các video và hình thu nhỏ mới được lưu trong bộ nhớ đệm được lưu trữ tại đây.",
           "recording_notification_quality": "Chọn HD để ưu tiên URL clip trực tiếp/độ phân giải cao của X-Sense cho thông báo trên thiết bị di động. Chọn SD để sử dụng đường dẫn chụp phát lại của máy ảnh khi khả dụng.",
           "recording_media_days_order": "Chọn xem ngày mới hơn hay cũ hơn sẽ xuất hiện đầu tiên trong trình xem bản ghi.",
-          "recording_media_clips_order": "Chọn xem các clip mới hơn hay cũ hơn sẽ xuất hiện đầu tiên trong mỗi ngày."
+          "recording_media_clips_order": "Chọn xem các clip mới hơn hay cũ hơn sẽ xuất hiện đầu tiên trong mỗi ngày.",
+          "recording_cache_retention_days": "Xóa các bản ghi được lưu trong bộ nhớ đệm cục bộ sau nhiều ngày. Bản ghi trên đám mây X-Sense và thẻ SD không bị thay đổi.",
+          "recording_cache_max_size_mb": "Kích thước bộ đệm cục bộ tối đa tính bằng MB. Khi đạt đến giới hạn, bản ghi ít được xem gần đây nhất sẽ bị xóa trước tiên."
         }
       },
       "confirm_recording_media_storage_path": {

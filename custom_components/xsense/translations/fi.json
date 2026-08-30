@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Tallennusvälimuistikansio",
           "recording_notification_quality": "Ilmoituksen tallennuslaatu",
           "recording_media_days_order": "Tallennuspäivän tilaus",
-          "recording_media_clips_order": "Tallennusleikkeen tilaus"
+          "recording_media_clips_order": "Tallennusleikkeen tilaus",
+          "recording_cache_retention_days": "Tallennusvälimuistin säilytys",
+          "recording_cache_max_size_mb": "Tallennusvälimuistin enimmäiskoko"
         },
         "data_description": {
           "recording_media_sync_enabled": "Tallenna viimeisimmät tallenteet automaattisesti välimuistiin. Tämä käyttää tallennustilaa ja saattaa herättää kamerat useammin.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Käytä /media-kohdassa olevaa kansiota. Uudet välimuistissa olevat videot ja pikkukuvat tallennetaan tänne.",
           "recording_notification_quality": "Valitse HD, jos haluat suosia X-Sensein suoria/korkearesoluutioisia leikkeiden URL-osoitteita mobiili-ilmoituksille. Valitse SD, jos haluat käyttää kameran toistokaappauspolkua, kun se on käytettävissä.",
           "recording_media_days_order": "Valitse, näkyvätkö tallenteiden katseluohjelmassa ensin uudemmat vai vanhemmat päivät.",
-          "recording_media_clips_order": "Valitse, näkyvätkö uudemmat vai vanhemmat leikkeet ensimmäisenä joka päivä."
+          "recording_media_clips_order": "Valitse, näkyvätkö uudemmat vai vanhemmat leikkeet ensimmäisenä joka päivä.",
+          "recording_cache_retention_days": "Poista paikalliset välimuistitallenteet tämän monen päivän jälkeen. X-Sense-pilvi- ja SD-kortin tallennukset eivät muutu.",
+          "recording_cache_max_size_mb": "Paikallisen välimuistin enimmäiskoko megatavuina. Kun raja saavutetaan, viimeksi katsotut tallenteet poistetaan ensin."
         }
       },
       "confirm_recording_media_storage_path": {

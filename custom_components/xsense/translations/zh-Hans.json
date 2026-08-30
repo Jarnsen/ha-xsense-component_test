@@ -44,7 +44,9 @@
           "recording_media_storage_path": "录音缓存文件夹",
           "recording_notification_quality": "通知录制质量",
           "recording_media_days_order": "录音日顺序",
-          "recording_media_clips_order": "录制剪辑顺序"
+          "recording_media_clips_order": "录制剪辑顺序",
+          "recording_cache_retention_days": "录音缓存保留",
+          "recording_cache_max_size_mb": "最大录音缓存大小"
         },
         "data_description": {
           "recording_media_sync_enabled": "自动缓存最近的录制内容。这会占用存储空间，并且可能会更频繁地唤醒摄像头。",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "使用 /media 下的文件夹。新的缓存视频和缩略图会存储在这里。",
           "recording_notification_quality": "选择 HD 以首选 X-Sense 的移动通知的直接/高分辨率剪辑 URL。选择 SD 以使用相机回放捕获路径（如果可用）。",
           "recording_media_days_order": "选择较新的日期还是较旧的日期首先显示在录音查看器中。",
-          "recording_media_clips_order": "选择每天首先显示较新的剪辑还是较旧的剪辑。"
+          "recording_media_clips_order": "选择每天首先显示较新的剪辑还是较旧的剪辑。",
+          "recording_cache_retention_days": "在这么多天后删除本地缓存的录音。 X-Sense云和SD卡录音没有改变。",
+          "recording_cache_max_size_mb": "最大本地缓存大小（以 MB 为单位）。当达到限制时，最近最少查看的录音将首先被删除。"
         }
       },
       "confirm_recording_media_storage_path": {

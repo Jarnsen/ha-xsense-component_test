@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import logging
+import os
 import sys
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -4240,11 +4241,11 @@ def test_clear_recording_caches_removes_managers_and_media(monkeypatch):
         config_entries=SimpleNamespace(async_entries=lambda domain: []),
         async_add_executor_job=async_add_executor_job,
     )
-    monkeypatch.setattr(
-        media_source,
-        "_clear_media_cache",
-        lambda roots: cleared_media.append(roots),
-    )
+    def delete_groups(root, protected, keys, prefixes):
+        cleared_media.append([root])
+        return media_source._empty_cache_cleanup_summary()
+
+    monkeypatch.setattr(media_source, "_delete_media_cache_groups", delete_groups)
 
     asyncio.run(media_source.async_clear_recording_caches(hass))
 
@@ -4273,11 +4274,11 @@ def test_clear_recording_caches_scopes_media_to_entry(monkeypatch):
         config_entries=SimpleNamespace(async_get_entry=lambda entry_id: entry),
         async_add_executor_job=async_add_executor_job,
     )
-    monkeypatch.setattr(
-        media_source,
-        "_clear_media_cache",
-        lambda roots: cleared_media.append(roots),
-    )
+    def delete_groups(root, protected, keys, prefixes):
+        cleared_media.append([root])
+        return media_source._empty_cache_cleanup_summary()
+
+    monkeypatch.setattr(media_source, "_delete_media_cache_groups", delete_groups)
 
     asyncio.run(media_source.async_clear_recording_caches(hass, entry_id="entry-id"))
 
@@ -4311,8 +4312,6 @@ def test_clear_recording_caches_removes_scoped_capture_locks(monkeypatch):
         config_entries=SimpleNamespace(async_get_entry=lambda entry_id: entry),
         async_add_executor_job=async_add_executor_job,
     )
-    monkeypatch.setattr(media_source, "_clear_media_cache", lambda roots: None)
-
     asyncio.run(media_source.async_clear_recording_caches(hass, entry_id="entry-id"))
 
     assert hass.data[media_source.DOMAIN]["_recording_capture_locks"] == {
@@ -4322,26 +4321,92 @@ def test_clear_recording_caches_removes_scoped_capture_locks(monkeypatch):
     }
 
 
-def test_clear_media_cache_removes_recording_outputs(tmp_path):
+def test_recording_cache_prune_removes_expired_clip_as_one_group(tmp_path):
     from custom_components.xsense import recordings_media as media_source
 
-    videos = tmp_path / "videos"
-    thumbs = tmp_path / "thumbs"
-    videos.mkdir()
-    thumbs.mkdir()
-    removable = [
-        videos / "clip.mp4",
-        videos / "clip.mp4.h264",
-        thumbs / "clip.jpg",
-    ]
-    keep = videos / "notes.txt"
-    for path in [*removable, keep]:
-        path.write_text("cached")
+    key = "CAMERA_100_120"
+    hls = tmp_path / "hls" / key
+    thumb = tmp_path / "thumbs" / f"{key}.jpg"
+    hls.mkdir(parents=True)
+    thumb.parent.mkdir(parents=True)
+    (hls / "index.m3u8").write_bytes(b"playlist")
+    thumb.write_bytes(b"thumb")
+    old = media_source.time() - 10 * 86400
+    os.utime(hls, (old, old))
+    os.utime(thumb, (old, old))
 
-    media_source._clear_media_cache([tmp_path])
+    result = media_source._prune_media_cache(
+        tmp_path, retention_days=7, max_size_bytes=1024, protected=set()
+    )
 
-    assert [path.exists() for path in removable] == [False, False, False]
-    assert keep.exists()
+    assert result["deleted_items"] == 1
+    assert result["deleted_bytes"] == len(b"playlistthumb")
+    assert not hls.exists()
+    assert not thumb.exists()
+
+
+def test_recording_cache_prune_evicts_oldest_group_for_size(tmp_path):
+    from custom_components.xsense import recordings_media as media_source
+
+    video_root = tmp_path / "videos"
+    video_root.mkdir()
+    old = video_root / "CAMERA_100_120.mp4"
+    recent = video_root / "CAMERA_200_220.mp4"
+    old.write_bytes(b"a" * 80)
+    recent.write_bytes(b"b" * 80)
+    now = media_source.time()
+    os.utime(old, (now - 60, now - 60))
+    os.utime(recent, (now, now))
+
+    result = media_source._prune_media_cache(
+        tmp_path, retention_days=7, max_size_bytes=100, protected=set()
+    )
+
+    assert result["deleted_items"] == 1
+    assert not old.exists()
+    assert recent.exists()
+    assert result["remaining_bytes"] == 80
+
+
+def test_recording_cache_prune_protects_active_hls(tmp_path):
+    from custom_components.xsense import recordings_media as media_source
+
+    hls = tmp_path / "hls" / "CAMERA_100_120"
+    hls.mkdir(parents=True)
+    (hls / "index.m3u8").write_bytes(b"playlist")
+    old = media_source.time() - 10 * 86400
+    os.utime(hls, (old, old))
+
+    result = media_source._prune_media_cache(
+        tmp_path,
+        retention_days=7,
+        max_size_bytes=1024,
+        protected={hls.resolve()},
+    )
+
+    assert result["deleted_items"] == 0
+    assert result["skipped_active"] == 1
+    assert hls.exists()
+
+
+def test_delete_camera_cache_only_removes_matching_serial(tmp_path):
+    from custom_components.xsense import recordings_media as media_source
+
+    hls_root = tmp_path / "hls"
+    first = hls_root / "CAMERA_A_100_120"
+    second = hls_root / "CAMERA_B_100_120"
+    first.mkdir(parents=True)
+    second.mkdir(parents=True)
+    (first / "index.m3u8").write_bytes(b"first")
+    (second / "index.m3u8").write_bytes(b"second")
+
+    result = media_source._delete_media_cache_groups(
+        tmp_path, set(), None, {"CAMERA_A_"}
+    )
+
+    assert result["deleted_items"] == 1
+    assert not first.exists()
+    assert second.exists()
 
 
 def test_recording_media_sync_starts_only_when_enabled(monkeypatch):
@@ -4372,8 +4437,10 @@ def test_recording_media_sync_starts_only_when_enabled(monkeypatch):
         async_on_unload=unloads.append,
     )
     media_source.async_start_recording_media_sync(hass, disabled_entry)
-    assert calls == []
-    assert unloads == []
+    assert calls[0][0:2] == ("later", 60)
+    assert calls[1][0] == "interval"
+    assert calls[1][1].total_seconds() == 3600
+    assert len(unloads) == 1
 
     enabled_entry = SimpleNamespace(
         entry_id="entry-enabled",
@@ -4385,12 +4452,15 @@ def test_recording_media_sync_starts_only_when_enabled(monkeypatch):
     )
     media_source.async_start_recording_media_sync(hass, enabled_entry)
 
-    assert calls[0][0:2] == ("later", 30)
-    assert calls[1][0] == "interval"
-    assert calls[1][1].total_seconds() == 21600
-    assert calls[2][0] == "interval"
-    assert calls[2][1].total_seconds() == 120
-    assert len(unloads) == 1
+    assert calls[2][0:2] == ("later", 60)
+    assert calls[3][0] == "interval"
+    assert calls[3][1].total_seconds() == 3600
+    assert calls[4][0:2] == ("later", 30)
+    assert calls[5][0] == "interval"
+    assert calls[5][1].total_seconds() == 21600
+    assert calls[6][0] == "interval"
+    assert calls[6][1].total_seconds() == 120
+    assert len(unloads) == 2
     assert callable(unloads[0])
 
 

@@ -2016,10 +2016,10 @@ def test_recording_media_sync_can_stop_before_entry_unload(monkeypatch):
 
     media_source.async_stop_recording_media_sync(hass, "camera-entry")
 
-    assert len(cancelled) == 3
+    assert len(cancelled) == 5
     assert "_recording_media_sync_unsubs" not in hass.data[DOMAIN]
     unload_callbacks[0]()
-    assert len(cancelled) == 3
+    assert len(cancelled) == 5
 
 
 def test_setup_entry_removes_recordings_runtime_without_cameras(monkeypatch):
@@ -2680,12 +2680,43 @@ def test_recordings_http_registration_adds_panel_views():
     asyncio.run(http.async_register_recordings_http_views(hass))
     asyncio.run(http.async_register_recordings_http_views(hass))
 
-    assert len(views) == 5
+    assert len(views) == 6
     assert isinstance(views[0], http.XSenseRecordingsPanelDataView)
     assert isinstance(views[1], http.XSenseRecordingsPanelDebugView)
     assert isinstance(views[2], http.XSenseRecordingsPanelPlaybackView)
     assert isinstance(views[3], http.XSenseRecordingsPanelThumbnailView)
     assert isinstance(views[4], http.XSenseRecordingsHlsSegmentView)
+    assert isinstance(views[5], http.XSenseRecordingsCacheManagementView)
+
+
+def test_recordings_cache_management_clears_one_camera(monkeypatch):
+    from custom_components.xsense import http
+
+    seen = {}
+
+    async def delete_camera(hass, *, entry_id, serial):
+        seen.update({"entry_id": entry_id, "serial": serial})
+        return {
+            "deleted_items": 2,
+            "deleted_bytes": 4096,
+            "skipped_active": 0,
+            "remaining_items": 1,
+            "remaining_bytes": 1024,
+        }
+
+    monkeypatch.setattr(http, "async_delete_camera_recording_cache", delete_camera)
+    hass = _recordings_panel_test_hass()
+    response = asyncio.run(
+        http.XSenseRecordingsCacheManagementView(hass).delete(
+            SimpleNamespace(query={"serial": "CAMERA-SN"}),
+            "camera",
+            "entry-id",
+        )
+    )
+
+    assert response.status == 200
+    assert seen == {"entry_id": "entry-id", "serial": "CAMERA-SN"}
+    assert json.loads(response.text)["deleted_items"] == 2
 
 
 def test_recordings_hls_playlist_rewrites_segments_to_token_route(tmp_path):

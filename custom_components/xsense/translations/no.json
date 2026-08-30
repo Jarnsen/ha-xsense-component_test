@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Opptaksbuffermappe",
           "recording_notification_quality": "Varslingsopptakskvalitet",
           "recording_media_days_order": "Bestilling av opptaksdag",
-          "recording_media_clips_order": "Opptak av klipprekkefølge"
+          "recording_media_clips_order": "Opptak av klipprekkefølge",
+          "recording_cache_retention_days": "Oppbevaring av cache",
+          "recording_cache_max_size_mb": "Maksimal opptaksbufferstørrelse"
         },
         "data_description": {
           "recording_media_sync_enabled": "Buffer nylige opptak automatisk. Dette bruker lagringsplass og kan vekke kameraer oftere.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Bruk en mappe under /media. Nye bufrede videoer og miniatyrbilder lagres her.",
           "recording_notification_quality": "Velg HD for å foretrekke X-Senses direkte/høyoppløselige klipp-URLer for mobilvarsler. Velg SD for å bruke fangstbanen for kameraavspilling når den er tilgjengelig.",
           "recording_media_days_order": "Velg om nyere eller eldre dager vises først i opptaksvisningen.",
-          "recording_media_clips_order": "Velg om nyere eller eldre klipp vises først i løpet av hver dag."
+          "recording_media_clips_order": "Velg om nyere eller eldre klipp vises først i løpet av hver dag.",
+          "recording_cache_retention_days": "Slett lokale hurtigbufrede opptak etter disse mange dagene. X-Sense sky- og SD-kortopptak endres ikke.",
+          "recording_cache_max_size_mb": "Maksimal lokal bufferstørrelse i MB. Når grensen er nådd, fjernes de minst nylig viste opptakene først."
         }
       },
       "confirm_recording_media_storage_path": {

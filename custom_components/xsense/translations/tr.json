@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Önbellek klasörü kaydediliyor",
           "recording_notification_quality": "Bildirim kayıt kalitesi",
           "recording_media_days_order": "Kayıt günü sırası",
-          "recording_media_clips_order": "Klip sırası kaydediliyor"
+          "recording_media_clips_order": "Klip sırası kaydediliyor",
+          "recording_cache_retention_days": "Önbellek saklamayı kaydetme",
+          "recording_cache_max_size_mb": "Maksimum kayıt önbellek boyutu"
         },
         "data_description": {
           "recording_media_sync_enabled": "Son kayıtları otomatik olarak önbelleğe alın. Bu, depolama alanını kullanır ve kameraları daha sık uyandırabilir.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "/media altında bir klasör kullanın. Önbelleğe alınan yeni videolar ve küçük resimler burada saklanır.",
           "recording_notification_quality": "Mobil bildirimler için X-Sense'ın doğrudan/yüksek çözünürlüklü klip URL'lerini tercih etmek için HD'ı seçin. Mümkün olduğunda kamera oynatma yakalama yolunu kullanmak için SD'ı seçin.",
           "recording_media_days_order": "Kayıt görüntüleyicide ilk olarak daha yeni günlerin mi yoksa daha eski günlerin mi görüntüleneceğini seçin.",
-          "recording_media_clips_order": "Her gün içinde daha yeni veya daha eski kliplerin ilk önce görünüp görünmeyeceğini seçin."
+          "recording_media_clips_order": "Her gün içinde daha yeni veya daha eski kliplerin ilk önce görünüp görünmeyeceğini seçin.",
+          "recording_cache_retention_days": "Bu kadar gün geçtikten sonra yerel önbelleğe alınmış kayıtları silin. X-Sense bulut ve SD kart kayıtları değiştirilmez.",
+          "recording_cache_max_size_mb": "MB cinsinden maksimum yerel önbellek boyutu. Sınıra ulaşıldığında, en son görüntülenen kayıtlar ilk önce kaldırılır."
         }
       },
       "confirm_recording_media_storage_path": {

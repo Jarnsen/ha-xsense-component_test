@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Predpomnilnik za snemanje",
           "recording_notification_quality": "Kakovost snemanja obvestil",
           "recording_media_days_order": "Dnevni red snemanja",
-          "recording_media_clips_order": "Vrstni red snemanja posnetkov"
+          "recording_media_clips_order": "Vrstni red snemanja posnetkov",
+          "recording_cache_retention_days": "Zadrževanje predpomnilnika snemanja",
+          "recording_cache_max_size_mb": "Največja velikost predpomnilnika za snemanje"
         },
         "data_description": {
           "recording_media_sync_enabled": "Samodejno predpomni nedavne posnetke. This uses storage space and may wake cameras more often.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Uporabite mapo pod /media. New cached videos and thumbnails are stored here.",
           "recording_notification_quality": "Izberite HD, če želite dati prednost neposrednim/visokoločljivim URL-jem posnetkov X-Sense za mobilna obvestila. Izberite SD, če želite uporabiti pot zajema predvajanja s kamero, ko je na voljo.",
           "recording_media_days_order": "Izberite, ali se v pregledovalniku posnetkov najprej prikažejo novejši ali starejši dnevi.",
-          "recording_media_clips_order": "Izberite, ali se v posameznem dnevu najprej prikažejo novejši ali starejši posnetki."
+          "recording_media_clips_order": "Izberite, ali se v posameznem dnevu najprej prikažejo novejši ali starejši posnetki.",
+          "recording_cache_retention_days": "Po toliko dneh izbrišite lokalne predpomnjene posnetke. Posnetki v oblaku X-Sense in na kartici SD se ne spremenijo.",
+          "recording_cache_max_size_mb": "Največja velikost lokalnega predpomnilnika v MB. Ko je omejitev dosežena, se najprej odstranijo najmanj gledani posnetki."
         }
       },
       "confirm_recording_media_storage_path": {

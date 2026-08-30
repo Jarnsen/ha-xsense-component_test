@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Įrašymo talpyklos aplankas",
           "recording_notification_quality": "Pranešimų įrašymo kokybė",
           "recording_media_days_order": "Įrašymo dienos užsakymas",
-          "recording_media_clips_order": "Įrašymo klipo užsakymas"
+          "recording_media_clips_order": "Įrašymo klipo užsakymas",
+          "recording_cache_retention_days": "Įrašymo talpyklos išlaikymas",
+          "recording_cache_max_size_mb": "Maksimalus įrašymo talpyklos dydis"
         },
         "data_description": {
           "recording_media_sync_enabled": "Automatiškai saugokite naujausius įrašus. Tai užima vietos saugykloje ir gali dažniau pažadinti kameras.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Naudokite aplanką, esantį /media. Čia saugomi nauji talpykloje saugomi vaizdo įrašai ir miniatiūros.",
           "recording_notification_quality": "Pasirinkite HD, kad teiktumėte pirmenybę X-Sense tiesioginiams / didelės skyros klipų URL pranešimams mobiliesiems. Pasirinkite SD, jei norite naudoti fotoaparato atkūrimo fiksavimo kelią, kai įmanoma.",
           "recording_media_days_order": "Pasirinkite, ar įrašų peržiūros priemonėje pirmiausia bus rodomos naujesnės ar senesnės dienos.",
-          "recording_media_clips_order": "Pasirinkite, ar kiekvieną dieną pirmiausia rodomi naujesni ar senesni klipai."
+          "recording_media_clips_order": "Pasirinkite, ar kiekvieną dieną pirmiausia rodomi naujesni ar senesni klipai.",
+          "recording_cache_retention_days": "Po tiek dienų ištrinkite vietinius talpykloje esančius įrašus. „X-Sense“ debesies ir SD kortelės įrašai nekeičiami.",
+          "recording_cache_max_size_mb": "Didžiausias vietinės talpyklos dydis MB. Pasiekus limitą, pirmiausia pašalinami rečiausiai peržiūrėti įrašai."
         }
       },
       "confirm_recording_media_storage_path": {

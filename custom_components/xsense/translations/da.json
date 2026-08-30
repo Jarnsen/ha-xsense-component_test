@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Optagelses cache mappe",
           "recording_notification_quality": "Notifikationsoptagelseskvalitet",
           "recording_media_days_order": "Optagelsesdagsrækkefølge",
-          "recording_media_clips_order": "Optagelse af klip rækkefølge"
+          "recording_media_clips_order": "Optagelse af klip rækkefølge",
+          "recording_cache_retention_days": "Optagelsescache-opbevaring",
+          "recording_cache_max_size_mb": "Maksimal optagecachestørrelse"
         },
         "data_description": {
           "recording_media_sync_enabled": "Cache de seneste optagelser automatisk. Dette bruger lagerplads og kan vække kameraer oftere.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Brug en mappe under /media. Nye cachelagrede videoer og thumbnails gemmes her.",
           "recording_notification_quality": "Vælg HD for at foretrække X-Senses direkte/højopløselige klip-URL'er til mobilmeddelelser. Vælg SD for at bruge kameraets afspilningsoptagelsessti, når den er tilgængelig.",
           "recording_media_days_order": "Vælg, om nyere eller ældre dage vises først i optagelsesfremviseren.",
-          "recording_media_clips_order": "Vælg, om nyere eller ældre klip vises først inden for hver dag."
+          "recording_media_clips_order": "Vælg, om nyere eller ældre klip vises først inden for hver dag.",
+          "recording_cache_retention_days": "Slet lokale cachelagrede optagelser efter disse mange dage. X-Sense cloud- og SD-kortoptagelser ændres ikke.",
+          "recording_cache_max_size_mb": "Maksimal lokal cachestørrelse i MB. Når grænsen er nået, fjernes de senest sete optagelser først."
         }
       },
       "confirm_recording_media_storage_path": {

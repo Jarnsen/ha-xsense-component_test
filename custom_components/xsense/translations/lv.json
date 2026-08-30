@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Ierakstīšanas kešatmiņas mape",
           "recording_notification_quality": "Paziņojumu ierakstīšanas kvalitāte",
           "recording_media_days_order": "Ierakstīšanas dienas pasūtījums",
-          "recording_media_clips_order": "Ierakstīšanas klipa pasūtījums"
+          "recording_media_clips_order": "Ierakstīšanas klipa pasūtījums",
+          "recording_cache_retention_days": "Ieraksta kešatmiņas saglabāšana",
+          "recording_cache_max_size_mb": "Maksimālais ierakstīšanas kešatmiņas lielums"
         },
         "data_description": {
           "recording_media_sync_enabled": "Automātiski saglabājiet jaunākos ierakstus kešatmiņā. Tas izmanto krātuves vietu un var biežāk pamodināt kameras.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Izmantojiet mapi sadaļā /media. Šeit tiek glabāti jauni kešatmiņā saglabātie videoklipi un sīktēli.",
           "recording_notification_quality": "Izvēlieties HD, lai mobilajiem paziņojumiem dotu priekšroku X-Sense tiešajiem/augstas izšķirtspējas klipu vietrāžiem URL. Izvēlieties SD, lai izmantotu kameras atskaņošanas uzņemšanas ceļu, kad tas ir pieejams.",
           "recording_media_days_order": "Izvēlieties, vai ierakstu skatītājā vispirms tiek rādītas jaunākas vai vecākas dienas.",
-          "recording_media_clips_order": "Izvēlieties, vai katru dienu vispirms tiek rādīti jaunāki vai vecāki klipi."
+          "recording_media_clips_order": "Izvēlieties, vai katru dienu vispirms tiek rādīti jaunāki vai vecāki klipi.",
+          "recording_cache_retention_days": "Pēc daudzām dienām izdzēsiet lokālos kešatmiņā saglabātos ierakstus. X-Sense mākoņa un SD kartes ieraksti netiek mainīti.",
+          "recording_cache_max_size_mb": "Maksimālais vietējās kešatmiņas lielums MB. Kad limits ir sasniegts, vispirms tiek noņemti vismazāk skatītie ieraksti."
         }
       },
       "confirm_recording_media_storage_path": {

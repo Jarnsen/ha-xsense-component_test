@@ -18,12 +18,16 @@ from .python_xsense import AsyncXSense
 from .python_xsense.async_xsense import is_camera_entity
 from .python_xsense.exceptions import APIFailure, AuthFailed
 from .const import (
+    CONF_RECORDING_CACHE_MAX_SIZE_MB,
+    CONF_RECORDING_CACHE_RETENTION_DAYS,
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
     CONF_RECORDING_MEDIA_DAYS_ORDER,
     CONF_RECORDING_MEDIA_STORAGE_PATH,
     CONF_RECORDING_MEDIA_SYNC_ENABLED,
     CONF_RECORDING_MEDIA_SYNC_HOURS,
     CONF_RECORDING_NOTIFICATION_QUALITY,
+    DEFAULT_RECORDING_CACHE_MAX_SIZE_MB,
+    DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
     DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
     DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
     DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
@@ -86,6 +90,20 @@ def options_schema(
                     DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
                 ),
             ): str,
+            vol.Optional(
+                CONF_RECORDING_CACHE_RETENTION_DAYS,
+                default=options.get(
+                    CONF_RECORDING_CACHE_RETENTION_DAYS,
+                    DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
+                ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
+            vol.Optional(
+                CONF_RECORDING_CACHE_MAX_SIZE_MB,
+                default=options.get(
+                    CONF_RECORDING_CACHE_MAX_SIZE_MB,
+                    DEFAULT_RECORDING_CACHE_MAX_SIZE_MB,
+                ),
+            ): vol.All(vol.Coerce(int), vol.Range(min=128, max=102400)),
             vol.Optional(
                 CONF_RECORDING_NOTIFICATION_QUALITY,
                 default=options.get(
@@ -162,6 +180,18 @@ def _normalized_options(options: dict[str, Any]) -> dict[str, Any]:
     normalized[CONF_RECORDING_MEDIA_STORAGE_PATH] = _safe_media_path(
         normalized.get(CONF_RECORDING_MEDIA_STORAGE_PATH)
     )
+    normalized[CONF_RECORDING_CACHE_RETENTION_DAYS] = _safe_int_option(
+        normalized.get(CONF_RECORDING_CACHE_RETENTION_DAYS),
+        DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
+        minimum=1,
+        maximum=365,
+    )
+    normalized[CONF_RECORDING_CACHE_MAX_SIZE_MB] = _safe_int_option(
+        normalized.get(CONF_RECORDING_CACHE_MAX_SIZE_MB),
+        DEFAULT_RECORDING_CACHE_MAX_SIZE_MB,
+        minimum=128,
+        maximum=102400,
+    )
     normalized[CONF_RECORDING_NOTIFICATION_QUALITY] = _safe_recording_quality(
         normalized.get(CONF_RECORDING_NOTIFICATION_QUALITY)
     )
@@ -184,6 +214,17 @@ def _safe_sync_hours(value: Any) -> int:
     if 1 <= hours <= 168:
         return hours
     return DEFAULT_RECORDING_MEDIA_SYNC_HOURS
+
+
+def _safe_int_option(
+    value: Any, default: int, *, minimum: int, maximum: int
+) -> int:
+    """Return one bounded integer option without leaking stale values."""
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        return default
+    return result if minimum <= result <= maximum else default
 
 
 def _safe_media_path(value: Any) -> str:

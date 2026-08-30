@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Aufnahme-Cache-Ordner",
           "recording_notification_quality": "Qualität der Benachrichtigungsaufzeichnung",
           "recording_media_days_order": "Reihenfolge der Aufnahmetage",
-          "recording_media_clips_order": "Reihenfolge der Aufnahmeclips"
+          "recording_media_clips_order": "Reihenfolge der Aufnahmeclips",
+          "recording_cache_retention_days": "Cache-Aufbewahrung aufzeichnen",
+          "recording_cache_max_size_mb": "Maximale Größe des Aufzeichnungscache"
         },
         "data_description": {
           "recording_media_sync_enabled": "Aktuelle Aufnahmen automatisch zwischenspeichern. Dadurch wird Speicherplatz beansprucht und die Kameras können möglicherweise häufiger aktiviert werden.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Verwenden Sie einen Ordner unter /media. Hier werden neue zwischengespeicherte Videos und Miniaturansichten gespeichert.",
           "recording_notification_quality": "Wählen Sie HD, um die direkten/hochauflösenden Clip-URLs von X-Sense für mobile Benachrichtigungen zu bevorzugen. Wählen Sie SD, um den Aufnahmepfad für die Kamerawiedergabe zu verwenden, sofern verfügbar.",
           "recording_media_days_order": "Wählen Sie, ob neuere oder ältere Tage zuerst im Aufzeichnungsviewer angezeigt werden.",
-          "recording_media_clips_order": "Wählen Sie, ob neuere oder ältere Clips an jedem Tag zuerst angezeigt werden."
+          "recording_media_clips_order": "Wählen Sie, ob neuere oder ältere Clips an jedem Tag zuerst angezeigt werden.",
+          "recording_cache_retention_days": "Löschen Sie lokal zwischengespeicherte Aufzeichnungen nach dieser Anzahl von Tagen. X-Sense-Cloud- und SD-Kartenaufzeichnungen werden nicht verändert.",
+          "recording_cache_max_size_mb": "Maximale lokale Cachegröße in MB. Wenn das Limit erreicht ist, werden zuerst die zuletzt angesehenen Aufnahmen entfernt."
         }
       },
       "confirm_recording_media_storage_path": {

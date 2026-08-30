@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Merekam folder cache",
           "recording_notification_quality": "Kualitas rekaman notifikasi",
           "recording_media_days_order": "Merekam pesanan hari",
-          "recording_media_clips_order": "Merekam urutan klip"
+          "recording_media_clips_order": "Merekam urutan klip",
+          "recording_cache_retention_days": "Merekam retensi cache",
+          "recording_cache_max_size_mb": "Ukuran cache rekaman maksimum"
         },
         "data_description": {
           "recording_media_sync_enabled": "Cache rekaman terbaru secara otomatis. Tindakan ini menghabiskan ruang penyimpanan dan mungkin lebih sering membangunkan kamera.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Gunakan folder di bawah /media. Video dan thumbnail baru yang di-cache disimpan di sini.",
           "recording_notification_quality": "Pilih HD untuk memilih URL klip langsung/resolusi tinggi X-Sense untuk notifikasi seluler. Pilih SD untuk menggunakan jalur pengambilan pemutaran kamera bila tersedia.",
           "recording_media_days_order": "Pilih apakah hari yang lebih baru atau lebih lama muncul pertama kali di penampil rekaman.",
-          "recording_media_clips_order": "Pilih apakah klip baru atau lama muncul pertama kali setiap hari."
+          "recording_media_clips_order": "Pilih apakah klip baru atau lama muncul pertama kali setiap hari.",
+          "recording_cache_retention_days": "Hapus rekaman cache lokal setelah beberapa hari ini. Rekaman cloud X-Sense dan kartu SD tidak diubah.",
+          "recording_cache_max_size_mb": "Ukuran cache lokal maksimum dalam MB. Bila batasnya tercapai, rekaman yang terakhir dilihat akan dihapus terlebih dahulu."
         }
       },
       "confirm_recording_media_storage_path": {

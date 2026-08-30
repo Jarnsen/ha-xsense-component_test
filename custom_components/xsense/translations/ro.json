@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Dosarul cache de înregistrare",
           "recording_notification_quality": "Calitatea înregistrării notificărilor",
           "recording_media_days_order": "Comanda zilei de înregistrare",
-          "recording_media_clips_order": "Ordinea clipurilor de înregistrare"
+          "recording_media_clips_order": "Ordinea clipurilor de înregistrare",
+          "recording_cache_retention_days": "Reținerea memoriei cache a înregistrărilor",
+          "recording_cache_max_size_mb": "Dimensiunea maximă a memoriei cache de înregistrare"
         },
         "data_description": {
           "recording_media_sync_enabled": "Memorați în cache înregistrările recente în mod automat. Aceasta utilizează spațiu de stocare și poate trezi camerele mai des.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Utilizați un folder sub /media. Noile videoclipuri și miniaturi stocate în cache sunt stocate aici.",
           "recording_notification_quality": "Alegeți HD pentru a prefera adresele URL ale clipurilor directe/de înaltă rezoluție ale X-Sense pentru notificările mobile. Alegeți SD pentru a utiliza calea de captură de redare a camerei atunci când este disponibilă.",
           "recording_media_days_order": "Alegeți dacă zilele mai noi sau mai vechi apar mai întâi în vizualizatorul de înregistrări.",
-          "recording_media_clips_order": "Alegeți dacă clipurile mai noi sau mai vechi apar primele în fiecare zi."
+          "recording_media_clips_order": "Alegeți dacă clipurile mai noi sau mai vechi apar primele în fiecare zi.",
+          "recording_cache_retention_days": "Ștergeți înregistrările locale stocate în cache după atâtea zile. Înregistrările în cloud X-Sense și cardul SD nu sunt modificate.",
+          "recording_cache_max_size_mb": "Dimensiunea maximă a memoriei cache locală în MB. Când limita este atinsă, cele mai puțin recent înregistrări vizualizate sunt eliminate mai întâi."
         }
       },
       "confirm_recording_media_storage_path": {

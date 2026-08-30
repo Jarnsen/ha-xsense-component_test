@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Složka mezipaměti záznamů",
           "recording_notification_quality": "Kvalita záznamu oznámení",
           "recording_media_days_order": "Objednávka dne záznamu",
-          "recording_media_clips_order": "Pořadí nahrávání klipů"
+          "recording_media_clips_order": "Pořadí nahrávání klipů",
+          "recording_cache_retention_days": "Uchovávání mezipaměti záznamu",
+          "recording_cache_max_size_mb": "Maximální velikost mezipaměti pro nahrávání"
         },
         "data_description": {
           "recording_media_sync_enabled": "Automaticky ukládat poslední nahrávky do mezipaměti. To využívá úložný prostor a může častěji probudit kamery.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Použijte složku pod /media. Zde se ukládají nová videa a miniatury uložené v mezipaměti.",
           "recording_notification_quality": "Vyberte HD, chcete-li upřednostnit přímé adresy URL klipů/ve vysokém rozlišení X-Sense pro mobilní oznámení. Zvolte SD, chcete-li použít cestu snímání přehrávání kamery, je-li k dispozici.",
           "recording_media_days_order": "Zvolte, zda se v prohlížeči nahrávek jako první zobrazí novější nebo starší dny.",
-          "recording_media_clips_order": "Vyberte, zda se v každém dni zobrazí jako první novější nebo starší klipy."
+          "recording_media_clips_order": "Vyberte, zda se v každém dni zobrazí jako první novější nebo starší klipy.",
+          "recording_cache_retention_days": "Po tomto mnoha dnech smažte místní nahrávky uložené v mezipaměti. Cloud X-Sense a záznamy na SD kartě se nezmění.",
+          "recording_cache_max_size_mb": "Maximální velikost místní mezipaměti v MB. Po dosažení limitu jsou nejdříve odstraněny nahrávky, které byly naposledy zobrazeny."
         }
       },
       "confirm_recording_media_storage_path": {

@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Carpeta de caché de grabación",
           "recording_notification_quality": "Calidad de grabación de notificaciones",
           "recording_media_days_order": "Orden del día de grabación",
-          "recording_media_clips_order": "Orden de clips de grabación"
+          "recording_media_clips_order": "Orden de clips de grabación",
+          "recording_cache_retention_days": "Retención de caché de grabación",
+          "recording_cache_max_size_mb": "Tamaño máximo de caché de grabación"
         },
         "data_description": {
           "recording_media_sync_enabled": "Almacene en caché las grabaciones recientes automáticamente. Esto utiliza espacio de almacenamiento y puede activar las cámaras con más frecuencia.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Utilice una carpeta en /media. Aquí se almacenan nuevos vídeos y miniaturas almacenados en caché.",
           "recording_notification_quality": "Elija HD para preferir las URL de clip directo/de alta resolución de X-Sense para notificaciones móviles. Elija SD para usar la ruta de captura de reproducción de la cámara cuando esté disponible.",
           "recording_media_days_order": "Elija si los días más nuevos o más antiguos aparecen primero en el visor de grabaciones.",
-          "recording_media_clips_order": "Elija si los clips más nuevos o más antiguos aparecen primero cada día."
+          "recording_media_clips_order": "Elija si los clips más nuevos o más antiguos aparecen primero cada día.",
+          "recording_cache_retention_days": "Elimine las grabaciones almacenadas en caché local después de tantos días. Las grabaciones en la nube de X-Sense y en la tarjeta SD no se modifican.",
+          "recording_cache_max_size_mb": "Tamaño máximo de caché local en MB. Cuando se alcanza el límite, las grabaciones vistas menos recientemente se eliminan primero."
         }
       },
       "confirm_recording_media_storage_path": {

@@ -23,6 +23,10 @@ from .const import (
 from .recordings_media import (
     HLS_MIME_TYPE,
     XSenseRecordingsMediaSource,
+    async_clear_recording_caches,
+    async_delete_camera_recording_cache,
+    async_delete_recording_cache,
+    async_touch_recording_cache,
     _clip_cache_path,
     _clip_media_playable,
     _clip_start_for_sort,
@@ -55,6 +59,7 @@ async def async_register_recordings_http_views(hass: HomeAssistant) -> None:
     hass.http.register_view(XSenseRecordingsPanelPlaybackView(hass))
     hass.http.register_view(XSenseRecordingsPanelThumbnailView(hass))
     hass.http.register_view(XSenseRecordingsHlsSegmentView(hass))
+    hass.http.register_view(XSenseRecordingsCacheManagementView(hass))
     domain_data["_recordings_http_views_registered"] = True
 
 
@@ -126,24 +131,24 @@ async def _async_build_panel_data_from_index(
                 mp4_cached = False
             clip_cached = mp4_cached or hls_cached
             thumb_cached = await source._async_path_ready(thumb_path)
+            clip_video_bytes = 0
+            clip_thumbnail_bytes = 0
             if clip_cached:
                 stats["cached_videos"] += 1
                 camera_stats["cached_videos"] += 1
                 if hls_cached:
-                    camera_stats["video_bytes"] += await source._async_file_job(
+                    clip_video_bytes = await source._async_file_job(
                         _directory_size,
                         _hls_playlist_cache_path(clip).parent,
                     )
                 elif mp4_cached:
-                    camera_stats["video_bytes"] += await source._async_file_size(
-                        clip_path
-                    )
+                    clip_video_bytes = await source._async_file_size(clip_path)
+                camera_stats["video_bytes"] += clip_video_bytes
             if thumb_cached:
                 stats["cached_thumbnails"] += 1
                 camera_stats["cached_thumbnails"] += 1
-                camera_stats["thumbnail_bytes"] += await source._async_file_size(
-                    thumb_path
-                )
+                clip_thumbnail_bytes = await source._async_file_size(thumb_path)
+                camera_stats["thumbnail_bytes"] += clip_thumbnail_bytes
             playable = _clip_media_playable(clip)
             ready = playable and clip_cached
             if ready:
@@ -175,6 +180,7 @@ async def _async_build_panel_data_from_index(
                     "title": str(clip.get("title") or _clip_title(start, end)),
                     "cached": clip_cached,
                     "thumbnail_cached": thumb_cached,
+                    "cache_bytes": clip_video_bytes + clip_thumbnail_bytes,
                     "playable": playable,
                     "sync_enabled": sync_enabled,
                     **_hls_playback_fields_for_clip(clip),
@@ -291,19 +297,23 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
             hls_cached = _hls_cache_playback_ready(clip)
             clip_cached = mp4_cached or hls_cached
             thumb_cached = _path_ready(thumb_path)
+            clip_video_bytes = 0
+            clip_thumbnail_bytes = 0
             if clip_cached:
                 stats["cached_videos"] += 1
                 camera_stats["cached_videos"] += 1
                 if hls_cached:
-                    camera_stats["video_bytes"] += _directory_size(
+                    clip_video_bytes = _directory_size(
                         _hls_playlist_cache_path(clip).parent
                     )
                 elif mp4_cached:
-                    camera_stats["video_bytes"] += _file_size(clip_path)
+                    clip_video_bytes = _file_size(clip_path)
+                camera_stats["video_bytes"] += clip_video_bytes
             if thumb_cached:
                 stats["cached_thumbnails"] += 1
                 camera_stats["cached_thumbnails"] += 1
-                camera_stats["thumbnail_bytes"] += _file_size(thumb_path)
+                clip_thumbnail_bytes = _file_size(thumb_path)
+                camera_stats["thumbnail_bytes"] += clip_thumbnail_bytes
             playable = _clip_media_playable(clip)
             ready = playable and clip_cached
             if ready:
@@ -328,6 +338,7 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
                     "title": str(clip.get("title") or _clip_title(start, end)),
                     "cached": clip_cached,
                     "thumbnail_cached": thumb_cached,
+                    "cache_bytes": clip_video_bytes + clip_thumbnail_bytes,
                     "playable": playable,
                     "sync_enabled": sync_enabled,
                     **_hls_playback_fields_for_clip(clip),
@@ -505,6 +516,7 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
             raise web.HTTPNotFound(reason="X-Sense recording is not ready") from exc
         output_path = _clip_cache_path(clip)
         if await source._async_hls_ready(clip):
+            await async_touch_recording_cache(self.hass, clip)
             playlist_path = _hls_playlist_cache_path(clip)
             token = _create_hls_segment_token(self.hass, playlist_path.parent)
             playlist = await source._async_file_job(
@@ -531,6 +543,7 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
                 headers=headers,
             )
         if await source._async_mp4_ready(output_path):
+            await async_touch_recording_cache(self.hass, clip)
             output_bytes = await source._async_file_size(output_path)
             LOGGER.debug(
                 "X-Sense recordings panel playback served cached file: %s",
@@ -694,6 +707,53 @@ class XSenseRecordingsPanelThumbnailView(http.HomeAssistantView):
             _clip_debug_context(entry_id, serial, start, end),
         )
         raise web.HTTPNotFound(reason="X-Sense recording thumbnail is not ready")
+
+
+class XSenseRecordingsCacheManagementView(http.HomeAssistantView):
+    """Delete locally cached recordings from the recordings panel."""
+
+    url = f"/api/{DOMAIN}/recordings/cache/{{scope}}/{{entry_id}}"
+    name = f"api:{DOMAIN}:recordings:cache"
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        """Initialize the cache management view."""
+        self.hass = hass
+
+    async def delete(
+        self, request: web.Request, scope: str, entry_id: str
+    ) -> web.Response:
+        """Delete one clip, one camera, or all local recording caches."""
+        if not _recordings_runtime_available(self.hass):
+            raise web.HTTPNotFound()
+        serial = str(request.query.get("serial") or "")
+        if scope == "clip":
+            start = str(request.query.get("start") or "")
+            end = str(request.query.get("end") or "")
+            if not serial or not start or not end:
+                raise web.HTTPBadRequest(reason="Missing recording cache identifier")
+            clip = await XSenseRecordingsPanelPlaybackView(self.hass)._clip(
+                entry_id, serial, start, end
+            )
+            summary = await async_delete_recording_cache(self.hass, clip)
+            if summary.get("skipped_active") and not summary.get("deleted_items"):
+                raise web.HTTPConflict(reason="Recording is currently playing")
+        elif scope == "camera":
+            if not serial:
+                raise web.HTTPBadRequest(reason="Missing X-Sense camera serial")
+            summary = await async_delete_camera_recording_cache(
+                self.hass, entry_id=entry_id, serial=serial
+            )
+        elif scope == "all":
+            summary = await async_clear_recording_caches(
+                self.hass, entry_id=None if entry_id == "all" else entry_id
+            )
+        else:
+            raise web.HTTPNotFound(reason="Unknown recording cache scope")
+        LOGGER.debug(
+            "X-Sense recording cache deleted from panel: %s",
+            {"scope": scope, "entry_id": entry_id, **summary},
+        )
+        return web.json_response({"ok": True, **summary})
 
 
 def _empty_stats(hass: HomeAssistant) -> dict[str, Any]:

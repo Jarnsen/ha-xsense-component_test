@@ -44,7 +44,9 @@
           "recording_media_storage_path": "Cartella della cache di registrazione",
           "recording_notification_quality": "Qualità della registrazione delle notifiche",
           "recording_media_days_order": "Ordine del giorno di registrazione",
-          "recording_media_clips_order": "Ordine delle clip di registrazione"
+          "recording_media_clips_order": "Ordine delle clip di registrazione",
+          "recording_cache_retention_days": "Conservazione della cache di registrazione",
+          "recording_cache_max_size_mb": "Dimensione massima della cache di registrazione"
         },
         "data_description": {
           "recording_media_sync_enabled": "Memorizza automaticamente nella cache le registrazioni recenti. Ciò utilizza lo spazio di archiviazione e potrebbe riattivare le telecamere più spesso.",
@@ -52,7 +54,9 @@
           "recording_media_storage_path": "Utilizza una cartella in MEDIAPATHPLACEholder. I nuovi video e miniature memorizzati nella cache vengono archiviati qui.",
           "recording_notification_quality": "Scegli HD per preferire gli URL di clip diretti/ad alta risoluzione di XSENSEBRANDPLACEholder per le notifiche mobili. Scegli SDPLACEholder per utilizzare il percorso di acquisizione della riproduzione della fotocamera quando disponibile.",
           "recording_media_days_order": "Scegli se i giorni più nuovi o quelli più vecchi verranno visualizzati per primi nel visualizzatore delle registrazioni.",
-          "recording_media_clips_order": "Scegli se le clip più nuove o quelle più vecchie verranno visualizzate per prime ogni giorno."
+          "recording_media_clips_order": "Scegli se le clip più nuove o quelle più vecchie verranno visualizzate per prime ogni giorno.",
+          "recording_cache_retention_days": "Elimina le registrazioni memorizzate nella cache locale dopo questo numero di giorni. Le registrazioni su cloud X-Sense e su scheda SD non vengono modificate.",
+          "recording_cache_max_size_mb": "Dimensione massima della cache locale in MB. Quando viene raggiunto il limite, le registrazioni visualizzate meno di recente vengono rimosse per prime."
         }
       },
       "confirm_recording_media_storage_path": {
