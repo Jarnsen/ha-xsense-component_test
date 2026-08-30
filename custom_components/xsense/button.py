@@ -24,6 +24,7 @@ from .entity import (
     coordinator_devices,
     coordinator_stations,
     device_station_id,
+    setup_dynamic_entities,
 )
 from .errors import xsense_error
 
@@ -103,26 +104,27 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the xsense button entry."""
-    devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    for station in coordinator_stations(coordinator).values():
-        devices.extend(
-            XSenseButtonEntity(coordinator, station, description)
-            for description in BUTTONS
-            if description.exists_fn(station, coordinator.xsense)
-        )
-
-    for dev in coordinator_devices(coordinator).values():
-        devices.extend(
-            XSenseButtonEntity(
-                coordinator, dev, description, station_id=device_station_id(dev)
+    def _entities() -> list[Device]:
+        devices: list[Device] = []
+        for station in coordinator_stations(coordinator).values():
+            devices.extend(
+                XSenseButtonEntity(coordinator, station, description)
+                for description in BUTTONS
+                if description.exists_fn(station, coordinator.xsense)
             )
-            for description in BUTTONS
-            if description.exists_fn(dev, coordinator.xsense)
-        )
+        for dev in coordinator_devices(coordinator).values():
+            devices.extend(
+                XSenseButtonEntity(
+                    coordinator, dev, description, station_id=device_station_id(dev)
+                )
+                for description in BUTTONS
+                if description.exists_fn(dev, coordinator.xsense)
+            )
+        return devices
 
-    async_add_entities(devices)
+    setup_dynamic_entities(entry, coordinator, async_add_entities, _entities)
 
 
 class XSenseButtonEntity(XSenseEntity, ButtonEntity):

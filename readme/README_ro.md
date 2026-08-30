@@ -60,7 +60,10 @@ Administrarea dispozitivelor, partajarea, eliminarea, firmware-ul, conturile și
 ## Vizualizare live cameră și notificări AI
 Cel mai simplu este să importați blueprint-ul inclus cu butonul de mai jos, să alegeți `Motion` sau `AI Detection` disponibil și să ajustați acțiunea de notificare.
 
-Când un eveniment Motion include date de redare X-Sense, integrarea poate salva mai întâi clipul în cache și apoi poate trimite o notificare mobilă care deschide clipul potrivit în X-Sense Recordings. Dezactivați linkurile de înregistrare în blueprint dacă doriți doar o notificare simplă de mișcare fără a aștepta videoclipul. Sincronizarea media a înregistrărilor poate păstra clipurile recente pregătite în fundal, iar blueprinturile vechi de cameră X-Sense importate sunt actualizate automat.
+Când un eveniment Motion include metadate de redare X-Sense, integrarea pregătește o adresă URL privată de redare Home Assistant înainte de a trimite o notificare care deschide clipul potrivit în X-Sense Recordings. Dezactivați linkurile de înregistrare în plan pentru o notificare simplă de mișcare fără videoclip. Planurile mai vechi ale camerei X-Sense importate sunt actualizate automat.
+
+<!-- xsense-recording-storage-modes -->
+Înregistrările de pe cardul SD ale camerei apar în X-Sense Recordings. Doar redarea este modul de stocare implicit: Home Assistant păstrează adresele URL semnate X-Sense private, rescrie lista de redare HLS și trimite segmente numai atunci când jucătorul le solicită, fără a reține clipurile complete. Păstrați înregistrările locale stochează clipuri complete sub /media/xsense_recordings și permite reținerea configurabilă, o dimensiune maximă, ștergerea manuală și sincronizarea în fundal opțională. Curățarea locală nu șterge niciodată înregistrările de pe cardurile SD X-Sense sau de pe stocarea în cloud.
 
 [![Importă blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

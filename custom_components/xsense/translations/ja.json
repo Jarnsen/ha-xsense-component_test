@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "録画メディアの同期により、Home Assistant メディアの下にカメラ クリップがキャッシュされるため、X-Sense 録画サイドバー、メディア ブラウザ、およびモバイル通知で録画をすばやく開くことができます。録画を開いたときにのみキャッシュするには、オフのままにしておきます。最近の録音をバックグラウンドで準備できるようにするには、これを有効にします。",
+        "description": "既定は再生のみで、完全なクリップを保存せず、再生時に Home Assistant 経由で録画をプロキシします。設定した保存日数とサイズ制限に従って Home Assistant のメディアにクリップを保存するには、ローカル録画を保持を選択します。バックグラウンド同期は保持モードでのみ動作します。",
         "data": {
           "recording_media_sync_enabled": "記録メディアの同期",
           "recording_media_sync_hours": "バックグラウンド同期間隔",
           "recording_media_storage_path": "録画キャッシュフォルダー",
           "recording_notification_quality": "通知記録の品質",
           "recording_media_days_order": "収録日順",
-          "recording_media_clips_order": "録音クリップの順序"
+          "recording_media_clips_order": "録音クリップの順序",
+          "recording_cache_retention_days": "録画キャッシュの保持",
+          "recording_cache_max_size_mb": "最大録画キャッシュサイズ",
+          "recording_cache_mode": "録画の保存モード"
         },
         "data_description": {
           "recording_media_sync_enabled": "最近の録音を自動的にキャッシュします。これによりストレージ容量が使用され、カメラがより頻繁にスリープ状態になる可能性があります。",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "/media の下のフォルダーを使用します。新しいキャッシュされたビデオとサムネイルはここに保存されます。",
           "recording_notification_quality": "モバイル通知に X-Sense の直接/高解像度クリップ URL を優先するには、HD を選択します。利用可能な場合は、SD を選択して、カメラ再生キャプチャ パスを使用します。",
           "recording_media_days_order": "録画ビューアに新しい日と古い日のどちらを最初に表示するかを選択します。",
-          "recording_media_clips_order": "新しいクリップと古いクリップのどちらを毎日最初に表示するかを選択します。"
+          "recording_media_clips_order": "新しいクリップと古いクリップのどちらを毎日最初に表示するかを選択します。",
+          "recording_cache_retention_days": "この日数が経過したら、ローカルにキャッシュされた録画を削除します。 X-Sense クラウドと SD カードの記録は変更されません。",
+          "recording_cache_max_size_mb": "最大ローカル キャッシュ サイズ (MB 単位)。制限に達すると、最も最近に視聴されていない録画が最初に削除されます。",
+          "recording_cache_mode": "再生のみでは、完全なクリップを保存せず、必要に応じて HLS メディアを Home Assistant 経由でプロキシします。保持モードでは、以下の制限に従ってローカルコピーを保存します。"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "再生のみ",
+        "retained": "ローカル録画を保持"
       }
     }
   }

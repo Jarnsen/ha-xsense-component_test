@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "ৰেকৰ্ডিং মিডিয়া ছিঙ্কে Home Assistant মাধ্যমৰ অন্তৰ্গত কেমেৰা ক্লিপসমূহ কেশ্ব কৰে যাতে X-Sense ৰেকৰ্ডিংসমূহ চাইডবাৰ, মিডিয়া ব্ৰাউজাৰ, আৰু মোবাইল জাননীসমূহে ৰেকৰ্ডিংসমূহ দ্ৰুতভাৱে খোলিব পাৰে। ৰেকৰ্ডিংসমূহ খোলাৰ পিছতহে ইয়াক কেশ্ব কৰিবলৈ বন্ধ কৰক। ইয়াক পটভূমিত শেহতীয়া ৰেকৰ্ডিংসমূহ সাজু কৰি ৰাখিবলৈ সামৰ্থবান কৰক।",
+        "description": "কেৱল প্লেবেক ডিফল্ট আৰু সম্পূৰ্ণ ক্লিপ সংৰক্ষণ নকৰাকৈ চলাৰ সময়ত Home Assistant-ৰ মাজেৰে ৰেকৰ্ডিং প্ৰক্সি কৰে। নিৰ্ধাৰিত সময় আৰু আকাৰ সীমাৰে Home Assistant media-ত ক্লিপ ৰাখিবলৈ স্থানীয় ৰেকৰ্ডিং সংৰক্ষণ বাছক। background sync কেৱল retained mode-ত চলে।",
         "data": {
           "recording_media_sync_enabled": "ৰেকৰ্ডিং মিডিয়া ছিংক",
           "recording_media_sync_hours": "পটভূমি ছিঙ্ক ব্যৱধান",
           "recording_media_storage_path": "ৰেকৰ্ডিং কেচ ফোল্ডাৰ",
           "recording_notification_quality": "অধিসূচনা ৰেকৰ্ডিং মান",
           "recording_media_days_order": "ৰেকৰ্ডিং ডে অৰ্ডাৰ",
-          "recording_media_clips_order": "ক্লিপ অৰ্ডাৰ ৰেকৰ্ডিং"
+          "recording_media_clips_order": "ক্লিপ অৰ্ডাৰ ৰেকৰ্ডিং",
+          "recording_cache_retention_days": "কেশ্ব ধৰি ৰখা ৰেকৰ্ডিং কৰা",
+          "recording_cache_max_size_mb": "সৰ্বোচ্চ ৰেকৰ্ডিং কেশ্ব আকাৰ",
+          "recording_cache_mode": "ৰেকৰ্ডিং সংৰক্ষণ মোড"
         },
         "data_description": {
           "recording_media_sync_enabled": "শেহতীয়া ৰেকৰ্ডিংসমূহ স্বয়ংক্ৰিয়ভাৱে কেশ্ব কৰক। ইয়াৰ দ্বাৰা সংৰক্ষণ স্থান ব্যৱহাৰ কৰা হয় আৰু কেমেৰাক অধিক সঘনাই জগাই তুলিব পাৰে।",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "/media ৰ অন্তৰ্গত এটা ফোল্ডাৰ ব্যৱহাৰ কৰক। নতুন কেচ কৰা ভিডিঅ' আৰু থাম্বনেইলসমূহ ইয়াত সংৰক্ষণ কৰা হয়।",
           "recording_notification_quality": "মোবাইল জাননীসমূহৰ বাবে X-Sense ৰ প্ৰত্যক্ষ/উচ্চ-ৰিজ'লিউচন ক্লিপ URLসমূহ পছন্দ কৰিবলে HD নিৰ্ব্বাচন কৰক। উপলব্ধ হ'লে কেমেৰা প্লেবেক কেপচাৰ পথ ব্যৱহাৰ কৰিবলে SD নিৰ্ব্বাচন কৰক।",
           "recording_media_days_order": "ৰেকৰ্ডিং দৰ্শকত নতুন বা পুৰণি দিন প্ৰথমে দেখা দিয়ে নে নাই বাছক।",
-          "recording_media_clips_order": "প্ৰতিটো দিনৰ ভিতৰত নতুন বা পুৰণি ক্লিপসমূহ প্ৰথমে দেখা দিয়ে নেকি বাছক।"
+          "recording_media_clips_order": "প্ৰতিটো দিনৰ ভিতৰত নতুন বা পুৰণি ক্লিপসমূহ প্ৰথমে দেখা দিয়ে নেকি বাছক।",
+          "recording_cache_retention_days": "ইয়াৰ বহুদিনৰ পিছত স্থানীয় কেচ কৰা ৰেকৰ্ডিংসমূহ মচি পেলাওক। এক্স-চেন্স ক্লাউড আৰু এছডি কাৰ্ড ৰেকৰ্ডিং সলনি কৰা নহয়।",
+          "recording_cache_max_size_mb": "সৰ্বাধিক স্থানীয় কেশ্ব আকাৰ MB ত। যেতিয়া সীমাত উপনীত হয়, তেতিয়া কমকৈ শেহতীয়াকৈ চোৱা ৰেকৰ্ডিংবোৰ প্ৰথমে আঁতৰোৱা হয়।",
+          "recording_cache_mode": "কেৱল প্লেবেকে সম্পূৰ্ণ ক্লিপ সংৰক্ষণ নকৰাকৈ প্ৰয়োজন অনুসৰি Home Assistant-ৰ মাজেৰে HLS media প্ৰক্সি কৰে। retained mode-এ তলৰ সীমা অনুসৰি স্থানীয় কপি ৰাখে।"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "কেৱল প্লেবেক",
+        "retained": "স্থানীয় ৰেকৰ্ডিং ৰাখক"
       }
     }
   }

@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "Sincronizarea media de înregistrare memorează în cache clipurile camerei în mediul Home Assistant, astfel încât bara laterală Înregistrări X-Sense, browserul media și notificările mobile pot deschide înregistrările rapid. Lăsați în cache înregistrările numai atunci când sunt deschise. Activați-l pentru a menține gata în fundal înregistrările recente.",
+        "description": "Doar redare este modul implicit și transmite înregistrările prin Home Assistant în timpul redării fără a păstra clipurile complete. Alegeți păstrarea înregistrărilor locale pentru a salva clipuri în mediile Home Assistant conform limitelor configurate de vechime și dimensiune. Sincronizarea în fundal rulează numai în modul de păstrare.",
         "data": {
           "recording_media_sync_enabled": "Sincronizare media de înregistrare",
           "recording_media_sync_hours": "Interval de sincronizare în fundal",
           "recording_media_storage_path": "Dosarul cache de înregistrare",
           "recording_notification_quality": "Calitatea înregistrării notificărilor",
           "recording_media_days_order": "Comanda zilei de înregistrare",
-          "recording_media_clips_order": "Ordinea clipurilor de înregistrare"
+          "recording_media_clips_order": "Ordinea clipurilor de înregistrare",
+          "recording_cache_retention_days": "Reținerea memoriei cache a înregistrărilor",
+          "recording_cache_max_size_mb": "Dimensiunea maximă a memoriei cache de înregistrare",
+          "recording_cache_mode": "Mod de stocare a înregistrărilor"
         },
         "data_description": {
           "recording_media_sync_enabled": "Memorați în cache înregistrările recente în mod automat. Aceasta utilizează spațiu de stocare și poate trezi camerele mai des.",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "Utilizați un folder sub /media. Noile videoclipuri și miniaturi stocate în cache sunt stocate aici.",
           "recording_notification_quality": "Alegeți HD pentru a prefera adresele URL ale clipurilor directe/de înaltă rezoluție ale X-Sense pentru notificările mobile. Alegeți SD pentru a utiliza calea de captură de redare a camerei atunci când este disponibilă.",
           "recording_media_days_order": "Alegeți dacă zilele mai noi sau mai vechi apar mai întâi în vizualizatorul de înregistrări.",
-          "recording_media_clips_order": "Alegeți dacă clipurile mai noi sau mai vechi apar primele în fiecare zi."
+          "recording_media_clips_order": "Alegeți dacă clipurile mai noi sau mai vechi apar primele în fiecare zi.",
+          "recording_cache_retention_days": "Ștergeți înregistrările locale stocate în cache după atâtea zile. Înregistrările în cloud X-Sense și cardul SD nu sunt modificate.",
+          "recording_cache_max_size_mb": "Dimensiunea maximă a memoriei cache locală în MB. Când limita este atinsă, cele mai puțin recent înregistrări vizualizate sunt eliminate mai întâi.",
+          "recording_cache_mode": "Doar redare transmite conținutul HLS la cerere prin Home Assistant fără a păstra clipurile complete. Modul de păstrare menține copii locale conform limitelor de mai jos."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Doar redare",
+        "retained": "Păstrează înregistrările locale"
       }
     }
   }

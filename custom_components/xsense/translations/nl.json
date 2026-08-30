@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "Bij het synchroniseren van opnamemedia worden camerafragmenten in de cache opgeslagen onder Home Assistant-media, zodat de zijbalk Opnames van X-Sense, de mediabrowser en mobiele meldingen opnames snel kunnen openen. Laat het uitgeschakeld om opnames alleen in de cache op te slaan wanneer ze worden geopend. Schakel het in om recente opnamen op de achtergrond gereed te houden.",
+        "description": "Alleen afspelen is de standaardinstelling en stuurt opnamen tijdens het afspelen via Home Assistant door zonder volledige clips te bewaren. Kies lokale opnamen bewaren om clips onder Home Assistant-media op te slaan met de ingestelde leeftijds- en groottelimieten. Achtergrondsynchronisatie werkt alleen in de bewaarmodus.",
         "data": {
           "recording_media_sync_enabled": "Synchronisatie van opnamemedia",
           "recording_media_sync_hours": "Achtergrondsynchronisatie-interval",
           "recording_media_storage_path": "Opnamecachemap",
           "recording_notification_quality": "Opnamekwaliteit van meldingen",
           "recording_media_days_order": "Dagvolgorde opnemen",
-          "recording_media_clips_order": "Volgorde van opnameclips"
+          "recording_media_clips_order": "Volgorde van opnameclips",
+          "recording_cache_retention_days": "Retentie van opnamecache",
+          "recording_cache_max_size_mb": "Maximale grootte van de opnamecache",
+          "recording_cache_mode": "Opslagmodus voor opnamen"
         },
         "data_description": {
           "recording_media_sync_enabled": "Cache recente opnames automatisch. Dit gebruikt opslagruimte en kan camera's vaker activeren.",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "Gebruik een map onder /media. Nieuwe in de cache opgeslagen video's en thumbnails worden hier opgeslagen.",
           "recording_notification_quality": "Kies HD om de voorkeur te geven aan de directe clip-URL's/clip-URL's van X-Sense voor mobiele meldingen. Kies SD om het opnamepad voor het afspelen van de camera te gebruiken, indien beschikbaar.",
           "recording_media_days_order": "Kies of nieuwere of oudere dagen eerst verschijnen in de opnameviewer.",
-          "recording_media_clips_order": "Kies of nieuwere of oudere clips elke dag als eerste verschijnen."
+          "recording_media_clips_order": "Kies of nieuwere of oudere clips elke dag als eerste verschijnen.",
+          "recording_cache_retention_days": "Verwijder lokale opnamen in de cache na dit aantal dagen. X-Sense cloud- en SD-kaartopnamen worden niet gewijzigd.",
+          "recording_cache_max_size_mb": "Maximale lokale cachegrootte in MB. Wanneer de limiet is bereikt, worden de minst recent bekeken opnames als eerste verwijderd.",
+          "recording_cache_mode": "Alleen afspelen stuurt HLS-media op aanvraag via Home Assistant door zonder volledige clips te bewaren. De bewaarmodus houdt lokale kopieën bij volgens de onderstaande limieten."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Alleen afspelen",
+        "retained": "Lokale opnamen bewaren"
       }
     }
   }

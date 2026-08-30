@@ -207,7 +207,10 @@ ____________________________________________________________
 ## Kamera canlı görüntüsü ve AI bildirimleri
 En kolay yol, aşağıdaki düğmeyle dahil edilen blueprint’i içe aktarmak, `Motion` veya kullanılabilir `AI Detection` seçmek ve gerekirse bildirim eylemini ayarlamaktır.
 
-Bir Motion olayı X-Sense oynatma verileri içerdiğinde, entegrasyon önce klibi önbelleğe alabilir ve ardından eşleşen klibi X-Sense Recordings içinde açan bir mobil bildirim gönderebilir. Video beklemeden sade bir hareket bildirimi istiyorsanız blueprint içindeki kayıt bağlantılarını kapatın. Kayıt medyası eşitlemesi yeni klipleri arka planda hazır tutabilir ve eski içe aktarılmış X-Sense kamera blueprintleri otomatik olarak güncellenir.
+Bir Motion olayı, X-Sense oynatma meta verilerini içerdiğinde entegrasyon, eşleşen klibi X-Sense Recordings'de açan bir bildirim göndermeden önce özel bir Home Assistant oynatma URL'si hazırlar. Video içermeyen düz hareket bildirimi için plandaki kayıt bağlantılarını kapatın. İçe aktarılan eski X-Sense kamera planları otomatik olarak güncellenir.
+
+<!-- xsense-recording-storage-modes -->
+Kamera SD kart kayıtları X-Sense Recordings'de görünür. Yalnızca oynatma varsayılan depolama modudur: Home Assistant, imzalı X-Sense URL'lerini gizli tutar, HLS çalma listesini yeniden yazar ve tüm klipleri saklamadan yalnızca oynatıcı talep ettiğinde bölümleri proxy olarak kullanır. Yerel kayıtları sakla, tüm klipleri /media/xsense_recordings altında saklar ve yapılandırılabilir saklama, maksimum boyut, manuel silme ve isteğe bağlı arka planda senkronizasyon sağlar. Yerel temizleme, X-Sense SD kartlarındaki veya bulut depolama alanındaki kayıtları hiçbir zaman silmez.
 
 [![Blueprint’i içe aktar](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

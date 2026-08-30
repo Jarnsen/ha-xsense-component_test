@@ -13,12 +13,18 @@ from custom_components.xsense.config_flow import (
     recording_media_storage_path_changed,
 )
 from custom_components.xsense.const import (
+    CONF_RECORDING_CACHE_MAX_SIZE_MB,
+    CONF_RECORDING_CACHE_MODE,
+    CONF_RECORDING_CACHE_RETENTION_DAYS,
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
     CONF_RECORDING_MEDIA_DAYS_ORDER,
     CONF_RECORDING_MEDIA_STORAGE_PATH,
     CONF_RECORDING_MEDIA_SYNC_ENABLED,
     CONF_RECORDING_MEDIA_SYNC_HOURS,
     CONF_RECORDING_NOTIFICATION_QUALITY,
+    DEFAULT_RECORDING_CACHE_MAX_SIZE_MB,
+    DEFAULT_RECORDING_CACHE_MODE,
+    DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
     DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
     DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
     DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
@@ -31,9 +37,12 @@ def test_options_schema_has_recording_sync_defaults_without_camera_path_option()
     schema = options_schema({})
 
     assert schema({}) == {
+        CONF_RECORDING_CACHE_MODE: DEFAULT_RECORDING_CACHE_MODE,
         CONF_RECORDING_MEDIA_SYNC_ENABLED: False,
         CONF_RECORDING_MEDIA_SYNC_HOURS: DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
         CONF_RECORDING_MEDIA_STORAGE_PATH: DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_CACHE_RETENTION_DAYS: DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
+        CONF_RECORDING_CACHE_MAX_SIZE_MB: DEFAULT_RECORDING_CACHE_MAX_SIZE_MB,
         CONF_RECORDING_NOTIFICATION_QUALITY: DEFAULT_RECORDING_NOTIFICATION_QUALITY,
         CONF_RECORDING_MEDIA_DAYS_ORDER: DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
         CONF_RECORDING_MEDIA_CLIPS_ORDER: DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
@@ -44,9 +53,12 @@ def test_options_schema_orders_recording_options_for_the_ui():
     schema = options_schema({})
 
     assert [field.schema for field in schema.schema] == [
+        CONF_RECORDING_CACHE_MODE,
         CONF_RECORDING_MEDIA_SYNC_ENABLED,
         CONF_RECORDING_MEDIA_SYNC_HOURS,
         CONF_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_CACHE_RETENTION_DAYS,
+        CONF_RECORDING_CACHE_MAX_SIZE_MB,
         CONF_RECORDING_NOTIFICATION_QUALITY,
         CONF_RECORDING_MEDIA_DAYS_ORDER,
         CONF_RECORDING_MEDIA_CLIPS_ORDER,
@@ -72,19 +84,25 @@ def test_options_schema_accepts_recording_sync_options():
 
     assert schema(
         {
+            CONF_RECORDING_CACHE_MODE: "retained",
             CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
             CONF_RECORDING_MEDIA_SYNC_HOURS: "6",
             CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_alt",
+            CONF_RECORDING_CACHE_RETENTION_DAYS: 14,
+            CONF_RECORDING_CACHE_MAX_SIZE_MB: 4096,
             CONF_RECORDING_NOTIFICATION_QUALITY: "sd",
             CONF_RECORDING_MEDIA_DAYS_ORDER: "ascending",
             CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",
         }
     ) == {
+        CONF_RECORDING_CACHE_MODE: "retained",
         CONF_RECORDING_MEDIA_DAYS_ORDER: "ascending",
         CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",
         CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_alt",
+        CONF_RECORDING_CACHE_RETENTION_DAYS: 14,
+        CONF_RECORDING_CACHE_MAX_SIZE_MB: 4096,
         CONF_RECORDING_NOTIFICATION_QUALITY: "sd",
     }
 
@@ -123,6 +141,7 @@ def test_options_schema_can_be_serialized_for_home_assistant_options_ui():
 def test_options_schema_normalizes_stale_prerelease_options():
     schema = options_schema(
         {
+            CONF_RECORDING_CACHE_MODE: "invalid",
             CONF_RECORDING_MEDIA_SYNC_ENABLED: "yes",
             CONF_RECORDING_MEDIA_SYNC_HOURS: "999",
             CONF_RECORDING_MEDIA_STORAGE_PATH: "/tmp/xsense",
@@ -133,9 +152,12 @@ def test_options_schema_normalizes_stale_prerelease_options():
     )
 
     assert schema({}) == {
-        CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
+        CONF_RECORDING_CACHE_MODE: DEFAULT_RECORDING_CACHE_MODE,
+        CONF_RECORDING_MEDIA_SYNC_ENABLED: False,
         CONF_RECORDING_MEDIA_SYNC_HOURS: DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
         CONF_RECORDING_MEDIA_STORAGE_PATH: DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_CACHE_RETENTION_DAYS: DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
+        CONF_RECORDING_CACHE_MAX_SIZE_MB: DEFAULT_RECORDING_CACHE_MAX_SIZE_MB,
         CONF_RECORDING_NOTIFICATION_QUALITY: DEFAULT_RECORDING_NOTIFICATION_QUALITY,
         CONF_RECORDING_MEDIA_DAYS_ORDER: "descending",
         CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",
@@ -157,7 +179,7 @@ def test_options_flow_rejects_storage_path_outside_media_without_schema_crash():
     flow = XSenseOptionsFlow(SimpleNamespace(options={}))
     user_input = {
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/tmp/xsense",
-        CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
+        CONF_RECORDING_MEDIA_SYNC_ENABLED: False,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
         CONF_RECORDING_NOTIFICATION_QUALITY: "hd",
         CONF_RECORDING_MEDIA_DAYS_ORDER: "ascending",
@@ -228,9 +250,12 @@ def test_options_flow_keeps_recording_options_with_cameras():
     assert result["type"] == "form"
     assert result["step_id"] == "init"
     assert [field.schema for field in result["data_schema"].schema] == [
+        CONF_RECORDING_CACHE_MODE,
         CONF_RECORDING_MEDIA_SYNC_ENABLED,
         CONF_RECORDING_MEDIA_SYNC_HOURS,
         CONF_RECORDING_MEDIA_STORAGE_PATH,
+        CONF_RECORDING_CACHE_RETENTION_DAYS,
+        CONF_RECORDING_CACHE_MAX_SIZE_MB,
         CONF_RECORDING_NOTIFICATION_QUALITY,
         CONF_RECORDING_MEDIA_DAYS_ORDER,
         CONF_RECORDING_MEDIA_CLIPS_ORDER,
@@ -263,9 +288,12 @@ def test_options_flow_confirms_recording_storage_path_changes():
         )
     )
     user_input = {
+        CONF_RECORDING_CACHE_MODE: DEFAULT_RECORDING_CACHE_MODE,
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_alt",
-        CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
+        CONF_RECORDING_MEDIA_SYNC_ENABLED: False,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
+        CONF_RECORDING_CACHE_RETENTION_DAYS: DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
+        CONF_RECORDING_CACHE_MAX_SIZE_MB: DEFAULT_RECORDING_CACHE_MAX_SIZE_MB,
         CONF_RECORDING_NOTIFICATION_QUALITY: "sd",
         CONF_RECORDING_MEDIA_DAYS_ORDER: "ascending",
         CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",
@@ -295,9 +323,12 @@ def test_options_flow_saves_without_warning_when_storage_path_unchanged():
         )
     )
     user_input = {
+        CONF_RECORDING_CACHE_MODE: DEFAULT_RECORDING_CACHE_MODE,
         CONF_RECORDING_MEDIA_STORAGE_PATH: "/media/xsense_recordings",
-        CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
+        CONF_RECORDING_MEDIA_SYNC_ENABLED: False,
         CONF_RECORDING_MEDIA_SYNC_HOURS: 6,
+        CONF_RECORDING_CACHE_RETENTION_DAYS: DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
+        CONF_RECORDING_CACHE_MAX_SIZE_MB: DEFAULT_RECORDING_CACHE_MAX_SIZE_MB,
         CONF_RECORDING_NOTIFICATION_QUALITY: "hd",
         CONF_RECORDING_MEDIA_DAYS_ORDER: "ascending",
         CONF_RECORDING_MEDIA_CLIPS_ORDER: "ascending",

@@ -32,6 +32,7 @@ from .entity import (
     coordinator_devices,
     coordinator_stations,
     device_station_id,
+    setup_dynamic_entities,
 )
 from .errors import xsense_error
 
@@ -644,9 +645,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the X-Sense switch entry."""
-    devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    seen_entity_ids: set[str] = set()
     platform = entity_platform.current_platform.get()
     if platform is not None:
         platform.async_register_entity_service(
@@ -715,26 +714,29 @@ async def async_setup_entry(
             "async_set_light_group_power",
         )
 
-    for station in coordinator_stations(coordinator).values():
-        seen_entity_ids.add(station.entity_id)
-        devices.extend(
-            XSenseSwitchEntity(coordinator, station, description)
-            for description in SWITCHES
-            if description.exists_fn(station)
-        )
-
-    for dev in coordinator_devices(coordinator).values():
-        if dev.entity_id in seen_entity_ids:
-            continue
-        devices.extend(
-            XSenseSwitchEntity(
-                coordinator, dev, description, station_id=device_station_id(dev)
+    def _entities() -> list[Device]:
+        devices: list[Device] = []
+        seen_entity_ids: set[str] = set()
+        for station in coordinator_stations(coordinator).values():
+            seen_entity_ids.add(station.entity_id)
+            devices.extend(
+                XSenseSwitchEntity(coordinator, station, description)
+                for description in SWITCHES
+                if description.exists_fn(station)
             )
-            for description in SWITCHES
-            if description.exists_fn(dev)
-        )
+        for dev in coordinator_devices(coordinator).values():
+            if dev.entity_id in seen_entity_ids:
+                continue
+            devices.extend(
+                XSenseSwitchEntity(
+                    coordinator, dev, description, station_id=device_station_id(dev)
+                )
+                for description in SWITCHES
+                if description.exists_fn(dev)
+            )
+        return devices
 
-    async_add_entities(devices)
+    setup_dynamic_entities(entry, coordinator, async_add_entities, _entities)
 
 
 class XSenseSwitchEntity(XSenseEntity, SwitchEntity):

@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "Đồng bộ hóa phương tiện ghi sẽ lưu vào bộ nhớ đệm các clip camera trong phương tiện Home Assistant để thanh bên X-Sense Bản ghi, Trình duyệt phương tiện và thông báo trên thiết bị di động có thể mở các bản ghi một cách nhanh chóng. Chỉ để nó vào bộ nhớ đệm khi chúng được mở. Kích hoạt nó để giữ các bản ghi gần đây sẵn sàng ở chế độ nền.",
+        "description": "Mặc định là chỉ phát lại, chuyển tiếp bản ghi qua Home Assistant khi phát mà không lưu toàn bộ clip. Chọn giữ bản ghi cục bộ để lưu clip trong thư mục media của Home Assistant theo giới hạn thời gian và dung lượng đã đặt. Đồng bộ nền chỉ chạy trong chế độ lưu giữ.",
         "data": {
           "recording_media_sync_enabled": "Ghi đồng bộ hóa phương tiện",
           "recording_media_sync_hours": "Khoảng thời gian đồng bộ hóa nền",
           "recording_media_storage_path": "Ghi thư mục bộ đệm",
           "recording_notification_quality": "Chất lượng ghi thông báo",
           "recording_media_days_order": "Ghi thứ tự ngày",
-          "recording_media_clips_order": "Thứ tự ghi clip"
+          "recording_media_clips_order": "Thứ tự ghi clip",
+          "recording_cache_retention_days": "Ghi lại việc lưu giữ bộ nhớ đệm",
+          "recording_cache_max_size_mb": "Kích thước bộ đệm ghi tối đa",
+          "recording_cache_mode": "Chế độ lưu trữ bản ghi"
         },
         "data_description": {
           "recording_media_sync_enabled": "Tự động lưu trữ các bản ghi gần đây. Điều này sử dụng không gian lưu trữ và có thể đánh thức camera thường xuyên hơn.",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "Sử dụng thư mục trong /media. Các video và hình thu nhỏ mới được lưu trong bộ nhớ đệm được lưu trữ tại đây.",
           "recording_notification_quality": "Chọn HD để ưu tiên URL clip trực tiếp/độ phân giải cao của X-Sense cho thông báo trên thiết bị di động. Chọn SD để sử dụng đường dẫn chụp phát lại của máy ảnh khi khả dụng.",
           "recording_media_days_order": "Chọn xem ngày mới hơn hay cũ hơn sẽ xuất hiện đầu tiên trong trình xem bản ghi.",
-          "recording_media_clips_order": "Chọn xem các clip mới hơn hay cũ hơn sẽ xuất hiện đầu tiên trong mỗi ngày."
+          "recording_media_clips_order": "Chọn xem các clip mới hơn hay cũ hơn sẽ xuất hiện đầu tiên trong mỗi ngày.",
+          "recording_cache_retention_days": "Xóa các bản ghi được lưu trong bộ nhớ đệm cục bộ sau nhiều ngày. Bản ghi trên đám mây X-Sense và thẻ SD không bị thay đổi.",
+          "recording_cache_max_size_mb": "Kích thước bộ đệm cục bộ tối đa tính bằng MB. Khi đạt đến giới hạn, bản ghi ít được xem gần đây nhất sẽ bị xóa trước tiên.",
+          "recording_cache_mode": "Chế độ chỉ phát lại chuyển tiếp nội dung HLS qua Home Assistant theo yêu cầu mà không lưu toàn bộ clip. Chế độ lưu giữ giữ bản sao cục bộ theo các giới hạn bên dưới."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Chỉ phát lại",
+        "retained": "Giữ bản ghi cục bộ"
       }
     }
   }

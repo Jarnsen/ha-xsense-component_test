@@ -60,7 +60,10 @@ Integracija kuria esybes tik tiems duomenims, kuriuos įrenginys iš tikrųjų p
 ## Kameros tiesioginis vaizdas ir AI pranešimai
 Paprasčiausia importuoti įtrauktą blueprint žemiau esančiu mygtuku, pasirinkti `Motion` arba prieinamą `AI Detection` ir prireikus pakoreguoti pranešimo veiksmą.
 
-Kai Motion įvykis turi X-Sense atkūrimo duomenų, integracija pirmiausia gali įrašyti klipą į podėlį ir tada išsiųsti mobilųjį pranešimą, kuris atidaro atitinkamą klipą X-Sense Recordings rodinyje. Išjunkite įrašų nuorodas blueprint'e, jei norite tik paprasto judesio pranešimo nelaukiant vaizdo. Įrašų medijos sinchronizavimas gali fone paruošti naujausius klipus, o senesni importuoti X-Sense kamerų blueprint'ai atnaujinami automatiškai.
+Kai Motion įvykis apima X-Sense atkūrimo metaduomenis, integracija parengia privatų Home Assistant atkūrimo URL prieš išsiųsdama pranešimą, kuris atidaro atitinkamą klipą X-Sense Recordings. Išjunkite įrašymo nuorodas projekte, kad praneštumėte apie paprastą judesį be vaizdo. Senesni importuoti X-Sense fotoaparatų brėžiniai atnaujinami automatiškai.
+
+<!-- xsense-recording-storage-modes -->
+Fotoaparato SD kortelės įrašai rodomi X-Sense Recordings. Tik atkūrimas yra numatytasis saugojimo režimas: Home Assistant išlaiko pasirašytus X-Sense URL privačius, perrašo HLS grojaraštį ir tarpinius segmentus perduoda tik tada, kai grotuvas jų prašo, neišsaugodamas visų klipų. Vietiniuose įrašuose saugomi visi klipai pagal /media/xsense_recordings ir įgalinamas konfigūruojamas saugojimas, maksimalus dydis, rankinis ištrynimas ir pasirenkamas fono sinchronizavimas. Vietinis valymas niekada neištrina įrašų iš X-Sense SD kortelių arba debesies saugyklos.
 
 [![Importuoti blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

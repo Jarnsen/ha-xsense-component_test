@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "Sinkronizacija medija za snimanje predmemorira isječke kamere ispod medija Home Assistant tako da bočna traka X-Sense Snimke, preglednik medija i mobilne obavijesti mogu brzo otvoriti snimke. Ostavite ga isključenim da biste spremili snimke u predmemoriju samo kada su otvorene. Omogućite ga kako bi nedavne snimke bile spremne u pozadini.",
+        "description": "Samo reprodukcija zadani je način i prosljeđuje snimke kroz Home Assistant tijekom reprodukcije bez čuvanja cijelih isječaka. Odaberite čuvanje lokalnih snimki kako biste spremili isječke u medije Home Assistanta prema zadanim ograničenjima starosti i veličine. Pozadinska sinkronizacija radi samo u načinu čuvanja.",
         "data": {
           "recording_media_sync_enabled": "Sinkronizacija medija za snimanje",
           "recording_media_sync_hours": "Interval sinkronizacije u pozadini",
           "recording_media_storage_path": "Mapa predmemorije snimanja",
           "recording_notification_quality": "Kvaliteta snimanja obavijesti",
           "recording_media_days_order": "Dnevni red snimanja",
-          "recording_media_clips_order": "Redoslijed snimanja isječaka"
+          "recording_media_clips_order": "Redoslijed snimanja isječaka",
+          "recording_cache_retention_days": "Zadržavanje predmemorije snimanja",
+          "recording_cache_max_size_mb": "Maksimalna veličina predmemorije snimanja",
+          "recording_cache_mode": "Način pohrane snimki"
         },
         "data_description": {
           "recording_media_sync_enabled": "Automatski spremite nedavne snimke u predmemoriju. To koristi prostor za pohranu i može češće probuditi kamere.",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "Koristite mapu ispod /media. Ovdje se pohranjuju novi predmemorirani videozapisi i sličice.",
           "recording_notification_quality": "Odaberite HD da biste radije koristili izravne URL-ove isječaka/isječaka visoke rezolucije X-Sense za mobilne obavijesti. Odaberite SD za korištenje putanje snimanja reprodukcije kamere kada je to dostupno.",
           "recording_media_days_order": "Odaberite hoće li se noviji ili stariji dani prvi pojaviti u pregledniku snimaka.",
-          "recording_media_clips_order": "Odaberite hoće li se noviji ili stariji isječci pojaviti prvi unutar svakog dana."
+          "recording_media_clips_order": "Odaberite hoće li se noviji ili stariji isječci pojaviti prvi unutar svakog dana.",
+          "recording_cache_retention_days": "Izbrišite lokalno predmemorirane snimke nakon toliko dana. X-Sense cloud i snimke SD kartice se ne mijenjaju.",
+          "recording_cache_max_size_mb": "Maksimalna veličina lokalne predmemorije u MB. Kada se dosegne ograničenje, najprije se uklanjaju posljednje gledane snimke.",
+          "recording_cache_mode": "Samo reprodukcija prosljeđuje HLS medije kroz Home Assistant na zahtjev bez čuvanja cijelih isječaka. Način čuvanja zadržava lokalne kopije prema ograničenjima u nastavku."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Samo reprodukcija",
+        "retained": "Čuvaj lokalne snimke"
       }
     }
   }

@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "สื่อบันทึกจะซิงค์คลิปกล้องไว้ใต้สื่อ Home Assistant เพื่อให้แถบด้านข้างการบันทึก X-Sense เบราว์เซอร์สื่อ และการแจ้งเตือนทางมือถือสามารถเปิดการบันทึกได้อย่างรวดเร็ว ปล่อยให้เป็นการบันทึกแคชเฉพาะเมื่อเปิดเท่านั้น เปิดใช้งานเพื่อให้การบันทึกล่าสุดพร้อมในเบื้องหลัง",
+        "description": "ค่าเริ่มต้นคือเล่นอย่างเดียว โดยส่งการบันทึกผ่าน Home Assistant ระหว่างเล่นโดยไม่เก็บคลิปฉบับเต็ม เลือกเก็บการบันทึกในเครื่องเพื่อบันทึกคลิปไว้ในสื่อของ Home Assistant ตามขีดจำกัดอายุและขนาดที่ตั้งไว้ การซิงค์เบื้องหลังทำงานเฉพาะในโหมดเก็บรักษา",
         "data": {
           "recording_media_sync_enabled": "ซิงค์สื่อบันทึก",
           "recording_media_sync_hours": "ช่วงเวลาการซิงค์พื้นหลัง",
           "recording_media_storage_path": "โฟลเดอร์แคชบันทึก",
           "recording_notification_quality": "คุณภาพการบันทึกการแจ้งเตือน",
           "recording_media_days_order": "Recording day order",
-          "recording_media_clips_order": "ลำดับการบันทึกคลิป"
+          "recording_media_clips_order": "ลำดับการบันทึกคลิป",
+          "recording_cache_retention_days": "การบันทึกการเก็บรักษาแคช",
+          "recording_cache_max_size_mb": "ขนาดแคชการบันทึกสูงสุด",
+          "recording_cache_mode": "โหมดจัดเก็บการบันทึก"
         },
         "data_description": {
           "recording_media_sync_enabled": "แคชการบันทึกล่าสุดโดยอัตโนมัติ การดำเนินการนี้ใช้พื้นที่เก็บข้อมูลและอาจปลุกกล้องได้บ่อยขึ้น",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "ใช้โฟลเดอร์ภายใต้ /media วิดีโอและภาพขนาดย่อที่เก็บไว้ใหม่จะถูกเก็บไว้ที่นี่",
           "recording_notification_quality": "เลือก HD เพื่อเลือก URL คลิปโดยตรง/ความละเอียดสูงของ X-Sense สำหรับการแจ้งเตือนทางมือถือ เลือก SD เพื่อใช้เส้นทางการถ่ายภาพการเล่นกล้องเมื่อมีให้ใช้งาน",
           "recording_media_days_order": "เลือกว่าวันที่ใหม่กว่าหรือเก่ากว่าจะปรากฏเป็นอันดับแรกในโปรแกรมดูการบันทึก",
-          "recording_media_clips_order": "เลือกว่าคลิปใหม่หรือเก่ากว่าจะปรากฏก่อนในแต่ละวัน"
+          "recording_media_clips_order": "เลือกว่าคลิปใหม่หรือเก่ากว่าจะปรากฏก่อนในแต่ละวัน",
+          "recording_cache_retention_days": "ลบการบันทึกแคชในเครื่องหลังจากผ่านไปหลายวัน การบันทึกบนคลาวด์ X-Sense และการ์ด SD จะไม่เปลี่ยนแปลง",
+          "recording_cache_max_size_mb": "ขนาดแคชในเครื่องสูงสุดเป็น MB เมื่อถึงขีดจำกัด บันทึกที่ดูน้อยที่สุดจะถูกลบออกก่อน",
+          "recording_cache_mode": "โหมดเล่นอย่างเดียวส่งสื่อ HLS ผ่าน Home Assistant เมื่อต้องการโดยไม่เก็บคลิปฉบับเต็ม โหมดเก็บรักษาจะเก็บสำเนาในเครื่องตามขีดจำกัดด้านล่าง"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "เล่นอย่างเดียว",
+        "retained": "เก็บการบันทึกในเครื่อง"
       }
     }
   }

@@ -119,7 +119,10 @@ ____________________________________________________________
 ## カメラのライブビューとAI通知
 最も簡単な方法は同梱の blueprint を使うことです。下のボタンでインポートし、カメラの `Motion` イベントエンティティ、またはサブスクリプション付きカメラで利用できる場合は `AI Detection` を選び、必要に応じて通知アクションを調整してください。
 
-Motion イベントに X-Sense の再生データが含まれる場合、統合は先にクリップをキャッシュし、その後 X-Sense Recordings の該当クリップを開くモバイル通知を送信できます。動画を待たずに通常の動き通知だけを使いたい場合は、blueprint で録画リンクをオフにしてください。録画メディア同期は新しいクリップをバックグラウンドで準備でき、古いインポート済み X-Sense カメラ blueprint は自動的に更新されます。
+Motion イベントに X-Sense 再生メタデータが含まれている場合、統合では、X-Sense Recordings で一致するクリップを開く通知を送信する前に、プライベート Home Assistant 再生 URL を準備します。ビデオなしのプレーン モーション通知の場合は、ブループリントで録画リンクをオフにします。インポートされた古い X-Sense カメラ ブループリントは自動的に更新されます。
+
+<!-- xsense-recording-storage-modes -->
+カメラの SD カード録画は X-Sense Recordings に表示されます。再生のみがデフォルトのストレージ モードです。Home Assistant は、署名された X-Sense URL を非公開に保ち、HLS プレイリストを書き換え、プレーヤーが要求した場合にのみセグメントをプロキシし、完全なクリップは保持しません。ローカル録画を保持すると、/media/xsense_recordings の下に完全なクリップが保存され、構成可能な保持、最大サイズ、手動削除、およびオプションのバックグラウンド同期が有効になります。ローカル クリーンアップでは、X-Sense SD カードやクラウド ストレージから録画が削除されることはありません。
 
 [![blueprint をインポート](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

@@ -28,6 +28,7 @@ from .entity import (
     coordinator_devices,
     coordinator_stations,
     device_station_id,
+    setup_dynamic_entities,
 )
 
 
@@ -636,27 +637,29 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the xsense binary sensor entry."""
-    devices: list[Device] = []
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    for station in coordinator_stations(coordinator).values():
-        devices.extend(
-            XSenseBinarySensorEntity(coordinator, station, description)
-            for description in SENSORS
-            if description.exists_fn(station)
-        )
-        devices.append(XSenseMQTTConnectedEntity(coordinator, station, MQTTSensor))
-
-    for dev in coordinator_devices(coordinator).values():
-        devices.extend(
-            XSenseBinarySensorEntity(
-                coordinator, dev, description, station_id=device_station_id(dev)
+    def _entities() -> list[Device]:
+        devices: list[Device] = []
+        for station in coordinator_stations(coordinator).values():
+            devices.extend(
+                XSenseBinarySensorEntity(coordinator, station, description)
+                for description in SENSORS
+                if description.exists_fn(station)
             )
-            for description in SENSORS
-            if description.exists_fn(dev)
-        )
+            devices.append(XSenseMQTTConnectedEntity(coordinator, station, MQTTSensor))
 
-    async_add_entities(devices)
+        for dev in coordinator_devices(coordinator).values():
+            devices.extend(
+                XSenseBinarySensorEntity(
+                    coordinator, dev, description, station_id=device_station_id(dev)
+                )
+                for description in SENSORS
+                if description.exists_fn(dev)
+            )
+        return devices
+
+    setup_dynamic_entities(entry, coordinator, async_add_entities, _entities)
 
 
 class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):

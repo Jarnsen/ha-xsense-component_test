@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "녹화 미디어 동기화는 Home Assistant 미디어 아래에 카메라 클립을 캐시하므로 X-Sense 녹화 사이드바, 미디어 브라우저 및 모바일 알림이 녹화를 빠르게 열 수 있습니다. 녹음이 열릴 때만 캐시하려면 이 옵션을 꺼두세요. 백그라운드에서 최근 녹음을 준비하려면 활성화하세요.",
+        "description": "기본값인 재생 전용 모드는 전체 클립을 보관하지 않고 재생할 때 Home Assistant를 통해 녹화를 프록시합니다. 설정된 기간 및 크기 제한에 따라 Home Assistant 미디어에 클립을 저장하려면 로컬 녹화 보관을 선택하세요. 백그라운드 동기화는 보관 모드에서만 실행됩니다.",
         "data": {
           "recording_media_sync_enabled": "녹화 미디어 동기화",
           "recording_media_sync_hours": "백그라운드 동기화 간격",
           "recording_media_storage_path": "녹화 캐시 폴더",
           "recording_notification_quality": "알림 녹음 품질",
           "recording_media_days_order": "녹화일 순서",
-          "recording_media_clips_order": "녹화 클립 순서"
+          "recording_media_clips_order": "녹화 클립 순서",
+          "recording_cache_retention_days": "녹화 캐시 보존",
+          "recording_cache_max_size_mb": "최대 녹화 캐시 크기",
+          "recording_cache_mode": "녹화 저장 모드"
         },
         "data_description": {
           "recording_media_sync_enabled": "최근 녹음을 자동으로 캐시합니다. 이는 저장 공간을 사용하며 카메라를 더 자주 깨울 수 있습니다.",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "/media 아래의 폴더를 사용하세요. 새로 캐시된 비디오와 썸네일은 여기에 저장됩니다.",
           "recording_notification_quality": "모바일 알림을 위해 X-Sense의 직접/고해상도 클립 URL을 선호하려면 HD를 선택하세요. 가능한 경우 카메라 재생 캡처 경로를 사용하려면 SD를 선택하십시오.",
           "recording_media_days_order": "녹음 뷰어에서 최신 날짜 또는 이전 날짜를 먼저 표시할지 선택합니다.",
-          "recording_media_clips_order": "매일 새로운 클립이나 오래된 클립을 먼저 표시할지 선택합니다."
+          "recording_media_clips_order": "매일 새로운 클립이나 오래된 클립을 먼저 표시할지 선택합니다.",
+          "recording_cache_retention_days": "며칠이 지나면 로컬에 캐시된 녹음을 삭제하세요. X-Sense 클라우드 및 SD 카드 녹화는 변경되지 않습니다.",
+          "recording_cache_max_size_mb": "최대 로컬 캐시 크기(MB)입니다. 제한에 도달하면 가장 최근에 본 녹화물이 먼저 제거됩니다.",
+          "recording_cache_mode": "재생 전용 모드는 전체 클립을 보관하지 않고 필요할 때 HLS 미디어를 Home Assistant를 통해 프록시합니다. 보관 모드는 아래 제한에 따라 로컬 사본을 유지합니다."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "재생 전용",
+        "retained": "로컬 녹화 보관"
       }
     }
   }

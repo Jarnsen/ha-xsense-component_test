@@ -24,7 +24,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_registry as er
 
 from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN, LOGGER
-from .entity import XSenseEntity, coordinator_devices
+from .entity import XSenseEntity, coordinator_devices, setup_dynamic_entities
 from .frontend import recordings_panel_url
 
 if TYPE_CHECKING:
@@ -97,11 +97,14 @@ async def async_setup_entry(
     """Set up X-Sense event entities."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        [
+    setup_dynamic_entities(
+        entry,
+        coordinator,
+        async_add_entities,
+        lambda: [
             *_ai_detection_event_entities(coordinator),
             *_motion_event_entities(coordinator),
-        ]
+        ],
     )
 
 
@@ -591,17 +594,21 @@ def _trigger_event_after_recording_cache(
             )
             _write_event_state(event_entity)
             return
+        proxied = cached_url.startswith(f"/api/{DOMAIN}/recordings/play/")
         event_data["recording_media_url"] = cached_url
         event_data["recording_cache_ready"] = True
         event_data["recording_cache_pending"] = False
         event_data["recording_cache_elapsed_ms"] = cache_elapsed_ms
         event_data["recording_total_elapsed_ms"] = total_elapsed_ms
-        event_data["recording_source"] = "cached_media"
+        event_data["recording_source"] = (
+            "proxied_media" if proxied else "cached_media"
+        )
         LOGGER.debug(
             "X-Sense event recording cache finished; firing ready trigger: %s",
             {
                 "camera": _masked_serial(getattr(entity, "sn", "")),
-                "cached": True,
+                "cached": not proxied,
+                "proxied": proxied,
                 "event_type": event_type,
                 "source": playback.get("source"),
                 "cache_elapsed_ms": cache_elapsed_ms,

@@ -235,7 +235,8 @@ def test_translation_surfaces_do_not_contain_generator_tokens():
 
     for path in paths:
         text = path.read_text(encoding="utf-8")
-        assert "PLACEHOLDER" not in text
+        assert "placeholder" not in text.lower()
+        assert "place holder" not in text.lower()
         assert "占位符" not in text
         assert "佔位符" not in text
 
@@ -281,3 +282,19 @@ def test_recordings_panel_language_resolution_handles_home_assistant_aliases():
     assert '"zh-hant": "zh-TW"' in panel
     assert '"nb": "no"' in panel
     assert "const exact = Object.keys(TRANSLATIONS).find" in panel
+
+
+def test_recording_storage_modes_are_documented_in_every_locale():
+    """Keep localized camera docs aligned with the current playback architecture."""
+    readme_paths = sorted((ROOT / "readme").glob("README_*.md"))
+
+    assert {path.stem.removeprefix("README_") for path in readme_paths} == {
+        "en",
+        "cn",
+        *README_LOCALES,
+    }
+    for path in readme_paths:
+        text = path.read_text(encoding="utf-8")
+        assert text.count("<!-- xsense-recording-storage-modes -->") == 1, path.name
+        assert "HLS" in text, path.name
+        assert "/media/xsense_recordings" in text, path.name

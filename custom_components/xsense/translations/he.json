@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "סינכרון מדיה הקלטת מטמון קטעי מצלמה תחת המדיה של Home Assistant כך שסרגל הצד של הקלטות X-Sense, דפדפן המדיה והתראות לנייד יכולים לפתוח הקלטות במהירות. השאר את זה כדי לשמור הקלטות רק כשהן נפתחות. אפשר אותו כדי לשמור את ההקלטות האחרונות מוכנות ברקע.",
+        "description": "מצב הפעלה בלבד הוא ברירת המחדל ומעביר הקלטות דרך Home Assistant בזמן הניגון בלי לשמור קליפים מלאים. בחר שמירת הקלטות מקומית כדי לשמור קליפים במדיה של Home Assistant לפי מגבלות הגיל והגודל שהוגדרו. סנכרון ברקע פועל רק במצב שמירה.",
         "data": {
           "recording_media_sync_enabled": "סינכרון מדיה הקלטת",
           "recording_media_sync_hours": "מרווח סנכרון ברקע",
           "recording_media_storage_path": "תיקיית מטמון הקלטות",
           "recording_notification_quality": "איכות הקלטת הודעות",
           "recording_media_days_order": "סדר יום הקלטה",
-          "recording_media_clips_order": "סדר הקלטת קליפים"
+          "recording_media_clips_order": "סדר הקלטת קליפים",
+          "recording_cache_retention_days": "שמירת מטמון הקלטה",
+          "recording_cache_max_size_mb": "גודל מטמון הקלטה מקסימלי",
+          "recording_cache_mode": "מצב אחסון הקלטות"
         },
         "data_description": {
           "recording_media_sync_enabled": "שמור הקלטות אחרונות באופן אוטומטי. זה משתמש בשטח אחסון ועלול להעיר מצלמות לעתים קרובות יותר.",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "השתמש בתיקייה תחת /media. סרטונים ותמונות ממוזערות חדשות בקובץ שמור מאוחסנים כאן.",
           "recording_notification_quality": "בחר HD כדי להעדיף את כתובות ה-URL של קליפים ישירות/ברזולוציה גבוהה של X-Sense להתראות לנייד. בחר SD כדי להשתמש בנתיב לכידת השמעת המצלמה כאשר זמין.",
           "recording_media_days_order": "בחר אם ימים חדשים יותר או ישנים יותר יופיעו תחילה במציג ההקלטות.",
-          "recording_media_clips_order": "בחר אם קליפים חדשים יותר או ישנים יותר יופיעו ראשונים בכל יום."
+          "recording_media_clips_order": "בחר אם קליפים חדשים יותר או ישנים יותר יופיעו ראשונים בכל יום.",
+          "recording_cache_retention_days": "מחק הקלטות מקומיות במטמון לאחר ימים רבים כל כך. הקלטות בענן X-Sense וכרטיס SD אינן משתנות.",
+          "recording_cache_max_size_mb": "גודל מטמון מקומי מקסימלי ב-MB. כשמגיעים למגבלה, ההקלטות הפחות נצפו לאחרונה יוסרו תחילה.",
+          "recording_cache_mode": "מצב הפעלה בלבד מעביר מדיית HLS דרך Home Assistant לפי דרישה בלי לשמור קליפים מלאים. מצב שמירה מחזיק עותקים מקומיים לפי המגבלות שלהלן."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "הפעלה בלבד",
+        "retained": "שמירת הקלטות מקומית"
       }
     }
   }

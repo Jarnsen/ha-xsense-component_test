@@ -60,7 +60,10 @@ Seadmehaldus, jagamine, eemaldamine, püsivara, kontod ja maksed jäävad X-Sens
 ## Kaamera otsevaade ja AI-teavitused
 Lihtsaim viis on importida kaasas olev blueprint alloleva nupuga, valida `Motion` või saadaolev `AI Detection`, ja vajadusel muuta teavitustoimingut.
 
-Kui Motion-sündmus sisaldab X-Sense taasesitusandmeid, saab integratsioon esmalt klipi vahemällu salvestada ja seejärel saata mobiiliteavituse, mis avab vastava klipi X-Sense Recordings vaates. Lülitage salvestuslingid blueprintis välja, kui soovite ainult lihtsat liikumisteavitust ilma videot ootamata. Salvestusmeedia sünkroonimine saab hoida uued klipid taustal valmis ning vanemad imporditud X-Sense kaamera blueprintid uuendatakse automaatselt.
+Kui Motion sündmus sisaldab X-Sense taasesituse metaandmeid, valmistab integreerimine ette privaatse Home Assistant taasesituse URL-i, enne kui saadab teatise, mis avab X-Sense Recordings-s vastava klipi. Lülitage plaanis salvestuslingid välja, et saada lihtsa liikumise märguanne ilma videota. Vanemaid imporditud X-Sense kaamera jooniseid värskendatakse automaatselt.
+
+<!-- xsense-recording-storage-modes -->
+Kaamera SD-kaardi salvestused kuvatakse X-Sense Recordings-s. Ainult taasesitus on vaikesalvestusrežiim: Home Assistant hoiab allkirjastatud X-Sense URL-id privaatsena, kirjutab HLS esitusloendi ümber ja puhverserveritega segmente ainult siis, kui mängija seda nõuab, säilitamata terviklikke klippe. Kohalike salvestiste säilitamine salvestab täielikud klipid /media/xsense_recordings all ning võimaldab konfigureeritavat säilitamist, maksimaalset suurust, käsitsi kustutamist ja valikulist taustal sünkroonimist. Kohalik puhastamine ei kustuta kunagi salvestusi X-Sense SD-kaartidelt või pilvesalvestusest.
 
 [![Impordi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

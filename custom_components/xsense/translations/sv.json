@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "Inspelning av mediasynkronisering cachar kameraklipp under Home Assistant media så att X-Sense Recordings sidofältet, mediebläddraren och mobilaviseringar kan öppna inspelningar snabbt. Lämna det avstängt för att cachelagra inspelningar endast när de är öppna. Aktivera den för att hålla de senaste inspelningarna redo i bakgrunden.",
+        "description": "Endast uppspelning är standard och vidarebefordrar inspelningar genom Home Assistant under uppspelning utan att lagra hela klipp. Välj behåll lokala inspelningar för att spara klipp under Home Assistant-media med de inställda ålders- och storleksgränserna. Bakgrundssynkronisering körs endast i lagringsläget.",
         "data": {
           "recording_media_sync_enabled": "Synkronisering av inspelningsmedia",
           "recording_media_sync_hours": "Bakgrundssynkroniseringsintervall",
           "recording_media_storage_path": "Inspelningscachemapp",
           "recording_notification_quality": "Meddelandeinspelningskvalitet",
           "recording_media_days_order": "Beställning av inspelningsdag",
-          "recording_media_clips_order": "Inspelningsordning för klipp"
+          "recording_media_clips_order": "Inspelningsordning för klipp",
+          "recording_cache_retention_days": "Inspelningscachelagring",
+          "recording_cache_max_size_mb": "Maximal inspelningscachestorlek",
+          "recording_cache_mode": "Lagringsläge för inspelningar"
         },
         "data_description": {
           "recording_media_sync_enabled": "Cachelagra de senaste inspelningarna automatiskt. Detta använder lagringsutrymme och kan väcka kameror oftare.",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "Använd en mapp under /media. Nya cachade videor och miniatyrer lagras här.",
           "recording_notification_quality": "Välj HD för att föredra X-Senses direkta/högupplösta klippwebbadresser för mobilaviseringar. Välj SD för att använda kamerauppspelningsbanan när den är tillgänglig.",
           "recording_media_days_order": "Välj om nyare eller äldre dagar ska visas först i inspelningsvisningen.",
-          "recording_media_clips_order": "Välj om nyare eller äldre klipp ska visas först inom varje dag."
+          "recording_media_clips_order": "Välj om nyare eller äldre klipp ska visas först inom varje dag.",
+          "recording_cache_retention_days": "Ta bort lokala cachade inspelningar efter så här många dagar. X-Sense moln- och SD-kortinspelningar ändras inte.",
+          "recording_cache_max_size_mb": "Maximal lokal cachestorlek i MB. När gränsen nås tas de minst senast visade inspelningarna bort först.",
+          "recording_cache_mode": "Endast uppspelning vidarebefordrar HLS-media genom Home Assistant vid behov utan att lagra hela klipp. Lagringsläget behåller lokala kopior enligt gränserna nedan."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Endast uppspelning",
+        "retained": "Behåll lokala inspelningar"
       }
     }
   }

@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "La synchronisation des médias d'enregistrement met en cache les clips de la caméra sous le média Home Assistant afin que la barre latérale des enregistrements X-Sense, le navigateur multimédia et les notifications mobiles puissent ouvrir rapidement les enregistrements. Laissez-le désactivé pour mettre en cache les enregistrements uniquement lorsqu'ils sont ouverts. Activez-le pour garder les enregistrements récents prêts en arrière-plan.",
+        "description": "Lecture uniquement est le mode par défaut et relaie les enregistrements via Home Assistant pendant leur lecture sans conserver les clips complets. Choisissez de conserver les enregistrements locaux pour stocker les clips dans les médias Home Assistant selon les limites d’âge et de taille configurées. La synchronisation en arrière-plan ne fonctionne qu’en mode de conservation.",
         "data": {
           "recording_media_sync_enabled": "Synchronisation des supports d'enregistrement",
           "recording_media_sync_hours": "Intervalle de synchronisation en arrière-plan",
           "recording_media_storage_path": "Dossier de cache d'enregistrement",
           "recording_notification_quality": "Qualité d'enregistrement des notifications",
           "recording_media_days_order": "Ordre du jour d'enregistrement",
-          "recording_media_clips_order": "Ordre des clips d’enregistrement"
+          "recording_media_clips_order": "Ordre des clips d’enregistrement",
+          "recording_cache_retention_days": "Rétention du cache d'enregistrement",
+          "recording_cache_max_size_mb": "Taille maximale du cache d'enregistrement",
+          "recording_cache_mode": "Mode de stockage des enregistrements"
         },
         "data_description": {
           "recording_media_sync_enabled": "Mettez automatiquement en cache les enregistrements récents. Cela utilise de l'espace de stockage et peut réveiller les caméras plus souvent.",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "Utilisez un dossier sous /media. Les nouvelles vidéos et miniatures mises en cache sont stockées ici.",
           "recording_notification_quality": "Choisissez HD pour préférer les URL de clips directs/haute résolution de X-Sense pour les notifications mobiles. Choisissez SD pour utiliser le chemin de capture de lecture de la caméra lorsqu'il est disponible.",
           "recording_media_days_order": "Choisissez si les jours les plus récents ou les plus anciens apparaissent en premier dans la visionneuse d'enregistrements.",
-          "recording_media_clips_order": "Choisissez si les clips les plus récents ou les plus anciens apparaissent en premier chaque jour."
+          "recording_media_clips_order": "Choisissez si les clips les plus récents ou les plus anciens apparaissent en premier chaque jour.",
+          "recording_cache_retention_days": "Supprimez les enregistrements locaux en cache après ce nombre de jours. Les enregistrements sur le cloud X-Sense et sur la carte SD ne sont pas modifiés.",
+          "recording_cache_max_size_mb": "Taille maximale du cache local en Mo. Lorsque la limite est atteinte, les enregistrements visionnés les moins récemment sont supprimés en premier.",
+          "recording_cache_mode": "Lecture uniquement relaie les médias HLS à la demande via Home Assistant sans conserver les clips complets. Le mode de conservation garde des copies locales selon les limites ci-dessous."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Lecture uniquement",
+        "retained": "Conserver les enregistrements locaux"
       }
     }
   }

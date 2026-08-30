@@ -64,6 +64,7 @@ EXPECTED_EXCEPTION_KEYS = {
     "unsupported_option",
 }
 EXPECTED_SELECTOR_KEYS = {
+    "recording_cache_mode": {"playback_only", "retained"},
     "recording_media_clips_order": {"ascending", "descending"},
     "recording_media_days_order": {"ascending", "descending"},
     "recording_notification_quality": {"hd", "sd"},

@@ -60,7 +60,10 @@ Laitteiden hallinta, jakaminen, poistaminen, laiteohjelmisto, tilit ja maksut py
 ## Kameran live-näkymä ja AI-ilmoitukset
 Helpoin tapa on tuoda mukana oleva blueprint alla olevalla painikkeella, valita `Motion` tai saatavilla oleva `AI Detection` ja muokata ilmoitustoimintoa.
 
-Kun Motion-tapahtuma sisältää X-Sense-toistotietoja, integraatio voi ensin välimuistittaa leikkeen ja lähettää sen jälkeen mobiili-ilmoituksen, joka avaa vastaavan leikkeen X-Sense Recordings -näkymässä. Poista tallennuslinkit käytöstä blueprintissä, jos haluat vain yksinkertaisen liikeilmoituksen ilman videon odottamista. Tallennusmedian synkronointi voi pitää uusimmat leikkeet valmiina taustalla, ja vanhemmat tuodut X-Sense-kamerablueprintit päivittyvät automaattisesti.
+Kun Motion-tapahtuma sisältää X-Sense-toiston metatiedot, integrointi valmistelee yksityisen Home Assistant-toisto-URL-osoitteen ennen kuin lähettää ilmoituksen, joka avaa vastaavan leikkeen X-Sense Recordings:ssä. Ota tallennuslinkit pois päältä suunnitelmasta saadaksesi ilmoituksen liikkeestä ilman videota. Vanhemmat tuodut X-Sense-kamerapiirustukset päivitetään automaattisesti.
+
+<!-- xsense-recording-storage-modes -->
+Kameran SD-korttitallenteet näkyvät X-Sense Recordings:ssä. Ainoastaan ​​toisto on oletustallennustila: Home Assistant pitää allekirjoitetut X-Sense-URL-osoitteet yksityisinä, kirjoittaa HLS-soittolistan uudelleen ja välittää segmenttejä vain, kun soitin pyytää niitä säilyttämättä kokonaisia ​​leikkeitä. Säilytä paikalliset tallenteet tallentaa täydelliset leikkeet /media/xsense_recordings:n alla ja mahdollistaa määritettävän säilytyksen, enimmäiskoon, manuaalisen poistamisen ja valinnaisen taustasynkronoinnin. Paikallinen puhdistus ei koskaan poista tallenteita X-Sense SD-korteilta tai pilvitallennustilasta.
 
 [![Tuo blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

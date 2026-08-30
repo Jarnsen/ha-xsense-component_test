@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "A sincronização de mídia de gravação armazena em cache os clipes da câmera na mídia Home Assistant para que a barra lateral de gravações X-Sense, o navegador de mídia e as notificações móveis possam abrir as gravações rapidamente. Deixe-o desativado para armazenar em cache as gravações somente quando elas forem abertas. Ative-o para manter as gravações recentes prontas em segundo plano.",
+        "description": "Apenas reprodução é o modo predefinido e encaminha as gravações pelo Home Assistant durante a reprodução sem guardar clipes completos. Escolha manter gravações locais para armazenar clipes nos conteúdos multimédia do Home Assistant com os limites configurados de idade e tamanho. A sincronização em segundo plano funciona apenas no modo de retenção.",
         "data": {
           "recording_media_sync_enabled": "Gravação de sincronização de mídia",
           "recording_media_sync_hours": "Intervalo de sincronização em segundo plano",
           "recording_media_storage_path": "Pasta de cache de gravação",
           "recording_notification_quality": "Qualidade de gravação de notificação",
           "recording_media_days_order": "Ordem do dia de gravação",
-          "recording_media_clips_order": "Gravando a ordem dos clipes"
+          "recording_media_clips_order": "Gravando a ordem dos clipes",
+          "recording_cache_retention_days": "Gravando retenção de cache",
+          "recording_cache_max_size_mb": "Tamanho máximo do cache de gravação",
+          "recording_cache_mode": "Modo de armazenamento das gravações"
         },
         "data_description": {
           "recording_media_sync_enabled": "Armazene em cache as gravações recentes automaticamente. Isso utiliza espaço de armazenamento e pode ativar as câmeras com mais frequência.",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "Use uma pasta em /media. Novos vídeos e miniaturas em cache são armazenados aqui.",
           "recording_notification_quality": "Escolha HD para preferir os URLs de clipe direto/de alta resolução do X-Sense para notificações móveis. Escolha SD para usar o caminho de captura de reprodução da câmera quando disponível.",
           "recording_media_days_order": "Escolha se os dias mais recentes ou mais antigos aparecem primeiro no visualizador de gravações.",
-          "recording_media_clips_order": "Escolha se os clipes mais recentes ou mais antigos aparecem primeiro em cada dia."
+          "recording_media_clips_order": "Escolha se os clipes mais recentes ou mais antigos aparecem primeiro em cada dia.",
+          "recording_cache_retention_days": "Exclua as gravações em cache locais após tantos dias. As gravações na nuvem X-Sense e no cartão SD não são alteradas.",
+          "recording_cache_max_size_mb": "Tamanho máximo do cache local em MB. Quando o limite é atingido, as gravações visualizadas menos recentemente são removidas primeiro.",
+          "recording_cache_mode": "Apenas reprodução encaminha conteúdos HLS pelo Home Assistant a pedido sem guardar clipes completos. O modo de retenção mantém cópias locais segundo os limites abaixo."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Apenas reprodução",
+        "retained": "Manter gravações locais"
       }
     }
   }

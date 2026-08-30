@@ -37,14 +37,17 @@
   "options": {
     "step": {
       "init": {
-        "description": "Salvestusmeediumi sünkroonimine salvestab kaamera klipid vahemällu Home Assistant meedia alla, nii et X-Sense salvestiste külgriba, meediabrauser ja mobiilimärguanded saavad salvestisi kiiresti avada. Jätke see salvestuste vahemällu ainult siis, kui need on avatud. Lubage see, et hoida hiljutised salvestised taustal valmis.",
+        "description": "Vaikimisi kasutatakse ainult taasesitust: salvestised edastatakse esitamise ajal Home Assistanti kaudu ilma terveid klippe säilitamata. Klippide hoidmiseks Home Assistanti meedias määratud vanuse- ja mahupiirangutega valige kohalike salvestiste säilitamine. Taustsünkroonimine töötab ainult säilitamisrežiimis.",
         "data": {
           "recording_media_sync_enabled": "Salvestusmeediumi sünkroonimine",
           "recording_media_sync_hours": "Taustal sünkroonimise intervall",
           "recording_media_storage_path": "Salvestamise vahemälu kaust",
           "recording_notification_quality": "Teavituste salvestamise kvaliteet",
           "recording_media_days_order": "Salvestuspäeva tellimus",
-          "recording_media_clips_order": "Klipi salvestamise tellimus"
+          "recording_media_clips_order": "Klipi salvestamise tellimus",
+          "recording_cache_retention_days": "Salvestamise vahemälu säilitamine",
+          "recording_cache_max_size_mb": "Salvestamise vahemälu maksimaalne suurus",
+          "recording_cache_mode": "Salvestiste talletusrežiim"
         },
         "data_description": {
           "recording_media_sync_enabled": "Salvestage hiljutised salvestised automaatselt vahemällu. See kasutab salvestusruumi ja võib kaameraid sagedamini äratada.",
@@ -52,7 +55,10 @@
           "recording_media_storage_path": "Kasutage /media all olevat kausta. Siia salvestatakse uued vahemällu salvestatud videod ja pisipildid.",
           "recording_notification_quality": "Valige HD, et eelistada mobiilimärguannete jaoks X-Sensei otse-/kõrge eraldusvõimega klipi URL-e. Valige SD, et kasutada kaamera taasesituse jäädvustusteed, kui see on saadaval.",
           "recording_media_days_order": "Valige, kas salvestiste vaatajas kuvatakse esimesena uuemad või vanemad päevad.",
-          "recording_media_clips_order": "Valige, kas iga päev kuvatakse esimesena uuemad või vanemad klipid."
+          "recording_media_clips_order": "Valige, kas iga päev kuvatakse esimesena uuemad või vanemad klipid.",
+          "recording_cache_retention_days": "Kustutage kohalikud vahemällu salvestatud salvestised pärast seda mitut päeva. X-Sense pilve ja SD-kaardi salvestusi ei muudeta.",
+          "recording_cache_max_size_mb": "Kohaliku vahemälu maksimaalne maht MB. Kui limiit on täis, eemaldatakse kõigepealt viimati vaadatud salvestised.",
+          "recording_cache_mode": "Ainult taasesitus edastab HLS-meedia nõudmisel Home Assistanti kaudu ilma terveid klippe säilitamata. Säilitamisrežiim hoiab kohalikke koopiaid allolevate piirangute järgi."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -783,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Ainult taasesitus",
+        "retained": "Säilita kohalikud salvestised"
       }
     }
   }

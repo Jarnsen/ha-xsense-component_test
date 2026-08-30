@@ -1464,17 +1464,24 @@ class AsyncXSense(XSenseBase):
         return list(devices_by_serial.values())
 
     async def get_camera_thumbnail(self, camera: Entity) -> bytes | None:
-        """Return the latest camera thumbnail bytes from the APK thumbnail URL."""
-        thumbnail_url = camera.data.get("thumbImgUrl")
-        if not thumbnail_url:
+        """Return camera image bytes using the APK thumbnail fallback order."""
+        thumbnail_urls = camera_thumbnail_urls(camera)
+        if not thumbnail_urls:
             return None
 
         session = await self._get_session()
-        async with session.get(thumbnail_url) as response:
-            self._lastres = response
-            if response.status >= 400:
-                return None
-            return await response.read()
+        for thumbnail_url in thumbnail_urls:
+            try:
+                async with session.get(thumbnail_url) as response:
+                    self._lastres = response
+                    if response.status >= 400:
+                        continue
+                    image = await response.read()
+            except (aiohttp.ClientError, asyncio.TimeoutError):
+                continue
+            if image:
+                return image
+        return None
 
     def _camera_from_addx_device(self, data: Dict) -> Station | None:
         """Return the X-Sense camera entity backed by an ADDX DeviceBean."""
@@ -2845,6 +2852,66 @@ def _camera_type(data: Dict) -> str | None:
         if model:
             return model
     return None
+
+
+def camera_thumbnail_urls(camera: Entity) -> tuple[str, ...]:
+    """Return current and event thumbnail URLs in APK display order."""
+    data = camera.data
+    candidates: list[tuple[Any, int | None]] = [
+        (data.get("thumbImgUrl"), _camera_image_epoch_seconds(data.get("thumbImgTime")))
+    ]
+    playback = data.get("playback")
+    if isinstance(playback, dict):
+        playback_time = _camera_image_epoch_seconds(
+            playback.get("timestamp_s")
+            or playback.get("timestamp")
+            or playback.get("start_time_s")
+            or playback.get("start_time")
+        )
+        candidates.extend(
+            (
+                (playback.get("image_url"), playback_time),
+                (playback.get("package_image_url"), playback_time),
+            )
+        )
+    candidates.extend(
+        (
+            (data.get("image_url"), None),
+            (data.get("package_image_url"), None),
+            (data.get("imageUrl"), None),
+            (data.get("packageImageUrl"), None),
+        )
+    )
+    candidates.sort(
+        key=lambda candidate: (
+            candidate[1] is not None,
+            candidate[1] if candidate[1] is not None else 0,
+        ),
+        reverse=True,
+    )
+
+    urls: list[str] = []
+    for value, _timestamp in candidates:
+        if not isinstance(value, str):
+            continue
+        url = value.strip()
+        if not url.startswith(("http://", "https://")) or url in urls:
+            continue
+        urls.append(url)
+    return tuple(urls)
+
+
+def _camera_image_epoch_seconds(value: Any) -> int | None:
+    """Return comparable seconds for APK camera image timestamps."""
+    if value in (None, ""):
+        return None
+    try:
+        timestamp = int(value)
+    except (TypeError, ValueError):
+        return None
+    if timestamp > 10_000_000_000:
+        timestamp //= 1000
+    return timestamp
 
 
 def _camera_data(data: Dict) -> Dict:
