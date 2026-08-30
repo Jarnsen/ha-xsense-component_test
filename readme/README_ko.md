@@ -206,7 +206,10 @@ ____________________________________________________________
 ## 카메라 라이브 보기 및 AI 알림
 가장 쉬운 방법은 포함된 blueprint를 사용하는 것입니다. 아래 버튼으로 가져온 뒤 카메라 `Motion` 이벤트 엔티티 또는 구독 카메라에서 사용할 수 있는 경우 `AI Detection`을 선택하고, 필요하면 알림 동작을 조정하세요.
 
-Motion 이벤트에 X-Sense 재생 데이터가 포함되어 있으면 통합이 먼저 클립을 캐시한 다음 X-Sense Recordings에서 해당 클립을 여는 모바일 알림을 보낼 수 있습니다. 비디오를 기다리지 않는 단순 동작 알림을 원하면 blueprint에서 녹화 링크를 끄세요. 녹화 미디어 동기화는 최신 클립을 백그라운드에서 준비할 수 있으며, 오래된 가져온 X-Sense 카메라 blueprint는 자동으로 업데이트됩니다.
+Motion 이벤트에 X-Sense 재생 메타데이터가 포함된 경우 통합은 X-Sense Recordings에서 일치하는 클립을 여는 알림을 보내기 전에 개인 Home Assistant 재생 URL을 준비합니다. 영상이 없는 일반 모션 알림을 위해 청사진에서 녹화 링크를 끄세요. 이전에 가져온 X-Sense 카메라 청사진은 자동으로 업데이트됩니다.
+
+<!-- xsense-recording-storage-modes -->
+카메라 SD 카드 녹화는 X-Sense Recordings에 나타납니다. 재생 전용은 기본 저장 모드입니다. Home Assistant는 서명된 X-Sense URL을 비공개로 유지하고 HLS 재생 목록을 다시 작성하며 전체 클립을 유지하지 않고 플레이어가 요청하는 경우에만 세그먼트를 프록시합니다. 로컬 녹화 유지는 /media/xsense_recordings 아래에 전체 클립을 저장하고 구성 가능한 보존, 최대 크기, 수동 삭제 및 선택적 배경 동기화를 활성화합니다. 로컬 정리는 X-Sense SD 카드 또는 클라우드 저장소에서 녹음을 삭제하지 않습니다.
 
 [![blueprint 가져오기](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

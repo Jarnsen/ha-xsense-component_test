@@ -122,7 +122,10 @@ ____________________________________________________________
 ## Vue en direct caméra et notifications IA
 Le plus simple est d’utiliser le blueprint inclus. Importez-le avec le bouton ci-dessous, choisissez l’entité d’événement caméra `Motion` ou `AI Detection` pour une caméra avec abonnement, puis adaptez l’action de notification si nécessaire.
 
-Lorsqu'un événement Motion contient des données de lecture X-Sense, l'intégration peut d'abord mettre le clip en cache puis envoyer une notification mobile qui ouvre le clip correspondant dans X-Sense Recordings. Désactivez les liens d'enregistrement dans le blueprint si vous voulez une simple notification de mouvement sans attendre la vidéo. La synchronisation des médias d'enregistrement peut garder les clips récents prêts en arrière-plan, et les anciens blueprints caméra X-Sense importés sont mis à jour automatiquement.
+Lorsqu'un événement Motion inclut des métadonnées de lecture X-Sense, l'intégration prépare une URL de lecture Home Assistant privée avant d'envoyer une notification qui ouvre le clip correspondant dans X-Sense Recordings. Désactivez les liens d'enregistrement dans le plan pour une notification de mouvement simple sans vidéo. Les anciens plans de caméra X-Sense importés sont mis à jour automatiquement.
+
+<!-- xsense-recording-storage-modes -->
+Les enregistrements de la carte SD de la caméra apparaissent dans X-Sense Recordings. La lecture seule est le mode de stockage par défaut : Home Assistant conserve les URL X-Sense signées privées, réécrit la liste de lecture HLS et proxy les segments uniquement lorsque le lecteur les demande, sans conserver les clips complets. Conserver les enregistrements locaux stocke les clips complets sous /media/xsense_recordings et permet une conservation configurable, une taille maximale, une suppression manuelle et une synchronisation en arrière-plan facultative. Le nettoyage local ne supprime jamais les enregistrements des cartes SD X-Sense ou du stockage cloud.
 
 [![Importer le blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

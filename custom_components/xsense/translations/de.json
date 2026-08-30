@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Bei der Aufzeichnungsmediensynchronisierung werden Kameraclips unter Home Assistant-Medien zwischengespeichert, sodass die X-Sense-Aufzeichnungsseitenleiste, der Medienbrowser und mobile Benachrichtigungen Aufzeichnungen schnell öffnen können. Lassen Sie die Option deaktiviert, um Aufzeichnungen nur dann zwischenzuspeichern, wenn sie geöffnet sind. Aktivieren Sie es, um aktuelle Aufnahmen im Hintergrund bereitzuhalten.",
+        "description": "Nur Wiedergabe ist die Standardeinstellung und leitet Aufnahmen beim Abspielen über Home Assistant weiter, ohne vollständige Clips zu speichern. Wählen Sie lokale Aufnahmen behalten, um Clips unter Home-Assistant-Medien mit den festgelegten Alters- und Größenlimits zu speichern. Die Hintergrundsynchronisierung läuft nur im Beibehalten-Modus.",
         "data": {
           "recording_media_sync_enabled": "Synchronisierung der Aufnahmemedien",
           "recording_media_sync_hours": "Hintergrundsynchronisierungsintervall",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Reihenfolge der Aufnahmetage",
           "recording_media_clips_order": "Reihenfolge der Aufnahmeclips",
           "recording_cache_retention_days": "Cache-Aufbewahrung aufzeichnen",
-          "recording_cache_max_size_mb": "Maximale Größe des Aufzeichnungscache"
+          "recording_cache_max_size_mb": "Maximale Größe des Aufzeichnungscache",
+          "recording_cache_mode": "Speichermodus für Aufnahmen"
         },
         "data_description": {
           "recording_media_sync_enabled": "Aktuelle Aufnahmen automatisch zwischenspeichern. Dadurch wird Speicherplatz beansprucht und die Kameras können möglicherweise häufiger aktiviert werden.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Wählen Sie, ob neuere oder ältere Tage zuerst im Aufzeichnungsviewer angezeigt werden.",
           "recording_media_clips_order": "Wählen Sie, ob neuere oder ältere Clips an jedem Tag zuerst angezeigt werden.",
           "recording_cache_retention_days": "Löschen Sie lokal zwischengespeicherte Aufzeichnungen nach dieser Anzahl von Tagen. X-Sense-Cloud- und SD-Kartenaufzeichnungen werden nicht verändert.",
-          "recording_cache_max_size_mb": "Maximale lokale Cachegröße in MB. Wenn das Limit erreicht ist, werden zuerst die zuletzt angesehenen Aufnahmen entfernt."
+          "recording_cache_max_size_mb": "Maximale lokale Cachegröße in MB. Wenn das Limit erreicht ist, werden zuerst die zuletzt angesehenen Aufnahmen entfernt.",
+          "recording_cache_mode": "Nur Wiedergabe leitet HLS-Medien bei Bedarf über Home Assistant weiter, ohne vollständige Clips zu speichern. Der Beibehalten-Modus speichert lokale Kopien mit den unten festgelegten Limits."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Nur Wiedergabe",
+        "retained": "Lokale Aufnahmen behalten"
       }
     }
   }

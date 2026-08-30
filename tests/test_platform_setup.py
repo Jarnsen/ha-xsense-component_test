@@ -27,7 +27,11 @@ from custom_components.xsense import (
     sensor,
     switch,
 )
-from custom_components.xsense.const import CONF_RECORDING_MEDIA_SYNC_ENABLED, DOMAIN
+from custom_components.xsense.const import (
+    CONF_RECORDING_CACHE_MODE,
+    CONF_RECORDING_MEDIA_SYNC_ENABLED,
+    DOMAIN,
+)
 
 
 def _mock_hls_playback_profile_migration(monkeypatch, calls=None):
@@ -2006,18 +2010,31 @@ def test_recording_media_sync_can_stop_before_entry_unload(monkeypatch):
 
     entry = SimpleNamespace(
         entry_id="camera-entry",
-        options={CONF_RECORDING_MEDIA_SYNC_ENABLED: True},
+        options={
+            CONF_RECORDING_CACHE_MODE: "retained",
+            CONF_RECORDING_MEDIA_SYNC_ENABLED: True,
+        },
         async_on_unload=unload_callbacks.append,
     )
-    hass = SimpleNamespace(data={DOMAIN: {}})
+    hass = SimpleNamespace(
+        data={DOMAIN: {}},
+        config_entries=SimpleNamespace(async_get_entry=lambda entry_id: entry),
+    )
 
     media_source.async_start_recording_media_sync(hass, entry)
     assert "camera-entry" in hass.data[DOMAIN]["_recording_media_sync_unsubs"]
+    hass.data[DOMAIN]["_recording_hls_tokens"] = {
+        "owned": {"entry_id": "camera-entry", "mode": "proxy"},
+        "other": {"entry_id": "other-entry", "mode": "proxy"},
+    }
 
     media_source.async_stop_recording_media_sync(hass, "camera-entry")
 
     assert len(cancelled) == 5
     assert "_recording_media_sync_unsubs" not in hass.data[DOMAIN]
+    assert hass.data[DOMAIN]["_recording_hls_tokens"] == {
+        "other": {"entry_id": "other-entry", "mode": "proxy"}
+    }
     unload_callbacks[0]()
     assert len(cancelled) == 5
 
@@ -2508,9 +2525,14 @@ def test_recordings_panel_video_uses_authenticated_blob_playback():
     assert "setPlaybackUrl(key, url, type, options = {})" in panel
     assert "clearPlaybackUrl(key)" in panel
     assert "disposePlaybackResources()" in panel
+    assert "releaseTemporaryPlayback(clip)" in panel
+    assert "xsense/recordings/cache/playback/" in panel
+    assert 'video.removeAttribute("src")' in panel
     assert "this.playbackProfiles = new Map()" in panel
     assert 'response.headers.get("X-XSense-HLS-Leading-AAC")' in panel
     assert 'response.headers.get("X-XSense-HLS-Playback-Mode")' in panel
+    assert 'response.headers.get("Content-Location") || signedPath' in panel
+    assert 'this.setPlaybackUrl(key, preparedHlsPath, "hls"' in panel
     assert 'this.logPanelEvent("playback_hls_js_attached"' in panel
     assert 'this.logPanelEvent("playback_hls_js_error"' in panel
     assert 'this.logPanelEvent("playback_hls_native_attached"' in panel
@@ -2717,6 +2739,52 @@ def test_recordings_cache_management_clears_one_camera(monkeypatch):
     assert response.status == 200
     assert seen == {"entry_id": "entry-id", "serial": "CAMERA-SN"}
     assert json.loads(response.text)["deleted_items"] == 2
+
+
+def test_recordings_cache_management_releases_playback_only_clip(monkeypatch):
+    from custom_components.xsense import http
+
+    released = []
+
+    async def release_playback(hass, **identifiers):
+        released.append(identifiers)
+        return {"deleted_items": 1}
+
+    monkeypatch.setattr(http, "_recording_cache_retained", lambda hass, entry_id: False)
+    monkeypatch.setattr(http, "async_release_recording_playback", release_playback)
+    response = asyncio.run(
+        http.XSenseRecordingsCacheManagementView(_recordings_panel_test_hass()).delete(
+            SimpleNamespace(query={"serial": "CAMERA-SN", "start": "1", "end": "2"}),
+            "playback",
+            "entry-id",
+        )
+    )
+
+    assert response.status == 200
+    assert released == [
+        {"entry_id": "entry-id", "serial": "CAMERA-SN", "start": 1, "end": 2}
+    ]
+
+
+def test_recordings_cache_management_keeps_retained_clip(monkeypatch):
+    from custom_components.xsense import http
+
+    monkeypatch.setattr(http, "_recording_cache_retained", lambda hass, entry_id: True)
+    monkeypatch.setattr(
+        http,
+        "async_release_recording_playback",
+        lambda *args: pytest.fail("retained playback must not be deleted on close"),
+    )
+    response = asyncio.run(
+        http.XSenseRecordingsCacheManagementView(_recordings_panel_test_hass()).delete(
+            SimpleNamespace(query={"serial": "CAMERA-SN", "start": "1", "end": "2"}),
+            "playback",
+            "entry-id",
+        )
+    )
+
+    assert response.status == 200
+    assert json.loads(response.text)["retained"] is True
 
 
 def test_recordings_hls_playlist_rewrites_segments_to_token_route(tmp_path):
@@ -3075,7 +3143,9 @@ def test_recordings_panel_playback_serves_cached_file(monkeypatch, tmp_path):
     monkeypatch.setattr(http, "_path_ready", lambda path: path == clip_path)
     hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
-            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+            async_get_entry=lambda entry_id: SimpleNamespace(
+                data={}, options={CONF_RECORDING_CACHE_MODE: "retained"}
+            )
         )
     )
 
@@ -3158,7 +3228,9 @@ def test_recordings_panel_playback_serves_hls_before_legacy_mp4(
     )
     hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
-            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+            async_get_entry=lambda entry_id: SimpleNamespace(
+                data={}, options={CONF_RECORDING_CACHE_MODE: "retained"}
+            )
         ),
     )
 
@@ -3227,7 +3299,9 @@ def test_recordings_panel_playback_ignores_capture_query_and_uses_direct_media(
     monkeypatch.setattr(http, "_path_ready", lambda path: path == clip_path and path.exists())
     hass = _recordings_panel_test_hass(
         config_entries=SimpleNamespace(
-            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+            async_get_entry=lambda entry_id: SimpleNamespace(
+                data={}, options={CONF_RECORDING_CACHE_MODE: "retained"}
+            )
         )
     )
 
@@ -3247,6 +3321,306 @@ def test_recordings_panel_playback_ignores_capture_query_and_uses_direct_media(
     assert seen["quality"] == "HD"
     assert seen["playback_url"] == "https://example.invalid/clip.m3u8"
     assert clip_path.read_bytes() == b"\x00\x00\x00\x10ftypmp42\x00\x00\x00\x00sd"
+
+
+def test_recordings_panel_playback_only_proxies_hls_on_demand(monkeypatch):
+    from custom_components.xsense import http
+    from custom_components.xsense.recordings_media import XSenseRecordingsMediaSource
+
+    root_url = "https://media.example/clip/index.m3u8?signature=secret"
+    segment_urls = [
+        "https://media.example/clip/segment-1.ts",
+        "https://media.example/clip/segment-2.ts",
+        "https://media.example/clip/segment-3.ts",
+    ]
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1782049304,
+        "end": 1782049334,
+        "source": "video_url",
+        "playback_url": root_url,
+    }
+    fetched = []
+
+    async def load_index(self):
+        return {
+            "cameras": [
+                {
+                    "entry_id": "entry-id",
+                    "serial": "CAMERA-SN",
+                    "clips": [clip],
+                }
+            ]
+        }
+
+    async def fetch(hass, url):
+        fetched.append(url)
+        if url == root_url:
+            return (
+                (
+                    "#EXTM3U\n#EXT-X-TARGETDURATION:4\n"
+                    "#EXTINF:2,\nsegment-1.ts\n"
+                    "#EXTINF:2,\nsegment-2.ts\n"
+                    "#EXTINF:2,\nsegment-3.ts\n#EXT-X-ENDLIST\n"
+                ).encode(),
+                http.HLS_MIME_TYPE,
+                root_url,
+            )
+        return url.rsplit("/", 1)[-1].encode(), "video/mp2t", url
+
+    monkeypatch.setattr(XSenseRecordingsMediaSource, "_async_load_index", load_index)
+    monkeypatch.setattr(http, "_async_fetch_proxy_resource", fetch)
+    monkeypatch.setattr(
+        http,
+        "_prepare_hls_proxy_leading_segment",
+        lambda payload, reference: (
+            b"prepared-leading",
+            {"leading_aac": "broken", "playback_mode": "ignore_leading_aac"},
+        ),
+    )
+    hass = _recordings_panel_test_hass(
+        config_entries=SimpleNamespace(
+            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+        )
+    )
+    view = http.XSenseRecordingsPanelPlaybackView(hass)
+
+    response = asyncio.run(
+        view.get(
+            SimpleNamespace(query={"serial": "CAMERA-SN"}),
+            "entry-id",
+            "1782049304",
+            "1782049334",
+        )
+    )
+
+    assert response.content_type == http.HLS_MIME_TYPE
+    playlist = response.text
+    assert root_url not in playlist
+    assert "#EXT-X-DISCONTINUITY" in playlist
+    assert fetched == [root_url, segment_urls[0], segment_urls[1]]
+    tokens = hass.data[DOMAIN]["_recording_hls_tokens"]
+    token, proxy = next(iter(tokens.items()))
+    assert response.headers["Content-Location"] == (
+        f"/api/xsense/recordings/hls/{token}/root.m3u8"
+    )
+    assert proxy["mode"] == "proxy"
+    resources = proxy["resources"]
+    first_id = next(
+        resource_id
+        for resource_id, resource in resources.items()
+        if resource["url"] == segment_urls[0]
+    )
+    third_id = next(
+        resource_id
+        for resource_id, resource in resources.items()
+        if resource["url"] == segment_urls[2]
+    )
+
+    first_response = asyncio.run(
+        http.XSenseRecordingsHlsSegmentView(hass).get(
+            SimpleNamespace(), token, first_id
+        )
+    )
+    third_response = asyncio.run(
+        http.XSenseRecordingsHlsSegmentView(hass).get(
+            SimpleNamespace(), token, third_id
+        )
+    )
+    root_response = asyncio.run(
+        http.XSenseRecordingsHlsSegmentView(hass).get(
+            SimpleNamespace(), token, "root.m3u8"
+        )
+    )
+
+    assert first_response.body == b"prepared-leading"
+    assert third_response.body == b"segment-3.ts"
+    assert root_response.text == playlist
+    assert fetched == [root_url, segment_urls[0], segment_urls[1], segment_urls[2]]
+
+
+def test_recordings_panel_thumbnail_playback_only_is_proxied(monkeypatch):
+    from custom_components.xsense import http
+
+    thumbnail_url = "https://media.example/snapshot?signature=secret"
+    final_thumbnail_url = "https://cdn.example/snapshot.jpg?signature=redirected"
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1,
+        "end": 2,
+        "thumbnail_url": thumbnail_url,
+    }
+
+    async def find_clip(self, entry_id, serial, start, end):
+        return clip
+
+    async def fetch(hass, url):
+        assert url == thumbnail_url
+        return b"jpeg", "", final_thumbnail_url
+
+    monkeypatch.setattr(http.XSenseRecordingsPanelPlaybackView, "_clip", find_clip)
+    monkeypatch.setattr(http, "_async_fetch_proxy_resource", fetch)
+    hass = _recordings_panel_test_hass(
+        config_entries=SimpleNamespace(
+            async_get_entry=lambda entry_id: SimpleNamespace(data={}, options={})
+        )
+    )
+
+    response = asyncio.run(
+        http.XSenseRecordingsPanelThumbnailView(hass).get(
+            SimpleNamespace(query={"serial": "CAMERA-SN"}),
+            "entry-id",
+            "1",
+            "2",
+        )
+    )
+
+    assert response.body == b"jpeg"
+    assert response.content_type == "image/jpeg"
+
+
+def test_recordings_hls_proxy_rewrites_child_playlist_on_demand(monkeypatch):
+    from custom_components.xsense import http
+
+    root_url = "https://media.example/master.m3u8"
+    child_url = "https://media.example/720p/playlist?signature=child"
+    first_url = "https://media.example/720p/first.ts"
+    second_url = "https://media.example/720p/second.ts"
+    fetched = []
+
+    async def fetch(hass, url):
+        fetched.append(url)
+        if url == root_url:
+            return (
+                b"#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\n720p/playlist?signature=child\n",
+                http.HLS_MIME_TYPE,
+                url,
+            )
+        if url == child_url:
+            return (
+                b"#EXTM3U\n#EXTINF:2,\nfirst.ts\n#EXTINF:2,\nsecond.ts\n",
+                http.HLS_MIME_TYPE,
+                url,
+            )
+        return url.encode(), "video/mp2t", url
+
+    monkeypatch.setattr(http, "_async_fetch_proxy_resource", fetch)
+    monkeypatch.setattr(
+        http,
+        "_prepare_hls_proxy_leading_segment",
+        lambda payload, reference: (
+            payload,
+            {"leading_aac": "ok", "playback_mode": "normal"},
+        ),
+    )
+    hass = SimpleNamespace(data={DOMAIN: {}})
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1,
+        "end": 2,
+        "playback_url": root_url,
+    }
+
+    token, playlist, _profile = asyncio.run(
+        http._async_create_hls_proxy_session(hass, clip)
+    )
+    proxy = hass.data[DOMAIN]["_recording_hls_tokens"][token]
+    child_id = next(
+        resource_id
+        for resource_id, resource in proxy["resources"].items()
+        if resource["url"] == child_url
+    )
+    assert root_url not in playlist
+    assert fetched == [root_url]
+
+    response = asyncio.run(
+        http._async_hls_proxy_resource_response(hass, token, child_id, proxy)
+    )
+    repeated_response = asyncio.run(
+        http._async_hls_proxy_resource_response(hass, token, child_id, proxy)
+    )
+
+    assert response.content_type == http.HLS_MIME_TYPE
+    assert repeated_response.text == response.text
+    assert first_url not in response.text
+    assert second_url not in response.text
+    assert fetched == [root_url, child_url, first_url, second_url]
+
+
+def test_recordings_hls_proxy_classifies_suffixless_audio_playlist(monkeypatch):
+    from custom_components.xsense import http
+
+    root_url = "https://media.example/master.m3u8"
+    audio_url = "https://media.example/audio/playlist?signature=audio"
+
+    async def fetch(hass, url):
+        assert url == root_url
+        return (
+            (
+                '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
+                'URI="audio/playlist?signature=audio"\n'
+                '#EXT-X-STREAM-INF:BANDWIDTH=1000,AUDIO="audio"\n'
+                "video/index.m3u8\n"
+            ).encode(),
+            http.HLS_MIME_TYPE,
+            url,
+        )
+
+    monkeypatch.setattr(http, "_async_fetch_proxy_resource", fetch)
+    hass = SimpleNamespace(data={DOMAIN: {}})
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "start": 1,
+        "end": 2,
+        "playback_url": root_url,
+    }
+
+    token, playlist, _profile = asyncio.run(
+        http._async_create_hls_proxy_session(hass, clip)
+    )
+    resources = hass.data[DOMAIN]["_recording_hls_tokens"][token]["resources"]
+    audio_resource = next(
+        resource for resource in resources.values() if resource.get("url") == audio_url
+    )
+
+    assert audio_resource["kind"] == "playlist"
+    assert audio_url not in playlist
+
+
+def test_recordings_hls_proxy_rejects_non_http_playlist_resources():
+    from custom_components.xsense import http
+
+    hass = SimpleNamespace(data={DOMAIN: {}})
+    proxy = {"resources": {}, "next_resource": 0}
+
+    with pytest.raises(RuntimeError, match="unsupported URL"):
+        asyncio.run(
+            http._async_rewrite_hls_proxy_playlist(
+                hass,
+                "token",
+                proxy,
+                "#EXTM3U\n#EXTINF:2,\nfile:///etc/passwd\n",
+                "https://media.example/index.m3u8",
+            )
+        )
+
+
+def test_recordings_proxy_error_logging_redacts_signed_url_queries():
+    from custom_components.xsense import http
+
+    message = http._log_safe_error(
+        RuntimeError(
+            "request failed for https://media.example/clip.m3u8?signature=secret&token=private"
+        )
+    )
+
+    assert "signature=secret" not in message
+    assert "token=private" not in message
+    assert "https://media.example/clip.m3u8?<redacted>" in message
 
 
 def test_recordings_panel_playback_waits_for_sync_when_sync_enabled(

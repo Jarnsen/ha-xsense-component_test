@@ -19,7 +19,7 @@ const TRANSLATIONS = {
     genericCamera: "Camera",
     hlsPlaybackFailed: "HLS playback failed",
     hlsPlaybackUnsupported: "HLS playback is not supported by this browser",
-    lazyCacheOnPlayback: "Lazy cache on playback",
+    lazyCacheOnPlayback: "On-demand HLS proxy",
     loading: "Loading",
     loadingRecordings: "Loading recordings...",
     newestRecording: "Newest Recording",
@@ -64,7 +64,7 @@ const TRANSLATIONS = {
     genericCamera: "\u0995\u09c7\u09ae\u09c7\u09f0\u09be",
     hlsPlaybackFailed: "HLS \u09aa\u09cd\u09b2\u09c7\u09ac\u09c7\u0995 \u09ac\u09bf\u09ab\u09b2",
     hlsPlaybackUnsupported: "\u098f\u0987 \u09ac\u09cd\u09f0\u09be\u0989\u099c\u09be\u09f0\u09c7 HLS \u09aa\u09cd\u09b2\u09c7\u09ac\u09c7\u0995 \u09b8\u09ae\u09f0\u09cd\u09a5\u09bf\u09a4 \u09a8\u09b9\u09af\u09bc",
-    lazyCacheOnPlayback: "\u09aa\u09cd\u09b2\u09c7\u09ac\u09c7\u0995\u09a4 \u098f\u09b2\u09c7\u09b9\u09c1\u09f1\u09be \u0995\u09c7\u099a",
+    lazyCacheOnPlayback: "\u0985\u09a8-\u09a1\u09bf\u09ae\u09be\u09a3\u09cd\u09a1 HLS \u09aa\u09cd\u09f0\u0995\u09cd\u09b8\u09bf",
     loading: "\u09b2\u09cb\u09a1 \u09b9\u09c8 \u0986\u099b\u09c7",
     loadingRecordings: "\u09f0\u09c7\u0995\u09f0\u09cd\u09a1\u09bf\u0982 \u09b2\u09cb\u09a1 \u0995\u09f0\u09bf \u0986\u099b\u09c7...",
     newestRecording: "\u09a8\u09a4\u09c1\u09a8 \u09f0\u09c7\u0995\u09f0\u09cd\u09a1\u09bf\u0982",
@@ -115,7 +115,7 @@ const TRANSLATIONS = {
     genericCamera: "\u0627\u0644\u0643\u0627\u0645\u064a\u0631\u0627",
     hlsPlaybackFailed: "\u0641\u0634\u0644 \u062a\u0634\u063a\u064a\u0644 HLS",
     hlsPlaybackUnsupported: "\u062a\u0634\u063a\u064a\u0644 HLS \u063a\u064a\u0631 \u0645\u062f\u0639\u0648\u0645 \u0645\u0646 \u0642\u0628\u0644 \u0647\u0630\u0627 \u0627\u0644\u0645\u062a\u0635\u0641\u062d",
-    lazyCacheOnPlayback: "\u0630\u0627\u0643\u0631\u0629 \u0627\u0644\u062a\u062e\u0632\u064a\u0646 \u0627\u0644\u0645\u0624\u0642\u062a \u0643\u0633\u0648\u0644 \u0639\u0646\u062f \u0627\u0644\u062a\u0634\u063a\u064a\u0644",
+    lazyCacheOnPlayback: "\u0648\u0643\u064a\u0644 HLS \u0639\u0646\u062f \u0627\u0644\u0637\u0644\u0628",
     loading: "\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0645\u064a\u0644",
     loadingRecordings: "\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u062a\u0633\u062c\u064a\u0644\u0627\u062a...",
     newestRecording: "\u0623\u062d\u062f\u062b \u0627\u0644\u062a\u0633\u062c\u064a\u0644",
@@ -166,7 +166,7 @@ const TRANSLATIONS = {
     genericCamera: "Fotoapar\u00e1t",
     hlsPlaybackFailed: "P\u0159ehr\u00e1v\u00e1n\u00ed HLS se nezda\u0159ilo",
     hlsPlaybackUnsupported: "P\u0159ehr\u00e1v\u00e1n\u00ed HLS tento prohl\u00ed\u017ee\u010d nepodporuje",
-    lazyCacheOnPlayback: "L\u00edn\u00e1 mezipam\u011b\u0165 p\u0159i p\u0159ehr\u00e1v\u00e1n\u00ed",
+    lazyCacheOnPlayback: "Proxy HLS na vy\u017e\u00e1d\u00e1n\u00ed",
     loading: "Na\u010d\u00edt\u00e1n\u00ed",
     loadingRecordings: "Na\u010d\u00edt\u00e1n\u00ed nahr\u00e1vek...",
     newestRecording: "Nejnov\u011bj\u0161\u00ed nahr\u00e1vka",
@@ -217,7 +217,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "HLS-afspilning mislykkedes",
     hlsPlaybackUnsupported: "HLS-afspilning underst\u00f8ttes ikke af denne browser",
-    lazyCacheOnPlayback: "Lazy cache ved afspilning",
+    lazyCacheOnPlayback: "On-demand HLS proxy",
     loading: "Indl\u00e6ser",
     loadingRecordings: "Indl\u00e6ser optagelser...",
     newestRecording: "Nyeste optagelse",
@@ -268,7 +268,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "Die HLS-Wiedergabe ist fehlgeschlagen",
     hlsPlaybackUnsupported: "Die HLS-Wiedergabe wird von diesem Browser nicht unterst\u00fctzt",
-    lazyCacheOnPlayback: "Lazy Cache bei der Wiedergabe",
+    lazyCacheOnPlayback: "On-Demand-HLS-Proxy",
     loading: "Laden",
     loadingRecordings: "Aufnahmen werden geladen...",
     newestRecording: "Neueste Aufnahme",
@@ -319,7 +319,7 @@ const TRANSLATIONS = {
     genericCamera: "\u039a\u03ac\u03bc\u03b5\u03c1\u03b1",
     hlsPlaybackFailed: "\u0397 \u03b1\u03bd\u03b1\u03c0\u03b1\u03c1\u03b1\u03b3\u03c9\u03b3\u03ae HLS \u03b1\u03c0\u03ad\u03c4\u03c5\u03c7\u03b5",
     hlsPlaybackUnsupported: "\u0397 \u03b1\u03bd\u03b1\u03c0\u03b1\u03c1\u03b1\u03b3\u03c9\u03b3\u03ae HLS \u03b4\u03b5\u03bd \u03c5\u03c0\u03bf\u03c3\u03c4\u03b7\u03c1\u03af\u03b6\u03b5\u03c4\u03b1\u03b9 \u03b1\u03c0\u03cc \u03b1\u03c5\u03c4\u03cc \u03c4\u03bf \u03c0\u03c1\u03cc\u03b3\u03c1\u03b1\u03bc\u03bc\u03b1 \u03c0\u03b5\u03c1\u03b9\u03ae\u03b3\u03b7\u03c3\u03b7\u03c2",
-    lazyCacheOnPlayback: "Lazy cache \u03ba\u03b1\u03c4\u03ac \u03c4\u03b7\u03bd \u03b1\u03bd\u03b1\u03c0\u03b1\u03c1\u03b1\u03b3\u03c9\u03b3\u03ae",
+    lazyCacheOnPlayback: "\u0394\u03b9\u03b1\u03ba\u03bf\u03bc\u03b9\u03c3\u03c4\u03ae\u03c2 \u03bc\u03b5\u03c3\u03bf\u03bb\u03ac\u03b2\u03b7\u03c3\u03b7\u03c2 HLS \u03ba\u03b1\u03c4' \u03b1\u03c0\u03b1\u03af\u03c4\u03b7\u03c3\u03b7",
     loading: "\u03a6\u03cc\u03c1\u03c4\u03c9\u03c3\u03b7",
     loadingRecordings: "\u03a6\u03cc\u03c1\u03c4\u03c9\u03c3\u03b7 \u03b5\u03b3\u03b3\u03c1\u03b1\u03c6\u03ce\u03bd...",
     newestRecording: "\u039d\u03b5\u03cc\u03c4\u03b5\u03c1\u03b7 \u03b7\u03c7\u03bf\u03b3\u03c1\u03ac\u03c6\u03b7\u03c3\u03b7",
@@ -370,7 +370,7 @@ const TRANSLATIONS = {
     genericCamera: "c\u00e1mara",
     hlsPlaybackFailed: "Error en la reproducci\u00f3n de HLS",
     hlsPlaybackUnsupported: "Este navegador no admite la reproducci\u00f3n de HLS",
-    lazyCacheOnPlayback: "Cach\u00e9 diferido en reproducci\u00f3n",
+    lazyCacheOnPlayback: "Proxy HLS bajo demanda",
     loading: "Cargando",
     loadingRecordings: "Cargando grabaciones...",
     newestRecording: "Grabaci\u00f3n m\u00e1s reciente",
@@ -421,7 +421,7 @@ const TRANSLATIONS = {
     genericCamera: "Kaamera",
     hlsPlaybackFailed: "HLS taasesitus eba\u00f5nnestus",
     hlsPlaybackUnsupported: "See brauser ei toeta HLS taasesitust",
-    lazyCacheOnPlayback: "Laisk vahem\u00e4lu taasesitusel",
+    lazyCacheOnPlayback: "N\u00f5udmisel puhverserver HLS",
     loading: "Laadimine",
     loadingRecordings: "Salvestiste laadimine...",
     newestRecording: "Uusim salvestus",
@@ -472,7 +472,7 @@ const TRANSLATIONS = {
     genericCamera: "\u062f\u0648\u0631\u0628\u06cc\u0646",
     hlsPlaybackFailed: "\u067e\u062e\u0634 HLS \u0646\u0627\u0645\u0648\u0641\u0642 \u0628\u0648\u062f",
     hlsPlaybackUnsupported: "\u067e\u062e\u0634 HLS \u062a\u0648\u0633\u0637 \u0627\u06cc\u0646 \u0645\u0631\u0648\u0631\u06af\u0631 \u067e\u0634\u062a\u06cc\u0628\u0627\u0646\u06cc \u0646\u0645\u06cc \u0634\u0648\u062f",
-    lazyCacheOnPlayback: "\u06a9\u0634 \u062a\u0646\u0628\u0644 \u0647\u0646\u06af\u0627\u0645 \u067e\u062e\u0634",
+    lazyCacheOnPlayback: "\u067e\u0631\u0648\u06a9\u0633\u06cc \u062f\u0631\u062e\u0648\u0627\u0633\u062a\u06cc HLS",
     loading: "\u062f\u0631 \u062d\u0627\u0644 \u0628\u0627\u0631\u06af\u0630\u0627\u0631\u06cc",
     loadingRecordings: "\u062f\u0631 \u062d\u0627\u0644 \u0628\u0627\u0631\u06af\u06cc\u0631\u06cc \u0645\u0648\u0627\u0631\u062f \u0636\u0628\u0637 \u0634\u062f\u0647...",
     newestRecording: "\u062c\u062f\u06cc\u062f\u062a\u0631\u06cc\u0646 \u0636\u0628\u0637",
@@ -523,7 +523,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "HLS -toisto ep\u00e4onnistui",
     hlsPlaybackUnsupported: "T\u00e4m\u00e4 selain ei tue HLS-toistoa",
-    lazyCacheOnPlayback: "Laiska v\u00e4limuisti toistossa",
+    lazyCacheOnPlayback: "On-demand HLS-v\u00e4lityspalvelin",
     loading: "Ladataan",
     loadingRecordings: "Ladataan tallenteita...",
     newestRecording: "Uusin tallenne",
@@ -574,7 +574,7 @@ const TRANSLATIONS = {
     genericCamera: "Appareil photo",
     hlsPlaybackFailed: "\u00c9chec de la lecture de HLS",
     hlsPlaybackUnsupported: "La lecture HLS n'est pas prise en charge par ce navigateur",
-    lazyCacheOnPlayback: "Cache paresseux lors de la lecture",
+    lazyCacheOnPlayback: "Proxy HLS \u00e0 la demande",
     loading: "Chargement",
     loadingRecordings: "Chargement des enregistrements...",
     newestRecording: "Enregistrement le plus r\u00e9cent",
@@ -625,7 +625,7 @@ const TRANSLATIONS = {
     genericCamera: "\u05de\u05e6\u05dc\u05de\u05d4",
     hlsPlaybackFailed: "\u05d4\u05e4\u05e2\u05dc\u05ea HLS \u05e0\u05db\u05e9\u05dc\u05d4",
     hlsPlaybackUnsupported: "\u05d4\u05e4\u05e2\u05dc\u05ea HLS \u05d0\u05d9\u05e0\u05d4 \u05e0\u05ea\u05de\u05db\u05ea \u05e2\u05dc \u05d9\u05d3\u05d9 \u05d3\u05e4\u05d3\u05e4\u05df \u05d6\u05d4",
-    lazyCacheOnPlayback: "\u05de\u05d8\u05de\u05d5\u05df \u05e2\u05e6\u05dc\u05df \u05d1\u05d4\u05e9\u05de\u05e2\u05d4",
+    lazyCacheOnPlayback: "\u05e4\u05e8\u05d5\u05e7\u05e1\u05d9 HLS \u05dc\u05e4\u05d9 \u05d3\u05e8\u05d9\u05e9\u05d4",
     loading: "\u05d8\u05d5\u05e2\u05df",
     loadingRecordings: "\u05d8\u05d5\u05e2\u05df \u05d4\u05e7\u05dc\u05d8\u05d5\u05ea...",
     newestRecording: "\u05d4\u05d4\u05e7\u05dc\u05d8\u05d4 \u05d4\u05d7\u05d3\u05e9\u05d4 \u05d1\u05d9\u05d5\u05ea\u05e8",
@@ -676,7 +676,7 @@ const TRANSLATIONS = {
     genericCamera: "\u0915\u0948\u092e\u0930\u093e",
     hlsPlaybackFailed: "HLS \u092a\u094d\u0932\u0947\u092c\u0948\u0915 \u0935\u093f\u092b\u0932 \u0930\u0939\u093e",
     hlsPlaybackUnsupported: "HLS \u092a\u094d\u0932\u0947\u092c\u0948\u0915 \u0907\u0938 \u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930 \u0926\u094d\u0935\u093e\u0930\u093e \u0938\u092e\u0930\u094d\u0925\u093f\u0924 \u0928\u0939\u0940\u0902 \u0939\u0948",
-    lazyCacheOnPlayback: "\u092a\u094d\u0932\u0947\u092c\u0948\u0915 \u092a\u0930 \u0906\u0932\u0938\u0940 \u0915\u0948\u0936",
+    lazyCacheOnPlayback: "\u0911\u0928-\u0921\u093f\u092e\u093e\u0902\u0921 HLS \u092a\u094d\u0930\u0949\u0915\u094d\u0938\u0940",
     loading: "\u0932\u094b\u0921 \u0939\u094b \u0930\u0939\u093e \u0939\u0948",
     loadingRecordings: "\u0930\u093f\u0915\u0949\u0930\u094d\u0921\u093f\u0902\u0917 \u0932\u094b\u0921 \u0939\u094b \u0930\u0939\u0940 \u0939\u0948...",
     newestRecording: "\u0928\u0935\u0940\u0928\u0924\u092e \u0930\u093f\u0915\u0949\u0930\u094d\u0921\u093f\u0902\u0917",
@@ -727,7 +727,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "HLS reprodukcija nije uspjela",
     hlsPlaybackUnsupported: "HLS reprodukcija nije podr\u017eana u ovom pregledniku",
-    lazyCacheOnPlayback: "Lijena predmemorija pri reprodukciji",
+    lazyCacheOnPlayback: "HLS proxy na zahtjev",
     loading: "U\u010ditavanje",
     loadingRecordings: "U\u010ditavanje snimaka...",
     newestRecording: "Najnovija snimka",
@@ -778,7 +778,7 @@ const TRANSLATIONS = {
     genericCamera: "F\u00e9nyk\u00e9pez\u0151g\u00e9p",
     hlsPlaybackFailed: "A HLS lej\u00e1tsz\u00e1s nem siker\u00fclt",
     hlsPlaybackUnsupported: "Ez a b\u00f6ng\u00e9sz\u0151 nem t\u00e1mogatja a HLS lej\u00e1tsz\u00e1st",
-    lazyCacheOnPlayback: "Lusta gyors\u00edt\u00f3t\u00e1r lej\u00e1tsz\u00e1skor",
+    lazyCacheOnPlayback: "Ig\u00e9ny szerinti HLS proxy",
     loading: "Bet\u00f6lt\u00e9s",
     loadingRecordings: "Felv\u00e9telek bet\u00f6lt\u00e9se...",
     newestRecording: "Leg\u00fajabb felv\u00e9tel",
@@ -829,7 +829,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "Pemutaran HLS gagal",
     hlsPlaybackUnsupported: "Pemutaran HLS tidak didukung oleh browser ini",
-    lazyCacheOnPlayback: "Cache malas saat pemutaran",
+    lazyCacheOnPlayback: "Proksi HLS sesuai permintaan",
     loading: "Memuat",
     loadingRecordings: "Memuat rekaman...",
     newestRecording: "Rekaman Terbaru",
@@ -878,9 +878,9 @@ const TRANSLATIONS = {
     camera: "Fotocamera",
     camerasOnline: "Fotocamere in linea",
     genericCamera: "Fotocamera",
-    hlsPlaybackFailed: "La riproduzione HLSPLACEholder non \u00e8 riuscita",
-    hlsPlaybackUnsupported: "La riproduzione HLSPLACEholder non \u00e8 supportata da questo browser",
-    lazyCacheOnPlayback: "Cache pigra durante la riproduzione",
+    hlsPlaybackFailed: "Riproduzione HLS non riuscita",
+    hlsPlaybackUnsupported: "La riproduzione HLS non \u00e8 supportata da questo browser",
+    lazyCacheOnPlayback: "Proxy HLS su richiesta",
     loading: "Caricamento",
     loadingRecordings: "Caricamento registrazioni...",
     newestRecording: "Registrazione pi\u00f9 recente",
@@ -893,7 +893,7 @@ const TRANSLATIONS = {
     noneYet: "Nessuno ancora",
     notCached: "Non memorizzato nella cache",
     offline: "non in linea",
-    offlineCount: "COUNTPLACEholder offline",
+    offlineCount: "{count} offline",
     online: "in linea",
     preparing: "Preparazione",
     preparingRecording: "Preparazione della registrazione...",
@@ -901,14 +901,14 @@ const TRANSLATIONS = {
     readyToWatch: "Pronto per guardare",
     recordingEmpty: "La registrazione \u00e8 vuota",
     recordingIsNotReady: "La registrazione non \u00e8 ancora pronta.",
-    recordingIsNotReadyStatus: "La registrazione non \u00e8 pronta (STATUSPLACEholder)",
-    recordingsCountStatus: "SHOWNPLACEholder delle registrazioni TOTALPLACEholder - STATEPLACEholder",
+    recordingIsNotReadyStatus: "La registrazione non \u00e8 pronta ({status})",
+    recordingsCountStatus: "{shown} di {total} registrazioni - {state}",
     recordingsReady: "Le registrazioni sono pronte",
     refresh: "Aggiorna",
     selectRecordingToPlay: "Seleziona una registrazione da riprodurre",
     storageUsed: "Spazio di archiviazione utilizzato",
-    stillSyncing: "COUNTPLACEholder ancora in fase di sincronizzazione",
-    couldNotLoadHlsPlayer: "Impossibile caricare il lettore HLSPLACEholder",
+    stillSyncing: "{count} ancora in sincronizzazione",
+    couldNotLoadHlsPlayer: "Impossibile caricare il lettore HLS",
     date: "Data",
     cacheCleared: "Cache di registrazione cancellata",
     clearAllCache: "Cancella tutte le registrazioni memorizzate nella cache",
@@ -931,7 +931,7 @@ const TRANSLATIONS = {
     genericCamera: "\u30ab\u30e1\u30e9",
     hlsPlaybackFailed: "HLS \u306e\u518d\u751f\u306b\u5931\u6557\u3057\u307e\u3057\u305f",
     hlsPlaybackUnsupported: "HLS \u306e\u518d\u751f\u306f\u3053\u306e\u30d6\u30e9\u30a6\u30b6\u3067\u306f\u30b5\u30dd\u30fc\u30c8\u3055\u308c\u3066\u3044\u307e\u305b\u3093",
-    lazyCacheOnPlayback: "\u518d\u751f\u6642\u306e\u9045\u5ef6\u30ad\u30e3\u30c3\u30b7\u30e5",
+    lazyCacheOnPlayback: "\u30aa\u30f3\u30c7\u30de\u30f3\u30c9 HLS \u30d7\u30ed\u30ad\u30b7",
     loading: "\u8aad\u307f\u8fbc\u307f\u4e2d",
     loadingRecordings: "\u9332\u97f3\u3092\u30ed\u30fc\u30c9\u4e2d...",
     newestRecording: "\u6700\u65b0\u306e\u9332\u97f3",
@@ -982,7 +982,7 @@ const TRANSLATIONS = {
     genericCamera: "\uce74\uba54\ub77c",
     hlsPlaybackFailed: "HLS \uc7ac\uc0dd \uc2e4\ud328",
     hlsPlaybackUnsupported: "\uc774 \ube0c\ub77c\uc6b0\uc800\uc5d0\uc11c\ub294 HLS \uc7ac\uc0dd\uc774 \uc9c0\uc6d0\ub418\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
-    lazyCacheOnPlayback: "\uc7ac\uc0dd \uc2dc \uc9c0\uc5f0 \uce90\uc2dc",
+    lazyCacheOnPlayback: "\uc8fc\ubb38\ud615 HLS \ud504\ub85d\uc2dc",
     loading: "\ub85c\ub4dc \uc911",
     loadingRecordings: "\ub179\uc74c \ub85c\ub4dc \uc911...",
     newestRecording: "\ucd5c\uc2e0 \ub179\uc74c",
@@ -1033,7 +1033,7 @@ const TRANSLATIONS = {
     genericCamera: "Fotoaparatas",
     hlsPlaybackFailed: "HLS atkurti nepavyko",
     hlsPlaybackUnsupported: "\u0160i nar\u0161ykl\u0117 nepalaiko HLS atk\u016brimo",
-    lazyCacheOnPlayback: "Tingi talpykla atk\u016brimo metu",
+    lazyCacheOnPlayback: "Pagal pareikalavim\u0105 HLS tarpinis serveris",
     loading: "\u012ekeliama",
     loadingRecordings: "\u012ekeliami \u012fra\u0161ai...",
     newestRecording: "Naujausias \u012fra\u0161as",
@@ -1084,7 +1084,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "HLS atska\u0146o\u0161ana neizdev\u0101s",
     hlsPlaybackUnsupported: "\u0160\u012b p\u0101rl\u016bkprogramma neatbalsta HLS atska\u0146o\u0161anu",
-    lazyCacheOnPlayback: "Slinka ke\u0161atmi\u0146a atska\u0146o\u0161anas laik\u0101",
+    lazyCacheOnPlayback: "HLS starpniekserveris p\u0113c piepras\u012bjuma",
     loading: "Notiek iel\u0101de",
     loadingRecordings: "Notiek ierakstu iel\u0101de...",
     newestRecording: "Jaun\u0101kais ieraksts",
@@ -1135,7 +1135,7 @@ const TRANSLATIONS = {
     genericCamera: "Camera",
     hlsPlaybackFailed: "Afspelen van HLS is mislukt",
     hlsPlaybackUnsupported: "HLS-weergave wordt niet ondersteund door deze browser",
-    lazyCacheOnPlayback: "Lazy cache bij afspelen",
+    lazyCacheOnPlayback: "On-demand HLS-proxy",
     loading: "Laden",
     loadingRecordings: "Opnames laden...",
     newestRecording: "Nieuwste opname",
@@ -1186,7 +1186,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "HLS-avspilling mislyktes",
     hlsPlaybackUnsupported: "HLS-avspilling st\u00f8ttes ikke av denne nettleseren",
-    lazyCacheOnPlayback: "Lazy cache ved avspilling",
+    lazyCacheOnPlayback: "On-demand HLS proxy",
     loading: "Laster",
     loadingRecordings: "Laster inn opptak...",
     newestRecording: "Nyeste opptak",
@@ -1237,7 +1237,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "Odtwarzanie HLS nie powiod\u0142o si\u0119",
     hlsPlaybackUnsupported: "Ta przegl\u0105darka nie obs\u0142uguje odtwarzania HLS",
-    lazyCacheOnPlayback: "Leniwa pami\u0119\u0107 podr\u0119czna podczas odtwarzania",
+    lazyCacheOnPlayback: "Serwer proxy HLS na \u017c\u0105danie",
     loading: "\u0141adowanie",
     loadingRecordings: "\u0141adowanie nagra\u0144...",
     newestRecording: "Najnowsze nagranie",
@@ -1288,7 +1288,7 @@ const TRANSLATIONS = {
     genericCamera: "C\u00e2mera",
     hlsPlaybackFailed: "Falha na reprodu\u00e7\u00e3o de HLS",
     hlsPlaybackUnsupported: "A reprodu\u00e7\u00e3o HLS n\u00e3o \u00e9 suportada por este navegador",
-    lazyCacheOnPlayback: "Cache lento na reprodu\u00e7\u00e3o",
+    lazyCacheOnPlayback: "Proxy HLS sob demanda",
     loading: "Carregando",
     loadingRecordings: "Carregando grava\u00e7\u00f5es...",
     newestRecording: "Grava\u00e7\u00e3o mais recente",
@@ -1339,7 +1339,7 @@ const TRANSLATIONS = {
     genericCamera: "C\u00e2mera",
     hlsPlaybackFailed: "Falha na reprodu\u00e7\u00e3o de HLS",
     hlsPlaybackUnsupported: "A reprodu\u00e7\u00e3o HLS n\u00e3o \u00e9 suportada por este navegador",
-    lazyCacheOnPlayback: "Cache lento na reprodu\u00e7\u00e3o",
+    lazyCacheOnPlayback: "Proxy HLS sob demanda",
     loading: "Carregando",
     loadingRecordings: "Carregando grava\u00e7\u00f5es...",
     newestRecording: "Grava\u00e7\u00e3o mais recente",
@@ -1390,7 +1390,7 @@ const TRANSLATIONS = {
     genericCamera: "Camera foto",
     hlsPlaybackFailed: "Redarea HLS a e\u0219uat",
     hlsPlaybackUnsupported: "Redarea HLS nu este acceptat\u0103 de acest browser",
-    lazyCacheOnPlayback: "Cache lene\u0219 la redare",
+    lazyCacheOnPlayback: "Proxy HLS la cerere",
     loading: "\u00cenc\u0103rcare",
     loadingRecordings: "Se \u00eencarc\u0103 \u00eenregistr\u0103rile...",
     newestRecording: "Cea mai nou\u0103 \u00eenregistrare",
@@ -1441,7 +1441,7 @@ const TRANSLATIONS = {
     genericCamera: "\u041a\u0430\u043c\u0435\u0440\u0430",
     hlsPlaybackFailed: "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0432\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0441\u0442\u0438 HLS.",
     hlsPlaybackUnsupported: "\u0412\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435 HLS \u043d\u0435 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u044d\u0442\u0438\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u043e\u043c.",
-    lazyCacheOnPlayback: "\u041b\u0435\u043d\u0438\u0432\u044b\u0439 \u043a\u0435\u0448 \u043f\u0440\u0438 \u0432\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0438",
+    lazyCacheOnPlayback: "\u041f\u0440\u043e\u043a\u0441\u0438-\u0441\u0435\u0440\u0432\u0435\u0440 HLS \u043f\u043e \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044e",
     loading: "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430",
     loadingRecordings: "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0437\u0430\u043f\u0438\u0441\u0435\u0439...",
     newestRecording: "\u041d\u043e\u0432\u0435\u0439\u0448\u0430\u044f \u0437\u0430\u043f\u0438\u0441\u044c",
@@ -1492,7 +1492,7 @@ const TRANSLATIONS = {
     genericCamera: "Fotoapar\u00e1t",
     hlsPlaybackFailed: "Prehr\u00e1vanie HLS zlyhalo",
     hlsPlaybackUnsupported: "Prehr\u00e1vanie HLS tento prehliada\u010d nepodporuje",
-    lazyCacheOnPlayback: "Leniv\u00e1 vyrovn\u00e1vacia pam\u00e4\u0165 pri prehr\u00e1van\u00ed",
+    lazyCacheOnPlayback: "Proxy HLS na po\u017eiadanie",
     loading: "Na\u010d\u00edtava sa",
     loadingRecordings: "Na\u010d\u00edtavaj\u00fa sa nahr\u00e1vky...",
     newestRecording: "Najnov\u0161ia nahr\u00e1vka",
@@ -1543,7 +1543,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "Predvajanje HLS ni uspelo",
     hlsPlaybackUnsupported: "Ta brskalnik ne podpira predvajanja HLS",
-    lazyCacheOnPlayback: "Leni predpomnilnik pri predvajanju",
+    lazyCacheOnPlayback: "Proxy HLS na zahtevo",
     loading: "Nalaganje",
     loadingRecordings: "Nalaganje posnetkov ...",
     newestRecording: "Najnovej\u0161i posnetek",
@@ -1594,7 +1594,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "HLS uppspelning misslyckades",
     hlsPlaybackUnsupported: "HLS-uppspelning st\u00f6ds inte av den h\u00e4r webbl\u00e4saren",
-    lazyCacheOnPlayback: "Lat cache vid uppspelning",
+    lazyCacheOnPlayback: "On-demand HLS proxy",
     loading: "Laddar",
     loadingRecordings: "Laddar inspelningar...",
     newestRecording: "Nyaste inspelningen",
@@ -1645,7 +1645,7 @@ const TRANSLATIONS = {
     genericCamera: "\u0e01\u0e25\u0e49\u0e2d\u0e07",
     hlsPlaybackFailed: "\u0e01\u0e32\u0e23\u0e40\u0e25\u0e48\u0e19 HLS \u0e25\u0e49\u0e21\u0e40\u0e2b\u0e25\u0e27",
     hlsPlaybackUnsupported: "\u0e40\u0e1a\u0e23\u0e32\u0e27\u0e4c\u0e40\u0e0b\u0e2d\u0e23\u0e4c\u0e19\u0e35\u0e49\u0e44\u0e21\u0e48\u0e23\u0e2d\u0e07\u0e23\u0e31\u0e1a\u0e01\u0e32\u0e23\u0e40\u0e25\u0e48\u0e19 HLS",
-    lazyCacheOnPlayback: "\u0e41\u0e04\u0e0a\u0e02\u0e35\u0e49\u0e40\u0e01\u0e35\u0e22\u0e08\u0e43\u0e19\u0e01\u0e32\u0e23\u0e40\u0e25\u0e48\u0e19",
+    lazyCacheOnPlayback: "\u0e1e\u0e23\u0e47\u0e2d\u0e01\u0e0b\u0e35 HLS \u0e15\u0e32\u0e21\u0e04\u0e27\u0e32\u0e21\u0e15\u0e49\u0e2d\u0e07\u0e01\u0e32\u0e23",
     loading: "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14",
     loadingRecordings: "\u0e01\u0e33\u0e25\u0e31\u0e07\u0e42\u0e2b\u0e25\u0e14\u0e01\u0e32\u0e23\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01...",
     newestRecording: "\u0e01\u0e32\u0e23\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e43\u0e2b\u0e21\u0e48\u0e25\u0e48\u0e32\u0e2a\u0e38\u0e14",
@@ -1696,7 +1696,7 @@ const TRANSLATIONS = {
     genericCamera: "Kamera",
     hlsPlaybackFailed: "HLS oynatma ba\u015far\u0131s\u0131z oldu",
     hlsPlaybackUnsupported: "HLS oynatma bu taray\u0131c\u0131 taraf\u0131ndan desteklenmiyor",
-    lazyCacheOnPlayback: "Oynatmada tembel \u00f6nbellek",
+    lazyCacheOnPlayback: "\u0130ste\u011fe ba\u011fl\u0131 HLS proxy",
     loading: "Y\u00fckleniyor",
     loadingRecordings: "Kay\u0131tlar y\u00fckleniyor...",
     newestRecording: "En Yeni Kay\u0131t",
@@ -1747,7 +1747,7 @@ const TRANSLATIONS = {
     genericCamera: "\u041a\u0430\u043c\u0435\u0440\u0430",
     hlsPlaybackFailed: "\u041f\u043e\u043c\u0438\u043b\u043a\u0430 \u0432\u0456\u0434\u0442\u0432\u043e\u0440\u0435\u043d\u043d\u044f HLS",
     hlsPlaybackUnsupported: "\u0412\u0456\u0434\u0442\u0432\u043e\u0440\u0435\u043d\u043d\u044f HLS \u043d\u0435 \u043f\u0456\u0434\u0442\u0440\u0438\u043c\u0443\u0454\u0442\u044c\u0441\u044f \u0446\u0438\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u043e\u043c",
-    lazyCacheOnPlayback: "\u0412\u0456\u0434\u043a\u043b\u0430\u0434\u0435\u043d\u0438\u0439 \u043a\u0435\u0448 \u043f\u0456\u0434 \u0447\u0430\u0441 \u0432\u0456\u0434\u0442\u0432\u043e\u0440\u0435\u043d\u043d\u044f",
+    lazyCacheOnPlayback: "\u041f\u0440\u043e\u043a\u0441\u0456 HLS \u043d\u0430 \u0432\u0438\u043c\u043e\u0433\u0443",
     loading: "\u0417\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f",
     loadingRecordings: "\u0417\u0430\u0432\u0430\u043d\u0442\u0430\u0436\u0435\u043d\u043d\u044f \u0437\u0430\u043f\u0438\u0441\u0456\u0432...",
     newestRecording: "\u041d\u0430\u0439\u043d\u043e\u0432\u0456\u0448\u0438\u0439 \u0437\u0430\u043f\u0438\u0441",
@@ -1798,7 +1798,7 @@ const TRANSLATIONS = {
     genericCamera: "M\u00e1y \u1ea3nh",
     hlsPlaybackFailed: "Ph\u00e1t l\u1ea1i HLS kh\u00f4ng th\u00e0nh c\u00f4ng",
     hlsPlaybackUnsupported: "Tr\u00ecnh duy\u1ec7t n\u00e0y kh\u00f4ng h\u1ed7 tr\u1ee3 ph\u00e1t l\u1ea1i HLS",
-    lazyCacheOnPlayback: "B\u1ed9 nh\u1edb \u0111\u1ec7m l\u01b0\u1eddi bi\u1ebfng khi ph\u00e1t l\u1ea1i",
+    lazyCacheOnPlayback: "Proxy HLS theo y\u00eau c\u1ea7u",
     loading: "\u0110ang t\u1ea3i",
     loadingRecordings: "\u0110ang t\u1ea3i b\u1ea3n ghi...",
     newestRecording: "Ghi \u00e2m m\u1edbi nh\u1ea5t",
@@ -1849,7 +1849,7 @@ const TRANSLATIONS = {
     genericCamera: "\u76f8\u673a",
     hlsPlaybackFailed: "HLS \u64ad\u653e\u5931\u8d25",
     hlsPlaybackUnsupported: "\u8be5\u6d4f\u89c8\u5668\u4e0d\u652f\u6301 HLS \u64ad\u653e",
-    lazyCacheOnPlayback: "\u64ad\u653e\u65f6\u5ef6\u8fdf\u7f13\u5b58",
+    lazyCacheOnPlayback: "\u6309\u9700 HLS \u4ee3\u7406",
     loading: "\u52a0\u8f7d\u4e2d",
     loadingRecordings: "\u6b63\u5728\u52a0\u8f7d\u5f55\u97f3...",
     newestRecording: "\u6700\u65b0\u5f55\u97f3",
@@ -1900,7 +1900,7 @@ const TRANSLATIONS = {
     genericCamera: "\u76f8\u6a5f",
     hlsPlaybackFailed: "HLS \u64ad\u653e\u5931\u6557",
     hlsPlaybackUnsupported: "\u6b64\u700f\u89bd\u5668\u4e0d\u652f\u63f4 HLS \u64ad\u653e",
-    lazyCacheOnPlayback: "\u64ad\u653e\u6642\u5ef6\u9072\u7de9\u5b58",
+    lazyCacheOnPlayback: "\u6309\u9700 HLS \u4ee3\u7406",
     loading: "\u8f09\u5165\u4e2d",
     loadingRecordings: "\u6b63\u5728\u8f09\u5165\u9304\u97f3...",
     newestRecording: "\u6700\u65b0\u9304\u97f3",
@@ -1997,7 +1997,9 @@ class XSenseRecordingsPanel extends HTMLElement {
   disconnectedCallback() {
     window.removeEventListener("hashchange", this.handleRouteChange);
     window.removeEventListener("popstate", this.handleRouteChange);
+    const clip = this.selectedClip;
     this.disposePlaybackResources();
+    if (clip) void this.releaseTemporaryPlayback(clip);
   }
 
   async loadData() {
@@ -2406,7 +2408,7 @@ class XSenseRecordingsPanel extends HTMLElement {
         </div>
         <div class="viewer-details">
           <div class="title">${this.escape(this.cameraName(clip.entry_id, clip.serial))} - ${this.escape(this.formatClipTime(clip))}</div>
-          <div class="sub">${this.escape(this.formatDuration(clip.duration))} - ${this.escape(playbackUrl ? this.t("ready") : preparing ? this.t("preparing") : clip.cached ? this.t("cached") : this.t("notCached"))}${clip.cache_bytes ? ` - ${this.escape(this.formatBytes(clip.cache_bytes))}` : ""}</div>
+          <div class="sub">${this.escape(this.formatDuration(clip.duration))} - ${this.escape(playbackUrl ? this.t("ready") : preparing ? this.t("preparing") : clip.cached ? this.t("cached") : clip.retained ? this.t("notCached") : this.t("ready"))}${clip.cache_bytes ? ` - ${this.escape(this.formatBytes(clip.cache_bytes))}` : ""}</div>
         </div>
       </div>
     `;
@@ -2420,7 +2422,7 @@ class XSenseRecordingsPanel extends HTMLElement {
         </div>
         <div class="meta">
           <div class="title">${this.escape(this.formatClipTime(clip))}</div>
-          <div class="sub">${this.escape(clip.cached ? this.t("cached") : this.t("notCached"))}${clip.cache_bytes ? ` - ${this.escape(this.formatBytes(clip.cache_bytes))}` : ""}</div>
+          <div class="sub">${this.escape(clip.cached ? this.t("cached") : clip.retained ? this.t("notCached") : this.t("ready"))}${clip.cache_bytes ? ` - ${this.escape(this.formatBytes(clip.cache_bytes))}` : ""}</div>
           ${clip.cached ? `<button class="clip-delete icon-button" type="button" title="${this.escape(this.t("deleteCachedRecording"))}" aria-label="${this.escape(this.t("deleteCachedRecording"))}"><ha-icon icon="mdi:delete-outline"></ha-icon></button>` : ""}
         </div>
       </div>
@@ -2567,6 +2569,11 @@ class XSenseRecordingsPanel extends HTMLElement {
   }
 
   async openClip(clip) {
+    const previousClip = this.selectedClip;
+    if (previousClip && this.playbackKey(previousClip) !== this.playbackKey(clip)) {
+      this.disposePlaybackResources();
+      await this.releaseTemporaryPlayback(previousClip);
+    }
     this.selectedCameraKey = this.clipKey(clip);
     this.selectedDate = clip.date || this.selectedDate;
     this.selectedClip = clip;
@@ -2581,14 +2588,36 @@ class XSenseRecordingsPanel extends HTMLElement {
     this.render();
   }
 
-  closeViewer() {
+  async closeViewer() {
+    const clip = this.selectedClip;
+    this.disposePlaybackResources();
     this.selectedClip = null;
+    if (clip) await this.releaseTemporaryPlayback(clip);
     if (window.history.state?.xsenseRecordingViewer) {
       window.history.back();
       return;
     }
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     this.render();
+  }
+
+  async releaseTemporaryPlayback(clip) {
+    if (!clip?.entry_id || !clip?.serial || !clip?.start) return;
+    const params = new URLSearchParams({
+      serial: clip.serial,
+      start: String(clip.start),
+      end: String(clip.end || clip.start),
+    });
+    try {
+      await this._hass.callApi(
+        "DELETE",
+        `xsense/recordings/cache/playback/${encodeURIComponent(clip.entry_id)}?${params.toString()}`,
+      );
+    } catch (err) {
+      this.logPanelEvent("playback_release_error", this.clipDebugPayload(clip, {
+        message: err?.message || String(err),
+      }));
+    }
   }
 
   syncRouteFromHash() {
@@ -2677,9 +2706,10 @@ class XSenseRecordingsPanel extends HTMLElement {
       }
       const contentType = response.headers.get("content-type") || "";
       if (this.isHlsResponse(contentType, response.url || signedPath)) {
+        const preparedHlsPath = response.headers.get("Content-Location") || signedPath;
         const leadingAac = response.headers.get("X-XSense-HLS-Leading-AAC") || clip.hls_leading_aac || "";
         const playbackMode = response.headers.get("X-XSense-HLS-Playback-Mode") || clip.hls_playback_mode || "";
-        this.setPlaybackUrl(key, signedPath, "hls", {
+        this.setPlaybackUrl(key, preparedHlsPath, "hls", {
           leadingAac,
           playbackMode,
         });
@@ -2750,6 +2780,12 @@ class XSenseRecordingsPanel extends HTMLElement {
   }
 
   disposePlaybackResources() {
+    const video = this.shadowRoot.getElementById("viewer-video");
+    if (video) {
+      video.pause?.();
+      video.removeAttribute("src");
+      video.load?.();
+    }
     for (const hls of this.hlsInstances.values()) {
       hls.destroy?.();
     }

@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Merekam sinkronisasi media menyimpan cache klip kamera di bawah media Home Assistant sehingga sidebar Rekaman X-Sense, Browser Media, dan notifikasi seluler dapat membuka rekaman dengan cepat. Biarkan rekaman disimpan dalam cache hanya ketika dibuka. Aktifkan untuk menyimpan rekaman terbaru di latar belakang.",
+        "description": "Hanya pemutaran adalah mode bawaan dan meneruskan rekaman melalui Home Assistant saat diputar tanpa menyimpan klip lengkap. Pilih simpan rekaman lokal untuk menyimpan klip di media Home Assistant dengan batas usia dan ukuran yang ditentukan. Sinkronisasi latar belakang hanya berjalan dalam mode penyimpanan.",
         "data": {
           "recording_media_sync_enabled": "Merekam sinkronisasi media",
           "recording_media_sync_hours": "Interval sinkronisasi latar belakang",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Merekam pesanan hari",
           "recording_media_clips_order": "Merekam urutan klip",
           "recording_cache_retention_days": "Merekam retensi cache",
-          "recording_cache_max_size_mb": "Ukuran cache rekaman maksimum"
+          "recording_cache_max_size_mb": "Ukuran cache rekaman maksimum",
+          "recording_cache_mode": "Mode penyimpanan rekaman"
         },
         "data_description": {
           "recording_media_sync_enabled": "Cache rekaman terbaru secara otomatis. Tindakan ini menghabiskan ruang penyimpanan dan mungkin lebih sering membangunkan kamera.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Pilih apakah hari yang lebih baru atau lebih lama muncul pertama kali di penampil rekaman.",
           "recording_media_clips_order": "Pilih apakah klip baru atau lama muncul pertama kali setiap hari.",
           "recording_cache_retention_days": "Hapus rekaman cache lokal setelah beberapa hari ini. Rekaman cloud X-Sense dan kartu SD tidak diubah.",
-          "recording_cache_max_size_mb": "Ukuran cache lokal maksimum dalam MB. Bila batasnya tercapai, rekaman yang terakhir dilihat akan dihapus terlebih dahulu."
+          "recording_cache_max_size_mb": "Ukuran cache lokal maksimum dalam MB. Bila batasnya tercapai, rekaman yang terakhir dilihat akan dihapus terlebih dahulu.",
+          "recording_cache_mode": "Hanya pemutaran meneruskan media HLS melalui Home Assistant sesuai permintaan tanpa menyimpan klip lengkap. Mode penyimpanan menyimpan salinan lokal dengan batas di bawah ini."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Hanya pemutaran",
+        "retained": "Simpan rekaman lokal"
       }
     }
   }

@@ -79,7 +79,7 @@ refresh_recordings:
 
 cache_recordings:
   name: Cache recordings
-  description: Pre-cache X-Sense camera recording videos for faster sidebar and Media Browser playback.
+  description: Download X-Sense camera recordings for local retention. This service only downloads media when Keep local recordings is selected.
   fields:
     entry_id:
       selector:

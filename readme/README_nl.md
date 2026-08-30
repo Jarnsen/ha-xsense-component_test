@@ -119,7 +119,10 @@ ____________________________________________________________
 ## Camera-livebeeld en AI-meldingen
 De eenvoudigste manier is de meegeleverde blueprint. Importeer die met de knop hieronder, kies de camera-evententiteit `Motion` of `AI Detection` voor een camera met abonnement, en pas de meldingsactie zo nodig aan.
 
-Wanneer een Motion-gebeurtenis X-Sense-afspeelgegevens bevat, kan de integratie de clip eerst cachen en daarna een mobiele melding sturen die de bijbehorende clip in X-Sense Recordings opent. Schakel opnamelinks in de blueprint uit als je alleen een eenvoudige bewegingsmelding wilt zonder op video te wachten. Recording media sync kan recente clips op de achtergrond klaarzetten, en oudere geïmporteerde X-Sense-camera-blueprints worden automatisch bijgewerkt.
+Wanneer een Motion-gebeurtenis afspeelmetadata van X-Sense bevat, bereidt de integratie een privé Home Assistant-afspeel-URL voor voordat een melding wordt verzonden waarmee de overeenkomende clip in X-Sense Recordings wordt geopend. Schakel opnamelinks uit in de blauwdruk voor een duidelijke bewegingsmelding zonder video. Oudere geïmporteerde X-Sense-camerablauwdrukken worden automatisch bijgewerkt.
+
+<!-- xsense-recording-storage-modes -->
+Camera-SD-kaartopnamen verschijnen in X-Sense Recordings. Alleen afspelen is de standaardopslagmodus: Home Assistant houdt ondertekende X-Sense-URL's privé, herschrijft de HLS-afspeellijst en proxy-segmenten alleen wanneer de speler daarom vraagt, zonder volledige clips te behouden. Bij Keep Local Recordings worden complete clips opgeslagen onder /media/xsense_recordings en is configureerbare retentie, maximale grootte, handmatige verwijdering en optionele achtergrondsynchronisatie mogelijk. Door lokaal opschonen worden nooit opnamen verwijderd van X-Sense SD-kaarten of cloudopslag.
 
 [![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

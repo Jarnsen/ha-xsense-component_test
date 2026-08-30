@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Kayıt ortamı senkronizasyonu, kamera kliplerini Home Assistant ortamı altında önbelleğe alır, böylece X-Sense Kayıtlar kenar çubuğu, Medya Tarayıcı ve mobil bildirimler kayıtları hızlı bir şekilde açabilir. Kayıtları yalnızca açıldıklarında önbelleğe almak için bunu kapalı bırakın. Son kayıtları arka planda hazır tutmak için bunu etkinleştirin.",
+        "description": "Varsayılan olan yalnızca oynatma modu, tam klipleri saklamadan kayıtları oynatılırken Home Assistant üzerinden aktarır. Klipleri belirlenen yaş ve boyut sınırlarıyla Home Assistant medyasında tutmak için yerel kayıtları sakla seçeneğini seçin. Arka plan eşitlemesi yalnızca saklama modunda çalışır.",
         "data": {
           "recording_media_sync_enabled": "Medya senkronizasyonu kaydediliyor",
           "recording_media_sync_hours": "Arka planda senkronizasyon aralığı",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Kayıt günü sırası",
           "recording_media_clips_order": "Klip sırası kaydediliyor",
           "recording_cache_retention_days": "Önbellek saklamayı kaydetme",
-          "recording_cache_max_size_mb": "Maksimum kayıt önbellek boyutu"
+          "recording_cache_max_size_mb": "Maksimum kayıt önbellek boyutu",
+          "recording_cache_mode": "Kayıt depolama modu"
         },
         "data_description": {
           "recording_media_sync_enabled": "Son kayıtları otomatik olarak önbelleğe alın. Bu, depolama alanını kullanır ve kameraları daha sık uyandırabilir.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Kayıt görüntüleyicide ilk olarak daha yeni günlerin mi yoksa daha eski günlerin mi görüntüleneceğini seçin.",
           "recording_media_clips_order": "Her gün içinde daha yeni veya daha eski kliplerin ilk önce görünüp görünmeyeceğini seçin.",
           "recording_cache_retention_days": "Bu kadar gün geçtikten sonra yerel önbelleğe alınmış kayıtları silin. X-Sense bulut ve SD kart kayıtları değiştirilmez.",
-          "recording_cache_max_size_mb": "MB cinsinden maksimum yerel önbellek boyutu. Sınıra ulaşıldığında, en son görüntülenen kayıtlar ilk önce kaldırılır."
+          "recording_cache_max_size_mb": "MB cinsinden maksimum yerel önbellek boyutu. Sınıra ulaşıldığında, en son görüntülenen kayıtlar ilk önce kaldırılır.",
+          "recording_cache_mode": "Yalnızca oynatma modu, tam klipleri saklamadan HLS medyasını istek üzerine Home Assistant üzerinden aktarır. Saklama modu aşağıdaki sınırlara göre yerel kopyaları tutar."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Yalnızca oynatma",
+        "retained": "Yerel kayıtları sakla"
       }
     }
   }

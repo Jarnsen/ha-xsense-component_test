@@ -206,7 +206,10 @@ ____________________________________________________________
 ## Tampilan langsung kamera dan notifikasi AI
 Cara termudah adalah mengimpor blueprint yang disertakan dengan tombol di bawah, memilih `Motion` atau `AI Detection` yang tersedia, lalu menyesuaikan aksi notifikasi jika perlu.
 
-Saat event Motion berisi data pemutaran X-Sense, integrasi dapat menyimpan klip ke cache terlebih dahulu lalu mengirim notifikasi seluler yang membuka klip yang sesuai di X-Sense Recordings. Matikan tautan rekaman di blueprint jika Anda hanya ingin notifikasi gerakan biasa tanpa menunggu video. Sinkronisasi media rekaman dapat menyiapkan klip terbaru di latar belakang, dan blueprint kamera X-Sense lama yang sudah diimpor diperbarui otomatis.
+Ketika peristiwa Motion menyertakan metadata pemutaran X-Sense, integrasi menyiapkan URL pemutaran Home Assistant pribadi sebelum mengirimkan pemberitahuan yang membuka klip yang cocok di X-Sense Recordings. Matikan tautan rekaman di cetak biru untuk pemberitahuan gerakan biasa tanpa video. Cetak biru kamera X-Sense lama yang diimpor diperbarui secara otomatis.
+
+<!-- xsense-recording-storage-modes -->
+Rekaman kartu SD kamera muncul di X-Sense Recordings. Hanya pemutaran yang merupakan mode penyimpanan default: Home Assistant menjaga kerahasiaan URL X-Sense yang ditandatangani, menulis ulang daftar putar HLS, dan memproksi segmen hanya ketika pemutar memintanya, tanpa menyimpan klip lengkap. Simpan rekaman lokal menyimpan klip lengkap di bawah /media/xsense_recordings dan memungkinkan retensi yang dapat dikonfigurasi, ukuran maksimum, penghapusan manual, dan sinkronisasi latar belakang opsional. Pembersihan lokal tidak pernah menghapus rekaman dari kartu SD X-Sense atau penyimpanan cloud.
 
 [![Impor blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

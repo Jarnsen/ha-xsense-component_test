@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Sinhronizacija snemalnih medijev predpomni posnetke kamere pod medijem Home Assistant, tako da lahko stranska vrstica posnetkov X-Sense, brskalnik predstavnosti in mobilna obvestila hitro odprejo posnetke. Pustite izklopljeno, da shranjuje posnetke samo, ko so odprti. Enable it to keep recent recordings ready in the background.",
+        "description": "Privzeti način je samo predvajanje: posnetki se med predvajanjem posredujejo prek Home Assistanta brez shranjevanja celotnih posnetkov. Izberite hranjenje lokalnih posnetkov, če želite posnetke shraniti v medijih Home Assistanta glede na nastavljene omejitve starosti in velikosti. Sinhronizacija v ozadju deluje samo v načinu hranjenja.",
         "data": {
           "recording_media_sync_enabled": "Sinhronizacija snemalnih medijev",
           "recording_media_sync_hours": "Interval sinhronizacije v ozadju",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Dnevni red snemanja",
           "recording_media_clips_order": "Vrstni red snemanja posnetkov",
           "recording_cache_retention_days": "Zadrževanje predpomnilnika snemanja",
-          "recording_cache_max_size_mb": "Največja velikost predpomnilnika za snemanje"
+          "recording_cache_max_size_mb": "Največja velikost predpomnilnika za snemanje",
+          "recording_cache_mode": "Način shranjevanja posnetkov"
         },
         "data_description": {
           "recording_media_sync_enabled": "Samodejno predpomni nedavne posnetke. This uses storage space and may wake cameras more often.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Izberite, ali se v pregledovalniku posnetkov najprej prikažejo novejši ali starejši dnevi.",
           "recording_media_clips_order": "Izberite, ali se v posameznem dnevu najprej prikažejo novejši ali starejši posnetki.",
           "recording_cache_retention_days": "Po toliko dneh izbrišite lokalne predpomnjene posnetke. Posnetki v oblaku X-Sense in na kartici SD se ne spremenijo.",
-          "recording_cache_max_size_mb": "Največja velikost lokalnega predpomnilnika v MB. Ko je omejitev dosežena, se najprej odstranijo najmanj gledani posnetki."
+          "recording_cache_max_size_mb": "Največja velikost lokalnega predpomnilnika v MB. Ko je omejitev dosežena, se najprej odstranijo najmanj gledani posnetki.",
+          "recording_cache_mode": "Samo predvajanje na zahtevo posreduje medije HLS prek Home Assistanta brez shranjevanja celotnih posnetkov. Način hranjenja ohrani lokalne kopije glede na spodnje omejitve."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Samo predvajanje",
+        "retained": "Hrani lokalne posnetke"
       }
     }
   }

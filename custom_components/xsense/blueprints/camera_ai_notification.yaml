@@ -4,14 +4,13 @@ blueprint:
     Send a notification after an X-Sense camera reports motion or AI
     detection. Select the camera Motion or AI Detection event entity.
     Motion events expose recording_url when playback metadata is available and
-    recording_media_url when the clip has been cached.
-    For best recording playback results, enable X-Sense Recording media sync in
-    the integration options. The integration keeps a broad background catch-up
-    sync for older clips, checks for recent clips every couple minutes, and
-    immediately tries to download motion or AI event recordings before firing
-    this notification. The default notification opens the X-Sense Recordings
-    panel link instead of attaching video, which keeps mobile push delivery
-    reliable across Companion app platforms.
+    recording_media_url when the recording is ready through Home Assistant.
+    Playback only is the default storage mode and securely proxies the X-Sense
+    HLS recording without retaining the complete clip. Keep local recordings
+    can be selected in the integration options when local retention and
+    background sync are wanted. The default notification opens the X-Sense
+    Recordings panel instead of attaching video, which keeps mobile push
+    delivery reliable across Companion app platforms.
   domain: automation
   author: X-Sense Home Security
   source_url: https://github.com/Jarnsen/ha-xsense-component_test/blob/main/blueprints/automation/xsense/camera_ai_notification.yaml
@@ -28,7 +27,7 @@ blueprint:
               domain: event
     include_recording_link:
       name: Include recording link
-      description: Wait for cached recording media and include a recording link. Turn this off to send a plain motion notification without waiting for video.
+      description: Wait until recording playback is ready and include a recording link. Turn this off to send a plain motion notification without waiting for video.
       default: true
       selector:
         boolean:

@@ -196,7 +196,10 @@ ____________________________________________________________
 ## תצוגת מצלמה חיה והתראות AI
 הדרך הפשוטה ביותר היא לייבא את ה-blueprint המצורף בעזרת הכפתור למטה, לבחור `Motion` או `AI Detection` זמין, ולשנות את פעולת ההתראה לפי הצורך.
 
-כאשר אירוע Motion כולל נתוני השמעה של X-Sense, האינטגרציה יכולה לשמור תחילה את הקליפ במטמון ואז לשלוח התראה לנייד שפותחת את הקליפ המתאים ב-X-Sense Recordings. כבו קישורי הקלטה ב-blueprint אם אתם רוצים התראת תנועה פשוטה בלי להמתין לווידאו. סנכרון מדיה של הקלטות יכול להכין קליפים חדשים ברקע, ו-blueprints ישנים של מצלמות X-Sense שיובאו מתעדכנים אוטומטית.
+כאשר אירוע Motion כולל מטא נתונים של הפעלה של X-Sense, האינטגרציה מכינה כתובת URL להשמעה פרטית של Home Assistant לפני שליחת הודעה שפותחת את הקליפ התואם ב-X-Sense Recordings. כבה קישורי הקלטה בתוכנית לקבלת התראה על תנועה פשוטה ללא וידאו. שרטוטי מצלמת X-Sense מיובאים ישנים מתעדכנים אוטומטית.
+
+<!-- xsense-recording-storage-modes -->
+הקלטות כרטיס SD של מצלמה מופיעות ב-X-Sense Recordings. השמעה בלבד היא מצב האחסון המוגדר כברירת מחדל: Home Assistant שומר על פרטיות של כתובות URL חתומות של X-Sense, משכתב את רשימת ההשמעה של HLS ומחלקים פרוקסי רק כאשר הנגן מבקש אותם, מבלי לשמור קליפים שלמים. שמור על הקלטות מקומיות מאחסן קליפים שלמים תחת /media/xsense_recordings ומאפשר שמירה ניתנת להגדרה, גודל מקסימלי, מחיקה ידנית וסנכרון רקע אופציונלי. ניקוי מקומי לעולם לא מוחק הקלטות מכרטיסי X-Sense SD או מאחסון בענן.
 
 [![ייבוא blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

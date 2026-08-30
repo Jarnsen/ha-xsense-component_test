@@ -37,8 +37,9 @@
   "options": {
     "step": {
       "init": {
-        "description": "Recording media sync caches camera clips under Home Assistant media so the X-Sense Recordings sidebar, Media Browser, and mobile notifications can open recordings quickly. Leave it off to cache recordings only when they are opened. Enable it to keep recent recordings ready in the background.",
+        "description": "Playback only is the default and proxies recordings through Home Assistant as they play without retaining complete clips. Choose retained local recordings to keep clips under Home Assistant media using the configured age and size limits. Background sync only runs in retained mode.",
         "data": {
+          "recording_cache_mode": "Recording storage mode",
           "recording_media_sync_enabled": "Recording media sync",
           "recording_media_sync_hours": "Background sync interval",
           "recording_media_storage_path": "Recording cache folder",
@@ -49,6 +50,7 @@
           "recording_media_clips_order": "Recording clip order"
         },
         "data_description": {
+          "recording_cache_mode": "Playback only proxies HLS media through Home Assistant on demand without retaining complete clips. Retained mode keeps local copies using the limits below.",
           "recording_media_sync_enabled": "Cache recent recordings automatically. This uses storage space and may wake cameras more often.",
           "recording_media_sync_hours": "How often the normal background catch-up sync should run. Recent recordings are checked every couple minutes when sync is enabled.",
           "recording_media_storage_path": "Use a folder under /media. New cached videos and thumbnails are stored here.",
@@ -772,6 +774,12 @@
     }
   },
   "selector": {
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Playback only",
+        "retained": "Keep local recordings"
+      }
+    },
     "recording_notification_quality": {
       "options": {
         "hd": "HD",

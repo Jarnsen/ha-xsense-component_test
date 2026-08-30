@@ -60,7 +60,10 @@ Upravljanje naprav, deljenje, odstranjevanje, firmware, računi in plačila osta
 ## Prikaz kamere uživo i AI obavijesti
 Najjednostavnije je uvesti uključeni blueprint donjim gumbom, odabrati `Motion` ili dostupni `AI Detection` i po potrebi prilagoditi akciju obavijesti.
 
-Kada događaj Motion sadrži X-Sense podatke za reprodukciju, integracija može prvo spremiti isječak u predmemoriju, a zatim poslati mobilnu obavijest koja otvara odgovarajući isječak u X-Sense Recordings. Isključite poveznice za snimke u blueprintu ako želite samo jednostavnu obavijest o pokretu bez čekanja na video. Sinkronizacija medija snimki može držati novije isječke spremnima u pozadini, a stariji uvezeni X-Sense blueprinti kamera ažuriraju se automatski.
+Kada događaj Motion uključuje metapodatke reprodukcije X-Sense, integracija priprema privatni URL reprodukcije Home Assistant prije slanja obavijesti koja otvara odgovarajući isječak u X-Sense Recordings. Isključite veze za snimanje u nacrtu za običnu obavijest o kretanju bez videa. Stariji uvezeni nacrti X-Sense kamere ažuriraju se automatski.
+
+<!-- xsense-recording-storage-modes -->
+Snimke SD kartice kamere pojavljuju se u X-Sense Recordings. Samo reprodukcija je zadani način pohranjivanja: Home Assistant čuva potpisane X-Sense URL-ove privatnim, prepisuje HLS popis za reprodukciju i proksi segmente samo kada ih igrač zatraži, bez zadržavanja kompletnih isječaka. Keep local recordings pohranjuje kompletne isječke pod /media/xsense_recordings i omogućuje konfigurabilno zadržavanje, maksimalnu veličinu, ručno brisanje i izbornu sinkronizaciju u pozadini. Lokalno čišćenje nikada ne briše snimke sa X-Sense SD kartica ili pohrane u oblaku.
 
 [![Uvezi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

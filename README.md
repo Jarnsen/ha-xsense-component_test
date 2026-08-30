@@ -31,8 +31,8 @@ Dieses Repository enthält die Home Assistant-Integration für X-Sense-Geräte. 
 ### Recent Improvements / Aktuelle Verbesserungen
 
 - Better X-Sense MQTT shadow handling keeps device state current while reducing unnecessary cloud requests.
-- Supported cameras provide Home Assistant live view, motion/AI event entities, cached recording playback, and the X-Sense Recordings sidebar when X-Sense reports the required camera metadata.
-- The camera-event blueprint can wait for cached recording media before sending mobile notifications, and older imported blueprint copies are refreshed automatically.
+- Supported cameras provide Home Assistant live view, motion/AI event entities, private on-demand HLS recording playback, and the X-Sense Recordings sidebar when X-Sense reports the required camera metadata.
+- The camera-event blueprint can wait until proxied or retained recording playback is ready before sending mobile notifications, and older imported blueprint copies are refreshed automatically.
 - The keypad-code blueprints can run Home Assistant actions when an SKP0A keypad submits a valid X-Sense code, including routing several codes from one automation.
 - Home Assistant UI text is localized for the integration setup, options, entities, and X-Sense Recordings panel across the documented language set.
 - More reported X-Sense fields are exposed for smoke, CO, water, temperature, humidity, light, keypad, mailbox, motion, door, reminder, warning, and diagnostics.

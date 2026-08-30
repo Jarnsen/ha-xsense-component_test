@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Synchronizace záznamových médií ukládá do mezipaměti klipy z fotoaparátu pod média Home Assistant, takže postranní panel Nahrávek X-Sense, Prohlížeč médií a mobilní oznámení mohou rychle otevřít nahrávky. Ponechte jej pro ukládání do mezipaměti pouze tehdy, když jsou otevřeny. Aktivujte ji, aby byly poslední nahrávky připraveny na pozadí.",
+        "description": "Výchozí je pouze přehrávání, které při přehrávání předává nahrávky přes Home Assistant bez uchovávání celých klipů. Chcete-li ukládat klipy do médií Home Assistant podle nastaveného stáří a velikosti, zvolte uchovávání místních nahrávek. Synchronizace na pozadí běží jen v režimu uchovávání.",
         "data": {
           "recording_media_sync_enabled": "Synchronizace nahrávacího média",
           "recording_media_sync_hours": "Interval synchronizace na pozadí",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Objednávka dne záznamu",
           "recording_media_clips_order": "Pořadí nahrávání klipů",
           "recording_cache_retention_days": "Uchovávání mezipaměti záznamu",
-          "recording_cache_max_size_mb": "Maximální velikost mezipaměti pro nahrávání"
+          "recording_cache_max_size_mb": "Maximální velikost mezipaměti pro nahrávání",
+          "recording_cache_mode": "Režim ukládání nahrávek"
         },
         "data_description": {
           "recording_media_sync_enabled": "Automaticky ukládat poslední nahrávky do mezipaměti. To využívá úložný prostor a může častěji probudit kamery.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Zvolte, zda se v prohlížeči nahrávek jako první zobrazí novější nebo starší dny.",
           "recording_media_clips_order": "Vyberte, zda se v každém dni zobrazí jako první novější nebo starší klipy.",
           "recording_cache_retention_days": "Po tomto mnoha dnech smažte místní nahrávky uložené v mezipaměti. Cloud X-Sense a záznamy na SD kartě se nezmění.",
-          "recording_cache_max_size_mb": "Maximální velikost místní mezipaměti v MB. Po dosažení limitu jsou nejdříve odstraněny nahrávky, které byly naposledy zobrazeny."
+          "recording_cache_max_size_mb": "Maximální velikost místní mezipaměti v MB. Po dosažení limitu jsou nejdříve odstraněny nahrávky, které byly naposledy zobrazeny.",
+          "recording_cache_mode": "Pouze přehrávání předává média HLS na vyžádání přes Home Assistant bez uchovávání celých klipů. Režim uchovávání ukládá místní kopie podle níže uvedených limitů."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Pouze přehrávání",
+        "retained": "Uchovávat místní nahrávky"
       }
     }
   }

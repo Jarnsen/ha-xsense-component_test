@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Įrašymo laikmenos sinchronizavimas talpykloje išsaugo fotoaparato klipus Home Assistant laikmenoje, todėl šoninė įrašų juosta X-Sense, medijos naršyklė ir pranešimai mobiliesiems gali greitai atidaryti įrašus. Palikite jį į talpyklos įrašus tik tada, kai jie atidaromi. Įjunkite, kad naujausi įrašai būtų paruošti fone.",
+        "description": "Numatytasis režimas yra tik atkūrimas: įrašai atkūrimo metu perduodami per Home Assistant neišsaugant visų klipų. Pasirinkite vietinių įrašų saugojimą, jei norite laikyti klipus Home Assistant medijoje pagal nustatytas amžiaus ir dydžio ribas. Foninis sinchronizavimas veikia tik saugojimo režimu.",
         "data": {
           "recording_media_sync_enabled": "Įrašymo laikmenos sinchronizavimas",
           "recording_media_sync_hours": "Fono sinchronizavimo intervalas",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Įrašymo dienos užsakymas",
           "recording_media_clips_order": "Įrašymo klipo užsakymas",
           "recording_cache_retention_days": "Įrašymo talpyklos išlaikymas",
-          "recording_cache_max_size_mb": "Maksimalus įrašymo talpyklos dydis"
+          "recording_cache_max_size_mb": "Maksimalus įrašymo talpyklos dydis",
+          "recording_cache_mode": "Įrašų saugojimo režimas"
         },
         "data_description": {
           "recording_media_sync_enabled": "Automatiškai saugokite naujausius įrašus. Tai užima vietos saugykloje ir gali dažniau pažadinti kameras.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Pasirinkite, ar įrašų peržiūros priemonėje pirmiausia bus rodomos naujesnės ar senesnės dienos.",
           "recording_media_clips_order": "Pasirinkite, ar kiekvieną dieną pirmiausia rodomi naujesni ar senesni klipai.",
           "recording_cache_retention_days": "Po tiek dienų ištrinkite vietinius talpykloje esančius įrašus. „X-Sense“ debesies ir SD kortelės įrašai nekeičiami.",
-          "recording_cache_max_size_mb": "Didžiausias vietinės talpyklos dydis MB. Pasiekus limitą, pirmiausia pašalinami rečiausiai peržiūrėti įrašai."
+          "recording_cache_max_size_mb": "Didžiausias vietinės talpyklos dydis MB. Pasiekus limitą, pirmiausia pašalinami rečiausiai peržiūrėti įrašai.",
+          "recording_cache_mode": "Tik atkūrimo režimas pagal poreikį perduoda HLS mediją per Home Assistant neišsaugant visų klipų. Saugojimo režimas laiko vietines kopijas pagal toliau pateiktas ribas."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -199,7 +201,7 @@
         "name": "Signalizacijos garsumas"
       },
       "wifi_rssi": {
-        "name": "WIFIPLACE HOLDER Signalo stiprumas"
+        "name": "Wi-Fi signalo stiprumas"
       },
       "ip_address": {
         "name": "IP adresas"
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Tik atkūrimas",
+        "retained": "Saugoti vietinius įrašus"
       }
     }
   }

@@ -60,7 +60,10 @@ Enhedsadministration, deling, fjernelse, firmware, konti og betalinger forbliver
 ## Kamera-livevisning og AI-notifikationer
 Den nemmeste vej er at importere den inkluderede blueprint med knappen nedenfor, vælge `Motion` eller tilgængelig `AI Detection`, og justere notifikationshandlingen.
 
-Når en Motion-hændelse indeholder X-Sense-afspilningsdata, kan integrationen først cache klippet og derefter sende en mobilnotifikation, der åbner det matchende klip i X-Sense Recordings. Slå optagelseslinks fra i blueprinten, hvis du kun vil have en enkel bevægelsesnotifikation uden at vente på video. Synkronisering af optagelsesmedier kan holde nye klip klar i baggrunden, og ældre importerede X-Sense-kamera-blueprints opdateres automatisk.
+Når en Motion-begivenhed inkluderer X-Sense-afspilningsmetadata, forbereder integrationen en privat Home Assistant-afspilnings-URL, før der sendes en notifikation, der åbner det matchende klip i X-Sense Recordings. Slå optagelseslinks fra i planen for en almindelig bevægelsesmeddelelse uden video. Ældre importerede X-Sense-kameraplaner opdateres automatisk.
+
+<!-- xsense-recording-storage-modes -->
+Kamera SD-kort optagelser vises i X-Sense Recordings. Kun afspilning er standardlagringstilstanden: Home Assistant holder signerede X-Sense-URL'er private, omskriver HLS-afspilningslisten og proxyer kun segmenter, når afspilleren anmoder om dem, uden at beholde komplette klip. Hold lokale optagelser gemmer komplette klip under /media/xsense_recordings og muliggør konfigurerbar opbevaring, en maksimal størrelse, manuel sletning og valgfri baggrundssynkronisering. Lokal oprydning sletter aldrig optagelser fra X-Sense SD-kort eller skylager.
 
 [![Importer blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

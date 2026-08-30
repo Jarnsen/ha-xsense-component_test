@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Synkronisering av opptak av media hurtigbufrer kameraklipp under Home Assistant-medier slik at X-Sense Recordings-sidefeltet, medienettleseren og mobilvarslinger kan åpne opptak raskt. La det være av for å bufre opptak bare når de er åpnet. Aktiver den for å holde nylige opptak klare i bakgrunnen.",
+        "description": "Bare avspilling er standard og videresender opptak gjennom Home Assistant under avspilling uten å beholde hele klipp. Velg behold lokale opptak for å lagre klipp under Home Assistant-medier med de angitte alders- og størrelsesgrensene. Bakgrunnssynkronisering kjører bare i lagringsmodus.",
         "data": {
           "recording_media_sync_enabled": "Synkronisering av opptaksmedier",
           "recording_media_sync_hours": "Bakgrunnssynkroniseringsintervall",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Bestilling av opptaksdag",
           "recording_media_clips_order": "Opptak av klipprekkefølge",
           "recording_cache_retention_days": "Oppbevaring av cache",
-          "recording_cache_max_size_mb": "Maksimal opptaksbufferstørrelse"
+          "recording_cache_max_size_mb": "Maksimal opptaksbufferstørrelse",
+          "recording_cache_mode": "Lagringsmodus for opptak"
         },
         "data_description": {
           "recording_media_sync_enabled": "Buffer nylige opptak automatisk. Dette bruker lagringsplass og kan vekke kameraer oftere.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Velg om nyere eller eldre dager vises først i opptaksvisningen.",
           "recording_media_clips_order": "Velg om nyere eller eldre klipp vises først i løpet av hver dag.",
           "recording_cache_retention_days": "Slett lokale hurtigbufrede opptak etter disse mange dagene. X-Sense sky- og SD-kortopptak endres ikke.",
-          "recording_cache_max_size_mb": "Maksimal lokal bufferstørrelse i MB. Når grensen er nådd, fjernes de minst nylig viste opptakene først."
+          "recording_cache_max_size_mb": "Maksimal lokal bufferstørrelse i MB. Når grensen er nådd, fjernes de minst nylig viste opptakene først.",
+          "recording_cache_mode": "Bare avspilling videresender HLS-medier gjennom Home Assistant ved behov uten å beholde hele klipp. Lagringsmodus beholder lokale kopier etter grensene nedenfor."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Bare avspilling",
+        "retained": "Behold lokale opptak"
       }
     }
   }

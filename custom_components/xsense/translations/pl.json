@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Synchronizacja multimediów z nagraniami buforuje klipy z kamery w obszarze multimediów Home Assistant, dzięki czemu pasek boczny X-Sense Nagrania, przeglądarka multimediów i powiadomienia mobilne umożliwiają szybkie otwieranie nagrań. Pozostaw tę opcję, aby buforować nagrania tylko wtedy, gdy są otwarte. Włącz tę opcję, aby najnowsze nagrania były gotowe w tle.",
+        "description": "Domyślny tryb tylko odtwarzanie przekazuje nagrania przez Home Assistant podczas odtwarzania bez zachowywania pełnych klipów. Wybierz zachowywanie nagrań lokalnych, aby przechowywać klipy w multimediach Home Assistant zgodnie z ustawionymi limitami wieku i rozmiaru. Synchronizacja w tle działa tylko w trybie zachowywania.",
         "data": {
           "recording_media_sync_enabled": "Synchronizacja nośników nagrań",
           "recording_media_sync_hours": "Interwał synchronizacji w tle",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Kolejność dnia nagrania",
           "recording_media_clips_order": "Kolejność nagrywania klipów",
           "recording_cache_retention_days": "Zachowywanie pamięci podręcznej nagrań",
-          "recording_cache_max_size_mb": "Maksymalny rozmiar pamięci podręcznej nagrań"
+          "recording_cache_max_size_mb": "Maksymalny rozmiar pamięci podręcznej nagrań",
+          "recording_cache_mode": "Tryb przechowywania nagrań"
         },
         "data_description": {
           "recording_media_sync_enabled": "Automatycznie buforuj ostatnie nagrania. Zajmuje to miejsce w pamięci i może częściej budzić kamery.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Wybierz, czy w przeglądarce nagrań mają się najpierw pojawiać nowsze, czy starsze dni.",
           "recording_media_clips_order": "Wybierz, czy każdego dnia jako pierwsze mają pojawiać się nowsze czy starsze klipy.",
           "recording_cache_retention_days": "Usuń nagrania z lokalnej pamięci podręcznej po tylu dniach. Nagrania w chmurze X-Sense i na karcie SD nie ulegają zmianie.",
-          "recording_cache_max_size_mb": "Maksymalny rozmiar lokalnej pamięci podręcznej w MB. Po osiągnięciu limitu w pierwszej kolejności usuwane są nagrania ostatnio oglądane."
+          "recording_cache_max_size_mb": "Maksymalny rozmiar lokalnej pamięci podręcznej w MB. Po osiągnięciu limitu w pierwszej kolejności usuwane są nagrania ostatnio oglądane.",
+          "recording_cache_mode": "Tryb tylko odtwarzanie przekazuje multimedia HLS przez Home Assistant na żądanie bez zachowywania pełnych klipów. Tryb zachowywania przechowuje lokalne kopie zgodnie z poniższymi limitami."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Tylko odtwarzanie",
+        "retained": "Zachowuj nagrania lokalne"
       }
     }
   }

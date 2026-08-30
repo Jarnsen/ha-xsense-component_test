@@ -60,7 +60,10 @@ Ierīču pārvaldība, kopīgošana, noņemšana, firmware, konti un maksājumi 
 ## Kameras tiešraide un AI paziņojumi
 Vienkāršākais veids ir importēt iekļauto blueprint ar zemāk esošo pogu, izvēlēties `Motion` vai pieejamo `AI Detection` un pielāgot paziņojuma darbību.
 
-Ja Motion notikums satur X-Sense atskaņošanas datus, integrācija vispirms var saglabāt klipu kešatmiņā un pēc tam nosūtīt mobilo paziņojumu, kas atver atbilstošo klipu X-Sense Recordings skatā. Izslēdziet ierakstu saites blueprintā, ja vēlaties tikai vienkāršu kustības paziņojumu bez gaidīšanas uz video. Ierakstu mediju sinhronizācija var fonā sagatavot jaunākos klipus, un vecāki importētie X-Sense kameru blueprinti tiek atjaunināti automātiski.
+Ja Motion notikums ietver X-Sense atskaņošanas metadatus, integrācija sagatavo privātu Home Assistant atskaņošanas URL pirms paziņojuma nosūtīšanas, kas atver atbilstošo klipu X-Sense Recordings. Izslēdziet ierakstīšanas saites projektā, lai saņemtu paziņojumu par vienkāršu kustību bez video. Vecāki importētie X-Sense kameru rasējumi tiek automātiski atjaunināti.
+
+<!-- xsense-recording-storage-modes -->
+Kameras SD kartes ieraksti tiek parādīti X-Sense Recordings. Tikai atskaņošana ir noklusējuma krātuves režīms: Home Assistant saglabā parakstītos X-Sense vietrāžus URL privātus, pārraksta HLS atskaņošanas sarakstu un izmanto starpniekserveri segmentus tikai tad, kad atskaņotājs tos pieprasa, nesaglabājot pilnīgus klipus. Vietējo ierakstu saglabāšana saglabā pilnīgus klipus zem /media/xsense_recordings un nodrošina konfigurējamu saglabāšanu, maksimālo izmēru, manuālu dzēšanu un izvēles fona sinhronizāciju. Vietējā tīrīšana nekad neizdzēš ierakstus no X-Sense SD kartēm vai mākoņkrātuves.
 
 [![Importēt blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

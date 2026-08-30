@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Tallennusmedian synkronointi tallentaa kameraleikkeet välimuistiin Home Assistant-mediaan, joten X-Sense Tallenteet-sivupalkki, Mediaselain ja mobiiliilmoitukset voivat avata tallenteet nopeasti. Jätä se pois päältä tallenteiden välimuistiin vasta, kun ne avataan. Ota se käyttöön pitääksesi viimeisimmät tallenteet valmiina taustalla.",
+        "description": "Oletuksena on vain toisto: tallenteet välitetään Home Assistantin kautta toiston aikana ilman kokonaisten leikkeiden säilyttämistä. Valitse paikallisten tallenteiden säilytys, jos haluat pitää leikkeet Home Assistantin mediassa määritettyjen ikä- ja kokorajojen mukaan. Taustasynkronointi toimii vain säilytystilassa.",
         "data": {
           "recording_media_sync_enabled": "Tallennusmedian synkronointi",
           "recording_media_sync_hours": "Taustasynkronointiväli",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Tallennuspäivän tilaus",
           "recording_media_clips_order": "Tallennusleikkeen tilaus",
           "recording_cache_retention_days": "Tallennusvälimuistin säilytys",
-          "recording_cache_max_size_mb": "Tallennusvälimuistin enimmäiskoko"
+          "recording_cache_max_size_mb": "Tallennusvälimuistin enimmäiskoko",
+          "recording_cache_mode": "Tallenteiden tallennustila"
         },
         "data_description": {
           "recording_media_sync_enabled": "Tallenna viimeisimmät tallenteet automaattisesti välimuistiin. Tämä käyttää tallennustilaa ja saattaa herättää kamerat useammin.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Valitse, näkyvätkö tallenteiden katseluohjelmassa ensin uudemmat vai vanhemmat päivät.",
           "recording_media_clips_order": "Valitse, näkyvätkö uudemmat vai vanhemmat leikkeet ensimmäisenä joka päivä.",
           "recording_cache_retention_days": "Poista paikalliset välimuistitallenteet tämän monen päivän jälkeen. X-Sense-pilvi- ja SD-kortin tallennukset eivät muutu.",
-          "recording_cache_max_size_mb": "Paikallisen välimuistin enimmäiskoko megatavuina. Kun raja saavutetaan, viimeksi katsotut tallenteet poistetaan ensin."
+          "recording_cache_max_size_mb": "Paikallisen välimuistin enimmäiskoko megatavuina. Kun raja saavutetaan, viimeksi katsotut tallenteet poistetaan ensin.",
+          "recording_cache_mode": "Vain toisto välittää HLS-median pyydettäessä Home Assistantin kautta säilyttämättä kokonaisia leikkeitä. Säilytystila pitää paikalliset kopiot alla olevien rajojen mukaan."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Vain toisto",
+        "retained": "Säilytä paikalliset tallenteet"
       }
     }
   }

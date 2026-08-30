@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "La sincronización de medios de grabación almacena en caché los clips de la cámara en los medios Home Assistant para que la barra lateral de grabaciones X-Sense, el navegador de medios y las notificaciones móviles puedan abrir las grabaciones rápidamente. Déjelo desactivado para almacenar en caché las grabaciones sólo cuando estén abiertas. Habilítelo para mantener las grabaciones recientes listas en segundo plano.",
+        "description": "Solo reproducción es el modo predeterminado y transmite las grabaciones a través de Home Assistant mientras se reproducen, sin conservar clips completos. Elige conservar grabaciones locales para guardar clips en los medios de Home Assistant con los límites de antigüedad y tamaño configurados. La sincronización en segundo plano solo funciona en el modo de conservación.",
         "data": {
           "recording_media_sync_enabled": "Sincronización de medios de grabación",
           "recording_media_sync_hours": "Intervalo de sincronización en segundo plano",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Orden del día de grabación",
           "recording_media_clips_order": "Orden de clips de grabación",
           "recording_cache_retention_days": "Retención de caché de grabación",
-          "recording_cache_max_size_mb": "Tamaño máximo de caché de grabación"
+          "recording_cache_max_size_mb": "Tamaño máximo de caché de grabación",
+          "recording_cache_mode": "Modo de almacenamiento de grabaciones"
         },
         "data_description": {
           "recording_media_sync_enabled": "Almacene en caché las grabaciones recientes automáticamente. Esto utiliza espacio de almacenamiento y puede activar las cámaras con más frecuencia.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Elija si los días más nuevos o más antiguos aparecen primero en el visor de grabaciones.",
           "recording_media_clips_order": "Elija si los clips más nuevos o más antiguos aparecen primero cada día.",
           "recording_cache_retention_days": "Elimine las grabaciones almacenadas en caché local después de tantos días. Las grabaciones en la nube de X-Sense y en la tarjeta SD no se modifican.",
-          "recording_cache_max_size_mb": "Tamaño máximo de caché local en MB. Cuando se alcanza el límite, las grabaciones vistas menos recientemente se eliminan primero."
+          "recording_cache_max_size_mb": "Tamaño máximo de caché local en MB. Cuando se alcanza el límite, las grabaciones vistas menos recientemente se eliminan primero.",
+          "recording_cache_mode": "Solo reproducción transmite medios HLS a través de Home Assistant bajo demanda sin conservar clips completos. El modo de conservación mantiene copias locales con los límites indicados abajo."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Solo reproducción",
+        "retained": "Conservar grabaciones locales"
       }
     }
   }

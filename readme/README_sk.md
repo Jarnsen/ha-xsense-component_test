@@ -60,7 +60,10 @@ Správa zariadení, zdieľanie, odstránenie, firmvér, účty a platby zostáva
 ## Živý náhľad kamery a oznámenia AI
 Najjednoduchšie je importovať priložený blueprint tlačidlom nižšie, vybrať `Motion` alebo dostupné `AI Detection` a upraviť akciu oznámenia.
 
-Keď udalosť Motion obsahuje dáta prehrávania X-Sense, integrácia môže najprv uložiť klip do cache a potom odoslať mobilné oznámenie, ktoré otvorí príslušný klip v X-Sense Recordings. Vypnite odkazy na nahrávky v blueprint-e, ak chcete iba jednoduché oznámenie o pohybe bez čakania na video. Synchronizácia médií nahrávok môže udržiavať najnovšie klipy pripravené na pozadí a staršie importované blueprinty kamier X-Sense sa aktualizujú automaticky.
+Keď udalosť Motion obsahuje metadáta prehrávania X-Sense, integrácia pripraví súkromnú adresu URL prehrávania Home Assistant pred odoslaním upozornenia, ktoré otvorí zodpovedajúci klip v X-Sense Recordings. Vypnite odkazy na nahrávanie v pláne, aby ste dostali upozornenie na obyčajný pohyb bez videa. Staršie importované plány fotoaparátu X-Sense sa aktualizujú automaticky.
+
+<!-- xsense-recording-storage-modes -->
+Záznamy z fotoaparátu na SD kartu sa objavia v X-Sense Recordings. Predvoleným režimom ukladania je iba prehrávanie: Home Assistant uchováva podpísané adresy URL X-Sense ako súkromné, prepisuje zoznam skladieb HLS a proxy segmenty iba vtedy, keď si to prehrávač vyžiada, bez uchovania úplných klipov. Keep local recordings ukladá kompletné klipy pod /media/xsense_recordings a umožňuje konfigurovateľné uchovávanie, maximálnu veľkosť, manuálne mazanie a voliteľnú synchronizáciu na pozadí. Miestne čistenie nikdy nevymaže záznamy z SD kariet X-Sense alebo cloudového úložiska.
 
 [![Importovať blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

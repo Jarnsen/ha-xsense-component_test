@@ -205,7 +205,10 @@ ____________________________________________________________
 ## কেমেৰা লাইভ ভিউ আৰু AI জাননী
 সৰ্বাধিক সহজ পদ্ধতি হ’ল তলৰ বুটামেৰে অন্তর্ভুক্ত blueprint import কৰা, `Motion` বা উপলব্ধ `AI Detection` বাছনি কৰা, আৰু প্ৰয়োজন হলে notification action সলনি কৰা।
 
-যেতিয়া কোনো Motion event-ত X-Sense playback data থাকে, integration-এ প্ৰথমে clip cache কৰিব পাৰে আৰু তাৰ পিছত X-Sense Recordings-ত সেই clip খোলা mobile notification পঠাব পাৰে। video অপেক্ষা নকৰাকৈ সাধাৰণ motion notification বিচাৰিলে blueprint-ত recording links বন্ধ কৰক। Recording media sync-এ নতুন clips background-ত ready ৰাখিব পাৰে, আৰু পুৰণি imported X-Sense camera blueprints স্বয়ংক্ৰিয়ভাৱে update হয়।
+যেতিয়া এটা Motion ইভেন্টে X-Sense প্লেবেক মেটাডাটা অন্তৰ্ভুক্ত কৰে, সংহতিই এটা ব্যক্তিগত Home Assistant প্লেবেক URL প্ৰস্তুত কৰে এটা জাননী পঠোৱাৰ আগতে যি X-Sense Recordings ত মিল থকা ক্লিপ খোলে। ভিডিঅ' অবিহনে এটা সাধাৰণ গতিৰ অধিসূচনাৰ বাবে ব্লুপ্ৰিণ্টত ৰেকৰ্ডিং লিংকসমূহ বন্ধ কৰক। পুৰণি আমদানি কৰা X-Sense কেমেৰা ব্লুপ্ৰিণ্টসমূহ স্বয়ংক্ৰিয়ভাৱে আপডেইট কৰা হয়।
+
+<!-- xsense-recording-storage-modes -->
+কেমেৰা SD-কাৰ্ড ৰেকৰ্ডিং X-Sense Recordings ত দেখা দিয়ে। কেৱল প্লেবেক অবিকল্পিত সংৰক্ষণ ধৰণ: Home Assistant এ স্বাক্ষৰিত X-Sense URLসমূহ ব্যক্তিগত ৰাখে, HLS প্লেলিষ্ট পুনৰায় লিখে, আৰু প্ৰক্সি কৰে কেৱল যেতিয়া প্লেয়াৰে সিহতক অনুৰোধ কৰে, সম্পূৰ্ণ ক্লিপসমূহ ধৰি ৰাখিব নালাগে। স্থানীয় ৰেকৰ্ডিংসমূহ /media/xsense_recordings ৰ অন্তৰ্গত সম্পূৰ্ণ ক্লিপসমূহ সংৰক্ষণ কৰক আৰু বিন্যাসযোগ্য ধৰি ৰখা, এটা সৰ্বাধিক আকাৰ, হস্তচালিত মচি পেলোৱা, আৰু বৈকল্পিক পটভূমি সিঙ্ক সামৰ্থবান কৰে। স্থানীয় পৰিষ্কাৰ-পৰিচ্ছন্নতাই কেতিয়াও X-Sense SD কাৰ্ড বা ক্লাউড সংৰক্ষণৰ পৰা ৰেকৰ্ডিংসমূহ মচি পেলাব নোৱাৰে।
 
 [![Blueprint import কৰক](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

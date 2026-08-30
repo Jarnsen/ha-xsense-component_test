@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "Ierakstīšanas multivides sinhronizēšana kešatmiņā saglabā kameras klipus zem multivides Home Assistant, lai X-Sense ierakstu sānjosla, multivides pārlūkprogramma un mobilie paziņojumi varētu ātri atvērt ierakstus. Atstājiet to izslēgtu, lai saglabātu ierakstus tikai tad, kad tie ir atvērti. Iespējojiet to, lai jaunākie ieraksti būtu gatavi fonā.",
+        "description": "Noklusējums ir tikai atskaņošana: ieraksti atskaņošanas laikā tiek pārsūtīti caur Home Assistant, nesaglabājot pilnus klipus. Izvēlieties vietējo ierakstu saglabāšanu, lai glabātu klipus Home Assistant multividē atbilstoši iestatītajiem vecuma un izmēra ierobežojumiem. Fona sinhronizācija darbojas tikai saglabāšanas režīmā.",
         "data": {
           "recording_media_sync_enabled": "Ierakstīšanas multivides sinhronizācija",
           "recording_media_sync_hours": "Fona sinhronizācijas intervāls",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Ierakstīšanas dienas pasūtījums",
           "recording_media_clips_order": "Ierakstīšanas klipa pasūtījums",
           "recording_cache_retention_days": "Ieraksta kešatmiņas saglabāšana",
-          "recording_cache_max_size_mb": "Maksimālais ierakstīšanas kešatmiņas lielums"
+          "recording_cache_max_size_mb": "Maksimālais ierakstīšanas kešatmiņas lielums",
+          "recording_cache_mode": "Ierakstu glabāšanas režīms"
         },
         "data_description": {
           "recording_media_sync_enabled": "Automātiski saglabājiet jaunākos ierakstus kešatmiņā. Tas izmanto krātuves vietu un var biežāk pamodināt kameras.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Izvēlieties, vai ierakstu skatītājā vispirms tiek rādītas jaunākas vai vecākas dienas.",
           "recording_media_clips_order": "Izvēlieties, vai katru dienu vispirms tiek rādīti jaunāki vai vecāki klipi.",
           "recording_cache_retention_days": "Pēc daudzām dienām izdzēsiet lokālos kešatmiņā saglabātos ierakstus. X-Sense mākoņa un SD kartes ieraksti netiek mainīti.",
-          "recording_cache_max_size_mb": "Maksimālais vietējās kešatmiņas lielums MB. Kad limits ir sasniegts, vispirms tiek noņemti vismazāk skatītie ieraksti."
+          "recording_cache_max_size_mb": "Maksimālais vietējās kešatmiņas lielums MB. Kad limits ir sasniegts, vispirms tiek noņemti vismazāk skatītie ieraksti.",
+          "recording_cache_mode": "Tikai atskaņošana pēc pieprasījuma pārsūta HLS multividi caur Home Assistant, nesaglabājot pilnus klipus. Saglabāšanas režīms glabā vietējās kopijas atbilstoši zemāk norādītajiem ierobežojumiem."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -199,7 +201,7 @@
         "name": "Signalizācijas skaļums"
       },
       "wifi_rssi": {
-        "name": "WIFIPLACE HOLDER Signāla stiprums"
+        "name": "Wi-Fi signāla stiprums"
       },
       "ip_address": {
         "name": "IP adrese"
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Tikai atskaņošana",
+        "retained": "Saglabāt vietējos ierakstus"
       }
     }
   }

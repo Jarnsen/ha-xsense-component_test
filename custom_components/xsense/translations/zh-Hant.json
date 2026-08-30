@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "錄製媒體同步會在 Home Assistant 媒體下快取攝影機剪輯，以便 X-Sense 錄製側邊欄、媒體瀏覽器和行動通知可以快速開啟錄製。僅當錄音開啟時才將其關閉以快取錄音。使其能夠在後台保留最近的錄音。",
+        "description": "預設使用僅播放模式，播放時透過 Home Assistant 代理錄影，不保留完整片段。選擇保留本機錄影，可依設定的保存期限和大小限制將片段存入 Home Assistant 媒體目錄。背景同步僅在保留模式下執行。",
         "data": {
           "recording_media_sync_enabled": "錄製媒體同步",
           "recording_media_sync_hours": "後台同步間隔",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "錄音日順序",
           "recording_media_clips_order": "錄製剪輯順序",
           "recording_cache_retention_days": "錄音快取保留",
-          "recording_cache_max_size_mb": "最大錄音快取大小"
+          "recording_cache_max_size_mb": "最大錄音快取大小",
+          "recording_cache_mode": "錄影儲存模式"
         },
         "data_description": {
           "recording_media_sync_enabled": "自動快取最近的錄製內容。這會佔用儲存空間，並且可能會更頻繁地喚醒攝影機。",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "選擇較新的日期還是較舊的日期首先顯示在錄音檢視器中。",
           "recording_media_clips_order": "選擇每天首先顯示較新的剪輯還是較舊的剪輯。",
           "recording_cache_retention_days": "在這麼多天後刪除本地快取的錄音。 X-Sense雲端和SD卡錄音沒有改變。",
-          "recording_cache_max_size_mb": "最大本地快取大小（以 MB 為單位）。當達到限制時，最近最少查看的錄音將首先被刪除。"
+          "recording_cache_max_size_mb": "最大本地快取大小（以 MB 為單位）。當達到限制時，最近最少查看的錄音將首先被刪除。",
+          "recording_cache_mode": "僅播放模式會依需求透過 Home Assistant 代理 HLS 媒體，不保留完整片段。保留模式會依下方限制保存本機副本。"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "僅播放",
+        "retained": "保留本機錄影"
       }
     }
   }

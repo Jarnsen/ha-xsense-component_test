@@ -204,7 +204,10 @@ ____________________________________________________________
 ## कैमरा लाइव व्यू और AI सूचनाएं
 सबसे आसान तरीका नीचे दिए बटन से शामिल blueprint import करना, `Motion` या उपलब्ध `AI Detection` चुनना, और ज़रूरत हो तो notification action बदलना है।
 
-जब किसी Motion इवेंट में X-Sense playback डेटा होता है, तो integration पहले clip को cache कर सकता है और फिर mobile notification भेज सकता है जो X-Sense Recordings में वही clip खोलता है। अगर आप वीडियो का इंतज़ार किए बिना साधारण motion notification चाहते हैं, तो blueprint में recording links बंद करें। Recording media sync नए clips को background में ready रख सकता है, और पुराने imported X-Sense camera blueprints अपने आप update होते हैं।
+जब एक Motion ईवेंट में X-Sense प्लेबैक मेटाडेटा शामिल होता है, तो एकीकरण एक अधिसूचना भेजने से पहले एक निजी Home Assistant प्लेबैक यूआरएल तैयार करता है जो X-Sense Recordings में मिलान क्लिप खोलता है। वीडियो के बिना सादे गति अधिसूचना के लिए ब्लूप्रिंट में रिकॉर्डिंग लिंक बंद करें। पुराने आयातित X-Sense कैमरा ब्लूप्रिंट स्वचालित रूप से अपडेट हो जाते हैं।
+
+<!-- xsense-recording-storage-modes -->
+कैमरा SD-कार्ड रिकॉर्डिंग X-Sense Recordings में दिखाई देती हैं। प्लेबैक केवल डिफॉल्ट स्टोरेज मोड है: Home Assistant हस्ताक्षरित X-Sense यूआरएल को निजी रखता है, HLS प्लेलिस्ट को फिर से लिखता है, और जब खिलाड़ी उनसे अनुरोध करता है तो केवल सेगमेंट को प्रॉक्सी करता है, बिना पूरी क्लिप बनाए रखे। स्थानीय रिकॉर्डिंग स्टोर को /media/xsense_recordings के अंतर्गत पूर्ण क्लिप रखें और कॉन्फ़िगर करने योग्य प्रतिधारण, अधिकतम आकार, मैन्युअल विलोपन और वैकल्पिक पृष्ठभूमि सिंक को सक्षम करें। स्थानीय सफाई X-Sense SD कार्ड या क्लाउड स्टोरेज से रिकॉर्डिंग को कभी नहीं हटाती है।
 
 [![Blueprint import करें](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

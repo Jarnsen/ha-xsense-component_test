@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "A felvételi médiaszinkronizálás gyorsítótárazza a kamera klipjeit a Home Assistant adathordozó alatt, így az X-Sense Recordings oldalsáv, a médiaböngésző és a mobil értesítések gyorsan megnyithatják a felvételeket. Hagyja kikapcsolva a felvételek gyorsítótárazását, ha megnyitják őket. Engedélyezze a legutóbbi felvételek háttérben tartásához.",
+        "description": "Az alapértelmezett csak lejátszás mód lejátszás közben a Home Assistanton keresztül továbbítja a felvételeket, teljes klipek megőrzése nélkül. A klipek Home Assistant médiában, a beállított kor- és méretkorlátok szerint történő tárolásához válassza a helyi felvételek megőrzését. A háttérszinkronizálás csak megőrzési módban fut.",
         "data": {
           "recording_media_sync_enabled": "Felvételi adathordozó szinkronizálása",
           "recording_media_sync_hours": "Háttér szinkronizálási időköz",
@@ -46,7 +46,8 @@
           "recording_media_days_order": "Felvételi napi rendelés",
           "recording_media_clips_order": "Klip rendelés rögzítése",
           "recording_cache_retention_days": "Rögzítés gyorsítótár megőrzése",
-          "recording_cache_max_size_mb": "Maximális rögzítési gyorsítótár mérete"
+          "recording_cache_max_size_mb": "Maximális rögzítési gyorsítótár mérete",
+          "recording_cache_mode": "Felvételek tárolási módja"
         },
         "data_description": {
           "recording_media_sync_enabled": "A legutóbbi felvételek automatikus gyorsítótárazása. Ez tárhelyet foglal el, és gyakrabban ébresztheti fel a kamerákat.",
@@ -56,7 +57,8 @@
           "recording_media_days_order": "Válassza ki, hogy az újabb vagy a régebbi napok jelenjenek meg először a felvételnézőben.",
           "recording_media_clips_order": "Válassza ki, hogy az újabb vagy a régebbi klipek jelenjenek meg először minden napon.",
           "recording_cache_retention_days": "Törölje a helyi gyorsítótárazott felvételeket ennyi nap elteltével. Az X-Sense felhő és az SD-kártya felvételei nem változnak.",
-          "recording_cache_max_size_mb": "A helyi gyorsítótár maximális mérete MB-ban. A korlát elérésekor először a legutóbb megtekintett felvételek törlődnek."
+          "recording_cache_max_size_mb": "A helyi gyorsítótár maximális mérete MB-ban. A korlát elérésekor először a legutóbb megtekintett felvételek törlődnek.",
+          "recording_cache_mode": "A csak lejátszás mód igény szerint továbbítja a HLS-médiát a Home Assistanton keresztül, teljes klipek megőrzése nélkül. A megőrzési mód helyi másolatokat tart az alábbi korlátok szerint."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Csak lejátszás",
+        "retained": "Helyi felvételek megőrzése"
       }
     }
   }

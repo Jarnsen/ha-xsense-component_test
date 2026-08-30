@@ -6,6 +6,7 @@ import asyncio
 import json
 import shutil
 import subprocess
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from time import monotonic, time
@@ -33,17 +34,20 @@ from .python_xsense.async_xsense import camera_addx_serial, is_camera_entity
 from .recordings_gate import has_any_camera_entities
 from .const import (
     CONF_RECORDING_CACHE_MAX_SIZE_MB,
+    CONF_RECORDING_CACHE_MODE,
     CONF_RECORDING_CACHE_RETENTION_DAYS,
     CONF_RECORDING_MEDIA_CLIPS_ORDER,
     CONF_RECORDING_MEDIA_DAYS_ORDER,
     CONF_RECORDING_MEDIA_STORAGE_PATH,
     CONF_RECORDING_NOTIFICATION_QUALITY,
     DEFAULT_RECORDING_CACHE_MAX_SIZE_MB,
+    DEFAULT_RECORDING_CACHE_MODE,
     DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
     DEFAULT_RECORDING_MEDIA_CLIPS_ORDER,
     DEFAULT_RECORDING_MEDIA_DAYS_ORDER,
     DEFAULT_RECORDING_MEDIA_STORAGE_PATH,
     DEFAULT_RECORDING_NOTIFICATION_QUALITY,
+    RECORDING_PLAYBACK_SESSION_TTL_SECONDS,
     CONF_RECORDING_MEDIA_SYNC_ENABLED,
     CONF_RECORDING_MEDIA_SYNC_HOURS,
     DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
@@ -242,6 +246,10 @@ async def async_cache_recording_media(
     for index in indexes:
         clips = _recording_cache_candidates(index)
         for clip in clips:
+            clip_entry_id = str(clip.get("entry_id") or "")
+            if not _recording_cache_retained(hass, clip_entry_id):
+                summary["skipped"] += 1
+                continue
             if recent_cutoff is not None and not _clip_is_recent(
                 clip,
                 recent_cutoff,
@@ -322,6 +330,19 @@ async def async_cache_recording_playback(
         )
         return ""
     _remember_event_recording_clip(hass, clip)
+
+    if not _recording_cache_retained(hass, entry_id):
+        playback_url = recording_playback_api_url(clip)
+        LOGGER.debug(
+            "X-Sense motion recording ready for proxied playback: %s",
+            {
+                "camera": _short_serial(clip.get("serial")),
+                "source": clip.get("source"),
+                "start": clip.get("start"),
+                "elapsed_ms": int((monotonic() - started_at) * 1000),
+            },
+        )
+        return playback_url
 
     media_source = XSenseRecordingsMediaSource(hass)
     cached_url = await media_source._async_cached_media_url(clip)
@@ -410,9 +431,29 @@ async def async_delete_recording_cache(
     hass: HomeAssistant, clip: dict[str, Any]
 ) -> dict[str, int]:
     """Delete one locally cached clip without touching X-Sense storage."""
+    async_cancel_temporary_recording_cleanup(hass, clip)
     root = _recording_media_root_from_value(clip.get("media_root"))
     cache_key = _cache_group_key_for_clip(clip)
     return await _async_delete_cache_groups(hass, [root], keys={cache_key})
+
+
+async def async_release_recording_playback(
+    hass: HomeAssistant,
+    *,
+    entry_id: str,
+    serial: str,
+    start: int,
+    end: int,
+) -> dict[str, int]:
+    """Release one temporary proxy session without reloading cloud history."""
+    clip = {
+        "entry_id": entry_id,
+        "serial": serial,
+        "start": start,
+        "end": end,
+        "media_root": _recording_media_root(hass, entry_id),
+    }
+    return await async_delete_recording_cache(hass, clip)
 
 
 async def async_touch_recording_cache(
@@ -427,6 +468,65 @@ async def async_touch_recording_cache(
         await executor(_touch_cache_path, path)
     else:
         _touch_cache_path(path)
+    async_schedule_temporary_recording_cleanup(hass, clip)
+
+
+def async_schedule_temporary_recording_cleanup(
+    hass: HomeAssistant,
+    clip: dict[str, Any],
+    *,
+    delay: int = RECORDING_PLAYBACK_SESSION_TTL_SECONDS,
+) -> None:
+    """Release playback-only files and proxy state after the viewing window."""
+    entry_id = str(clip.get("entry_id") or "")
+    if (
+        not entry_id
+        or not hasattr(hass, "loop")
+        or _recording_cache_retained(hass, entry_id)
+    ):
+        return
+    cleanup_key = f"{entry_id}:{_cache_group_key_for_clip(clip)}"
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    cleanups = domain_data.setdefault("_recording_temporary_cleanup_unsubs", {})
+    previous = cleanups.pop(cleanup_key, None)
+    if callable(previous):
+        previous()
+
+    async def _async_cleanup(now=None) -> None:
+        current = cleanups.pop(cleanup_key, None)
+        if current is not unsub:
+            return
+        if not cleanups:
+            domain_data.pop("_recording_temporary_cleanup_unsubs", None)
+        try:
+            await async_delete_recording_cache(hass, clip)
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.debug(
+                "X-Sense temporary recording cleanup failed: %s",
+                {**_clip_log_context(clip), "error": str(exc)},
+            )
+
+    unsub = async_call_later(hass, max(1, delay), _async_cleanup)
+    cleanups[cleanup_key] = unsub
+
+
+def async_cancel_temporary_recording_cleanup(
+    hass: HomeAssistant, clip: dict[str, Any]
+) -> None:
+    """Cancel a pending playback-only cleanup for one clip."""
+    entry_id = str(clip.get("entry_id") or "")
+    if not entry_id:
+        return
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    cleanups = domain_data.get("_recording_temporary_cleanup_unsubs")
+    if not isinstance(cleanups, dict):
+        return
+    cleanup_key = f"{entry_id}:{_cache_group_key_for_clip(clip)}"
+    unsub = cleanups.pop(cleanup_key, None)
+    if callable(unsub):
+        unsub()
+    if not cleanups:
+        domain_data.pop("_recording_temporary_cleanup_unsubs", None)
 
 
 async def async_delete_camera_recording_cache(
@@ -450,6 +550,11 @@ async def async_prune_recording_caches(
     summary = _empty_cache_cleanup_summary()
     for root in roots:
         retention_days, max_size_mb = _cache_policy_for_root(hass, root, entry_id)
+        retention_seconds = (
+            None
+            if not entry_id or _recording_cache_retained(hass, entry_id)
+            else RECORDING_PLAYBACK_SESSION_TTL_SECONDS
+        )
         protected = _protected_cache_paths(hass)
         result = await hass.async_add_executor_job(
             _prune_media_cache,
@@ -457,6 +562,7 @@ async def async_prune_recording_caches(
             retention_days,
             max_size_mb * 1024 * 1024,
             protected,
+            retention_seconds,
         )
         _merge_cache_cleanup_summary(summary, result)
     if summary["deleted_items"]:
@@ -526,7 +632,9 @@ def async_start_recording_media_sync(
 ) -> None:
     """Start cache maintenance and optional background media caching."""
     async_stop_recording_media_sync(hass, entry.entry_id)
-    sync_enabled = bool(entry.options.get(CONF_RECORDING_MEDIA_SYNC_ENABLED))
+    sync_enabled = _recording_cache_retained(
+        hass, entry.entry_id
+    ) and bool(entry.options.get(CONF_RECORDING_MEDIA_SYNC_ENABLED))
 
     hours = int(
         entry.options.get(
@@ -608,16 +716,58 @@ def async_stop_recording_media_sync(
     """Stop background recording sync owned by one config entry."""
     domain_data = getattr(hass, "data", {}).get(DOMAIN, {})
     sync_unsubs = domain_data.get("_recording_media_sync_unsubs")
-    if not isinstance(sync_unsubs, dict):
-        return
-    unsubs = sync_unsubs.get(entry_id)
-    if unsubs is None or (expected is not None and unsubs is not expected):
-        return
-    sync_unsubs.pop(entry_id, None)
-    for unsub in unsubs:
-        unsub()
-    if not sync_unsubs:
-        domain_data.pop("_recording_media_sync_unsubs", None)
+    if isinstance(sync_unsubs, dict):
+        unsubs = sync_unsubs.get(entry_id)
+        if unsubs is not None and (expected is None or unsubs is expected):
+            sync_unsubs.pop(entry_id, None)
+            for unsub in unsubs:
+                unsub()
+            if not sync_unsubs:
+                domain_data.pop("_recording_media_sync_unsubs", None)
+    temporary_cleanups = domain_data.get("_recording_temporary_cleanup_unsubs")
+    if isinstance(temporary_cleanups, dict):
+        prefix = f"{entry_id}:"
+        for key in [key for key in temporary_cleanups if key.startswith(prefix)]:
+            unsub = temporary_cleanups.pop(key, None)
+            if callable(unsub):
+                unsub()
+        if not temporary_cleanups:
+            domain_data.pop("_recording_temporary_cleanup_unsubs", None)
+    hls_tokens = domain_data.get("_recording_hls_tokens")
+    if isinstance(hls_tokens, dict):
+        for token, data in list(hls_tokens.items()):
+            if isinstance(data, dict) and data.get("entry_id") == entry_id:
+                hls_tokens.pop(token, None)
+        if not hls_tokens:
+            domain_data.pop("_recording_hls_tokens", None)
+
+
+def recording_playback_api_url(clip: dict[str, Any]) -> str:
+    """Return the authenticated HA playback endpoint for one recording."""
+    entry_id = str(clip.get("entry_id") or "")
+    serial = str(clip.get("serial") or "")
+    start = _clip_start_for_sort(clip)
+    end = _clip_end_for_path(clip, start)
+    if not entry_id or not serial or not start or not end:
+        return ""
+    return (
+        f"/api/{DOMAIN}/recordings/play/"
+        f"{quote(entry_id, safe='')}/{start}/{end}?serial={quote(serial, safe='')}"
+    )
+
+
+def recording_thumbnail_api_url(clip: dict[str, Any]) -> str:
+    """Return the authenticated HA thumbnail endpoint for one recording."""
+    entry_id = str(clip.get("entry_id") or "")
+    serial = str(clip.get("serial") or "")
+    start = _clip_start_for_sort(clip)
+    end = _clip_end_for_path(clip, start)
+    if not entry_id or not serial or not start or not end:
+        return ""
+    return (
+        f"/api/{DOMAIN}/recordings/thumb/"
+        f"{quote(entry_id, safe='')}/{start}/{end}?serial={quote(serial, safe='')}"
+    )
 
 
 def async_stop_hls_playback_profile_migration(hass: HomeAssistant) -> None:
@@ -919,6 +1069,12 @@ class XSenseRecordingsMediaSource(MediaSource):
             self.hass, entry_id
         ) and not await self._async_cached_media_ready(clip):
             raise Unresolvable("X-Sense recording is waiting for background sync")
+        if not _recording_cache_retained(self.hass, entry_id):
+            resolved_url = recording_playback_api_url(clip)
+            if not resolved_url:
+                raise Unresolvable("X-Sense recording playback URL is unavailable")
+            return PlayMedia(resolved_url, HLS_MIME_TYPE)
+
         resolved_url = await self._async_cached_playback_url(clip)
         hls_ready = await self._async_hls_ready(clip)
         output_path = _clip_cache_path(clip)
@@ -948,13 +1104,16 @@ class XSenseRecordingsMediaSource(MediaSource):
             result = await self._async_cached_direct_playback_url_unlocked(
                 clip, direct_url
             )
-            if not was_cached:
+            if _recording_cache_retained(
+                self.hass, str(clip.get("entry_id") or "")
+            ) and not was_cached:
                 try:
                     await async_prune_recording_caches(
                         self.hass, entry_id=str(clip.get("entry_id") or "") or None
                     )
                 except Exception as exc:  # noqa: BLE001
                     LOGGER.debug("X-Sense recording cache maintenance failed: %s", exc)
+            async_schedule_temporary_recording_cleanup(self.hass, clip)
         return result
 
     async def _async_cached_direct_playback_url_unlocked(
@@ -1299,13 +1458,17 @@ class XSenseRecordingsMediaSource(MediaSource):
             return False
         output_path = _clip_thumbnail_cache_path(clip)
         if await self._async_path_ready(output_path):
+            async_schedule_temporary_recording_cleanup(self.hass, clip)
             return False
         try:
             await self._async_download_url(thumbnail_url, output_path)
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug("Could not cache X-Sense recording thumbnail: %s", exc)
             return False
-        return await self._async_path_ready(output_path)
+        ready = await self._async_path_ready(output_path)
+        if ready:
+            async_schedule_temporary_recording_cleanup(self.hass, clip)
+        return ready
 
     async def _async_download_url(self, url: str, output_path: Path) -> dict[str, Any]:
         """Download one URL into the recording media cache."""
@@ -1391,7 +1554,9 @@ class XSenseRecordingsMediaSource(MediaSource):
         thumbnail_path = _clip_thumbnail_cache_path(clip)
         if await self._async_path_ready(thumbnail_path):
             return _local_media_url(thumbnail_path)
-        return str(clip.get("thumbnail_url") or "")
+        if clip.get("thumbnail_url"):
+            return recording_thumbnail_api_url(clip)
+        return ""
 
     async def _async_file_job(self, func, *args):
         """Run a small filesystem helper off the event loop."""
@@ -1406,6 +1571,9 @@ class XSenseRecordingsMediaSource(MediaSource):
             return
         pending = [clip for clip in clips if clip.get("thumbnail_url")]
         if not pending:
+            return
+        entry_id = str(pending[0].get("entry_id") or "")
+        if not _recording_cache_retained(self.hass, entry_id):
             return
 
         async def _async_warmup() -> None:
@@ -1426,7 +1594,7 @@ class XSenseRecordingsMediaSource(MediaSource):
 
         _create_recording_background_task(
             self.hass,
-            str(pending[0].get("entry_id") or ""),
+            entry_id,
             _async_warmup(),
             "X-Sense recording thumbnail warmup",
         )
@@ -2037,7 +2205,21 @@ def _recording_media_sync_enabled(hass: HomeAssistant, entry_id: str) -> bool:
     entry = config_entries.async_get_entry(entry_id)
     if entry is None:
         return False
-    return bool(getattr(entry, "options", {}).get(CONF_RECORDING_MEDIA_SYNC_ENABLED))
+    return _recording_cache_retained(hass, entry_id) and bool(
+        getattr(entry, "options", {}).get(CONF_RECORDING_MEDIA_SYNC_ENABLED)
+    )
+
+
+def _recording_cache_retained(hass: HomeAssistant, entry_id: str) -> bool:
+    """Return whether an entry keeps recording media beyond playback sessions."""
+    config_entries = getattr(hass, "config_entries", None)
+    getter = getattr(config_entries, "async_get_entry", None)
+    entry = getter(entry_id) if callable(getter) else None
+    options = getattr(entry, "options", {}) if entry is not None else {}
+    return (
+        str(options.get(CONF_RECORDING_CACHE_MODE, DEFAULT_RECORDING_CACHE_MODE))
+        == "retained"
+    )
 
 
 def _recording_notification_quality(hass: HomeAssistant, entry_id: str) -> str:
@@ -2377,7 +2559,13 @@ def _create_hls_leading_playback_segment(
     sample_rate: int,
     channels: int,
 ) -> tuple[bool, dict[str, Any]]:
-    """Create a silent-AAC playback sidecar for one leading HLS segment."""
+    """Create a browser-safe leading segment while preserving later real audio.
+
+    The APK retries ExoPlayer with FLAG_IGNORE_AAC_STREAM when the first TS
+    segment has malformed AAC. Browsers do not expose that extractor flag, so
+    the HA proxy replaces only that segment's unusable audio with valid silence.
+    The following source segments, including their real audio, remain unchanged.
+    """
     ffmpeg = shutil.which("ffmpeg")
     output_path = _hls_leading_playback_segment_path(path)
     if not ffmpeg or not _path_ready(path):
@@ -2440,6 +2628,54 @@ def _create_hls_leading_playback_segment(
         output_path.unlink(missing_ok=True)
         return False, details
     return True, details
+
+
+def _prepare_hls_proxy_leading_segment(
+    payload: bytes,
+    reference_payload: bytes | None,
+) -> tuple[bytes, dict[str, Any]]:
+    """Prepare one proxied leading segment without retaining it on disk."""
+    with tempfile.TemporaryDirectory(prefix="xsense-hls-") as directory:
+        root = Path(directory)
+        leading_path = root / "leading.ts"
+        leading_path.write_bytes(payload)
+        leading_aac, probe = _probe_hls_ts_aac(leading_path)
+        profile: dict[str, Any] = {
+            "leading_aac": leading_aac,
+            "playback_mode": HLS_PLAYBACK_MODE_NORMAL,
+            "probe": probe,
+        }
+        if leading_aac != HLS_LEADING_AAC_BROKEN:
+            return payload, profile
+
+        sample_rate = 16000
+        channels = 1
+        if reference_payload:
+            reference_path = root / "reference.ts"
+            reference_path.write_bytes(reference_payload)
+            reference_aac, reference_probe = _probe_hls_ts_aac(reference_path)
+            if reference_aac == HLS_LEADING_AAC_OK:
+                sample_rate, channels = _audio_params_from_probe(reference_probe)
+                profile["reference_audio"] = {
+                    "sample_rate": sample_rate,
+                    "channels": channels,
+                }
+        created, repair = _create_hls_leading_playback_segment(
+            leading_path,
+            sample_rate=sample_rate,
+            channels=channels,
+        )
+        profile["repair"] = repair
+        if not created:
+            raise Unresolvable(
+                "X-Sense HLS recording leading segment could not be prepared for playback"
+            )
+        playback_path = _hls_leading_playback_segment_path(leading_path)
+        profile["playback_mode"] = HLS_PLAYBACK_MODE_IGNORE_LEADING_AAC
+        profile["leading_playback_verified"] = (
+            _probe_hls_ts_aac(playback_path)[0] == HLS_LEADING_AAC_OK
+        )
+        return playback_path.read_bytes(), profile
 
 
 def _categorize_hls_leading_segment(
@@ -3117,6 +3353,22 @@ def _revoke_hls_tokens(
         return
     resolved_roots = [root.resolve() for root in roots]
     for token, data in list(tokens.items()):
+        if isinstance(data, dict) and data.get("mode") == "proxy":
+            media_root = data.get("media_root")
+            cache_key = str(data.get("cache_key") or "")
+            if not isinstance(media_root, Path) or not any(
+                media_root.resolve() == root
+                for root in resolved_roots
+            ):
+                continue
+            if keys is not None and cache_key not in keys:
+                continue
+            if key_prefixes is not None and not any(
+                cache_key.startswith(prefix) for prefix in key_prefixes
+            ):
+                continue
+            tokens.pop(token, None)
+            continue
         token_root = data.get("root") if isinstance(data, dict) else None
         if not isinstance(token_root, Path):
             continue
@@ -3253,11 +3505,16 @@ def _prune_media_cache(
     retention_days: int,
     max_size_bytes: int,
     protected: set[Path],
+    retention_seconds: int | None = None,
 ) -> dict[str, int]:
     """Remove expired groups, then oldest groups until under the size cap."""
     summary = _empty_cache_cleanup_summary()
     groups = _cache_inventory(root)
-    cutoff = time() - retention_days * 86400
+    cutoff = time() - (
+        retention_seconds
+        if retention_seconds is not None
+        else retention_days * 86400
+    )
     remaining_bytes = sum(int(group["bytes"]) for group in groups.values())
     ordered = sorted(groups.values(), key=lambda group: float(group["modified"]))
     for group in ordered:

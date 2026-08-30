@@ -12,23 +12,23 @@
     },
     "step": {
       "reauth_confirm": {
-        "description": "Accedi nuovamente con il tuo account XSENSEBRANDPLACEholder.",
+        "description": "Accedi nuovamente con il tuo account X-Sense.",
         "data": {
-          "email": "EMAILPLACEholder",
+          "email": "E-mail",
           "password": "Parola d'ordine"
         }
       },
       "reconfigure": {
-        "description": "Aggiorna l'account XSENSEBRANDPLACEholder utilizzato da questa integrazione.",
+        "description": "Aggiorna l'account X-Sense utilizzato da questa integrazione.",
         "data": {
-          "email": "EMAILPLACEholder",
+          "email": "E-mail",
           "password": "Parola d'ordine"
         }
       },
       "user": {
-        "description": "Accedi con il tuo account XSENSEBRANDPLACEholder.",
+        "description": "Accedi con il tuo account X-Sense.",
         "data": {
-          "email": "EMAILPLACEholder",
+          "email": "E-mail",
           "password": "Parola d'ordine"
         }
       }
@@ -37,7 +37,7 @@
   "options": {
     "step": {
       "init": {
-        "description": "La sincronizzazione dei supporti di registrazione memorizza nella cache i clip della fotocamera sotto i supporti Home Assistant in modo che la barra laterale delle registrazioni XSENSEBRANDPLACEholder, il browser multimediale e le notifiche mobili possano aprire rapidamente le registrazioni. Lascialo spento per memorizzare nella cache le registrazioni solo quando vengono aperte. Abilitalo per mantenere le registrazioni recenti pronte in background.",
+        "description": "Solo riproduzione è la modalità predefinita e inoltra le registrazioni tramite Home Assistant durante la riproduzione senza conservare i clip completi. Scegli di conservare le registrazioni locali per archiviare i clip nei media di Home Assistant usando i limiti di età e dimensione configurati. La sincronizzazione in background funziona solo in modalità conservazione.",
         "data": {
           "recording_media_sync_enabled": "Sincronizzazione del supporto di registrazione",
           "recording_media_sync_hours": "Intervallo di sincronizzazione in background",
@@ -46,17 +46,19 @@
           "recording_media_days_order": "Ordine del giorno di registrazione",
           "recording_media_clips_order": "Ordine delle clip di registrazione",
           "recording_cache_retention_days": "Conservazione della cache di registrazione",
-          "recording_cache_max_size_mb": "Dimensione massima della cache di registrazione"
+          "recording_cache_max_size_mb": "Dimensione massima della cache di registrazione",
+          "recording_cache_mode": "Modalità di archiviazione delle registrazioni"
         },
         "data_description": {
           "recording_media_sync_enabled": "Memorizza automaticamente nella cache le registrazioni recenti. Ciò utilizza lo spazio di archiviazione e potrebbe riattivare le telecamere più spesso.",
           "recording_media_sync_hours": "La frequenza con cui deve essere eseguita la normale sincronizzazione di recupero in background. Le registrazioni recenti vengono controllate ogni paio di minuti quando la sincronizzazione è abilitata.",
-          "recording_media_storage_path": "Utilizza una cartella in MEDIAPATHPLACEholder. I nuovi video e miniature memorizzati nella cache vengono archiviati qui.",
-          "recording_notification_quality": "Scegli HD per preferire gli URL di clip diretti/ad alta risoluzione di XSENSEBRANDPLACEholder per le notifiche mobili. Scegli SDPLACEholder per utilizzare il percorso di acquisizione della riproduzione della fotocamera quando disponibile.",
+          "recording_media_storage_path": "Utilizza una cartella in /media. I nuovi video e le miniature memorizzati nella cache vengono archiviati qui.",
+          "recording_notification_quality": "Scegli HD per preferire gli URL diretti dei clip X-Sense ad alta risoluzione nelle notifiche mobili. Scegli SD per utilizzare il percorso di acquisizione della riproduzione della telecamera quando disponibile.",
           "recording_media_days_order": "Scegli se i giorni più nuovi o quelli più vecchi verranno visualizzati per primi nel visualizzatore delle registrazioni.",
           "recording_media_clips_order": "Scegli se le clip più nuove o quelle più vecchie verranno visualizzate per prime ogni giorno.",
           "recording_cache_retention_days": "Elimina le registrazioni memorizzate nella cache locale dopo questo numero di giorni. Le registrazioni su cloud X-Sense e su scheda SD non vengono modificate.",
-          "recording_cache_max_size_mb": "Dimensione massima della cache locale in MB. Quando viene raggiunto il limite, le registrazioni visualizzate meno di recente vengono rimosse per prime."
+          "recording_cache_max_size_mb": "Dimensione massima della cache locale in MB. Quando viene raggiunto il limite, le registrazioni visualizzate meno di recente vengono rimosse per prime.",
+          "recording_cache_mode": "Solo riproduzione inoltra i contenuti HLS tramite Home Assistant su richiesta senza conservare i clip completi. La modalità conservazione mantiene copie locali usando i limiti indicati sotto."
         }
       },
       "confirm_recording_media_storage_path": {
@@ -64,10 +66,10 @@
       }
     },
     "error": {
-      "invalid_recording_media_path": "Utilizza una cartella in MEDIAPATHPLACEholder."
+      "invalid_recording_media_path": "Utilizza una cartella in /media."
     },
     "abort": {
-      "no_options": "Non sono presenti opzioni configurabili per questo account XSENSEBRANDPLACEholder."
+      "no_options": "Non sono presenti opzioni configurabili per questo account X-Sense."
     }
   },
   "entity": {
@@ -199,25 +201,25 @@
         "name": "Volume dell'allarme"
       },
       "wifi_rssi": {
-        "name": "WIFIPLACEholder Potenza del segnale"
+        "name": "Potenza del segnale Wi-Fi"
       },
       "ip_address": {
         "name": "Indirizzo IP"
       },
       "co_reading": {
-        "name": "COPLACEholder Lettura"
+        "name": "Lettura CO"
       },
       "co_level": {
-        "name": "Livello COPLACEholder"
+        "name": "Livello CO"
       },
       "peak_co_level": {
-        "name": "Livello COPLACEholder massimo"
+        "name": "Livello CO massimo"
       },
       "peak_co_level_time": {
-        "name": "Tempo del livello di picco COPLACEholder"
+        "name": "Ora del picco CO"
       },
       "mcu_sw_version": {
-        "name": "Versione software MCUPLACEholder"
+        "name": "Versione software MCU"
       },
       "rf_level": {
         "name": "Potenza del segnale",
@@ -235,10 +237,10 @@
         "name": "Volume della voce"
       },
       "wifi_ssid": {
-        "name": "SSIDPLACEholder"
+        "name": "SSID"
       },
       "wifi_sw": {
-        "name": "Versione firmware del modulo WIFIPLACEholder"
+        "name": "Versione firmware del modulo Wi-Fi"
       },
       "last_self_test": {
         "name": "Risultato del test del dispositivo",
@@ -787,6 +789,12 @@
       "options": {
         "ascending": "Ascending",
         "descending": "Descending"
+      }
+    },
+    "recording_cache_mode": {
+      "options": {
+        "playback_only": "Solo riproduzione",
+        "retained": "Conserva le registrazioni locali"
       }
     }
   }

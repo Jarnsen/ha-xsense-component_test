@@ -118,7 +118,10 @@ ____________________________________________________________
 ## Xem trực tiếp camera và thông báo AI
 Cách đơn giản nhất là nhập blueprint đi kèm bằng nút bên dưới, chọn `Motion` hoặc `AI Detection` có sẵn, rồi chỉnh hành động thông báo nếu cần.
 
-Khi sự kiện Motion có dữ liệu phát lại của X-Sense, tích hợp có thể lưu clip vào bộ nhớ đệm trước rồi gửi thông báo di động mở đúng clip trong X-Sense Recordings. Tắt liên kết bản ghi trong blueprint nếu bạn chỉ muốn thông báo chuyển động đơn giản mà không chờ video. Đồng bộ phương tiện bản ghi có thể chuẩn bị các clip mới trong nền, và các blueprint camera X-Sense cũ đã nhập sẽ tự động được cập nhật.
+Khi sự kiện Motion bao gồm siêu dữ liệu phát lại X-Sense, quá trình tích hợp sẽ chuẩn bị URL phát lại Home Assistant riêng tư trước khi gửi thông báo mở clip phù hợp trong X-Sense Recordings. Tắt các liên kết ghi trong bản thiết kế để có thông báo chuyển động đơn giản không có video. Bản thiết kế máy ảnh X-Sense đã nhập cũ hơn được cập nhật tự động.
+
+<!-- xsense-recording-storage-modes -->
+Bản ghi thẻ SD của máy ảnh xuất hiện trong X-Sense Recordings. Chỉ phát lại là chế độ lưu trữ mặc định: Home Assistant giữ các URL X-Sense đã ký ở chế độ riêng tư, viết lại danh sách phát HLS và chỉ phân đoạn proxy khi người chơi yêu cầu mà không giữ lại các clip hoàn chỉnh. Giữ bản ghi cục bộ lưu trữ các clip hoàn chỉnh trong /media/xsense_recordings và cho phép lưu giữ có thể định cấu hình, kích thước tối đa, xóa thủ công và đồng bộ hóa nền tùy chọn. Tính năng dọn dẹp cục bộ không bao giờ xóa các bản ghi khỏi thẻ SD X-Sense hoặc bộ lưu trữ đám mây.
 
 [![Nhập blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 

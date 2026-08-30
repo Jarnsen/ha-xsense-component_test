@@ -20,7 +20,10 @@ ____________________________________________________________
 ## 摄像机实时预览和 AI 通知
 最简单的方式是使用随附的 blueprint。点击下方按钮导入，选择摄像机的 `Motion` 事件实体，或在订阅摄像机可用时选择 `AI Detection`，然后按需调整通知动作。
 
-当 Motion 事件包含 X-Sense 播放数据时，集成可以先缓存该片段，然后发送移动通知，点击后会在 X-Sense Recordings 中打开对应片段。如果只想收到普通移动通知而不等待视频，请在 blueprint 中关闭录像链接。录像媒体同步可以在后台提前准备最新片段，旧的已导入 X-Sense 摄像机 blueprint 会自动更新。
+当 Motion 事件包含 X-Sense 播放元数据时，集成会在发送打开 X-Sense Recordings 中匹配剪辑的通知之前准备私有 Home Assistant 播放 URL。在蓝图中关闭录制链接，以获得不带视频的普通动作通知。较早导入的 X-Sense 相机蓝图会自动更新。
+
+<!-- xsense-recording-storage-modes -->
+摄像机 SD 卡记录显示在 X-Sense Recordings 中。仅播放是默认存储模式：Home Assistant 将签名的 X-Sense URL 保持私有，重写 HLS 播放列表，并仅在播放器请求时代理片段，而不保留完整的剪辑。保留本地录音将完整的剪辑存储在 /media/xsense_recordings 下，并启用可配置的保留、最大大小、手动删除和可选的后台同步。本地清理永远不会删除 X-Sense SD 卡或云存储中的录音。
 
 [![导入 blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
