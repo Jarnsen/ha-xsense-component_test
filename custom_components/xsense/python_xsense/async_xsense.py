@@ -1465,8 +1465,12 @@ class AsyncXSense(XSenseBase):
 
     async def get_camera_thumbnail(self, camera: Entity) -> bytes | None:
         """Return camera image bytes using the APK thumbnail fallback order."""
+        thumbnail_urls = camera_thumbnail_urls(camera)
+        if not thumbnail_urls:
+            return None
+
         session = await self._get_session()
-        for thumbnail_url in camera_thumbnail_urls(camera):
+        for thumbnail_url in thumbnail_urls:
             try:
                 async with session.get(thumbnail_url) as response:
                     self._lastres = response

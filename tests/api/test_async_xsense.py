@@ -4897,6 +4897,17 @@ async def test_camera_thumbnail_falls_back_from_device_thumbnail_to_event_image(
 
 
 @pytest.mark.asyncio
+async def test_camera_thumbnail_without_url_does_not_create_session():
+    client = async_xsense.AsyncXSense()
+    client._get_session = AsyncMock(
+        side_effect=AssertionError("no image URL must not create an HTTP session")
+    )
+
+    assert await client.get_camera_thumbnail(SimpleNamespace(data={})) is None
+    client._get_session.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_authenticated_app_call_uses_apk_1400_client_metadata():
     session = CapturePostSession({"reCode": 200, "reData": {"ok": True}})
     client = async_xsense.AsyncXSense(session)
