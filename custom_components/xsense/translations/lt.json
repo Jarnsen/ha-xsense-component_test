@@ -531,7 +531,13 @@
         "name": "Recording Resolution"
       },
       "camera_motion_sensitivity": {
-        "name": "Detection Sensitivity"
+        "name": "Detection Sensitivity",
+        "state": {
+          "high": "Didelis",
+          "medium": "Vidutinis",
+          "low": "Mažas",
+          "auto": "Automatinis"
+        }
       },
       "camera_video_seconds": {
         "name": "Video Duration"

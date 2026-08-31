@@ -531,7 +531,13 @@
         "name": "Recording Resolution"
       },
       "camera_motion_sensitivity": {
-        "name": "Detection Sensitivity"
+        "name": "Detection Sensitivity",
+        "state": {
+          "high": "उच्च",
+          "medium": "मध्यम",
+          "low": "निम्न",
+          "auto": "स्वचालित"
+        }
       },
       "camera_video_seconds": {
         "name": "Video Duration"

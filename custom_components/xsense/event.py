@@ -513,9 +513,8 @@ def motion_fingerprint(
     """Return a stable duplicate-detection fingerprint for motion events."""
     if event_data is None:
         return None
-    playback = event_data.get("playback")
-    trace = playback.get("trace_id") if isinstance(playback, dict) else None
-    return (event_data.get("time"), trace)
+    # MQTT and history describe the same event with different playback metadata.
+    return (event_data.get("time"),)
 
 
 def _trigger_event_after_recording_cache(

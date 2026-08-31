@@ -531,7 +531,13 @@
         "name": "Recording Resolution"
       },
       "camera_motion_sensitivity": {
-        "name": "Detection Sensitivity"
+        "name": "Detection Sensitivity",
+        "state": {
+          "high": "高",
+          "medium": "中",
+          "low": "低",
+          "auto": "自動"
+        }
       },
       "camera_video_seconds": {
         "name": "Video Duration"

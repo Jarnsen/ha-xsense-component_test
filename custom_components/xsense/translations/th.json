@@ -531,7 +531,13 @@
         "name": "Recording Resolution"
       },
       "camera_motion_sensitivity": {
-        "name": "Detection Sensitivity"
+        "name": "Detection Sensitivity",
+        "state": {
+          "high": "สูง",
+          "medium": "ปานกลาง",
+          "low": "ต่ำ",
+          "auto": "อัตโนมัติ"
+        }
       },
       "camera_video_seconds": {
         "name": "Video Duration"

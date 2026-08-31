@@ -570,6 +570,71 @@ def test_camera_selects_survive_unknown_current_setting_values():
     assert descriptions["camera_video_seconds"].exists_fn(camera)
 
 
+def test_camera_motion_sensitivity_matches_apk_labels_and_values():
+    description = next(
+        item for item in select.SELECTS if item.key == "camera_motion_sensitivity"
+    )
+    three_level_camera = entity("SSC0A", {"isAdmin": True, "motionSensitivity": 0})
+    auto_camera = entity(
+        "SSC0A",
+        {
+            "isAdmin": True,
+            "motionSensitivity": 4,
+            "motionSensitivityOptionList": [1, 2, 3, 4],
+        },
+    )
+
+    three_level_select = SimpleNamespace(
+        entity_description=description,
+        _current_entity=lambda: three_level_camera,
+        options=["high", "medium", "low"],
+    )
+    auto_select = SimpleNamespace(
+        entity_description=description,
+        _current_entity=lambda: auto_camera,
+        options=["high", "medium", "low", "auto"],
+    )
+
+    assert select.XSenseSelectEntity.options.fget(three_level_select) == [
+        "high",
+        "medium",
+        "low",
+    ]
+    assert select.XSenseSelectEntity.current_option.fget(three_level_select) == "high"
+    assert select.XSenseSelectEntity.options.fget(auto_select) == [
+        "high",
+        "medium",
+        "low",
+        "auto",
+    ]
+    assert select.XSenseSelectEntity.current_option.fget(auto_select) == "auto"
+
+
+async def test_camera_motion_sensitivity_writes_apk_value():
+    camera = entity("SSC0A", {"isAdmin": True, "motionSensitivity": 1})
+    xsense = SimpleNamespace(update_camera_config=AsyncMock())
+    coordinator = SimpleNamespace(
+        xsense=xsense,
+        async_update_listeners=MagicMock(),
+    )
+    select_entity = SimpleNamespace(
+        coordinator=coordinator,
+        entity_description=next(
+            item
+            for item in select.SELECTS
+            if item.key == "camera_motion_sensitivity"
+        ),
+        _current_entity=lambda: camera,
+        options=["high", "medium", "low"],
+    )
+
+    await select.XSenseSelectEntity.async_select_option(select_entity, "low")
+
+    xsense.update_camera_config.assert_awaited_once_with(camera, motionSensitivity=3)
+    assert camera.data["motionSensitivity"] == 3
+    coordinator.async_update_listeners.assert_called_once_with()
+
+
 def test_camera_person_detection_switch_follows_apk_support_flag():
     descriptions = {description.key: description for description in switch.SWITCHES}
     description = descriptions["camera_person_detection"]
@@ -1232,7 +1297,7 @@ def test_motion_event_data_uses_apk_history_record_time():
     )
 
     assert event_data == {"time": "20260621134144"}
-    assert event.motion_fingerprint(event_data) == ("20260621134144", None)
+    assert event.motion_fingerprint(event_data) == ("20260621134144",)
 
 
 def test_motion_event_data_includes_apk_playback_metadata():
@@ -1260,7 +1325,24 @@ def test_motion_event_data_includes_apk_playback_metadata():
         },
         "snapshot_url": "https://example.invalid/snap.jpg",
     }
-    assert event.motion_fingerprint(event_data) == ("20260621134144", "trace-id")
+    assert event.motion_fingerprint(event_data) == ("20260621134144",)
+
+
+def test_motion_fingerprint_ignores_playback_enrichment_for_same_event():
+    mqtt_event = event.motion_event_data({"eventTime": "20260621134144"})
+    history_event = event.motion_event_data(
+        {
+            "eventTime": "20260621134144",
+            "playback": {
+                "trace_id": "refreshed-trace-id",
+                "video_url": "https://example.invalid/refreshed.m3u8",
+            },
+        }
+    )
+
+    assert event.motion_fingerprint(mqtt_event) == event.motion_fingerprint(
+        history_event
+    )
 
 
 def test_motion_event_entity_adds_ha_sd_playback_url(monkeypatch):
@@ -1473,7 +1555,7 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog
         event.XSenseMotionEventEntity
     )
     event_entity._motion_initialized = True
-    event_entity._last_motion_fingerprint = ("20260621134000", "old-trace")
+    event_entity._last_motion_fingerprint = ("20260621134000",)
     scheduled = []
     order = []
     event_entity.hass = SimpleNamespace(
@@ -1638,7 +1720,7 @@ def test_motion_event_entity_updates_state_only_when_recording_cache_returns_no_
         event.XSenseMotionEventEntity
     )
     event_entity._motion_initialized = True
-    event_entity._last_motion_fingerprint = ("20260621134000", "old-trace")
+    event_entity._last_motion_fingerprint = ("20260621134000",)
     scheduled = []
     triggered = []
     event_entity.hass = SimpleNamespace(
@@ -4924,7 +5006,7 @@ def test_motion_event_data_exposes_direct_recording_url_aliases():
         "snapshot_url": "https://example.invalid/still.jpg",
         "recording_source": "video_url",
     }
-    assert event.motion_fingerprint(event_data) == ("20260621134144", "trace-id")
+    assert event.motion_fingerprint(event_data) == ("20260621134144",)
 
 
 def test_motion_event_entity_triggers_repeated_motion_with_new_time():
@@ -4949,6 +5031,32 @@ def test_motion_event_entity_triggers_repeated_motion_with_new_time():
     event_entity._handle_coordinator_update()
 
     assert triggered == [("motion", "20260621134200")]
+
+
+def test_motion_event_entity_does_not_retrigger_when_history_enriches_mqtt_event():
+    camera_entity = entity("SSC0A", {"eventTime": "20260621134144"})
+    event_entity = event.XSenseMotionEventEntity.__new__(
+        event.XSenseMotionEventEntity
+    )
+    event_entity._motion_initialized = False
+    event_entity._last_motion_fingerprint = None
+    event_entity.hass = object()
+    event_entity.platform = object()
+    event_entity._current_entity = lambda: camera_entity
+    triggered = []
+    event_entity._trigger_event = lambda event_type, data: triggered.append(
+        (event_type, data["time"])
+    )
+    event_entity.async_write_ha_state = lambda: None
+
+    event_entity._handle_coordinator_update()
+    camera_entity.data["playback"] = {
+        "trace_id": "history-trace-id",
+        "video_url": "https://example.invalid/history.m3u8",
+    }
+    event_entity._handle_coordinator_update()
+
+    assert triggered == []
 
 
 def test_ai_detection_event_data_uses_apk_detection_payload():
