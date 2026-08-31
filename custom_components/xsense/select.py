@@ -27,6 +27,14 @@ from .entity import (
 from .errors import xsense_error
 
 
+CAMERA_MOTION_SENSITIVITY_VALUES: dict[str, int] = {
+    "high": 1,
+    "medium": 2,
+    "low": 3,
+    "auto": 4,
+}
+
+
 def has_data(*keys: str) -> Callable[[Entity], bool]:
     """Return an exists function for required X-Sense data keys."""
     return lambda entity: (
@@ -301,7 +309,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         data_key="motionSensitivity",
         addx_key="motionSensitivity",
         options_key="motionSensitivityOptionList",
-        fixed_options=(0, 1, 2, 3),
+        fixed_options=("high", "medium", "low"),
         translation_key="camera_motion_sensitivity",
         icon="mdi:motion-sensor",
         exists_fn=has_camera_motion_sensitivity,
@@ -467,7 +475,7 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
         if self.entity_description.key == "camera_motion_sensitivity":
             options = entity.data.get("motionSensitivityOptionList")
             if isinstance(options, list) and len(options) == 4:
-                return option_strings(options)
+                return list(CAMERA_MOTION_SENSITIVITY_VALUES)
         if not is_camera_entity(entity):
             return shadow_select_options(entity, self.entity_description)
         if self.entity_description.fixed_options is not None:
@@ -481,6 +489,21 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
         if entity is None:
             return None
         value = entity.data.get(self.entity_description.data_key)
+        if self.entity_description.key == "camera_motion_sensitivity":
+            try:
+                sensitivity = int(value)
+            except (TypeError, ValueError):
+                return None
+            if sensitivity == 0:
+                sensitivity = 1
+            return next(
+                (
+                    option
+                    for option, api_value in CAMERA_MOTION_SENSITIVITY_VALUES.items()
+                    if api_value == sensitivity and option in self.options
+                ),
+                None,
+            )
         return None if value is None else str(value)
 
     async def async_select_option(self, option: str) -> None:
@@ -491,6 +514,14 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
         if option not in self.options:
             raise xsense_error("unsupported_option", option=option)
 
+        if self.entity_description.key == "camera_motion_sensitivity":
+            api_value = CAMERA_MOTION_SENSITIVITY_VALUES[option]
+            await self.coordinator.xsense.update_camera_config(
+                entity, motionSensitivity=api_value
+            )
+            entity.data[self.entity_description.data_key] = api_value
+            self.coordinator.async_update_listeners()
+            return
         if self.entity_description.data_key == "recResolution":
             await self.coordinator.xsense.update_camera_recording_resolution(
                 entity, option
@@ -503,8 +534,9 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
                 user_enable=_required_bool_state(entity.data.get("cooldownEnabled")),
                 value=int(_typed_option(option)),
             )
-        elif self.entity_description.addx_key and self.entity_description.addx_key.startswith(
-            "audio."
+        elif (
+            self.entity_description.addx_key
+            and self.entity_description.addx_key.startswith("audio.")
         ):
             await self.coordinator.xsense.update_camera_audio(
                 entity,

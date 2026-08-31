@@ -570,6 +570,71 @@ def test_camera_selects_survive_unknown_current_setting_values():
     assert descriptions["camera_video_seconds"].exists_fn(camera)
 
 
+def test_camera_motion_sensitivity_matches_apk_labels_and_values():
+    description = next(
+        item for item in select.SELECTS if item.key == "camera_motion_sensitivity"
+    )
+    three_level_camera = entity("SSC0A", {"isAdmin": True, "motionSensitivity": 0})
+    auto_camera = entity(
+        "SSC0A",
+        {
+            "isAdmin": True,
+            "motionSensitivity": 4,
+            "motionSensitivityOptionList": [1, 2, 3, 4],
+        },
+    )
+
+    three_level_select = SimpleNamespace(
+        entity_description=description,
+        _current_entity=lambda: three_level_camera,
+        options=["high", "medium", "low"],
+    )
+    auto_select = SimpleNamespace(
+        entity_description=description,
+        _current_entity=lambda: auto_camera,
+        options=["high", "medium", "low", "auto"],
+    )
+
+    assert select.XSenseSelectEntity.options.fget(three_level_select) == [
+        "high",
+        "medium",
+        "low",
+    ]
+    assert select.XSenseSelectEntity.current_option.fget(three_level_select) == "high"
+    assert select.XSenseSelectEntity.options.fget(auto_select) == [
+        "high",
+        "medium",
+        "low",
+        "auto",
+    ]
+    assert select.XSenseSelectEntity.current_option.fget(auto_select) == "auto"
+
+
+async def test_camera_motion_sensitivity_writes_apk_value():
+    camera = entity("SSC0A", {"isAdmin": True, "motionSensitivity": 1})
+    xsense = SimpleNamespace(update_camera_config=AsyncMock())
+    coordinator = SimpleNamespace(
+        xsense=xsense,
+        async_update_listeners=MagicMock(),
+    )
+    select_entity = SimpleNamespace(
+        coordinator=coordinator,
+        entity_description=next(
+            item
+            for item in select.SELECTS
+            if item.key == "camera_motion_sensitivity"
+        ),
+        _current_entity=lambda: camera,
+        options=["high", "medium", "low"],
+    )
+
+    await select.XSenseSelectEntity.async_select_option(select_entity, "low")
+
+    xsense.update_camera_config.assert_awaited_once_with(camera, motionSensitivity=3)
+    assert camera.data["motionSensitivity"] == 3
+    coordinator.async_update_listeners.assert_called_once_with()
+
+
 def test_camera_person_detection_switch_follows_apk_support_flag():
     descriptions = {description.key: description for description in switch.SWITCHES}
     description = descriptions["camera_person_detection"]
