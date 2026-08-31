@@ -531,7 +531,13 @@
         "name": "Recording Resolution"
       },
       "camera_motion_sensitivity": {
-        "name": "Detection Sensitivity"
+        "name": "Detection Sensitivity",
+        "state": {
+          "high": "زیاد",
+          "medium": "متوسط",
+          "low": "کم",
+          "auto": "خودکار"
+        }
       },
       "camera_video_seconds": {
         "name": "Video Duration"

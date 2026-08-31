@@ -531,7 +531,13 @@
         "name": "Recording Resolution"
       },
       "camera_motion_sensitivity": {
-        "name": "Detection Sensitivity"
+        "name": "Detection Sensitivity",
+        "state": {
+          "high": "Høj",
+          "medium": "Mellem",
+          "low": "Lav",
+          "auto": "Automatisk"
+        }
       },
       "camera_video_seconds": {
         "name": "Video Duration"

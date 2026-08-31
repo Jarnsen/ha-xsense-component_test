@@ -531,7 +531,13 @@
         "name": "Recording Resolution"
       },
       "camera_motion_sensitivity": {
-        "name": "Detection Sensitivity"
+        "name": "Detection Sensitivity",
+        "state": {
+          "high": "Ridicată",
+          "medium": "Medie",
+          "low": "Scăzută",
+          "auto": "Automată"
+        }
       },
       "camera_video_seconds": {
         "name": "Video Duration"

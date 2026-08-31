@@ -1903,7 +1903,9 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
                     "timestamp": 1781478300,
                     "startTime": 1781478300,
                     "endTime": 1781478310,
-                    "traceId": "trace-id",
+                    "traceId": (
+                        "refreshed-trace-id" if self.history_calls > 2 else "trace-id"
+                    ),
                     "imageUrl": "https://example.invalid/event.jpg",
                     "packageImageUrl": "https://example.invalid/package.jpg",
                     "tags": "motion",
@@ -1917,7 +1919,11 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
                         "timestamp": 1781478360,
                         "startTime": 1781478360,
                         "endTime": 1781478370,
-                        "traceId": "new-trace-id",
+                        "traceId": (
+                            "refreshed-new-trace-id"
+                            if self.history_calls > 2
+                            else "new-trace-id"
+                        ),
                         "imageUrl": "https://example.invalid/new-event.jpg",
                         "packageImageUrl": "https://example.invalid/new-package.jpg",
                         "tags": "motion",
