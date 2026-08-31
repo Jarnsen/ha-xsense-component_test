@@ -2687,6 +2687,8 @@ def test_recordings_panel_video_uses_authenticated_blob_playback():
     assert "disposePlaybackResources()" in panel
     assert "releaseTemporaryPlayback(clip)" in panel
     assert "xsense/recordings/cache/playback/" in panel
+    assert 'this.notice = this.t("cacheCleared")' in panel
+    assert 'class="notice" role="status"' in panel
     assert 'video.removeAttribute("src")' in panel
     assert "this.playbackProfiles = new Map()" in panel
     assert 'response.headers.get("X-XSense-HLS-Leading-AAC")' in panel

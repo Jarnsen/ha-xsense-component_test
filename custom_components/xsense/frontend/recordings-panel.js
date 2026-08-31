@@ -1963,6 +1963,7 @@ class XSenseRecordingsPanel extends HTMLElement {
     this.selectedClip = null;
     this.loading = false;
     this.error = "";
+    this.notice = "";
     this.signedPaths = new Map();
     this.playbackUrls = new Map();
     this.playbackTypes = new Map();
@@ -2006,6 +2007,7 @@ class XSenseRecordingsPanel extends HTMLElement {
     if (!this._hass) return;
     this.loading = true;
     this.error = "";
+    this.notice = "";
     this.render();
     try {
       const data = await this._hass.callApi("GET", "xsense/recordings/panel");
@@ -2261,7 +2263,7 @@ class XSenseRecordingsPanel extends HTMLElement {
           background: #000;
           color: #fff;
         }
-        .empty, .error {
+        .empty, .error, .notice {
           border: 1px solid var(--divider-color);
           border-radius: 8px;
           padding: 18px;
@@ -2269,6 +2271,7 @@ class XSenseRecordingsPanel extends HTMLElement {
           background: var(--card-background-color);
         }
         .error { color: var(--error-color); }
+        .notice { color: var(--success-color, var(--primary-text-color)); }
         @media (max-width: 900px) {
           .page {
             padding: 12px;
@@ -2334,6 +2337,7 @@ class XSenseRecordingsPanel extends HTMLElement {
           </div>
         </div>`}
         ${this.error ? `<div class="error">${this.escape(this.error)}</div>` : ""}
+        ${this.notice ? `<div class="notice" role="status">${this.escape(this.notice)}</div>` : ""}
         ${!this.error ? (useViewerPage ? this.renderViewer(viewerClip) : this.renderBody(clips)) : ""}
       </div>
     `;
@@ -2511,6 +2515,7 @@ class XSenseRecordingsPanel extends HTMLElement {
   async deleteCache(scope, entryId, query = {}) {
     this.loading = true;
     this.error = "";
+    this.notice = "";
     this.render();
     try {
       const params = new URLSearchParams(query);
@@ -2520,6 +2525,7 @@ class XSenseRecordingsPanel extends HTMLElement {
         `xsense/recordings/cache/${encodeURIComponent(scope)}/${encodeURIComponent(entryId)}${queryString ? `?${queryString}` : ""}`,
       );
       await this.loadData();
+      this.notice = this.t("cacheCleared");
     } catch (err) {
       this.error = String(err?.message || err).includes("409")
         ? this.t("recordingInUse")
