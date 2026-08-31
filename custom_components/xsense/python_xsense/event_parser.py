@@ -324,10 +324,13 @@ def camera_event_history_records(history: dict[str, Any]) -> list[dict[str, Any]
 def camera_event_history_event_key(record: dict[str, Any]) -> str:
     """Return a stable key for one APK ADDX camera event record."""
     serial = record.get("serialNumber") or record.get("deviceSn") or record.get("sn")
-    trace = record.get("traceId") or record.get("traceIds")
     timestamp = record.get("timestamp") or record.get("startTime") or record.get("date")
-    if serial and (trace or timestamp):
-        return f"camera-event:{serial}:{trace or timestamp}"
+    # Playback traces can be refreshed while the physical event remains unchanged.
+    if serial and timestamp:
+        return f"camera-event:{serial}:{timestamp}"
+    trace = record.get("traceId") or record.get("traceIds")
+    if serial and trace:
+        return f"camera-event:{serial}:{trace}"
     payload = json.dumps(
         record,
         ensure_ascii=False,
