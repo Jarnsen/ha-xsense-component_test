@@ -509,6 +509,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Poll APK AI service history for camera events."""
         first_poll = not self._camera_ai_history_seen
         applied = 0
+        baselined = 0
         skipped = 0
         seen_now: set[str] = set()
         for server_id in server_ids:
@@ -528,6 +529,21 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if not isinstance(alarm_item, dict):
                     continue
                 event_key = _camera_ai_history_event_key(server_id, alarm_item)
+                if first_poll:
+                    payload = dict(alarm_item)
+                    payload.setdefault("serverId", server_id)
+                    if create_time := alarm_item.get("createTime"):
+                        payload.setdefault("eventTime", create_time)
+                    station_data = _mqtt_reported_data(payload)
+                    station = _camera_station_for_ai_server(self, server_id)
+                    if station is None and isinstance(station_data, dict):
+                        station = _camera_station_for_event_data(
+                            self, station_data, payload
+                        )
+                    if station is not None and station_data:
+                        seen_now.add(event_key)
+                        baselined += 1
+                    continue
                 if event_key in self._camera_ai_history_seen and not first_poll:
                     skipped += 1
                     continue
@@ -537,10 +553,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._camera_ai_history_seen.update(seen_now)
         LOGGER.debug(
-            "X-Sense camera AI history poll: services=%s seen=%s applied=%s skipped=%s first_poll=%s",
+            "X-Sense camera AI history poll: services=%s seen=%s applied=%s baselined=%s skipped=%s first_poll=%s",
             len(server_ids),
             len(self._camera_ai_history_seen),
             applied,
+            baselined,
             skipped,
             first_poll,
         )
@@ -558,6 +575,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         first_poll = not getattr(self, "_camera_event_history_initialized", False)
         applied = 0
+        baselined = 0
         skipped = 0
         seen_now: set[str] = set()
         now = int(datetime.now(timezone.utc).timestamp())
@@ -578,6 +596,22 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         records = _camera_event_history_records(history)
         for record in reversed(records):
             event_key = _camera_event_history_event_key(record)
+            if first_poll:
+                station_data = _camera_event_history_station_data(record)
+                station = (
+                    _camera_station_for_event_data(self, station_data, record)
+                    if station_data
+                    else None
+                )
+                if station is not None:
+                    seen_now.add(event_key)
+                    baselined += 1
+                else:
+                    LOGGER.debug(
+                        "X-Sense camera record history item was not applied: %s",
+                        _camera_record_history_debug_context(record, event_key),
+                    )
+                continue
             if event_key in self._camera_ai_history_seen and not first_poll:
                 skipped += 1
                 continue
@@ -592,11 +626,12 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self._camera_ai_history_seen.update(seen_now)
         LOGGER.debug(
-            "X-Sense camera record history poll: cameras=%s records=%s seen=%s applied=%s skipped=%s first_poll=%s window_s=%s",
+            "X-Sense camera record history poll: cameras=%s records=%s seen=%s applied=%s baselined=%s skipped=%s first_poll=%s window_s=%s",
             len(serial_numbers),
             len(records),
             len(self._camera_ai_history_seen),
             applied,
+            baselined,
             skipped,
             first_poll,
             end_timestamp - start_timestamp,

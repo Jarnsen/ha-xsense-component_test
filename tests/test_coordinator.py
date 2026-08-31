@@ -1771,16 +1771,39 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
     class Client:
         houses = {"house-id": house}
 
+        def __init__(self):
+            self.history_calls = 0
+
         async def get_ai_service_list(self):
             return [{"serverId": "service-id"}]
 
         async def get_ai_service_history(self, server_id):
             assert server_id == "service-id"
-            return {
-                "alarmItems": [
+            self.history_calls += 1
+            items = [
+                {
+                    "eventId": "event-id",
+                    "createTime": "20260614230500",
+                    "dispatchDevs": [
+                        {
+                            "stationSn": "station-sn",
+                            "deviceSn": "camera-sn",
+                        }
+                    ],
+                    "eventItems": [
+                        {
+                            "eventType": "person",
+                            "eventTime": "20260614230501",
+                        }
+                    ],
+                }
+            ]
+            if self.history_calls > 1:
+                items.insert(
+                    0,
                     {
-                        "eventId": "event-id",
-                        "createTime": "20260614230500",
+                        "eventId": "new-event-id",
+                        "createTime": "20260614230600",
                         "dispatchDevs": [
                             {
                                 "stationSn": "station-sn",
@@ -1789,12 +1812,14 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
                         ],
                         "eventItems": [
                             {
-                                "eventType": "person",
-                                "eventTime": "20260614230501",
+                                "eventType": "vehicle",
+                                "eventTime": "20260614230601",
                             }
                         ],
-                    }
-                ]
+                    },
+                )
+            return {
+                "alarmItems": items
             }
 
         async def get_camera_event_history_for_cameras(
@@ -1813,13 +1838,15 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
     coordinator._camera_ai_history_lock = asyncio.Lock()
     coordinator.async_update_listeners = lambda: updates.append(True)
 
+    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
+    assert parsed == []
     assert await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
     assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
 
     assert parsed[0][0] is house.stations["camera-id"]
-    assert parsed[0][1]["lastAiDetection"] == "person"
-    assert parsed[0][1]["lastPersonDetectionTime"] == "20260614230501"
-    assert parsed[0][1]["eventTime"] == "20260614230500"
+    assert parsed[0][1]["lastAiDetection"] == "vehicle"
+    assert parsed[0][1]["lastVehicleDetectionTime"] == "20260614230601"
+    assert parsed[0][1]["eventTime"] == "20260614230600"
     assert house.stations["camera-id"].data[CAMERA_AI_SERVICE_AVAILABLE] is True
     assert "isMoved" not in parsed[0][1]
     assert "lastMotionTime" not in parsed[0][1]
@@ -1858,6 +1885,9 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
     class Client:
         houses = {"house-id": house}
 
+        def __init__(self):
+            self.history_calls = 0
+
         async def get_ai_service_list(self):
             return []
 
@@ -1866,19 +1896,35 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
         ):
             assert cameras == [house.stations["camera-id"]]
             assert end_timestamp > start_timestamp
-            return {
-                "list": [
+            self.history_calls += 1
+            records = [
+                {
+                    "serialNumber": "addx-camera-id",
+                    "timestamp": 1781478300,
+                    "startTime": 1781478300,
+                    "endTime": 1781478310,
+                    "traceId": "trace-id",
+                    "imageUrl": "https://example.invalid/event.jpg",
+                    "packageImageUrl": "https://example.invalid/package.jpg",
+                    "tags": "motion",
+                }
+            ]
+            if self.history_calls > 1:
+                records.insert(
+                    0,
                     {
                         "serialNumber": "addx-camera-id",
-                        "timestamp": 1781478300,
-                        "startTime": 1781478300,
-                        "endTime": 1781478310,
-                        "traceId": "trace-id",
-                        "imageUrl": "https://example.invalid/event.jpg",
-                        "packageImageUrl": "https://example.invalid/package.jpg",
+                        "timestamp": 1781478360,
+                        "startTime": 1781478360,
+                        "endTime": 1781478370,
+                        "traceId": "new-trace-id",
+                        "imageUrl": "https://example.invalid/new-event.jpg",
+                        "packageImageUrl": "https://example.invalid/new-package.jpg",
                         "tags": "motion",
-                    }
-                ]
+                    },
+                )
+            return {
+                "list": records
             }
 
         def parse_get_state(self, station_arg, data):
@@ -1892,28 +1938,32 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
     coordinator._camera_event_history_last_poll = None
     coordinator._camera_ai_history_lock = asyncio.Lock()
 
+    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
+    assert parsed == []
     assert await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
     assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
 
     assert parsed[0][0] is house.stations["camera-id"]
-    assert parsed[0][1]["eventTime"] == "20260614230500"
+    assert parsed[0][1]["eventTime"] == "20260614230600"
     assert parsed[0][1]["playback"] == {
-        "trace_id": "trace-id",
-        "start_time": 1781478300,
-        "start_time_s": 1781478300,
-        "end_time": 1781478310,
-        "end_time_s": 1781478310,
-        "timestamp": 1781478300,
-        "timestamp_s": 1781478300,
-        "image_url": "https://example.invalid/event.jpg",
-        "package_image_url": "https://example.invalid/package.jpg",
+        "trace_id": "new-trace-id",
+        "start_time": 1781478360,
+        "start_time_s": 1781478360,
+        "end_time": 1781478370,
+        "end_time_s": 1781478370,
+        "timestamp": 1781478360,
+        "timestamp_s": 1781478360,
+        "image_url": "https://example.invalid/new-event.jpg",
+        "package_image_url": "https://example.invalid/new-package.jpg",
         "tags": "motion",
     }
-    assert parsed[0][1]["lastEventImageUrl"] == "https://example.invalid/event.jpg"
-    assert parsed[0][1]["lastEventPackageImageUrl"] == (
-        "https://example.invalid/package.jpg"
+    assert parsed[0][1]["lastEventImageUrl"] == (
+        "https://example.invalid/new-event.jpg"
     )
-    assert parsed[0][1]["lastEventImageTime"] == 1781478300
+    assert parsed[0][1]["lastEventPackageImageUrl"] == (
+        "https://example.invalid/new-package.jpg"
+    )
+    assert parsed[0][1]["lastEventImageTime"] == 1781478360
     assert house.stations["camera-id"].data[CAMERA_AI_SERVICE_AVAILABLE] is False
     assert "isMoved" not in parsed[0][1]
     assert "lastMotionTime" not in parsed[0][1]
