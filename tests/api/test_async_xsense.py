@@ -4882,7 +4882,7 @@ async def test_camera_thumbnail_prefers_full_event_image_to_device_thumbnail():
 
     session = ThumbnailSession()
     client = async_xsense.AsyncXSense(session)
-    client._refresh_camera_push_image = AsyncMock()
+    client._update_camera_push_image_metadata = AsyncMock()
     camera = SimpleNamespace(
         data={
             "thumbImgUrl": "https://example.invalid/current.jpg",
@@ -4904,18 +4904,18 @@ async def test_camera_thumbnail_prefers_full_event_image_to_device_thumbnail():
 @pytest.mark.asyncio
 async def test_camera_thumbnail_without_url_does_not_create_session():
     client = async_xsense.AsyncXSense()
-    client._refresh_camera_push_image = AsyncMock()
+    client._update_camera_push_image_metadata = AsyncMock()
     client._get_session = AsyncMock(
         side_effect=AssertionError("no image URL must not create an HTTP session")
     )
 
     assert await client.get_camera_thumbnail(SimpleNamespace(data={})) is None
-    client._refresh_camera_push_image.assert_awaited_once()
+    client._update_camera_push_image_metadata.assert_awaited_once()
     client._get_session.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_camera_thumbnail_refreshes_apk_push_image_for_matching_camera():
+async def test_camera_thumbnail_reads_apk_push_image_metadata_for_matching_camera():
     class ThumbnailResponse:
         status = 200
 

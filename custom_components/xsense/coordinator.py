@@ -672,12 +672,16 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def _cache_camera_stations(self) -> None:
         """Remember ADDX camera stations between camera API refreshes."""
-        self._camera_station_cache = {
-            station.entity_id: station
-            for house in self.xsense.houses.values()
-            for station in house.stations.values()
-            if is_camera_entity(station)
-        }
+        refreshed_cache: dict[str, Any] = {}
+        for house in self.xsense.houses.values():
+            for station in house.stations.values():
+                if not is_camera_entity(station):
+                    continue
+                previous = self._camera_station_cache.get(station.entity_id)
+                if previous is not None:
+                    _preserve_camera_event_image(previous, station)
+                refreshed_cache[station.entity_id] = station
+        self._camera_station_cache = refreshed_cache
 
     def _merge_cached_camera_stations(self, stations: dict[str, Any]) -> None:
         """Keep ADDX-only cameras present when the camera API refresh is skipped."""
@@ -1017,6 +1021,53 @@ def _camera_entities(coordinator: XSenseDataUpdateCoordinator) -> list[Any]:
         for station in house.stations.values()
         if is_camera_entity(station)
     ]
+
+
+_CAMERA_EVENT_IMAGE_KEYS = (
+    "lastEventImageUrl",
+    "lastEventPackageImageUrl",
+    "lastEventImageTime",
+)
+
+
+def _preserve_camera_event_image(previous: Any, refreshed: Any) -> None:
+    """Carry the latest motion image across ADDX metadata object replacement."""
+    previous_data = getattr(previous, "data", None)
+    refreshed_data = getattr(refreshed, "data", None)
+    if not isinstance(previous_data, dict) or not isinstance(refreshed_data, dict):
+        return
+
+    previous_time = _camera_image_timestamp(previous_data.get("lastEventImageTime"))
+    refreshed_time = _camera_image_timestamp(refreshed_data.get("lastEventImageTime"))
+    if refreshed_data.get("lastEventImageUrl") and (
+        previous_time is None
+        or (refreshed_time is not None and refreshed_time >= previous_time)
+    ):
+        return
+
+    preserved = {
+        key: previous_data[key]
+        for key in _CAMERA_EVENT_IMAGE_KEYS
+        if previous_data.get(key) not in (None, "")
+    }
+    if not preserved:
+        return
+    set_data = getattr(refreshed, "set_data", None)
+    if callable(set_data):
+        set_data(preserved)
+    else:
+        refreshed_data.update(preserved)
+
+
+def _camera_image_timestamp(value: Any) -> int | None:
+    """Normalize camera image timestamps for freshness comparisons."""
+    try:
+        timestamp = int(value)
+    except (TypeError, ValueError):
+        return None
+    if timestamp > 10_000_000_000:
+        timestamp //= 1000
+    return timestamp
 
 
 def _is_no_camera_ipc_registration_error(error: Exception) -> bool:

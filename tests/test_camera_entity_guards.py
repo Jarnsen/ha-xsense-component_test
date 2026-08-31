@@ -5606,6 +5606,27 @@ def test_camera_thumbnail_urls_prefer_newer_event_image():
     )
 
 
+def test_camera_thumbnail_urls_keep_durable_event_image_ahead_of_stale_push_image():
+    from custom_components.xsense.python_xsense.async_xsense import (
+        camera_thumbnail_urls,
+    )
+
+    camera_entity = entity(
+        "SSC0A",
+        {
+            "lastEventImageUrl": "https://example.invalid/event.jpg",
+            "lastEventImageTime": 1_700_000_100,
+            "lastPushImageUrl": "https://example.invalid/push.jpg",
+            "lastPushTime": 1_700_000_000,
+        },
+    )
+
+    assert camera_thumbnail_urls(camera_entity) == (
+        "https://example.invalid/event.jpg",
+        "https://example.invalid/push.jpg",
+    )
+
+
 async def test_camera_image_uses_adapter_and_keeps_last_good_image():
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,

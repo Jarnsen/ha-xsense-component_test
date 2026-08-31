@@ -360,6 +360,20 @@ def camera_event_history_station_data(record: dict[str, Any]) -> dict[str, Any]:
 
     if playback := camera_event_history_playback_data(record):
         data["playback"] = playback
+        event_image_url = playback.get("image_url")
+        event_package_image_url = playback.get("package_image_url")
+        event_image_time = (
+            playback.get("timestamp_s")
+            or playback.get("start_time_s")
+            or playback.get("timestamp")
+            or playback.get("start_time")
+        )
+        if event_image_url:
+            data["lastEventImageUrl"] = event_image_url
+        if event_package_image_url:
+            data["lastEventPackageImageUrl"] = event_package_image_url
+        if event_image_time is not None:
+            data["lastEventImageTime"] = event_image_time
 
     apply_apk_event_aliases(data)
     return data
