@@ -333,6 +333,18 @@ def has_life_end_status(entity: Entity) -> bool:
     return "isLifeEnd" in data or model in LIFE_END_STATUS_DEVICE_TYPES
 
 
+def life_end_status(entity: Entity) -> bool | None:
+    """Return the APK end-of-life state for a supported detector."""
+    data = getattr(entity, "data", {}) or {}
+    if "isLifeEnd" in data:
+        return boolean_state(data["isLifeEnd"])
+
+    model = str(getattr(entity, "type", "") or "").strip()
+    if model in LIFE_END_STATUS_DEVICE_TYPES:
+        return False
+    return None
+
+
 def alarm_status(entity: Entity) -> bool | None:
     """Return the reported alarm status, or unknown before the first report."""
     if "alarmStatus" not in entity.data:
@@ -362,11 +374,6 @@ def boolean_state(value) -> bool | None:
 def data_bool(key: str) -> Callable[[Entity], bool | None]:
     """Return a value function for a boolean X-Sense data key."""
     return lambda entity: boolean_state(entity.data[key])
-
-
-def optional_data_bool(key: str) -> Callable[[Entity], bool | None]:
-    """Return a value function for late-reporting X-Sense boolean keys."""
-    return lambda entity: boolean_state(entity.data.get(key))
 
 
 def has_data(key: str) -> Callable[[Entity], bool]:
@@ -432,7 +439,7 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         translation_key="is_life_end",
         device_class=BinarySensorDeviceClass.PROBLEM,
         exists_fn=has_life_end_status,
-        value_fn=optional_data_bool("isLifeEnd"),
+        value_fn=life_end_status,
     ),
     XSenseBinarySensorEntityDescription(
         key="armed",

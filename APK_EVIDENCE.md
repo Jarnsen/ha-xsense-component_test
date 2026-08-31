@@ -110,6 +110,11 @@ Current local APK evidence:
   APK 1400 treats every positive value as an active alarm and uses values `2`
   and `3` for CO/combined alarm cases. The adapter therefore maps `0` to clear
   and every positive code to active for Home Assistant's binary alarm entity.
+- APK 1400's aggregate detector status checks whether `isLifeEnd` equals `1`,
+  then checks malfunction and battery state, and otherwise displays `Normal`.
+  A supported detector with no `isLifeEnd` field is therefore not at end of
+  life; Home Assistant must expose its End-of-Life binary sensor as clear
+  instead of unknown. Explicit malformed values remain unknown.
 - Detector `muteStatus` is model-specific. APK 1400 handlers `C0876k`,
   `C0877l`, `O`, and `P` present an active alarm as silenced for values `1`,
   `2`, or `3`, while values `4` and above represent an unsilenced alarm. The
