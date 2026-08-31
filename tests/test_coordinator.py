@@ -1131,6 +1131,42 @@ async def test_cached_addx_cameras_remain_in_coordinator_data_when_camera_refres
     assert stations == {"camera-id": camera}
 
 
+def test_camera_metadata_refresh_preserves_latest_motion_event_image():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Camera:
+        entity_id = "camera-id"
+        type = "SSC0A"
+
+        def __init__(self, data):
+            self.data = data
+
+        def set_data(self, data):
+            self.data.update(data)
+
+    previous = Camera(
+        {
+            "lastEventImageUrl": "https://example.invalid/event.jpg",
+            "lastEventPackageImageUrl": "https://example.invalid/package.jpg",
+            "lastEventImageTime": 1_700_000_100,
+        }
+    )
+    refreshed = Camera({"thumbImgUrl": "https://example.invalid/list.jpg"})
+    house = SimpleNamespace(stations={"camera-id": refreshed})
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(houses={"house-id": house})
+    coordinator._camera_station_cache = {"camera-id": previous}
+
+    coordinator._cache_camera_stations()
+
+    assert coordinator._camera_station_cache == {"camera-id": refreshed}
+    assert refreshed.data["lastEventImageUrl"] == "https://example.invalid/event.jpg"
+    assert refreshed.data["lastEventPackageImageUrl"] == (
+        "https://example.invalid/package.jpg"
+    )
+    assert refreshed.data["lastEventImageTime"] == 1_700_000_100
+
+
 def test_mqtt_camera_motion_event_preserves_apk_event_time():
     from custom_components.xsense.coordinator import _mqtt_reported_data
 
@@ -1838,6 +1874,8 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
                         "startTime": 1781478300,
                         "endTime": 1781478310,
                         "traceId": "trace-id",
+                        "imageUrl": "https://example.invalid/event.jpg",
+                        "packageImageUrl": "https://example.invalid/package.jpg",
                         "tags": "motion",
                     }
                 ]
@@ -1867,8 +1905,15 @@ async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty(
         "end_time_s": 1781478310,
         "timestamp": 1781478300,
         "timestamp_s": 1781478300,
+        "image_url": "https://example.invalid/event.jpg",
+        "package_image_url": "https://example.invalid/package.jpg",
         "tags": "motion",
     }
+    assert parsed[0][1]["lastEventImageUrl"] == "https://example.invalid/event.jpg"
+    assert parsed[0][1]["lastEventPackageImageUrl"] == (
+        "https://example.invalid/package.jpg"
+    )
+    assert parsed[0][1]["lastEventImageTime"] == 1781478300
     assert house.stations["camera-id"].data[CAMERA_AI_SERVICE_AVAILABLE] is False
     assert "isMoved" not in parsed[0][1]
     assert "lastMotionTime" not in parsed[0][1]

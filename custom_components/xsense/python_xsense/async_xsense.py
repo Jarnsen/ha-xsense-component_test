@@ -1466,10 +1466,10 @@ class AsyncXSense(XSenseBase):
     async def get_camera_thumbnail(self, camera: Entity) -> bytes | None:
         """Return the freshest preferred camera event image available."""
         try:
-            await self._refresh_camera_push_image(camera)
+            await self._update_camera_push_image_metadata(camera)
         except XSenseError as err:
             LOGGER.debug(
-                "X-Sense camera push image refresh failed: %s",
+                "X-Sense camera push image metadata update failed: %s",
                 {
                     "camera": _masked_identifier(getattr(camera, "sn", "")),
                     "error_type": type(err).__name__,
@@ -1494,8 +1494,8 @@ class AsyncXSense(XSenseBase):
                 return image
         return None
 
-    async def _refresh_camera_push_image(self, camera: Entity) -> None:
-        """Refresh the APK devicePushImage result for one camera."""
+    async def _update_camera_push_image_metadata(self, camera: Entity) -> None:
+        """Read the APK's latest stored push-image metadata for one camera."""
         data = await self._camera_addx_call(camera, "/device/devicePushImage")
         for item in _camera_push_image_rows(data):
             if not camera_matches_identifier(camera, item.get("serialNumber")):
@@ -2886,6 +2886,16 @@ def camera_thumbnail_urls(camera: Entity) -> tuple[str, ...]:
     """Return camera image URLs ordered by freshness and source quality."""
     data = camera.data
     candidates: list[tuple[Any, int | None, int]] = [
+        (
+            data.get("lastEventImageUrl"),
+            _camera_image_epoch_seconds(data.get("lastEventImageTime")),
+            4,
+        ),
+        (
+            data.get("lastEventPackageImageUrl"),
+            _camera_image_epoch_seconds(data.get("lastEventImageTime")),
+            2,
+        ),
         (
             data.get("lastPushImageUrl"),
             _camera_image_epoch_seconds(data.get("lastPushTime")),
