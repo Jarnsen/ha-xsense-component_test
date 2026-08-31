@@ -29,9 +29,11 @@ from .recordings_media import (
     HLS_MIME_TYPE,
     XSenseRecordingsMediaSource,
     _cache_group_key_for_clip,
+    async_allow_recording_cache,
     async_clear_recording_caches,
     async_delete_camera_recording_cache,
     async_delete_recording_cache,
+    async_recording_cache_suppressed,
     async_release_recording_playback,
     async_touch_recording_cache,
     async_schedule_temporary_recording_cleanup,
@@ -49,6 +51,7 @@ from .recordings_media import (
     _path_ready,
     _recording_media_root,
     _recording_media_root_from_value,
+    _recording_cache_suppressed,
     _recording_media_sync_enabled,
     _recording_cache_retained,
     _prepare_hls_proxy_leading_segment,
@@ -144,6 +147,7 @@ async def _async_build_panel_data_from_index(
                 mp4_cached = False
             clip_cached = mp4_cached or hls_cached
             thumb_cached = await source._async_path_ready(thumb_path)
+            cache_suppressed = await async_recording_cache_suppressed(hass, clip)
             clip_video_bytes = 0
             clip_thumbnail_bytes = 0
             if clip_cached:
@@ -169,7 +173,7 @@ async def _async_build_panel_data_from_index(
                 camera_stats["ready_clips"] += 1
             if not playable:
                 continue
-            if sync_enabled and not clip_cached:
+            if sync_enabled and not clip_cached and not cache_suppressed:
                 continue
 
             dates.add(clip_date)
@@ -194,6 +198,7 @@ async def _async_build_panel_data_from_index(
                     "cached": clip_cached,
                     "retained": retained_mode,
                     "thumbnail_cached": thumb_cached,
+                    "manual_cache_deleted": cache_suppressed,
                     "cache_bytes": clip_video_bytes + clip_thumbnail_bytes,
                     "playable": playable,
                     "sync_enabled": sync_enabled,
@@ -312,6 +317,7 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
             hls_cached = _hls_cache_playback_ready(clip)
             clip_cached = mp4_cached or hls_cached
             thumb_cached = _path_ready(thumb_path)
+            cache_suppressed = _recording_cache_suppressed(clip)
             clip_video_bytes = 0
             clip_thumbnail_bytes = 0
             if clip_cached:
@@ -336,7 +342,7 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
                 camera_stats["ready_clips"] += 1
             if not playable:
                 continue
-            if sync_enabled and not clip_cached:
+            if sync_enabled and not clip_cached and not cache_suppressed:
                 continue
 
             dates.add(clip_date)
@@ -354,6 +360,7 @@ def build_panel_data(hass: HomeAssistant, index: dict[str, Any]) -> dict[str, An
                     "cached": clip_cached,
                     "retained": retained_mode,
                     "thumbnail_cached": thumb_cached,
+                    "manual_cache_deleted": cache_suppressed,
                     "cache_bytes": clip_video_bytes + clip_thumbnail_bytes,
                     "playable": playable,
                     "sync_enabled": sync_enabled,
@@ -547,6 +554,7 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
                 headers=headers,
             )
         cached = await source._async_cached_media_ready(clip)
+        cache_suppressed = await async_recording_cache_suppressed(self.hass, clip)
         context = {
             **_clip_debug_context(entry_id, serial, start, end),
             "source": clip.get("source"),
@@ -555,12 +563,18 @@ class XSenseRecordingsPanelPlaybackView(http.HomeAssistantView):
             "format": await source._async_cached_media_format(clip),
         }
         LOGGER.debug("X-Sense recordings panel playback requested: %s", context)
-        if _recording_media_sync_enabled(self.hass, entry_id) and not cached:
+        if (
+            _recording_media_sync_enabled(self.hass, entry_id)
+            and not cached
+            and not cache_suppressed
+        ):
             LOGGER.debug(
                 "X-Sense recordings panel playback waiting for sync: %s",
                 _clip_debug_context(entry_id, serial, start, end),
             )
             raise web.HTTPNotFound(reason="X-Sense recording is waiting for sync")
+        if cache_suppressed:
+            await async_allow_recording_cache(self.hass, clip)
         try:
             url = await source._async_cached_playback_url(clip)
         except Exception as exc:  # noqa: BLE001
@@ -816,7 +830,9 @@ class XSenseRecordingsCacheManagementView(http.HomeAssistantView):
             clip = await XSenseRecordingsPanelPlaybackView(self.hass)._clip(
                 entry_id, serial, start, end
             )
-            summary = await async_delete_recording_cache(self.hass, clip)
+            summary = await async_delete_recording_cache(
+                self.hass, clip, suppress_recache=True
+            )
             if summary.get("skipped_active") and not summary.get("deleted_items"):
                 raise web.HTTPConflict(reason="Recording is currently playing")
         elif scope == "playback":
@@ -844,11 +860,16 @@ class XSenseRecordingsCacheManagementView(http.HomeAssistantView):
             if not serial:
                 raise web.HTTPBadRequest(reason="Missing X-Sense camera serial")
             summary = await async_delete_camera_recording_cache(
-                self.hass, entry_id=entry_id, serial=serial
+                self.hass,
+                entry_id=entry_id,
+                serial=serial,
+                suppress_recache=True,
             )
         elif scope == "all":
             summary = await async_clear_recording_caches(
-                self.hass, entry_id=None if entry_id == "all" else entry_id
+                self.hass,
+                entry_id=None if entry_id == "all" else entry_id,
+                suppress_recache=True,
             )
         else:
             raise web.HTTPNotFound(reason="Unknown recording cache scope")

@@ -496,7 +496,7 @@ async def test_detector_lifecycle_fields_remain_entities():
         if entity.entity_description.key == "is_life_end"
     )
     assert standard_entity.native_value == "EN 50291"
-    assert life_end_entity.is_on is None
+    assert life_end_entity.is_on is False
     assert "is_life_end" not in xsense_module.OBSOLETE_BINARY_SENSOR_KEYS
     assert "standard" not in xsense_module.OBSOLETE_SENSOR_KEYS
     assert "time" not in xsense_module.OBSOLETE_SENSOR_KEYS
@@ -575,7 +575,7 @@ async def test_detector_life_end_entity_is_model_backed(device_type):
         if entity.entity_description.key == "is_life_end"
     )
 
-    assert life_end_entity.is_on is None
+    assert life_end_entity.is_on is False
 
 
 @pytest.mark.parametrize("device_type", ["SBS50", "SWS51", "SDS0A", "SMS0A"])
@@ -633,6 +633,16 @@ async def test_unknown_payload_life_end_entity_is_payload_backed():
     )
 
     assert life_end_entity.is_on is False
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("1", True), ("0", False), ("unexpected", None)],
+)
+def test_life_end_status_preserves_explicit_payload_semantics(value, expected):
+    detector = SimpleNamespace(data={"isLifeEnd": value}, type="XS01-WX")
+
+    assert binary_sensor.life_end_status(detector) is expected
 
 
 async def test_sbs50_station_entities_load_before_late_shadow_keys():
@@ -2677,6 +2687,8 @@ def test_recordings_panel_video_uses_authenticated_blob_playback():
     assert "disposePlaybackResources()" in panel
     assert "releaseTemporaryPlayback(clip)" in panel
     assert "xsense/recordings/cache/playback/" in panel
+    assert 'this.notice = this.t("cacheCleared")' in panel
+    assert 'class="notice" role="status"' in panel
     assert 'video.removeAttribute("src")' in panel
     assert "this.playbackProfiles = new Map()" in panel
     assert 'response.headers.get("X-XSense-HLS-Leading-AAC")' in panel
@@ -2866,8 +2878,14 @@ def test_recordings_cache_management_clears_one_camera(monkeypatch):
 
     seen = {}
 
-    async def delete_camera(hass, *, entry_id, serial):
-        seen.update({"entry_id": entry_id, "serial": serial})
+    async def delete_camera(hass, *, entry_id, serial, suppress_recache=False):
+        seen.update(
+            {
+                "entry_id": entry_id,
+                "serial": serial,
+                "suppress_recache": suppress_recache,
+            }
+        )
         return {
             "deleted_items": 2,
             "deleted_bytes": 4096,
@@ -2887,7 +2905,11 @@ def test_recordings_cache_management_clears_one_camera(monkeypatch):
     )
 
     assert response.status == 200
-    assert seen == {"entry_id": "entry-id", "serial": "CAMERA-SN"}
+    assert seen == {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "suppress_recache": True,
+    }
     assert json.loads(response.text)["deleted_items"] == 2
 
 

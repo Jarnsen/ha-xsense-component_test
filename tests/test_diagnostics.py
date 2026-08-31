@@ -21,6 +21,7 @@ def test_entity_diagnostics_keeps_only_functional_state_data():
             "deviceSN": "device-sn",
             "ip": "192.0.2.10",
             "ipAddress": "192.0.2.11",
+            "isLifeEnd": "0",
             "mac": "00:11:22:33:44:55",
             "macBT": "AA:BB:CC:DD:EE:FF",
             "serialNumber": "serial-number",
@@ -35,6 +36,7 @@ def test_entity_diagnostics_keeps_only_functional_state_data():
             "userId": "user-id",
             "wifiRSSI": -55,
             "safeMode": 1,
+            "sensorStatus": "0",
         },
     )
 
@@ -56,6 +58,8 @@ def test_entity_diagnostics_keeps_only_functional_state_data():
     assert diagnostics["data"] == {
         "ip": "192.0.2.10",
         "ipAddress": "192.0.2.11",
+        "isLifeEnd": "0",
+        "sensorStatus": "0",
         "wifiRSSI": -55,
         "safeMode": 1,
         "wiredMacAddress": "**REDACTED**",

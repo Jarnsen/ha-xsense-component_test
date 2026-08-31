@@ -256,6 +256,9 @@ async def async_cache_recording_media(
             ):
                 summary["skipped"] += 1
                 continue
+            if await async_recording_cache_suppressed(hass, clip):
+                summary["skipped"] += 1
+                continue
             if await media_source._async_cache_thumbnail(clip):
                 summary["thumbnails"] += 1
             if not _clip_media_playable(clip):
@@ -405,6 +408,7 @@ async def async_clear_recording_caches(
     hass: HomeAssistant,
     *,
     entry_id: str | None = None,
+    suppress_recache: bool = False,
 ) -> dict[str, int]:
     """Clear X-Sense recording index caches and cached recording media."""
     managers = hass.data.get(DOMAIN, {}).get("_recording_indexes")
@@ -422,19 +426,29 @@ async def async_clear_recording_caches(
         if entry_id
         else _configured_recording_media_roots(hass)
     )
-    summary = await _async_delete_cache_groups(hass, roots)
+    summary = await _async_delete_cache_groups(
+        hass, roots, suppress_recache=suppress_recache
+    )
     _clear_recording_capture_locks(hass, roots)
     return summary
 
 
 async def async_delete_recording_cache(
-    hass: HomeAssistant, clip: dict[str, Any]
+    hass: HomeAssistant,
+    clip: dict[str, Any],
+    *,
+    suppress_recache: bool = False,
 ) -> dict[str, int]:
     """Delete one locally cached clip without touching X-Sense storage."""
     async_cancel_temporary_recording_cleanup(hass, clip)
     root = _recording_media_root_from_value(clip.get("media_root"))
     cache_key = _cache_group_key_for_clip(clip)
-    return await _async_delete_cache_groups(hass, [root], keys={cache_key})
+    return await _async_delete_cache_groups(
+        hass,
+        [root],
+        keys={cache_key},
+        suppress_recache=suppress_recache,
+    )
 
 
 async def async_release_recording_playback(
@@ -530,12 +544,21 @@ def async_cancel_temporary_recording_cleanup(
 
 
 async def async_delete_camera_recording_cache(
-    hass: HomeAssistant, *, entry_id: str, serial: str
+    hass: HomeAssistant,
+    *,
+    entry_id: str,
+    serial: str,
+    suppress_recache: bool = False,
 ) -> dict[str, int]:
     """Delete all local cache entries belonging to one camera."""
     root = _recording_media_root(hass, entry_id)
     prefix = f"{_safe_segment(serial)}_"
-    return await _async_delete_cache_groups(hass, [root], key_prefixes={prefix})
+    return await _async_delete_cache_groups(
+        hass,
+        [root],
+        key_prefixes={prefix},
+        suppress_recache=suppress_recache,
+    )
 
 
 async def async_prune_recording_caches(
@@ -576,6 +599,7 @@ async def _async_delete_cache_groups(
     *,
     keys: set[str] | None = None,
     key_prefixes: set[str] | None = None,
+    suppress_recache: bool = False,
 ) -> dict[str, int]:
     """Delete selected cache groups while protecting active playback."""
     summary = _empty_cache_cleanup_summary()
@@ -588,6 +612,7 @@ async def _async_delete_cache_groups(
             protected,
             keys,
             key_prefixes,
+            suppress_recache,
         )
         _merge_cache_cleanup_summary(summary, result)
     return summary
@@ -1580,6 +1605,8 @@ class XSenseRecordingsMediaSource(MediaSource):
             cached = 0
             requested = 0
             for clip in pending:
+                if await async_recording_cache_suppressed(self.hass, clip):
+                    continue
                 if await self._async_path_ready(_clip_thumbnail_cache_path(clip)):
                     continue
                 requested += 1
@@ -3251,6 +3278,64 @@ def _cache_group_key_for_clip(clip: dict[str, Any]) -> str:
     return _hls_cache_dir(clip).name
 
 
+def _cache_suppression_path(root: Path, cache_key: str) -> Path:
+    """Return the durable manual-deletion marker for one cache group."""
+    return root / ".manual-deletions" / cache_key
+
+
+def _recording_cache_suppressed(clip: dict[str, Any]) -> bool:
+    """Return whether a manual-deletion marker exists for one clip."""
+    root = _recording_media_root_from_value(clip.get("media_root"))
+    path = _cache_suppression_path(root, _cache_group_key_for_clip(clip))
+    return _path_ready(path)
+
+
+async def async_recording_cache_suppressed(
+    hass: HomeAssistant, clip: dict[str, Any]
+) -> bool:
+    """Return whether background sync must leave a manually deleted clip alone."""
+    executor = getattr(hass, "async_add_executor_job", None)
+    if callable(executor):
+        return await executor(_recording_cache_suppressed, clip)
+    return await asyncio.to_thread(_recording_cache_suppressed, clip)
+
+
+async def async_allow_recording_cache(
+    hass: HomeAssistant, clip: dict[str, Any]
+) -> None:
+    """Allow an explicitly selected recording to be cached again."""
+    root = _recording_media_root_from_value(clip.get("media_root"))
+    path = _cache_suppression_path(root, _cache_group_key_for_clip(clip))
+    executor = getattr(hass, "async_add_executor_job", None)
+    if callable(executor):
+        await executor(path.unlink, True)
+    else:
+        await asyncio.to_thread(path.unlink, True)
+
+
+def _mark_cache_suppressed(root: Path, cache_key: str) -> None:
+    """Persist a manual-deletion marker without storing recording content."""
+    _write_cache_file(_cache_suppression_path(root, cache_key), b"1")
+
+
+def _prune_cache_suppressions(root: Path) -> None:
+    """Discard markers after the recording history lookback has elapsed."""
+    folder = root / ".manual-deletions"
+    if not folder.exists():
+        return
+    cutoff = time() - (RECORDING_LOOKBACK_DAYS * 86400)
+    for path in folder.iterdir():
+        try:
+            if path.is_file() and path.stat().st_mtime < cutoff:
+                path.unlink(missing_ok=True)
+        except OSError:
+            continue
+    try:
+        folder.rmdir()
+    except OSError:
+        pass
+
+
 def _empty_cache_cleanup_summary() -> dict[str, int]:
     return {
         "deleted_items": 0,
@@ -3478,6 +3563,7 @@ def _delete_media_cache_groups(
     protected: set[Path],
     keys: set[str] | None,
     key_prefixes: set[str] | None,
+    suppress_recache: bool = False,
 ) -> dict[str, int]:
     summary = _empty_cache_cleanup_summary()
     groups = _cache_inventory(root)
@@ -3492,6 +3578,8 @@ def _delete_media_cache_groups(
             summary["skipped_active"] += 1
             continue
         _remove_cache_group(root, group)
+        if suppress_recache:
+            _mark_cache_suppressed(root, key)
         summary["deleted_items"] += 1
         summary["deleted_bytes"] += int(group["bytes"])
     remaining = _cache_inventory(root)
@@ -3508,6 +3596,7 @@ def _prune_media_cache(
     retention_seconds: int | None = None,
 ) -> dict[str, int]:
     """Remove expired groups, then oldest groups until under the size cap."""
+    _prune_cache_suppressions(root)
     summary = _empty_cache_cleanup_summary()
     groups = _cache_inventory(root)
     cutoff = time() - (
