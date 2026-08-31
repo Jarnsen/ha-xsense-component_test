@@ -4851,7 +4851,7 @@ async def test_get_client_info_uses_apk_1400_client_metadata():
 
 
 @pytest.mark.asyncio
-async def test_camera_thumbnail_falls_back_from_device_thumbnail_to_event_image():
+async def test_camera_thumbnail_prefers_full_event_image_to_device_thumbnail():
     class ThumbnailResponse:
         def __init__(self, status, body=b""):
             self.status = status
@@ -4873,7 +4873,7 @@ async def test_camera_thumbnail_falls_back_from_device_thumbnail_to_event_image(
             self.urls = []
             self.responses = [
                 ThumbnailResponse(403),
-                ThumbnailResponse(200, b"event-jpeg"),
+                ThumbnailResponse(200, b"thumbnail-jpeg"),
             ]
 
         def get(self, url):
@@ -4882,29 +4882,127 @@ async def test_camera_thumbnail_falls_back_from_device_thumbnail_to_event_image(
 
     session = ThumbnailSession()
     client = async_xsense.AsyncXSense(session)
+    client._refresh_camera_push_image = AsyncMock()
     camera = SimpleNamespace(
         data={
             "thumbImgUrl": "https://example.invalid/current.jpg",
-            "playback": {"image_url": "https://example.invalid/event.jpg"},
+            "thumbImgTime": 200,
+            "playback": {
+                "image_url": "https://example.invalid/event.jpg",
+                "timestamp_s": 200,
+            },
         }
     )
 
-    assert await client.get_camera_thumbnail(camera) == b"event-jpeg"
+    assert await client.get_camera_thumbnail(camera) == b"thumbnail-jpeg"
     assert session.urls == [
-        "https://example.invalid/current.jpg",
         "https://example.invalid/event.jpg",
+        "https://example.invalid/current.jpg",
     ]
 
 
 @pytest.mark.asyncio
 async def test_camera_thumbnail_without_url_does_not_create_session():
     client = async_xsense.AsyncXSense()
+    client._refresh_camera_push_image = AsyncMock()
     client._get_session = AsyncMock(
         side_effect=AssertionError("no image URL must not create an HTTP session")
     )
 
     assert await client.get_camera_thumbnail(SimpleNamespace(data={})) is None
+    client._refresh_camera_push_image.assert_awaited_once()
     client._get_session.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_camera_thumbnail_refreshes_apk_push_image_for_matching_camera():
+    class ThumbnailResponse:
+        status = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def read(self):
+            return b"push-image"
+
+    class ThumbnailSession:
+        closed = False
+
+        def __init__(self):
+            self.urls = []
+
+        def get(self, url):
+            self.urls.append(url)
+            return ThumbnailResponse()
+
+    session = ThumbnailSession()
+    client = async_xsense.AsyncXSense(session)
+    client._camera_addx_call = AsyncMock(
+        return_value=[
+            {
+                "serialNumber": "OTHER-CAMERA",
+                "lastPushImageUrl": "https://example.invalid/other.jpg",
+                "lastPushTime": 100,
+            },
+            {
+                "serialNumber": "SSC0A-CAMERA123",
+                "lastPushImageUrl": "https://example.invalid/push.jpg",
+                "lastPushTime": 300,
+            },
+        ]
+    )
+    camera = SimpleNamespace(
+        sn="CAMERA123",
+        entity_id="SSC0A-CAMERA123",
+        data={
+            "thumbImgUrl": "https://example.invalid/thumb.jpg",
+            "thumbImgTime": 200,
+        },
+    )
+
+    assert await client.get_camera_thumbnail(camera) == b"push-image"
+    client._camera_addx_call.assert_awaited_once_with(
+        camera, "/device/devicePushImage"
+    )
+    assert camera.data["lastPushImageUrl"] == "https://example.invalid/push.jpg"
+    assert camera.data["lastPushTime"] == 300
+    assert session.urls == ["https://example.invalid/push.jpg"]
+
+
+@pytest.mark.asyncio
+async def test_camera_thumbnail_keeps_existing_image_when_push_refresh_fails():
+    class ThumbnailResponse:
+        status = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def read(self):
+            return b"existing-image"
+
+    class ThumbnailSession:
+        closed = False
+
+        def get(self, url):
+            assert url == "https://example.invalid/existing.jpg"
+            return ThumbnailResponse()
+
+    client = async_xsense.AsyncXSense(ThumbnailSession())
+    client._camera_addx_call = AsyncMock(
+        side_effect=async_xsense.APIFailure("push image unavailable")
+    )
+    camera = SimpleNamespace(
+        sn="CAMERA123",
+        data={"image_url": "https://example.invalid/existing.jpg"},
+    )
+
+    assert await client.get_camera_thumbnail(camera) == b"existing-image"
 
 
 @pytest.mark.asyncio

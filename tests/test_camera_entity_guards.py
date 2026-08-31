@@ -5442,7 +5442,7 @@ async def test_unsupported_camera_type_has_no_stream_source():
     assert await camera.stream_source() is None
 
 
-def test_camera_thumbnail_urls_follow_apk_thumbnail_and_event_fallback_order():
+def test_camera_thumbnail_urls_prefer_full_event_images_over_list_thumbnails():
     from custom_components.xsense.python_xsense.async_xsense import (
         camera_thumbnail_urls,
     )
@@ -5460,10 +5460,10 @@ def test_camera_thumbnail_urls_follow_apk_thumbnail_and_event_fallback_order():
     )
 
     assert camera_thumbnail_urls(camera_entity) == (
-        "https://example.invalid/current.jpg",
         "https://example.invalid/event.jpg",
-        "https://example.invalid/package.jpg",
         "https://example.invalid/direct.jpg",
+        "https://example.invalid/package.jpg",
+        "https://example.invalid/current.jpg",
     )
 
 

@@ -1464,7 +1464,18 @@ class AsyncXSense(XSenseBase):
         return list(devices_by_serial.values())
 
     async def get_camera_thumbnail(self, camera: Entity) -> bytes | None:
-        """Return camera image bytes using the APK thumbnail fallback order."""
+        """Return the freshest preferred camera event image available."""
+        try:
+            await self._refresh_camera_push_image(camera)
+        except XSenseError as err:
+            LOGGER.debug(
+                "X-Sense camera push image refresh failed: %s",
+                {
+                    "camera": _masked_identifier(getattr(camera, "sn", "")),
+                    "error_type": type(err).__name__,
+                },
+            )
+
         thumbnail_urls = camera_thumbnail_urls(camera)
         if not thumbnail_urls:
             return None
@@ -1482,6 +1493,23 @@ class AsyncXSense(XSenseBase):
             if image:
                 return image
         return None
+
+    async def _refresh_camera_push_image(self, camera: Entity) -> None:
+        """Refresh the APK devicePushImage result for one camera."""
+        data = await self._camera_addx_call(camera, "/device/devicePushImage")
+        for item in _camera_push_image_rows(data):
+            if not camera_matches_identifier(camera, item.get("serialNumber")):
+                continue
+            values = {
+                "lastPushImageUrl": item.get("lastPushImageUrl"),
+                "lastPushTime": item.get("lastPushTime"),
+            }
+            set_data = getattr(camera, "set_data", None)
+            if callable(set_data):
+                set_data(values)
+            else:
+                camera.data.update(values)
+            return
 
     def _camera_from_addx_device(self, data: Dict) -> Station | None:
         """Return the X-Sense camera entity backed by an ADDX DeviceBean."""
@@ -2855,10 +2883,19 @@ def _camera_type(data: Dict) -> str | None:
 
 
 def camera_thumbnail_urls(camera: Entity) -> tuple[str, ...]:
-    """Return current and event thumbnail URLs in APK display order."""
+    """Return camera image URLs ordered by freshness and source quality."""
     data = camera.data
-    candidates: list[tuple[Any, int | None]] = [
-        (data.get("thumbImgUrl"), _camera_image_epoch_seconds(data.get("thumbImgTime")))
+    candidates: list[tuple[Any, int | None, int]] = [
+        (
+            data.get("lastPushImageUrl"),
+            _camera_image_epoch_seconds(data.get("lastPushTime")),
+            3,
+        ),
+        (
+            data.get("thumbImgUrl"),
+            _camera_image_epoch_seconds(data.get("thumbImgTime")),
+            1,
+        ),
     ]
     playback = data.get("playback")
     if isinstance(playback, dict):
@@ -2870,28 +2907,35 @@ def camera_thumbnail_urls(camera: Entity) -> tuple[str, ...]:
         )
         candidates.extend(
             (
-                (playback.get("image_url"), playback_time),
-                (playback.get("package_image_url"), playback_time),
+                (playback.get("image_url"), playback_time, 4),
+                (playback.get("package_image_url"), playback_time, 2),
             )
         )
+    direct_image_time = _camera_image_epoch_seconds(
+        data.get("image_time")
+        or data.get("imageTime")
+        or data.get("event_time")
+        or data.get("eventTime")
+    )
     candidates.extend(
         (
-            (data.get("image_url"), None),
-            (data.get("package_image_url"), None),
-            (data.get("imageUrl"), None),
-            (data.get("packageImageUrl"), None),
+            (data.get("image_url"), direct_image_time, 4),
+            (data.get("imageUrl"), direct_image_time, 4),
+            (data.get("package_image_url"), direct_image_time, 2),
+            (data.get("packageImageUrl"), direct_image_time, 2),
         )
     )
     candidates.sort(
         key=lambda candidate: (
             candidate[1] is not None,
             candidate[1] if candidate[1] is not None else 0,
+            candidate[2],
         ),
         reverse=True,
     )
 
     urls: list[str] = []
-    for value, _timestamp in candidates:
+    for value, _timestamp, _quality in candidates:
         if not isinstance(value, str):
             continue
         url = value.strip()
@@ -2899,6 +2943,21 @@ def camera_thumbnail_urls(camera: Entity) -> tuple[str, ...]:
             continue
         urls.append(url)
     return tuple(urls)
+
+
+def _camera_push_image_rows(value: Any) -> list[dict[str, Any]]:
+    """Return devicePushImage rows from the APK response shapes."""
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, dict)]
+    if not isinstance(value, dict):
+        return []
+    for key in ("list", "data"):
+        nested = value.get(key)
+        if isinstance(nested, list):
+            return [item for item in nested if isinstance(item, dict)]
+    if "serialNumber" in value:
+        return [value]
+    return []
 
 
 def _camera_image_epoch_seconds(value: Any) -> int | None:
