@@ -4087,6 +4087,52 @@ def test_cache_recording_media_skips_downloads_in_playback_only_mode(monkeypatch
     assert summary == {"downloaded": 0, "thumbnails": 0, "skipped": 1, "failed": 0}
 
 
+def test_cache_recording_media_skips_manually_deleted_clip(monkeypatch):
+    from custom_components.xsense import recordings_media as media_source
+    from custom_components.xsense.const import CONF_RECORDING_CACHE_MODE
+
+    clip = {
+        "entry_id": "entry-id",
+        "source": "video_url",
+        "playback_url": "https://example.invalid/clip.m3u8",
+        "thumbnail_url": "https://example.invalid/thumb.jpg",
+        "serial": "CAMERA-SN",
+        "start": 1,
+        "end": 2,
+    }
+
+    async def refresh_indexes(hass, *, entry_id=None, force_refresh=False):
+        return [{"cameras": [{"clips": [clip]}]}]
+
+    async def suppressed(hass, current_clip):
+        return current_clip is clip
+
+    monkeypatch.setattr(media_source, "async_refresh_recording_indexes", refresh_indexes)
+    monkeypatch.setattr(media_source, "async_recording_cache_suppressed", suppressed)
+    monkeypatch.setattr(
+        media_source.XSenseRecordingsMediaSource,
+        "_async_cached_playback_url",
+        lambda *args: pytest.fail("manual deletion must block background download"),
+    )
+    monkeypatch.setattr(
+        media_source.XSenseRecordingsMediaSource,
+        "_async_cache_thumbnail",
+        lambda *args: pytest.fail("manual deletion must block thumbnail warmup"),
+    )
+    hass = SimpleNamespace(
+        data={media_source.DOMAIN: {}},
+        config_entries=SimpleNamespace(
+            async_get_entry=lambda entry_id: SimpleNamespace(
+                options={CONF_RECORDING_CACHE_MODE: "retained"}
+            )
+        ),
+    )
+
+    summary = asyncio.run(media_source.async_cache_recording_media(hass))
+
+    assert summary == {"downloaded": 0, "thumbnails": 0, "skipped": 1, "failed": 0}
+
+
 def test_cache_recording_media_does_not_start_sd_capture_for_background_sync(monkeypatch):
     from custom_components.xsense import recordings_media as media_source
 
@@ -4437,7 +4483,7 @@ def test_clear_recording_caches_removes_managers_and_media(monkeypatch):
         config_entries=SimpleNamespace(async_entries=lambda domain: []),
         async_add_executor_job=async_add_executor_job,
     )
-    def delete_groups(root, protected, keys, prefixes):
+    def delete_groups(root, protected, keys, prefixes, suppress_recache=False):
         cleared_media.append([root])
         return media_source._empty_cache_cleanup_summary()
 
@@ -4470,7 +4516,7 @@ def test_clear_recording_caches_scopes_media_to_entry(monkeypatch):
         config_entries=SimpleNamespace(async_get_entry=lambda entry_id: entry),
         async_add_executor_job=async_add_executor_job,
     )
-    def delete_groups(root, protected, keys, prefixes):
+    def delete_groups(root, protected, keys, prefixes, suppress_recache=False):
         cleared_media.append([root])
         return media_source._empty_cache_cleanup_summary()
 
@@ -4657,6 +4703,76 @@ def test_delete_camera_cache_only_removes_matching_serial(tmp_path):
     assert result["deleted_items"] == 1
     assert not first.exists()
     assert second.exists()
+
+
+def test_manual_recording_cache_delete_suppresses_background_recaching(
+    monkeypatch, tmp_path
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    monkeypatch.setattr(
+        media_source, "_recording_media_root_from_value", lambda value: tmp_path
+    )
+
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-A",
+        "start": 100,
+        "end": 120,
+        "media_root": tmp_path,
+    }
+    hls = media_source._hls_cache_dir(clip)
+    hls.mkdir(parents=True)
+    (hls / "index.m3u8").write_bytes(b"playlist")
+
+    async def async_add_executor_job(func, *args):
+        return func(*args)
+
+    hass = SimpleNamespace(data={}, async_add_executor_job=async_add_executor_job)
+
+    result = asyncio.run(
+        media_source.async_delete_recording_cache(
+            hass, clip, suppress_recache=True
+        )
+    )
+
+    assert result["deleted_items"] == 1
+    assert not hls.exists()
+    assert asyncio.run(media_source.async_recording_cache_suppressed(hass, clip))
+
+    asyncio.run(media_source.async_allow_recording_cache(hass, clip))
+
+    assert not asyncio.run(media_source.async_recording_cache_suppressed(hass, clip))
+
+
+def test_automatic_recording_cache_cleanup_does_not_suppress_recaching(
+    monkeypatch, tmp_path
+):
+    from custom_components.xsense import recordings_media as media_source
+
+    monkeypatch.setattr(
+        media_source, "_recording_media_root_from_value", lambda value: tmp_path
+    )
+
+    clip = {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-A",
+        "start": 100,
+        "end": 120,
+        "media_root": tmp_path,
+    }
+    hls = media_source._hls_cache_dir(clip)
+    hls.mkdir(parents=True)
+    (hls / "index.m3u8").write_bytes(b"playlist")
+
+    media_source._delete_media_cache_groups(
+        tmp_path,
+        set(),
+        {media_source._cache_group_key_for_clip(clip)},
+        None,
+    )
+
+    assert not media_source._recording_cache_suppressed(clip)
 
 
 def test_recording_media_sync_starts_only_when_enabled(monkeypatch):

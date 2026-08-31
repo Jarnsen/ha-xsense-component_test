@@ -2878,8 +2878,14 @@ def test_recordings_cache_management_clears_one_camera(monkeypatch):
 
     seen = {}
 
-    async def delete_camera(hass, *, entry_id, serial):
-        seen.update({"entry_id": entry_id, "serial": serial})
+    async def delete_camera(hass, *, entry_id, serial, suppress_recache=False):
+        seen.update(
+            {
+                "entry_id": entry_id,
+                "serial": serial,
+                "suppress_recache": suppress_recache,
+            }
+        )
         return {
             "deleted_items": 2,
             "deleted_bytes": 4096,
@@ -2899,7 +2905,11 @@ def test_recordings_cache_management_clears_one_camera(monkeypatch):
     )
 
     assert response.status == 200
-    assert seen == {"entry_id": "entry-id", "serial": "CAMERA-SN"}
+    assert seen == {
+        "entry_id": "entry-id",
+        "serial": "CAMERA-SN",
+        "suppress_recache": True,
+    }
     assert json.loads(response.text)["deleted_items"] == 2
 
 
