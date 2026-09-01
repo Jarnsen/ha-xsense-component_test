@@ -56,7 +56,7 @@ from .const import (
 )
 from .python_xsense.event_parser import (
     camera_event_history_playback_data,
-    camera_event_history_records,
+    camera_library_records,
 )
 
 MIME_TYPE = "video/mp4"
@@ -1837,13 +1837,13 @@ class XSenseRecordingIndex:
 
         end = datetime.now(timezone.utc)
         start = end - timedelta(days=RECORDING_LOOKBACK_DAYS)
-        history = await self.coordinator.xsense.get_camera_event_history_for_cameras(
+        history = await self.coordinator.xsense.get_camera_library_history_for_cameras(
             camera_entities,
             int(start.timestamp()),
             int(end.timestamp()),
             limit=RECORDING_PAGE_LIMIT,
         )
-        records = camera_event_history_records(history)
+        records = camera_library_records(history)
         clips_by_serial: dict[str, list[dict[str, Any]]] = {serial: [] for serial in serials}
         media_root = _recording_media_root(self.hass, self.entry_id)
         for record in records:
