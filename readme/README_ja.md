@@ -126,7 +126,7 @@ Motion イベントに X-Sense 再生メタデータが含まれている場合�
 
 [![blueprint をインポート](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Motion と AI Detection はオン/オフ状態ではなく、1回限りのイベントです。手動オートメーションでは、Home Assistant の `event.received` トリガーをカメラの `Motion` または `AI Detection` エンティティと一緒に使用します。サブスクリプション付き AI Detection を `person`、`pet`、`vehicle`、`package`、`other`、`ai_detection` などに絞る場合だけ `event_type` を使用してください。
+カメラの Motion は、現在の検出/クリア状態を示すバイナリセンサーと、新しい検出ごとに1回発生する Motion イベントの両方で利用できます。AI Detection は1回限りのイベントです。手動オートメーションでは、Home Assistant の `event.received` トリガーをカメラの `Motion` または `AI Detection` エンティティと一緒に使用します。サブスクリプション付き AI Detection を `person`、`pet`、`vehicle`、`package`、`other`、`ai_detection` などに絞る場合だけ `event_type` を使用してください。
 
 オートメーション例:
 

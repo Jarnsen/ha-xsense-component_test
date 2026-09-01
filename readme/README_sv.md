@@ -67,7 +67,7 @@ Kamerans SD-kortinspelningar visas i X-Sense Recordings. Endast uppspelning är 
 
 [![Importera blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Motion och AI Detection är engångshändelser, inte på/av-lägen. Använd `event.received` för manuella automationer; använd bara `event_type` för att filtrera typer som `person`, `pet`, `vehicle`, `package`, `other` eller `ai_detection`.
+Kamerarörelse finns både som en binärsensor med Detekterad/Klar och som en Motion-engångshändelse för varje ny detektering. AI Detection är en engångshändelse. Använd `event.received` för manuella automationer; använd bara `event_type` för att filtrera typer som `person`, `pet`, `vehicle`, `package`, `other` eller `ai_detection`.
 
 Exempelautomation:
 

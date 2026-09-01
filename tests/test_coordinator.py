@@ -1265,6 +1265,61 @@ def test_mqtt_camera_motion_event_preserves_reported_is_moved_state():
     assert data["isMoved"] == "0"
 
 
+def test_camera_motion_change_uses_detection_time_as_event_time():
+    from custom_components.xsense.coordinator import _normalize_camera_motion_change
+    from custom_components.xsense.python_xsense.entity_map import EntityType
+
+    station = SimpleNamespace(entity_type=EntityType.CAMERA, type="SSC0A")
+    data = {"isMoved": "1", "time": "20260901213700"}
+
+    _normalize_camera_motion_change(station, data)
+
+    assert data == {
+        "isMoved": "1",
+        "time": "20260901213700",
+        "eventTime": "20260901213700",
+    }
+
+
+def test_camera_motion_clear_does_not_create_timestamped_event():
+    from custom_components.xsense.coordinator import _normalize_camera_motion_change
+    from custom_components.xsense.python_xsense.entity_map import EntityType
+
+    station = SimpleNamespace(entity_type=EntityType.CAMERA, type="SSC0A")
+    data = {
+        "isMoved": "0",
+        "time": "20260901213800",
+        "eventTime": "20260901213800",
+    }
+
+    _normalize_camera_motion_change(station, data)
+
+    assert data == {"isMoved": "0"}
+
+
+def test_non_camera_motion_change_keeps_original_payload():
+    from custom_components.xsense.coordinator import _normalize_camera_motion_change
+
+    station = SimpleNamespace(entity_type=None, type="SMS")
+    data = {"isMoved": "0", "time": "20260901213800"}
+
+    _normalize_camera_motion_change(station, data)
+
+    assert data == {"isMoved": "0", "time": "20260901213800"}
+
+
+def test_camera_motion_change_accepts_child_camera_target():
+    from custom_components.xsense.coordinator import _normalize_camera_motion_change
+    from custom_components.xsense.python_xsense.entity_map import EntityType
+
+    camera = SimpleNamespace(entity_type=EntityType.CAMERA, type="SSC0A")
+    data = {"isMoved": "1", "time": "20260901213700"}
+
+    _normalize_camera_motion_change(camera, data)
+
+    assert data["eventTime"] == "20260901213700"
+
+
 def test_mqtt_camera_motion_event_accepts_json_string_event_data():
     from custom_components.xsense.coordinator import _mqtt_reported_data
 

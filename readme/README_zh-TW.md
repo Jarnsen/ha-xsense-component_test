@@ -126,7 +126,7 @@ ____________________________________________________________
 
 [![匯入 blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Motion 和 AI Detection 是一次性事件，不是開/關狀態。手動自動化請使用 Home Assistant 的 `event.received` 觸發器並選擇攝影機 `Motion` 或 `AI Detection` 實體；只有在需要把訂閱 AI Detection 限制為 `person`、`pet`、`vehicle`、`package`、`other` 或 `ai_detection` 等物件類型時，才使用 `event_type`。
+攝影機 Motion 同時提供顯示目前已偵測/已清除狀態的二進位感測器，以及每次新偵測觸發一次的 Motion 事件。AI Detection 是一次性事件。手動自動化請使用 Home Assistant 的 `event.received` 觸發器並選擇攝影機 `Motion` 或 `AI Detection` 實體；只有在需要把訂閱 AI Detection 限制為 `person`、`pet`、`vehicle`、`package`、`other` 或 `ai_detection` 等物件類型時，才使用 `event_type`。
 
 自動化範例:
 

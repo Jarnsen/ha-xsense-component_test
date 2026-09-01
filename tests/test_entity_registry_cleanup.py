@@ -24,7 +24,6 @@ from custom_components.xsense import (
     _migrate_legacy_none_entity_ids,
     _obsolete_action_unique_ids,
     _obsolete_binary_sensor_unique_ids,
-    _obsolete_camera_motion_unique_ids,
     _obsolete_sensor_unique_ids,
     _unsupported_led_light_switch_unique_ids,
     _sensor_unique_id,
@@ -168,20 +167,6 @@ def test_xs01_wx_self_test_report_entities_are_not_obsolete():
 
     assert "kitchen-smoke-last-self-test" not in unique_ids
     assert "kitchen-smoke-last-self-test-time" not in unique_ids
-
-
-def test_obsolete_camera_motion_unique_ids_target_cameras_only():
-    camera = SimpleNamespace(entity_id="garden_camera", type="SSC0A")
-    smoke = SimpleNamespace(entity_id="hall_motion", type="SMS")
-
-    unique_ids = _obsolete_camera_motion_unique_ids(
-        {
-            "stations": {"camera": camera},
-            "devices": {"smoke": smoke},
-        }
-    )
-
-    assert unique_ids == {"garden-camera-moved"}
 
 
 def test_unsupported_led_light_switch_unique_ids_target_missing_led_payload_only():
@@ -788,7 +773,6 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
         'sensor.missing_device_serial_number',
         'sensor.landing_landing_smoke_co_detector_co_event_id',
         'binary_sensor.kitchen_smoke_alarm_led_light',
-        'binary_sensor.garden_camera_motion',
         'switch.kitchen_smoke_led_light',
         'button.hall_smoke_mute',
     ]

@@ -2985,7 +2985,7 @@ def _camera_data(data: Dict) -> Dict:
             else data.get("isAdmin")
         ),
         "isCharging": bool_state(data.get("isCharging")),
-        "isMoved": data.get("isMoved"),
+        **({"isMoved": data["isMoved"]} if "isMoved" in data else {}),
         "liveAudioToggleOn": data.get("liveAudioToggleOn"),
         "modelNo": data.get("modelNo"),
         "networkName": data.get("networkName"),

@@ -6178,6 +6178,12 @@ def test_camera_data_normalizes_charging_as_boolean():
     assert async_xsense._camera_data({"isCharging": "true"})["isCharging"] is True
 
 
+def test_camera_data_only_updates_motion_when_addx_reports_it():
+    assert "isMoved" not in async_xsense._camera_data({})
+    assert async_xsense._camera_data({"isMoved": "0"})["isMoved"] == "0"
+    assert async_xsense._camera_data({"isMoved": "1"})["isMoved"] == "1"
+
+
 def test_camera_data_uses_explicit_apk_webrtc_support_flag():
     assert (
         async_xsense._camera_data({"deviceSupport": {"supportWebrtc": 1}})[
