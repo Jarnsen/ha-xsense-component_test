@@ -619,6 +619,29 @@ def _sbs50_force_arm_prompt(
                 "exitDelay": station_data.get("exitDelay"),
             }
 
+    notices = station_data.get("notices")
+    if not isinstance(notices, list):
+        return None
+
+    for notice in notices:
+        if not isinstance(notice, dict):
+            continue
+        event_param = notice.get("eventParam")
+        if not isinstance(event_param, dict):
+            continue
+        safe_mode_aim = event_param.get("safeModeAim")
+        if safe_mode_aim != requested_mode:
+            continue
+        force_reason = event_param.get("forceReason")
+        if not force_reason:
+            continue
+        return {
+            "forceReason": force_reason,
+            "safeModeAim": requested_mode,
+            "requestedSafeMode": requested_mode,
+            "exitDelay": event_param.get("exitDelay"),
+        }
+
     return None
 
 

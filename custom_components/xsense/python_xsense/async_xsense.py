@@ -11,6 +11,7 @@ from .base import XSenseBase, _apply_sbs50_force_arm_prompt, shadow_update_body
 from .entity import Entity
 from .entity_map import EntityType
 from .exceptions import SessionExpired, APIFailure, XSenseError
+from .event_parser import camera_event_history_is_event_record
 from .house import House
 from .mapping import bool_state
 from .station import Station
@@ -242,6 +243,16 @@ def camera_matches_identifier(camera: Entity, identifier: Any) -> bool:
         _normalized_camera_serial(candidate) == normalized
         for candidate in _camera_addx_serial_candidates(camera)
     )
+
+
+def _camera_history_record_matches_serial(
+    record: dict[str, Any], serial: str
+) -> bool:
+    """Return whether a library row belongs to the exact requested camera."""
+    record_serial = (
+        record.get("serialNumber") or record.get("deviceSn") or record.get("sn")
+    )
+    return _normalized_camera_serial(record_serial) == _normalized_camera_serial(serial)
 
 
 def _is_addx_device_no_access(error: Exception) -> bool:
@@ -608,9 +619,10 @@ class AsyncXSense(XSenseBase):
         for camera, house, serials in requests:
             camera_request_succeeded = False
             accepted_serial = None
+            # The APK's event endpoint is authoritative for motion history.
             for serial_index, serial in enumerate(serials):
                 try:
-                    history = await self.get_camera_event_history(
+                    history = await self.get_camera_event_record_history(
                         [serial],
                         start_timestamp,
                         end_timestamp,
@@ -641,16 +653,27 @@ class AsyncXSense(XSenseBase):
                 if not isinstance(group_records, list) or not group_records:
                     continue
 
+                matching_records = [
+                    record
+                    for record in group_records
+                    if isinstance(record, dict)
+                    and _camera_history_record_matches_serial(record, serial)
+                    and camera_event_history_is_event_record(record)
+                ]
+                if not matching_records:
+                    continue
                 accepted_serial = serial
-                records.extend(
-                    record for record in group_records if isinstance(record, dict)
-                )
+                records.extend(matching_records)
                 break
 
+            # Some accounts expose event recordings only through the general
+            # library endpoint. Accept those rows only when the payload itself
+            # identifies an event; ordinary playback rows must never become
+            # Home Assistant motion events.
             if accepted_serial is None:
                 for serial_index, serial in enumerate(serials):
                     try:
-                        history = await self.get_camera_event_record_history(
+                        history = await self.get_camera_event_history(
                             [serial],
                             start_timestamp,
                             end_timestamp,
@@ -662,7 +685,7 @@ class AsyncXSense(XSenseBase):
                         if first_error is None:
                             first_error = err
                         LOGGER.debug(
-                            "X-Sense camera event-library history unavailable: %s",
+                            "X-Sense camera playback-library history unavailable: %s",
                             {
                                 "identity_index": serial_index,
                                 "identity_count": len(serials),
@@ -681,10 +704,15 @@ class AsyncXSense(XSenseBase):
                     if not isinstance(group_records, list) or not group_records:
                         continue
 
-                    accepted_serial = serial
-                    records.extend(
+                    matching_records = [
                         record for record in group_records if isinstance(record, dict)
-                    )
+                        and _camera_history_record_matches_serial(record, serial)
+                        and camera_event_history_is_event_record(record)
+                    ]
+                    if not matching_records:
+                        continue
+                    accepted_serial = serial
+                    records.extend(matching_records)
                     break
 
             if accepted_serial is not None:

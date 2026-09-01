@@ -769,6 +769,68 @@ def test_mqtt_skp0a_safenotice_fires_keypad_code_event(caplog):
     assert "1234" not in caplog.text
 
 
+@pytest.mark.parametrize("requested_mode", ["Home", "Away"])
+def test_mqtt_safenotice_exposes_force_arm_prompt_for_pending_request(
+    requested_mode,
+):
+    from custom_components.xsense.alarm_control_panel import pending_force_arm_mode
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+    from custom_components.xsense.python_xsense.base import XSenseBase
+    from custom_components.xsense.python_xsense.station import Station
+
+    station = Station(
+        None,
+        stationId="station-id",
+        stationName="Base Station",
+        stationSn="15A9862E",
+        category="SBS50",
+    )
+    station.set_alarm_data({"requestedSafeMode": requested_mode})
+    station.safe_mode = "Disarmed"
+
+    class Bus:
+        def __init__(self):
+            self.events = []
+
+        def async_fire(self, event_type, payload):
+            self.events.append((event_type, payload))
+
+    bus = Bus()
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = SimpleNamespace(bus=bus)
+    coordinator.xsense = XSenseBase.__new__(XSenseBase)
+    coordinator.xsense.houses = {"house-id": PresenceHouse(station)}
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/SBS50-15A9862E/shadow/name/2nd_safenotice/update",
+        json.dumps(
+            {
+                "state": {
+                    "reported": {
+                        "stationSN": station.sn,
+                        "safeMode": "Disarmed",
+                        "notices": [
+                            {
+                                "type": "SDS0A",
+                                "eventId": "blocked-arm-1",
+                                "eventParam": {
+                                    "safeModeAim": requested_mode,
+                                    "forceReason": [{"deviceSN": "door-sn"}],
+                                    "exitDelay": "0",
+                                },
+                            }
+                        ],
+                    }
+                }
+            }
+        ).encode(),
+    )
+
+    assert pending_force_arm_mode(station) == requested_mode
+    assert station.alarm_data["forceReason"] == [{"deviceSN": "door-sn"}]
+
+
 def test_mqtt_skp0a_safenotice_skips_keypad_notice_without_code(caplog):
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
@@ -2275,6 +2337,21 @@ def test_camera_record_history_item_preserves_event_time_without_live_motion():
     assert data["eventTime"] == "20260621134144"
     assert "isMoved" not in data
     assert "lastMotionTime" not in data
+
+
+def test_camera_record_history_rejects_unclassified_playback_row():
+    from custom_components.xsense.coordinator import _camera_event_history_station_data
+
+    data = _camera_event_history_station_data(
+        {
+            "serialNumber": "camera-sn",
+            "timestamp": 1782049304,
+            "traceId": "trace-id",
+            "videoUrl": "https://example.invalid/ordinary.m3u8",
+        }
+    )
+
+    assert data == {}
 
 
 async def test_assure_subscriptions_includes_apk_ai_plan_topic():
