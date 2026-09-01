@@ -2339,6 +2339,21 @@ def test_camera_record_history_item_preserves_event_time_without_live_motion():
     assert "lastMotionTime" not in data
 
 
+def test_camera_record_history_rejects_unclassified_playback_row():
+    from custom_components.xsense.coordinator import _camera_event_history_station_data
+
+    data = _camera_event_history_station_data(
+        {
+            "serialNumber": "camera-sn",
+            "timestamp": 1782049304,
+            "traceId": "trace-id",
+            "videoUrl": "https://example.invalid/ordinary.m3u8",
+        }
+    )
+
+    assert data == {}
+
+
 async def test_assure_subscriptions_includes_apk_ai_plan_topic():
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 

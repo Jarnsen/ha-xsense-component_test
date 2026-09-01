@@ -95,6 +95,7 @@ __all__ = [
     "apply_apk_event_aliases",
     "camera_ai_history_event_key",
     "camera_event_history_event_key",
+    "camera_event_history_is_event_record",
     "camera_event_history_playback_data",
     "camera_event_history_playback_source",
     "camera_event_history_records",
@@ -341,10 +342,22 @@ def camera_event_history_event_key(record: dict[str, Any]) -> str:
     return f"camera-event:{payload}"
 
 
+def camera_event_history_is_event_record(record: dict[str, Any]) -> bool:
+    """Return whether an APK library row is explicitly classified as an event."""
+    return any(
+        value not in (None, "", [], {})
+        for value in (
+            record.get("videoEvent"),
+            record.get("tags"),
+            record.get("eventInfoList"),
+        )
+    )
+
+
 def camera_event_history_station_data(record: dict[str, Any]) -> dict[str, Any]:
     """Return normal camera state keys from an APK ADDX event-history record."""
     serial = record.get("serialNumber") or record.get("deviceSn") or record.get("sn")
-    if not serial:
+    if not serial or not camera_event_history_is_event_record(record):
         return {}
 
     timestamp = record.get("timestamp") or record.get("startTime")
@@ -352,7 +365,7 @@ def camera_event_history_station_data(record: dict[str, Any]) -> dict[str, Any]:
     data: dict[str, Any] = {
         "serialNumber": serial,
         "deviceSN": serial,
-        "eventType": record.get("videoEvent") or record.get("tags") or "motion",
+        "eventType": record.get("videoEvent") or record.get("tags"),
         "eventItems": record.get("eventInfoList"),
         "eventObjectType": record.get("eventInfoList") or record.get("tags"),
         "lastType": record.get("videoEvent") or record.get("tags"),
