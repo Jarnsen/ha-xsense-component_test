@@ -34,6 +34,7 @@ from .python_xsense.event_parser import (
     self_test_report_payload as _self_test_report_payload,
 )
 from .python_xsense.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
+from .python_xsense.mapping import bool_state
 from .const import (
     CAMERA_AI_HISTORY_SCAN_INTERVAL,
     CAMERA_AI_SERVICE_AVAILABLE,
@@ -771,11 +772,17 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         children = station_data.pop("devs", {}) or {}
         target_device_sn = _mqtt_target_device_sn(station_data)
+        target_device = None
+        if target_device_sn and target_device_sn != station.sn:
+            get_device_by_sn = getattr(station, "get_device_by_sn", None)
+            if callable(get_device_by_sn):
+                target_device = get_device_by_sn(target_device_sn)
         if (
             target_device_sn
             and target_device_sn != station.sn
-            and station.get_device_by_sn(target_device_sn)
+            and target_device
         ):
+            _normalize_camera_motion_change(target_device, station_data)
             self.xsense.parse_get_state(
                 station,
                 {
@@ -785,6 +792,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 },
             )
         else:
+            _normalize_camera_motion_change(station, station_data)
             if isinstance(children, (dict, list)):
                 station_data["devs"] = children
             self.xsense.parse_get_state(station, station_data)
@@ -880,6 +888,22 @@ def _apply_safe_mode(station, safe_mode: str) -> None:
     """Store safeMode consistently for HTTP polling and MQTT updates."""
     station.safe_mode = safe_mode
     station._data["safeMode"] = safe_mode
+
+
+def _normalize_camera_motion_change(station, station_data: dict[str, Any]) -> None:
+    """Keep camera motion timestamps on detections, never on clear updates."""
+    if not is_camera_entity(station) or "isMoved" not in station_data:
+        return
+
+    motion_state = bool_state(station_data.get("isMoved"))
+    if motion_state is True:
+        if event_time := station_data.get("eventTime") or station_data.get("time"):
+            station_data.setdefault("eventTime", event_time)
+            station_data.setdefault("time", event_time)
+        return
+    if motion_state is False:
+        station_data.pop("eventTime", None)
+        station_data.pop("time", None)
 
 
 def _mqtt_target_device_sn(data: dict[str, Any]) -> str | None:

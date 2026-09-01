@@ -212,7 +212,7 @@ ____________________________________________________________
 
 [![وارد کردن blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Motion و AI Detection رویدادهای یک‌باره هستند، نه وضعیت روشن/خاموش. برای اتوماسیون دستی از `event.received` استفاده کنید؛ `event_type` فقط برای فیلتر کردن نوع‌هایی مانند `person`، `pet`، `vehicle`، `package`، `other` یا `ai_detection` لازم است.
+حرکت دوربین هم به‌صورت حسگر دودویی شناسایی‌شده/آزاد و هم به‌صورت رویداد یک‌باره Motion برای هر تشخیص جدید در دسترس است. AI Detection یک رویداد یک‌باره است. برای اتوماسیون دستی از `event.received` استفاده کنید؛ `event_type` فقط برای فیلتر کردن نوع‌هایی مانند `person`، `pet`، `vehicle`، `package`، `other` یا `ai_detection` لازم است.
 
 نمونه اتوماسیون:
 
