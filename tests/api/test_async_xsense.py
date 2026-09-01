@@ -5082,7 +5082,7 @@ async def test_ai_service_history_uses_apk_701008_server_id():
 
 
 @pytest.mark.asyncio
-async def test_camera_event_history_uses_apk_addx_library_record_path():
+async def test_camera_library_history_uses_apk_addx_library_record_path():
     client = async_xsense.AsyncXSense()
     calls = []
 
@@ -5092,7 +5092,7 @@ async def test_camera_event_history_uses_apk_addx_library_record_path():
 
     client.addx_call = addx_call
 
-    data = await client.get_camera_event_history(
+    data = await client.get_camera_library_history(
         ["camera-sn"],
         1781484300,
         1781487900,
@@ -5116,7 +5116,7 @@ async def test_camera_event_history_uses_apk_addx_library_record_path():
 
 
 @pytest.mark.asyncio
-async def test_camera_event_history_uses_requested_addx_home():
+async def test_camera_library_history_uses_requested_addx_home():
     client = async_xsense.AsyncXSense()
     house = SimpleNamespace(house_id="house-2", mqtt_region="eu-west-1")
     calls = []
@@ -5127,7 +5127,7 @@ async def test_camera_event_history_uses_requested_addx_home():
 
     client.addx_call = addx_call
 
-    await client.get_camera_event_history(
+    await client.get_camera_library_history(
         ["camera-sn"],
         1781484300,
         1781487900,
@@ -5138,7 +5138,7 @@ async def test_camera_event_history_uses_requested_addx_home():
 
 
 @pytest.mark.asyncio
-async def test_camera_event_history_groups_cameras_by_addx_home():
+async def test_camera_library_history_groups_cameras_by_addx_home():
     client = async_xsense.AsyncXSense()
     house_1 = SimpleNamespace(house_id="house-1", mqtt_region="us-east-1")
     house_2 = SimpleNamespace(house_id="house-2", mqtt_region="eu-west-1")
@@ -5161,11 +5161,11 @@ async def test_camera_event_history_groups_cameras_by_addx_home():
 
     async def get_history(serials, start_timestamp, end_timestamp, **kwargs):
         calls.append((serials, kwargs["house"]))
-        return {"list": [{"serialNumber": serials[0]}]}
+        return {"list": [{"serialNumber": serials[0], "videoEvent": "motion"}]}
 
-    client.get_camera_event_history = get_history
+    client.get_camera_library_history = get_history
 
-    result = await client.get_camera_event_history_for_cameras(
+    result = await client.get_camera_library_history_for_cameras(
         [camera_1, camera_2], 1781484300, 1781487900
     )
 
@@ -5180,7 +5180,7 @@ async def test_camera_event_history_groups_cameras_by_addx_home():
 
 
 @pytest.mark.asyncio
-async def test_camera_event_history_queries_each_camera_without_shared_page_limit():
+async def test_camera_library_history_queries_each_camera_without_shared_page_limit():
     client = async_xsense.AsyncXSense()
     house = SimpleNamespace(house_id="house-1", mqtt_region="us-east-1")
     client.houses = {"house-1": house}
@@ -5198,11 +5198,11 @@ async def test_camera_event_history_queries_each_camera_without_shared_page_limi
 
     async def get_history(serials, start_timestamp, end_timestamp, **kwargs):
         calls.append((serials, kwargs["house"], kwargs["limit"]))
-        return {"list": [{"serialNumber": serials[0]}]}
+        return {"list": [{"serialNumber": serials[0], "videoEvent": "motion"}]}
 
-    client.get_camera_event_history = get_history
+    client.get_camera_library_history = get_history
 
-    result = await client.get_camera_event_history_for_cameras(
+    result = await client.get_camera_library_history_for_cameras(
         cameras, 1781484300, 1781487900, limit=25
     )
 
@@ -5214,7 +5214,7 @@ async def test_camera_event_history_queries_each_camera_without_shared_page_limi
 
 
 @pytest.mark.asyncio
-async def test_camera_event_history_tries_apk_identity_alias_after_empty_result():
+async def test_camera_library_history_tries_apk_identity_alias_after_empty_result():
     client = async_xsense.AsyncXSense()
     house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
     client.houses = {"house-1": house}
@@ -5231,47 +5231,6 @@ async def test_camera_event_history_tries_apk_identity_alias_after_empty_result(
     async def get_history(serials, start_timestamp, end_timestamp, **kwargs):
         calls.append(serials)
         if serials == ["camera-access-id"]:
-            return {"list": [{"serialNumber": "camera-access-id"}]}
-        return {"list": []}
-
-    client.get_camera_event_history = get_history
-
-    result = await client.get_camera_event_history_for_cameras(
-        [camera], 1781484300, 1781487900
-    )
-
-    assert calls == [["camera-list-id"], ["camera-access-id"]]
-    assert result["list"] == [{"serialNumber": "camera-access-id"}]
-    assert updates == [
-        {
-            "addxAccessSerialNumber": "camera-access-id",
-            "addxSerialNumber": "camera-access-id",
-        }
-    ]
-
-
-@pytest.mark.asyncio
-async def test_camera_event_history_tries_apk_event_library_after_playback_empty():
-    client = async_xsense.AsyncXSense()
-    house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
-    client.houses = {"house-1": house}
-    updates = []
-    camera = SimpleNamespace(
-        sn="camera-label",
-        entity_id="camera-access-id",
-        data={"addxSerialNumber": "camera-list-id"},
-        house=house,
-        set_data=lambda data: updates.append(data),
-    )
-    calls = []
-
-    async def get_history(serials, start_timestamp, end_timestamp, **kwargs):
-        calls.append(("playback", serials, kwargs["house"]))
-        return {"list": []}
-
-    async def get_event_history(serials, start_timestamp, end_timestamp, **kwargs):
-        calls.append(("event", serials, kwargs["house"]))
-        if serials == ["camera-access-id"]:
             return {
                 "list": [
                     {
@@ -5282,20 +5241,13 @@ async def test_camera_event_history_tries_apk_event_library_after_playback_empty
             }
         return {"list": []}
 
-    client.get_camera_event_history = get_history
-    client.get_camera_event_record_history = get_event_history
+    client.get_camera_library_history = get_history
 
-    result = await client.get_camera_event_history_for_cameras(
+    result = await client.get_camera_library_history_for_cameras(
         [camera], 1781484300, 1781487900
     )
 
-    assert calls == [
-        ("playback", ["camera-list-id"], house),
-        ("playback", ["camera-access-id"], house),
-        ("playback", ["camera-label"], house),
-        ("event", ["camera-list-id"], house),
-        ("event", ["camera-access-id"], house),
-    ]
+    assert calls == [["camera-list-id"], ["camera-access-id"]]
     assert result["list"] == [
         {"serialNumber": "camera-access-id", "videoEvent": "motion"}
     ]
@@ -5305,6 +5257,85 @@ async def test_camera_event_history_tries_apk_event_library_after_playback_empty
             "addxSerialNumber": "camera-access-id",
         }
     ]
+
+
+@pytest.mark.asyncio
+async def test_camera_library_history_keeps_playback_rows_separate_from_events():
+    client = async_xsense.AsyncXSense()
+    house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
+    client.houses = {"house-1": house}
+    camera = SimpleNamespace(
+        sn="camera-sn",
+        entity_id="camera-sn",
+        data={},
+        house=house,
+        set_data=lambda data: None,
+    )
+
+    async def get_playback_history(*args, **kwargs):
+        return {
+            "list": [
+                {
+                    "serialNumber": "camera-sn",
+                    "timestamp": 1781484300,
+                    "videoUrl": "https://example.invalid/ordinary.m3u8",
+                }
+            ]
+        }
+
+    client.get_camera_library_history = get_playback_history
+
+    result = await client.get_camera_library_history_for_cameras(
+        [camera], 1781484300, 1781487900
+    )
+
+    assert result == {
+        "list": [
+            {
+                "serialNumber": "camera-sn",
+                "timestamp": 1781484300,
+                "videoUrl": "https://example.invalid/ordinary.m3u8",
+            }
+        ],
+        "total": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_camera_library_history_does_not_cross_route_two_camera_rows():
+    client = async_xsense.AsyncXSense()
+    house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
+    client.houses = {"house-1": house}
+    cameras = [
+        SimpleNamespace(
+            sn=f"camera-{index}",
+            entity_id=f"camera-{index}",
+            data={},
+            house=house,
+            set_data=lambda data: None,
+        )
+        for index in (1, 2)
+    ]
+
+    async def get_event_history(serials, *args, **kwargs):
+        other_serial = "camera-2" if serials == ["camera-1"] else "camera-1"
+        return {
+            "list": [
+                {
+                    "serialNumber": other_serial,
+                    "timestamp": 1781484300,
+                    "videoEvent": "motion",
+                }
+            ]
+        }
+
+    client.get_camera_library_history = get_event_history
+
+    result = await client.get_camera_library_history_for_cameras(
+        cameras, 1781484300, 1781487900
+    )
+
+    assert result == {"list": [], "total": 0}
 
 
 def test_camera_addx_serial_candidates_keep_proven_access_identity_first():

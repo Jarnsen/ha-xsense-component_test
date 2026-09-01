@@ -1,10 +1,8 @@
 import asyncio
-from datetime import datetime, timezone
 import inspect
 import json
 import logging
 from types import SimpleNamespace
-from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -767,6 +765,68 @@ def test_mqtt_skp0a_safenotice_fires_keypad_code_event(caplog):
     ]
     assert "code_present=True" in caplog.text
     assert "1234" not in caplog.text
+
+
+@pytest.mark.parametrize("requested_mode", ["Home", "Away"])
+def test_mqtt_safenotice_exposes_force_arm_prompt_for_pending_request(
+    requested_mode,
+):
+    from custom_components.xsense.alarm_control_panel import pending_force_arm_mode
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+    from custom_components.xsense.python_xsense.base import XSenseBase
+    from custom_components.xsense.python_xsense.station import Station
+
+    station = Station(
+        None,
+        stationId="station-id",
+        stationName="Base Station",
+        stationSn="15A9862E",
+        category="SBS50",
+    )
+    station.set_alarm_data({"requestedSafeMode": requested_mode})
+    station.safe_mode = "Disarmed"
+
+    class Bus:
+        def __init__(self):
+            self.events = []
+
+        def async_fire(self, event_type, payload):
+            self.events.append((event_type, payload))
+
+    bus = Bus()
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = SimpleNamespace(bus=bus)
+    coordinator.xsense = XSenseBase.__new__(XSenseBase)
+    coordinator.xsense.houses = {"house-id": PresenceHouse(station)}
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/SBS50-15A9862E/shadow/name/2nd_safenotice/update",
+        json.dumps(
+            {
+                "state": {
+                    "reported": {
+                        "stationSN": station.sn,
+                        "safeMode": "Disarmed",
+                        "notices": [
+                            {
+                                "type": "SDS0A",
+                                "eventId": "blocked-arm-1",
+                                "eventParam": {
+                                    "safeModeAim": requested_mode,
+                                    "forceReason": [{"deviceSN": "door-sn"}],
+                                    "exitDelay": "0",
+                                },
+                            }
+                        ],
+                    }
+                }
+            }
+        ).encode(),
+    )
+
+    assert pending_force_arm_mode(station) == requested_mode
+    assert station.alarm_data["forceReason"] == [{"deviceSN": "door-sn"}]
 
 
 def test_mqtt_skp0a_safenotice_skips_keypad_notice_without_code(caplog):
@@ -1822,11 +1882,10 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
                 "alarmItems": items
             }
 
-        async def get_camera_event_history_for_cameras(
-            self, cameras, start_timestamp, end_timestamp
+        async def get_camera_library_history_for_cameras(
+            self, *args, **kwargs
         ):
-            assert cameras == [house.stations["camera-id"]]
-            return {}
+            raise AssertionError("recording history must not drive live motion")
 
         def parse_get_state(self, station_arg, data):
             parsed.append((station_arg, data))
@@ -1854,320 +1913,27 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
     assert updates == []
 
 
-async def test_camera_event_history_routes_motion_when_ai_service_list_is_empty():
-    from custom_components.xsense.const import CAMERA_AI_SERVICE_AVAILABLE
+async def test_camera_ai_history_does_not_poll_recording_library():
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
-    class Camera:
-        sn = "camera-sn"
-        type = "SSC0A"
-        shadow_name = "SSC0Acamera-sn"
-
-        def __init__(self):
-            self.data = {"addxSerialNumber": "addx-camera-id"}
-
-        def get_device_by_sn(self, _identifier):
-            return None
-
-        def set_data(self, data):
-            self.data.update(data)
-
-    class House:
-        stations = {"camera-id": Camera()}
-
-        def get_station_by_sn(self, identifier):
-            camera = self.stations["camera-id"]
-            return camera if identifier == camera.sn else None
-
-    parsed = []
-    house = House()
+    camera = SimpleNamespace(type="SSC0A", data={})
+    house = SimpleNamespace(stations={"camera-id": camera})
 
     class Client:
         houses = {"house-id": house}
 
-        def __init__(self):
-            self.history_calls = 0
-
         async def get_ai_service_list(self):
             return []
 
-        async def get_camera_event_history_for_cameras(
-            self, cameras, start_timestamp, end_timestamp
-        ):
-            assert cameras == [house.stations["camera-id"]]
-            assert end_timestamp > start_timestamp
-            self.history_calls += 1
-            records = [
-                {
-                    "serialNumber": "addx-camera-id",
-                    "timestamp": 1781478300,
-                    "startTime": 1781478300,
-                    "endTime": 1781478310,
-                    "traceId": (
-                        "refreshed-trace-id" if self.history_calls > 2 else "trace-id"
-                    ),
-                    "imageUrl": "https://example.invalid/event.jpg",
-                    "packageImageUrl": "https://example.invalid/package.jpg",
-                    "tags": "motion",
-                }
-            ]
-            if self.history_calls > 1:
-                records.insert(
-                    0,
-                    {
-                        "serialNumber": "addx-camera-id",
-                        "timestamp": 1781478360,
-                        "startTime": 1781478360,
-                        "endTime": 1781478370,
-                        "traceId": (
-                            "refreshed-new-trace-id"
-                            if self.history_calls > 2
-                            else "new-trace-id"
-                        ),
-                        "imageUrl": "https://example.invalid/new-event.jpg",
-                        "packageImageUrl": "https://example.invalid/new-package.jpg",
-                        "tags": "motion",
-                    },
-                )
-            return {
-                "list": records
-            }
-
-        def parse_get_state(self, station_arg, data):
-            parsed.append((station_arg, data))
-            station_arg.set_data(data)
-
-    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
-    coordinator.xsense = Client()
-    coordinator._camera_ai_history_seen = set()
-    coordinator._camera_event_history_initialized = False
-    coordinator._camera_event_history_last_poll = None
-    coordinator._camera_ai_history_lock = asyncio.Lock()
-
-    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
-    assert parsed == []
-    assert await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
-    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
-
-    assert parsed[0][0] is house.stations["camera-id"]
-    assert parsed[0][1]["eventTime"] == "20260614230600"
-    assert parsed[0][1]["playback"] == {
-        "trace_id": "new-trace-id",
-        "start_time": 1781478360,
-        "start_time_s": 1781478360,
-        "end_time": 1781478370,
-        "end_time_s": 1781478370,
-        "timestamp": 1781478360,
-        "timestamp_s": 1781478360,
-        "image_url": "https://example.invalid/new-event.jpg",
-        "package_image_url": "https://example.invalid/new-package.jpg",
-        "tags": "motion",
-    }
-    assert parsed[0][1]["lastEventImageUrl"] == (
-        "https://example.invalid/new-event.jpg"
-    )
-    assert parsed[0][1]["lastEventPackageImageUrl"] == (
-        "https://example.invalid/new-package.jpg"
-    )
-    assert parsed[0][1]["lastEventImageTime"] == 1781478360
-    assert house.stations["camera-id"].data[CAMERA_AI_SERVICE_AVAILABLE] is False
-    assert "isMoved" not in parsed[0][1]
-    assert "lastMotionTime" not in parsed[0][1]
-    assert len(parsed) == 1
-    assert coordinator._camera_event_history_initialized is True
-    assert coordinator._camera_event_history_last_poll is not None
-
-
-async def test_camera_event_history_keeps_apk_calendar_day_window():
-    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
-
-    class Camera:
-        sn = "camera-sn"
-        type = "SSC0A"
-        shadow_name = "SSC0Acamera-sn"
-        data = {"addxSerialNumber": "camera-sn"}
-
-        def get_device_by_sn(self, _identifier):
-            return None
-
-    class House:
-        stations = {"camera-id": Camera()}
-
-        def get_station_by_sn(self, _identifier):
-            return None
-
-    windows = []
-
-    class Client:
-        houses = {"house-id": House()}
-
-        async def get_ai_service_list(self):
-            return []
-
-        async def get_camera_event_history_for_cameras(
-            self, cameras, start_timestamp, end_timestamp
-        ):
-            windows.append((start_timestamp, end_timestamp))
-            return {"list": []}
-
-    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
-    coordinator.xsense = Client()
-    coordinator._camera_ai_history_seen = set()
-    coordinator._camera_event_history_initialized = False
-    coordinator._camera_event_history_last_poll = None
-    coordinator._camera_ai_history_lock = asyncio.Lock()
-
-    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
-    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
-
-    assert windows[0][1] - windows[0][0] == 86400
-    assert windows[1] == windows[0]
-
-
-def test_camera_event_history_day_window_uses_home_assistant_time_zone():
-    from custom_components.xsense.coordinator import _apk_camera_history_day_window
-
-    coordinator = SimpleNamespace(
-        hass=SimpleNamespace(config=SimpleNamespace(time_zone="Europe/Berlin"))
-    )
-
-    start, end = _apk_camera_history_day_window(coordinator, 1787927696)
-
-    assert datetime.fromtimestamp(start, timezone.utc).isoformat() == (
-        "2026-08-27T22:00:00+00:00"
-    )
-    assert end - start == 86400
-
-
-@pytest.mark.parametrize(
-    ("local_time", "expected_seconds"),
-    (
-        (datetime(2026, 3, 29, 12, tzinfo=ZoneInfo("Europe/Berlin")), 23 * 3600),
-        (datetime(2026, 10, 25, 12, tzinfo=ZoneInfo("Europe/Berlin")), 25 * 3600),
-    ),
-)
-def test_camera_event_history_day_window_tracks_dst_boundaries(
-    local_time, expected_seconds
-):
-    from custom_components.xsense.coordinator import _apk_camera_history_day_window
-
-    coordinator = SimpleNamespace(
-        hass=SimpleNamespace(config=SimpleNamespace(time_zone="Europe/Berlin"))
-    )
-
-    start, end = _apk_camera_history_day_window(
-        coordinator, int(local_time.timestamp())
-    )
-
-    assert end - start == expected_seconds
-
-
-def test_camera_event_history_station_data_preserves_direct_video_url():
-    from custom_components.xsense.coordinator import (
-        _camera_event_history_station_data,
-    )
-
-    data = _camera_event_history_station_data(
-        {
-            "serialNumber": "camera-sn",
-            "timestamp": 1781478300,
-            "traceId": "trace-id",
-            "videoUrl": "https://example.invalid/clip.mp4",
-            "imageUrl": "https://example.invalid/still.jpg",
-            "videoEvent": "motion",
-        }
-    )
-
-    assert data["playback"] == {
-        "trace_id": "trace-id",
-        "video_url": "https://example.invalid/clip.mp4",
-        "image_url": "https://example.invalid/still.jpg",
-        "timestamp": 1781478300,
-        "timestamp_s": 1781478300,
-        "video_event": "motion",
-        "source": "video_url",
-    }
-
-
-def test_camera_event_history_station_data_normalizes_ms_playback_times():
-    from custom_components.xsense.coordinator import (
-        _camera_event_history_station_data,
-    )
-
-    data = _camera_event_history_station_data(
-        {
-            "serialNumber": "camera-sn",
-            "timestamp": 1781478300000,
-            "startTime": 1781478300000,
-            "endTime": 1781478310000,
-            "traceId": "trace-id",
-            "tags": "motion",
-        }
-    )
-
-    assert data["playback"]["start_time"] == 1781478300000
-    assert data["playback"]["start_time_s"] == 1781478300
-    assert data["playback"]["end_time"] == 1781478310000
-    assert data["playback"]["end_time_s"] == 1781478310
-    assert data["playback"]["timestamp"] == 1781478300000
-    assert data["playback"]["timestamp_s"] == 1781478300
-
-
-async def test_camera_event_history_does_not_mark_unapplied_records_seen(caplog):
-    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
-
-    class Camera:
-        sn = "camera-sn"
-        type = "SSC0A"
-        shadow_name = "SSC0Acamera-sn"
-
-        def get_device_by_sn(self, _identifier):
-            return None
-
-    class House:
-        stations = {"camera-id": Camera()}
-
-        def get_station_by_sn(self, identifier):
-            camera = self.stations["camera-id"]
-            return camera if identifier == camera.sn else None
-
-    class Client:
-        houses = {"house-id": House()}
-
-        async def get_ai_service_list(self):
-            return []
-
-        async def get_camera_event_history_for_cameras(
-            self, cameras, start_timestamp, end_timestamp
-        ):
-            assert cameras == [self.houses["house-id"].stations["camera-id"]]
-            return {
-                "list": [
-                    {
-                        "serialNumber": "other-camera-sn",
-                        "timestamp": 1781478300,
-                        "traceId": "trace-id",
-                        "tags": "motion",
-                    }
-                ]
-            }
-
-        def parse_get_state(self, station_arg, data):
-            raise AssertionError("unmatched record should not update station state")
+        async def get_camera_library_history_for_cameras(self, *args, **kwargs):
+            raise AssertionError("playback library must not drive live motion")
 
     coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
     coordinator.xsense = Client()
     coordinator._camera_ai_history_seen = set()
     coordinator._camera_ai_history_lock = asyncio.Lock()
 
-    caplog.set_level(logging.DEBUG, logger="custom_components.xsense")
-
     assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
-    assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
-
-    assert coordinator._camera_ai_history_seen == set()
-    assert "X-Sense camera record history item was not applied" in caplog.text
-    assert "X-Sense camera record history item skipped as duplicate" not in caplog.text
 
 
 async def test_camera_ai_history_timer_notifies_only_when_history_changes():
@@ -2254,25 +2020,6 @@ def test_mqtt_camera_ai_event_uses_last_ai_detection_with_event_time():
     assert data["lastAiDetection"] == "person"
     assert data["lastPersonDetectionTime"] == "20260614230300"
     assert data["eventTime"] == "20260614230300"
-    assert "isMoved" not in data
-    assert "lastMotionTime" not in data
-
-
-def test_camera_record_history_item_preserves_event_time_without_live_motion():
-    from custom_components.xsense.coordinator import _camera_event_history_station_data
-
-    data = _camera_event_history_station_data(
-        {
-            "serialNumber": "camera-sn",
-            "timestamp": 1782049304,
-            "traceId": "trace-id",
-            "videoEvent": "unknown",
-            "tags": ["unknown"],
-        }
-    )
-
-    assert data["serialNumber"] == "camera-sn"
-    assert data["eventTime"] == "20260621134144"
     assert "isMoved" not in data
     assert "lastMotionTime" not in data
 
