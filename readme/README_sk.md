@@ -67,7 +67,7 @@ Záznamy z fotoaparátu na SD kartu sa objavia v X-Sense Recordings. Predvolený
 
 [![Importovať blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Motion a AI Detection sú jednorazové udalosti, nie stavy zapnuté/vypnuté. Pre manuálne automatizácie použite `event.received`; `event_type` používajte len na filtrovanie typov ako `person`, `pet`, `vehicle`, `package`, `other` alebo `ai_detection`.
+Pohyb kamery je dostupný ako binárny senzor Zistené/Voľno aj ako jednorazová udalosť Motion pre každú novú detekciu. AI Detection je jednorazová udalosť. Pre manuálne automatizácie použite `event.received`; `event_type` používajte len na filtrovanie typov ako `person`, `pet`, `vehicle`, `package`, `other` alebo `ai_detection`.
 
 Príklad automatizácie:
 

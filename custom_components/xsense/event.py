@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from time import monotonic
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
@@ -11,6 +12,7 @@ from urllib.parse import urlparse
 from .python_xsense.async_xsense import is_camera_entity
 from .python_xsense.device import Device
 from .python_xsense.entity import Entity
+from .python_xsense.mapping import bool_state
 
 from homeassistant import config_entries
 from homeassistant.components.event import (
@@ -238,6 +240,7 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
         self._device_entity = device_entity
         self.entity_description = entity_description
         self._last_motion_fingerprint: tuple[Any, ...] | None = None
+        self._last_motion_state: bool | None = None
         self._motion_initialized = False
         super().__init__(coordinator, entity, station_id)
 
@@ -262,26 +265,40 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
         if entity is None:
             return
 
+        motion_state = bool_state(entity.data.get("isMoved"))
         event_data = motion_event_data(entity.data)
         self._add_camera_event_context(entity, event_data)
         self._add_motion_playback_url(entity, event_data)
         fingerprint = motion_fingerprint(event_data)
-        if fingerprint is None:
-            if not self._motion_initialized:
-                self._motion_initialized = True
-            self._write_state_if_added()
-            return
 
         if not self._motion_initialized:
             self._last_motion_fingerprint = fingerprint
+            self._last_motion_state = motion_state
             self._motion_initialized = True
             self._write_state_if_added()
             return
 
-        if fingerprint == self._last_motion_fingerprint:
+        timestamp_changed = (
+            fingerprint is not None and fingerprint != self._last_motion_fingerprint
+        )
+        motion_started = (
+            motion_state is True
+            and getattr(self, "_last_motion_state", None) is not True
+        )
+        self._last_motion_state = motion_state
+
+        if not timestamp_changed and not motion_started:
             self._write_state_if_added()
             return
 
+        if not timestamp_changed:
+            event_data = {
+                "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
+                "source": "live_motion_state",
+            }
+            self._add_camera_event_context(entity, event_data)
+
+        fingerprint = motion_fingerprint(event_data)
         self._last_motion_fingerprint = fingerprint
         if not self._trigger_event_after_recording_cache(
             MOTION_EVENT_TYPE,
@@ -416,8 +433,8 @@ def _camera_entity_id_for_event(hass: HomeAssistant, entity: Entity) -> str | No
 
 
 def motion_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
-    """Return event data for the latest APK camera motion history record."""
-    motion_time = data.get("eventTime") or data.get("time")
+    """Return event data only when the payload carries a motion timestamp."""
+    motion_time = data.get("eventTime")
     if motion_time in (None, ""):
         return None
 

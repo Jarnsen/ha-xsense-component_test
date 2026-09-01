@@ -67,7 +67,7 @@ Kameran SD-korttitallenteet näkyvät X-Sense Recordings:ssä. Ainoastaan ​​
 
 [![Tuo blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Motion ja AI Detection ovat kertaluonteisia tapahtumia, eivät päälle/pois-tiloja. Käytä manuaalisissa automaatioissa `event.received`; käytä `event_type` vain suodattamaan tyyppejä kuten `person`, `pet`, `vehicle`, `package`, `other` tai `ai_detection`.
+Kameran liike on käytettävissä sekä Havaittu/Vapaa-binäärianturina että kertaluonteisena Motion-tapahtumana jokaiselle uudelle havainnolle. AI Detection on kertaluonteinen tapahtuma. Käytä manuaalisissa automaatioissa `event.received`; käytä `event_type` vain suodattamaan tyyppejä kuten `person`, `pet`, `vehicle`, `package`, `other` tai `ai_detection`.
 
 Esimerkkiautomaatio:
 
