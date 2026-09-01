@@ -591,6 +591,12 @@ def _apply_sbs50_force_arm_prompt(station: Station, station_data: Dict) -> None:
 
     force_reason_reported = "forceReason" in station_data
     if force_reason_reported:
+        # The SBS50 can acknowledge the normal arm request with an empty
+        # forceReason before publishing the blocked result, and later routine
+        # state updates can report it empty again. The APK ignores empty reasons
+        # throughout the active request instead of dismissing its bypass dialog.
+        if requested_mode in ("Home", "Away"):
+            return
         station.set_alarm_data(
             {
                 "forceReason": None,
@@ -630,7 +636,7 @@ def _sbs50_force_arm_prompt(
         if not isinstance(event_param, dict):
             continue
         safe_mode_aim = event_param.get("safeModeAim")
-        if safe_mode_aim != requested_mode:
+        if safe_mode_aim not in (None, "", requested_mode):
             continue
         force_reason = event_param.get("forceReason")
         if not force_reason:
