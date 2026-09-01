@@ -1259,7 +1259,7 @@ def test_force_arm_prompt_ignores_stale_reason_without_local_request():
     assert station.alarm_data.get("forceReason") is None
 
 
-def test_force_arm_prompt_ignores_historical_notices_during_local_request():
+def test_force_arm_prompt_uses_matching_notice_during_local_request():
     station = _xs01_wx_from_real_shadow()
     station.type = "SBS50"
     station.set_alarm_data({"requestedSafeMode": "Away"})
@@ -1274,7 +1274,68 @@ def test_force_arm_prompt_ignores_historical_notices_during_local_request():
                     "type": "SKP0A",
                     "eventParam": {
                         "safeModeAim": "Away",
+                        "forceReason": [{"deviceSN": "door-sn"}],
+                        "exitDelay": "0",
+                    },
+                }
+            ],
+        },
+    )
+
+    assert pending_force_arm_mode(station) == "Away"
+    assert station.alarm_data["forceReason"] == [{"deviceSN": "door-sn"}]
+    assert station.alarm_data["exitDelay"] == "0"
+
+
+def test_force_arm_prompt_ignores_notice_for_different_local_request():
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    station.set_alarm_data({"requestedSafeMode": "Home"})
+    api = XSenseBase.__new__(XSenseBase)
+
+    api.parse_get_state(
+        station,
+        {
+            "safeMode": "Disarmed",
+            "notices": [
+                {
+                    "type": "SKP0A",
+                    "eventParam": {
+                        "safeModeAim": "Away",
                         "forceReason": [{"deviceSN": "old-door-sn"}],
+                    },
+                }
+            ],
+        },
+    )
+
+    assert pending_force_arm_mode(station) is None
+    assert station.alarm_data.get("forceReason") is None
+    assert station.alarm_data["requestedSafeMode"] == "Home"
+
+
+def test_force_arm_prompt_does_not_return_after_request_is_cleared():
+    station = _xs01_wx_from_real_shadow()
+    station.type = "SBS50"
+    station.set_alarm_data(
+        {
+            "requestedSafeMode": None,
+            "safeModeAim": None,
+            "forceReason": None,
+        }
+    )
+    api = XSenseBase.__new__(XSenseBase)
+
+    api.parse_get_state(
+        station,
+        {
+            "safeMode": "Disarmed",
+            "notices": [
+                {
+                    "type": "SDS0A",
+                    "eventParam": {
+                        "safeModeAim": "Away",
+                        "forceReason": [{"deviceSN": "door-sn"}],
                     },
                 }
             ],
