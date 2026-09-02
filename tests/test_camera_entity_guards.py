@@ -817,14 +817,21 @@ def test_read_only_camera_entities_require_camera_entity():
     assert sensor.has_camera_data("batteryLevel")(camera)
 
 
-def test_regular_motion_binary_entity_is_created_from_reported_camera_state():
+def test_camera_motion_binary_uses_per_camera_event_pulse_not_is_moved():
     non_camera = entity("XS01-WX", {"needMotion": 1})
-    camera = entity("SSC0A", {"isMoved": "0"})
+    camera = entity("SSC0A", {"isMoved": "1"})
 
     motion = next(item for item in binary_sensor.SENSORS if item.key == "moved")
 
     assert not motion.exists_fn(non_camera)
     assert motion.exists_fn(camera)
+    assert motion.value_fn(camera) is False
+
+    camera.data["cameraMotionDetected"] = True
+    assert motion.value_fn(camera) is True
+
+    camera.data["cameraMotionDetected"] = False
+    assert motion.value_fn(camera) is False
 
 
 def test_regular_motion_binary_entity_uses_reported_non_camera_motion_state():
@@ -1006,7 +1013,7 @@ async def test_camera_platform_adds_cameras_discovered_after_setup():
     assert [entity._dev_id for entity in added_entities[1]] == ["camera-id"]
 
 
-async def test_camera_motion_binary_is_added_when_live_state_arrives_after_setup():
+async def test_camera_motion_binary_is_precreated_without_is_moved_state():
     added_entities = []
     listeners = []
     discovered_camera = entity("SSC0A", {})
@@ -1042,23 +1049,24 @@ async def test_camera_motion_binary_is_added_when_live_state_arrives_after_setup
         lambda entities: added_entities.append(list(entities)),
     )
 
-    assert not any(
-        getattr(item.entity_description, "key", None) == "moved"
-        for item in added_entities[0]
-    )
-
-    discovered_camera.data["isMoved"] = "0"
-    listeners[0]()
-    listeners[0]()
-
     motion_entities = [
         item
-        for batch in added_entities
-        for item in batch
+        for item in added_entities[0]
         if getattr(item.entity_description, "key", None) == "moved"
     ]
     assert len(motion_entities) == 1
     assert motion_entities[0]._dev_id == "camera-id"
+
+    discovered_camera.data["isMoved"] = "1"
+    listeners[0]()
+    listeners[0]()
+
+    assert sum(
+        1
+        for batch in added_entities
+        for item in batch
+        if getattr(item.entity_description, "key", None) == "moved"
+    ) == 1
 
 
 async def test_camera_platform_does_not_duplicate_camera_when_serial_appears_later():
@@ -5116,143 +5124,6 @@ def test_motion_event_entity_does_not_retrigger_when_history_enriches_mqtt_event
     event_entity._handle_coordinator_update()
 
     assert triggered == []
-
-
-def test_motion_event_entity_fires_once_on_live_motion_rising_edge(monkeypatch):
-    camera_entity = entity("SSC0A", {"isMoved": "0"})
-    event_entity = event.XSenseMotionEventEntity.__new__(
-        event.XSenseMotionEventEntity
-    )
-    event_entity._motion_initialized = False
-    event_entity._last_motion_fingerprint = None
-    event_entity._last_motion_state = None
-    event_entity.hass = object()
-    event_entity.platform = object()
-    event_entity._current_entity = lambda: camera_entity
-    triggered = []
-    event_entity._trigger_event = lambda event_type, data: triggered.append(
-        (event_type, dict(data))
-    )
-    event_entity.async_write_ha_state = lambda: None
-    monkeypatch.setattr(
-        event,
-        "datetime",
-        SimpleNamespace(
-            now=lambda tz: SimpleNamespace(strftime=lambda _fmt: "20260901213700")
-        ),
-    )
-
-    event_entity._handle_coordinator_update()
-    camera_entity.data["isMoved"] = "1"
-    event_entity._handle_coordinator_update()
-    event_entity._handle_coordinator_update()
-
-    assert triggered == [
-        (
-            "motion",
-            {"time": "20260901213700", "source": "live_motion_state"},
-        )
-    ]
-
-
-def test_motion_event_entity_rearms_after_live_motion_clears(monkeypatch):
-    camera_entity = entity("SSC0A", {"isMoved": "0"})
-    event_entity = event.XSenseMotionEventEntity.__new__(
-        event.XSenseMotionEventEntity
-    )
-    event_entity._motion_initialized = False
-    event_entity._last_motion_fingerprint = None
-    event_entity._last_motion_state = None
-    event_entity.hass = object()
-    event_entity.platform = object()
-    event_entity._current_entity = lambda: camera_entity
-    triggered = []
-    event_entity._trigger_event = lambda event_type, data: triggered.append(
-        (event_type, data["time"])
-    )
-    event_entity.async_write_ha_state = lambda: None
-    times = iter(("20260901213700", "20260901214200"))
-    monkeypatch.setattr(
-        event,
-        "datetime",
-        SimpleNamespace(
-            now=lambda tz: SimpleNamespace(strftime=lambda _fmt: next(times))
-        ),
-    )
-
-    event_entity._handle_coordinator_update()
-    camera_entity.data["isMoved"] = "1"
-    event_entity._handle_coordinator_update()
-    camera_entity.data["isMoved"] = "0"
-    event_entity._handle_coordinator_update()
-    camera_entity.data["isMoved"] = "1"
-    event_entity._handle_coordinator_update()
-
-    assert triggered == [
-        ("motion", "20260901213700"),
-        ("motion", "20260901214200"),
-    ]
-
-
-def test_motion_event_entity_does_not_replay_active_motion_on_startup():
-    camera_entity = entity("SSC0A", {"isMoved": "1"})
-    event_entity = event.XSenseMotionEventEntity.__new__(
-        event.XSenseMotionEventEntity
-    )
-    event_entity._motion_initialized = False
-    event_entity._last_motion_fingerprint = None
-    event_entity._last_motion_state = None
-    event_entity.hass = object()
-    event_entity.platform = object()
-    event_entity._current_entity = lambda: camera_entity
-    triggered = []
-    event_entity._trigger_event = lambda event_type, data: triggered.append(
-        (event_type, data)
-    )
-    event_entity.async_write_ha_state = lambda: None
-
-    event_entity._handle_coordinator_update()
-    event_entity._handle_coordinator_update()
-
-    assert triggered == []
-
-
-def test_camera_motion_clear_then_detection_follows_shadow_payload(monkeypatch):
-    from custom_components.xsense.coordinator import _normalize_camera_motion_change
-
-    camera_entity = entity(
-        "SSC0A",
-        {"isMoved": "1", "eventTime": "20260901213700"},
-    )
-    event_entity = event.XSenseMotionEventEntity.__new__(
-        event.XSenseMotionEventEntity
-    )
-    event_entity._motion_initialized = False
-    event_entity._last_motion_fingerprint = None
-    event_entity._last_motion_state = None
-    event_entity.hass = object()
-    event_entity.platform = object()
-    event_entity._current_entity = lambda: camera_entity
-    triggered = []
-    event_entity._trigger_event = lambda event_type, data: triggered.append(
-        (event_type, data["time"])
-    )
-    event_entity.async_write_ha_state = lambda: None
-    monkeypatch.setattr(event, "_trigger_event_after_recording_cache", lambda *a: False)
-
-    event_entity._handle_coordinator_update()
-
-    clear_data = {"isMoved": "0", "time": "20260901213800"}
-    _normalize_camera_motion_change(camera_entity, clear_data)
-    camera_entity.data.update(clear_data)
-    event_entity._handle_coordinator_update()
-
-    detected_data = {"isMoved": "1", "time": "20260901214200"}
-    _normalize_camera_motion_change(camera_entity, detected_data)
-    camera_entity.data.update(detected_data)
-    event_entity._handle_coordinator_update()
-
-    assert triggered == [("motion", "20260901214200")]
 
 
 def test_ai_detection_event_data_uses_apk_detection_payload():
