@@ -1920,6 +1920,68 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
     assert updates == []
 
 
+async def test_camera_ai_history_applies_new_items_in_timestamp_order():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Camera:
+        sn = "camera-sn"
+        entity_id = "camera-id"
+        type = "SSC0A"
+        data = {"addxSerialNumber": "camera-sn"}
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+        def set_data(self, data):
+            self.data.update(data)
+
+    camera = Camera()
+    class House:
+        stations = {camera.entity_id: camera}
+
+        def get_station_by_sn(self, identifier):
+            return self.stations.get(identifier)
+
+    house = House()
+
+    class Client:
+        houses = {"house-id": house}
+
+        async def get_ai_service_history(self, _server_id):
+            return {
+                "alarmItems": [
+                    {
+                        "eventId": "new",
+                        "createTime": "20260614230600",
+                        "deviceSn": "camera-sn",
+                        "eventItems": [
+                            {"eventType": "vehicle", "eventTime": "20260614230601"}
+                        ],
+                    },
+                    {
+                        "eventId": "old",
+                        "createTime": "20260614230500",
+                        "deviceSn": "camera-sn",
+                        "eventItems": [
+                            {"eventType": "person", "eventTime": "20260614230501"}
+                        ],
+                    },
+                ]
+            }
+
+        def parse_get_state(self, station, data):
+            station.set_data(data)
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = Client()
+    coordinator._camera_ai_history_seen = {"already-initialized"}
+    coordinator._camera_ai_service_houses = {}
+
+    assert await coordinator._update_camera_ai_service_history(["service-id"])
+    assert camera.data["eventTime"] == "20260614230600"
+    assert camera.data["lastAiDetection"] == "vehicle"
+
+
 async def test_camera_ai_history_does_not_poll_recording_library():
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
@@ -2020,7 +2082,9 @@ async def test_camera_motion_history_routes_each_record_to_exact_camera_only():
     coordinator._camera_event_history_seen = set()
     coordinator._camera_event_history_initialized = False
 
-    assert not await coordinator._update_camera_event_history([camera_1, camera_2])
+    assert await coordinator._update_camera_event_history([camera_1, camera_2])
+    assert camera_1.data["cameraEventBaseline"] is True
+    assert camera_1.data["cameraMotionDetected"] is False
     assert await coordinator._update_camera_event_history([camera_1, camera_2])
     assert camera_1.data.get("cameraMotionDetected") is not True
     assert camera_2.data["cameraMotionDetected"] is True
@@ -2029,13 +2093,215 @@ async def test_camera_motion_history_routes_each_record_to_exact_camera_only():
     assert camera_2.data["cameraMotionDetected"] is False
     assert not await coordinator._update_camera_event_history([camera_1, camera_2])
 
-    assert len(parsed) == 1
-    assert parsed[0][0] is camera_2
-    assert parsed[0][1]["serialNumber"] == "camera-2"
-    assert parsed[0][1]["lastEventImageUrl"] == (
+    assert len(parsed) == 2
+    assert parsed[1][0] is camera_2
+    assert parsed[1][1]["serialNumber"] == "camera-2"
+    assert parsed[1][1]["lastEventImageUrl"] == (
         "https://example.invalid/camera-2.jpg"
     )
-    assert "eventTime" not in camera_1.data
+    assert camera_1.data["eventTime"] == "20260621134144"
+
+
+async def test_camera_motion_history_keeps_newest_image_regardless_of_api_order():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Camera:
+        type = "SSC0A"
+
+        def __init__(self):
+            self.sn = "camera-1"
+            self.entity_id = "camera-1"
+            self.data = {}
+
+        def set_data(self, data):
+            self.data.update(data)
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    camera = Camera()
+
+    class House:
+        stations = {camera.entity_id: camera}
+
+        def get_station_by_sn(self, identifier):
+            return self.stations.get(identifier)
+
+    class Client:
+        houses = {"house-id": House()}
+
+        async def get_camera_event_record_history_for_cameras(self, *args):
+            return {
+                "list": [
+                    {
+                        "serialNumber": "camera-1",
+                        "timestamp": 1782049364,
+                        "traceId": "new",
+                        "imageUrl": "https://example.invalid/new.jpg",
+                    },
+                    {
+                        "serialNumber": "camera-1",
+                        "timestamp": 1782049304,
+                        "traceId": "old",
+                        "imageUrl": "https://example.invalid/old.jpg",
+                    },
+                ]
+            }
+
+        def parse_get_state(self, station, data):
+            station.set_data(data)
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = Client()
+    coordinator._camera_event_history_seen = set()
+    coordinator._camera_event_history_initialized = False
+
+    assert await coordinator._update_camera_event_history([camera])
+    assert camera.data["lastEventImageUrl"] == "https://example.invalid/new.jpg"
+    assert camera.data["eventTime"] == "20260621134244"
+    assert camera.data["cameraMotionDetected"] is False
+
+
+def test_camera_entities_deduplicate_strong_addx_identity_only():
+    from custom_components.xsense.coordinator import _camera_entities
+
+    camera_1 = SimpleNamespace(
+        type="SSC0A",
+        entity_type=None,
+        entity_id="camera-1",
+        sn="shared-label",
+        data={"addxSerialNumber": "physical-camera-1"},
+    )
+    duplicate_1 = SimpleNamespace(
+        type="SSC0A",
+        entity_type=None,
+        entity_id="legacy-camera-1",
+        sn="shared-label",
+        data={"addxAccessSerialNumber": "physical-camera-1"},
+    )
+    camera_2 = SimpleNamespace(
+        type="SSC0A",
+        entity_type=None,
+        entity_id="camera-2",
+        sn="shared-label",
+        data={"addxSerialNumber": "physical-camera-2"},
+    )
+    coordinator = SimpleNamespace(
+        xsense=SimpleNamespace(
+            houses={
+                "house": SimpleNamespace(
+                    stations={
+                        "camera-1": camera_1,
+                        "legacy-camera-1": duplicate_1,
+                        "camera-2": camera_2,
+                    }
+                )
+            }
+        )
+    )
+
+    assert _camera_entities(coordinator) == [camera_1, camera_2]
+
+
+def test_camera_device_deduplication_uses_strong_identity_only():
+    from custom_components.xsense.coordinator import _deduplicate_camera_devices
+
+    station_camera = SimpleNamespace(
+        type="SSC0A",
+        entity_type=None,
+        entity_id="station-camera",
+        sn="shared-label",
+        data={"addxSerialNumber": "physical-camera-1"},
+    )
+    duplicate = SimpleNamespace(
+        type="SSC0A",
+        entity_type=None,
+        entity_id="device-duplicate",
+        sn="another-label",
+        data={"addxAccessSerialNumber": "physical-camera-1"},
+    )
+    distinct = SimpleNamespace(
+        type="SSC0A",
+        entity_type=None,
+        entity_id="device-camera-2",
+        sn="shared-label",
+        data={"addxSerialNumber": "physical-camera-2"},
+    )
+    devices = {duplicate.entity_id: duplicate, distinct.entity_id: distinct}
+
+    _deduplicate_camera_devices({station_camera.entity_id: station_camera}, devices)
+
+    assert devices == {distinct.entity_id: distinct}
+
+
+def test_camera_station_lookup_rejects_shared_secondary_camera_label():
+    from custom_components.xsense.coordinator import (
+        _camera_station_for_identifiers,
+    )
+
+    camera_1 = SimpleNamespace(
+        type="SSC0A",
+        entity_type=None,
+        entity_id="camera-1",
+        sn="shared-label",
+        data={"addxSerialNumber": "camera-1"},
+    )
+    camera_2 = SimpleNamespace(
+        type="SSC0A",
+        entity_type=None,
+        entity_id="camera-2",
+        sn="shared-label",
+        data={"addxSerialNumber": "camera-2"},
+    )
+    coordinator = SimpleNamespace(
+        xsense=SimpleNamespace(
+            houses={
+                "house": SimpleNamespace(
+                    stations={"camera-1": camera_1, "camera-2": camera_2}
+                )
+            }
+        ),
+        _get_station_by_id=lambda identifier: {
+            "camera-1": camera_1,
+            "camera-2": camera_2,
+        }.get(identifier),
+    )
+
+    assert _camera_station_for_identifiers(coordinator, ["shared-label"]) is None
+    assert _camera_station_for_identifiers(coordinator, ["camera-2"]) is camera_2
+
+
+def test_device_lookup_rejects_shared_secondary_camera_label():
+    from custom_components.xsense.coordinator import _station_for_device_identifier
+
+    camera_1 = SimpleNamespace(
+        type="SSC0A",
+        entity_type=None,
+        entity_id="camera-1",
+        sn="shared-label",
+        data={"addxSerialNumber": "camera-1"},
+    )
+    camera_2 = SimpleNamespace(
+        type="SSC0A",
+        entity_type=None,
+        entity_id="camera-2",
+        sn="shared-label",
+        data={"addxSerialNumber": "camera-2"},
+    )
+    coordinator = SimpleNamespace(
+        xsense=SimpleNamespace(
+            houses={
+                "house": SimpleNamespace(
+                    stations={"camera-1": camera_1, "camera-2": camera_2}
+                )
+            }
+        ),
+        _get_station_by_device_sn=lambda identifier: (
+            camera_1 if identifier == "shared-label" else None
+        ),
+    )
+
+    assert _station_for_device_identifier(coordinator, "shared-label") is None
 
 
 async def test_camera_ai_history_timer_notifies_only_when_history_changes():

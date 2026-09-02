@@ -5516,6 +5516,78 @@ async def test_camera_event_record_history_rejects_cross_camera_rows():
 
 
 @pytest.mark.asyncio
+async def test_camera_library_history_rejects_shared_secondary_camera_label():
+    client = async_xsense.AsyncXSense()
+    house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
+    client.houses = {"house-1": house}
+    cameras = [
+        SimpleNamespace(
+            sn="shared-label",
+            entity_id=f"camera-{index}",
+            data={"addxSerialNumber": f"camera-{index}"},
+            house=house,
+            set_data=lambda data: None,
+        )
+        for index in (1, 2)
+    ]
+
+    async def get_history(*args, **kwargs):
+        return {
+            "list": [
+                {
+                    "serialNumber": "shared-label",
+                    "timestamp": 1781484300,
+                    "videoEvent": "motion",
+                }
+            ]
+        }
+
+    client.get_camera_library_history = get_history
+
+    result = await client.get_camera_library_history_for_cameras(
+        cameras, 1781484300, 1781487900
+    )
+
+    assert result == {"list": [], "total": 0}
+
+
+@pytest.mark.asyncio
+async def test_camera_event_record_history_rejects_shared_secondary_camera_label():
+    client = async_xsense.AsyncXSense()
+    house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
+    client.houses = {"house-1": house}
+    cameras = [
+        SimpleNamespace(
+            sn="shared-label",
+            entity_id=f"camera-{index}",
+            data={"addxSerialNumber": f"camera-{index}"},
+            house=house,
+            set_data=lambda data: None,
+        )
+        for index in (1, 2)
+    ]
+
+    async def get_event_history(*args, **kwargs):
+        return {
+            "list": [
+                {
+                    "serialNumber": "shared-label",
+                    "timestamp": 1781484300,
+                    "videoEvent": "motion",
+                }
+            ]
+        }
+
+    client.get_camera_event_record_history = get_event_history
+
+    result = await client.get_camera_event_record_history_for_cameras(
+        cameras, 1781484300, 1781487900
+    )
+
+    assert result == {"list": [], "total": 0}
+
+
+@pytest.mark.asyncio
 async def test_camera_event_record_history_accepts_same_camera_real_serial_alias():
     client = async_xsense.AsyncXSense()
     house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
@@ -6177,6 +6249,109 @@ def test_camera_from_addx_device_matches_existing_house_camera_by_ipc_id():
     )
 
     assert camera is test_house.stations["addx-camera-id"]
+
+
+def test_camera_identifier_owner_rejects_shared_secondary_ipc_label():
+    camera_1 = SimpleNamespace(
+        entity_id="camera-1", sn="shared-label", data={}
+    )
+    camera_2 = SimpleNamespace(
+        entity_id="camera-2", sn="shared-label", data={}
+    )
+
+    assert (
+        async_xsense.camera_for_identifier(
+            [camera_1, camera_2], "shared-label"
+        )
+        is None
+    )
+    assert (
+        async_xsense.camera_for_identifier([camera_1, camera_2], "camera-2")
+        is camera_2
+    )
+
+
+def test_camera_from_addx_device_does_not_merge_ambiguous_ipc_label():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "camera-1",
+                    "ipcSn": "shared-label",
+                    "ipcName": "Camera 1",
+                    "category": "SSC0A",
+                },
+                {
+                    "ipcId": "camera-2",
+                    "ipcSn": "shared-label",
+                    "ipcName": "Camera 2",
+                    "category": "SSC0A",
+                },
+            ],
+        }
+    )
+    client.houses = {"house-id": test_house}
+
+    assert (
+        client._camera_from_addx_device(
+            {
+                "serialNumber": "shared-label",
+                "deviceName": "Ambiguous Camera",
+                "modelNo": "SSC0A",
+            }
+        )
+        is None
+    )
+    assert set(test_house.stations) == {"camera-1", "camera-2"}
+
+
+@pytest.mark.asyncio
+async def test_camera_push_image_rejects_shared_secondary_ipc_label():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stationSort": [],
+            "stations": [],
+            "cameras": [
+                {
+                    "ipcId": "camera-1",
+                    "ipcSn": "shared-label",
+                    "ipcName": "Camera 1",
+                    "category": "SSC0A",
+                },
+                {
+                    "ipcId": "camera-2",
+                    "ipcSn": "shared-label",
+                    "ipcName": "Camera 2",
+                    "category": "SSC0A",
+                },
+            ],
+        }
+    )
+    client.houses = {"house-id": test_house}
+    camera = test_house.stations["camera-1"]
+
+    async def camera_addx_call(*args, **kwargs):
+        return {
+            "list": [
+                {
+                    "serialNumber": "shared-label",
+                    "lastPushImageUrl": "https://example.invalid/wrong.jpg",
+                    "lastPushTime": 1781484300,
+                }
+            ]
+        }
+
+    client._camera_addx_call = camera_addx_call
+
+    await client._update_camera_push_image_metadata(camera)
+
+    assert "lastPushImageUrl" not in camera.data
 
 
 def test_ipc_language_uses_simple_apk_app_language_code():
