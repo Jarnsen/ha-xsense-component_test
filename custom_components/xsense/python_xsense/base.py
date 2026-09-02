@@ -567,6 +567,14 @@ def _apply_sbs50_force_arm_prompt(station: Station, station_data: Dict) -> None:
     current_alarm_data = getattr(station, "alarm_data", {}) or {}
     reported_mode = station_data.get("safeMode")
     requested_mode = current_alarm_data.get("requestedSafeMode")
+    prompt = _sbs50_force_arm_prompt(
+        station_data,
+        requested_mode=requested_mode,
+    )
+    if prompt is not None:
+        station.set_alarm_data(prompt)
+        return
+
     request_completed = reported_mode in ("Home", "Away") and (
         reported_mode == requested_mode
     )
@@ -579,14 +587,6 @@ def _apply_sbs50_force_arm_prompt(station: Station, station_data: Dict) -> None:
                 "exitDelay": None,
             }
         )
-        return
-
-    prompt = _sbs50_force_arm_prompt(
-        station_data,
-        requested_mode=requested_mode,
-    )
-    if prompt is not None:
-        station.set_alarm_data(prompt)
         return
 
     force_reason_reported = "forceReason" in station_data
@@ -610,18 +610,17 @@ def _apply_sbs50_force_arm_prompt(station: Station, station_data: Dict) -> None:
 def _sbs50_force_arm_prompt(
     station_data: Dict, *, requested_mode: str | None = None
 ) -> Dict | None:
-    if requested_mode not in ("Home", "Away"):
-        return None
+    active_request = requested_mode if requested_mode in ("Home", "Away") else None
 
     if "forceReason" in station_data:
         force_reason = station_data.get("forceReason")
         if force_reason:
             return {
                 "forceReason": force_reason,
-                "safeModeAim": requested_mode
+                "safeModeAim": active_request
                 or station_data.get("safeModeAim")
                 or station_data.get("safeMode"),
-                "requestedSafeMode": requested_mode,
+                "requestedSafeMode": active_request,
                 "exitDelay": station_data.get("exitDelay"),
             }
 
@@ -636,15 +635,19 @@ def _sbs50_force_arm_prompt(
         if not isinstance(event_param, dict):
             continue
         safe_mode_aim = event_param.get("safeModeAim")
-        if safe_mode_aim not in (None, "", requested_mode):
+        if active_request is not None and safe_mode_aim not in (
+            None,
+            "",
+            active_request,
+        ):
             continue
         force_reason = event_param.get("forceReason")
         if not force_reason:
             continue
         return {
             "forceReason": force_reason,
-            "safeModeAim": requested_mode,
-            "requestedSafeMode": requested_mode,
+            "safeModeAim": active_request or safe_mode_aim,
+            "requestedSafeMode": active_request,
             "exitDelay": event_param.get("exitDelay"),
         }
 

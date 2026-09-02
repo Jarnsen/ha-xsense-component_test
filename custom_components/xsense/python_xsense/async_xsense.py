@@ -7,7 +7,7 @@ from typing import Any, Dict
 import aiohttp
 
 from .aws_signer import AWSSigner
-from .base import XSenseBase, _apply_sbs50_force_arm_prompt, shadow_update_body
+from .base import XSenseBase, shadow_update_body
 from .entity import Entity
 from .entity_map import EntityType
 from .exceptions import SessionExpired, APIFailure, XSenseError
@@ -1997,7 +1997,6 @@ class AsyncXSense(XSenseBase):
 
         if "reported" in res.get("state", {}):
             reported = res["state"]["reported"].copy()
-            _apply_sbs50_force_arm_prompt(station, reported)
             station.set_alarm_data(
                 {
                     key: value
