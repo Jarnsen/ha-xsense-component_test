@@ -579,6 +579,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         baselined = 0
         skipped = 0
         seen_now: set[str] = set()
+        active_cameras: set[int] = set()
         records = _camera_event_records(history)
         for record in reversed(records):
             event_key = _camera_event_record_event_key(record)
@@ -597,10 +598,22 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if event_key in self._camera_event_history_seen:
                 skipped += 1
                 continue
+            station_data["cameraMotionDetected"] = True
             self.xsense.parse_get_state(station, station_data)
+            active_cameras.add(id(station))
             applied += 1
 
         self._camera_event_history_seen.update(seen_now)
+        state_changed = False
+        for camera in cameras:
+            detected = id(camera) in active_cameras
+            previous = (
+                getattr(camera, "data", {}).get("cameraMotionDetected") is True
+            )
+            if previous == detected:
+                continue
+            camera.set_data({"cameraMotionDetected": detected})
+            state_changed = True
         LOGGER.debug(
             "X-Sense camera event history poll: cameras=%s records=%s "
             "seen=%s applied=%s baselined=%s skipped=%s first_poll=%s",
@@ -612,7 +625,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             skipped,
             first_poll,
         )
-        return applied > 0
+        return applied > 0 or state_changed
 
     def _apply_camera_ai_history_item(
         self, server_id: str, alarm_item: dict[str, Any]

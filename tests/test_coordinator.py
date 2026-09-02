@@ -2022,6 +2022,11 @@ async def test_camera_motion_history_routes_each_record_to_exact_camera_only():
 
     assert not await coordinator._update_camera_event_history([camera_1, camera_2])
     assert await coordinator._update_camera_event_history([camera_1, camera_2])
+    assert camera_1.data.get("cameraMotionDetected") is not True
+    assert camera_2.data["cameraMotionDetected"] is True
+    assert await coordinator._update_camera_event_history([camera_1, camera_2])
+    assert camera_1.data.get("cameraMotionDetected") is not True
+    assert camera_2.data["cameraMotionDetected"] is False
     assert not await coordinator._update_camera_event_history([camera_1, camera_2])
 
     assert len(parsed) == 1

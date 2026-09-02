@@ -129,7 +129,7 @@ Les enregistrements de la carte SD de la caméra apparaissent dans X-Sense Recor
 
 [![Importer le blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Motion et AI Detection sont des événements ponctuels, pas des états marche/arrêt. Pour les automatisations manuelles, utilisez le déclencheur Home Assistant `event.received` avec l’entité caméra `Motion` ou `AI Detection`; `event_type` ne sert qu’à limiter une entité AI Detection avec abonnement à des types comme `person`, `pet`, `vehicle`, `package`, `other` ou `ai_detection`.
+Le mouvement de la caméra est disponible à la fois comme capteur binaire Détecté/Libre et comme événement Motion ponctuel pour chaque nouvelle détection. AI Detection reste un événement ponctuel. Pour les automatisations manuelles, utilisez le déclencheur Home Assistant `event.received` avec l’entité caméra `Motion` ou `AI Detection`; `event_type` ne sert qu’à limiter une entité AI Detection avec abonnement à des types comme `person`, `pet`, `vehicle`, `package`, `other` ou `ai_detection`.
 
 Exemple d’automatisation:
 

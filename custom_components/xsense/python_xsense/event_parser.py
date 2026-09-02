@@ -359,6 +359,7 @@ def camera_event_record_station_data(record: dict[str, Any]) -> dict[str, Any]:
         "deviceSN": serial,
         "eventTime": event_time,
         "time": event_time,
+        "cameraMotionDetected": True,
         "eventType": record.get("videoEvent") or record.get("tags") or "motion",
         "eventItems": record.get("eventInfoList"),
         "eventObjectType": record.get("eventInfoList") or record.get("tags"),

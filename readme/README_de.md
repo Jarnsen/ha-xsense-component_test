@@ -132,7 +132,7 @@ Aufnahmen auf der SD-Karte der Kamera werden in X-Sense Recordings angezeigt. Nu
 
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Motion und AI Detection sind einmalige Events, keine Ein/Aus-Zustände. Für eigene Automationen nutze den Home-Assistant-Trigger `event.received` mit der Kamera-Entität `Motion` oder `AI Detection`; `event_type` ist nur zum Eingrenzen abonnierter AI-Detection-Objekttypen wie `person`, `pet`, `vehicle`, `package`, `other` oder `ai_detection` nötig.
+Kamerabewegung ist sowohl als Binärsensor mit Erkannt/Frei als auch als einmaliges Motion-Event für jede neue Erkennung verfügbar. AI Detection ist ein einmaliges Event. Für eigene Automationen nutze den Home-Assistant-Trigger `event.received` mit der Kamera-Entität `Motion` oder `AI Detection`; `event_type` ist nur zum Eingrenzen abonnierter AI-Detection-Objekttypen wie `person`, `pet`, `vehicle`, `package`, `other` oder `ai_detection` nötig.
 
 Beispielautomation:
 

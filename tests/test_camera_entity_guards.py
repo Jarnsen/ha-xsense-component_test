@@ -817,14 +817,21 @@ def test_read_only_camera_entities_require_camera_entity():
     assert sensor.has_camera_data("batteryLevel")(camera)
 
 
-def test_regular_motion_binary_entity_is_not_created_for_cameras():
+def test_camera_motion_binary_uses_per_camera_event_pulse_not_is_moved():
     non_camera = entity("XS01-WX", {"needMotion": 1})
-    camera = entity("SSC0A", {"isMoved": "0"})
+    camera = entity("SSC0A", {"isMoved": "1"})
 
     motion = next(item for item in binary_sensor.SENSORS if item.key == "moved")
 
     assert not motion.exists_fn(non_camera)
-    assert not motion.exists_fn(camera)
+    assert motion.exists_fn(camera)
+    assert motion.value_fn(camera) is False
+
+    camera.data["cameraMotionDetected"] = True
+    assert motion.value_fn(camera) is True
+
+    camera.data["cameraMotionDetected"] = False
+    assert motion.value_fn(camera) is False
 
 
 def test_regular_motion_binary_entity_uses_reported_non_camera_motion_state():
@@ -1006,7 +1013,7 @@ async def test_camera_platform_adds_cameras_discovered_after_setup():
     assert [entity._dev_id for entity in added_entities[1]] == ["camera-id"]
 
 
-async def test_camera_motion_binary_is_not_added_from_non_camera_state_field():
+async def test_camera_motion_binary_is_precreated_without_is_moved_state():
     added_entities = []
     listeners = []
     discovered_camera = entity("SSC0A", {})
@@ -1042,22 +1049,24 @@ async def test_camera_motion_binary_is_not_added_from_non_camera_state_field():
         lambda entities: added_entities.append(list(entities)),
     )
 
-    assert not any(
-        getattr(item.entity_description, "key", None) == "moved"
-        for item in added_entities[0]
-    )
-
-    discovered_camera.data["isMoved"] = "0"
-    listeners[0]()
-    listeners[0]()
-
     motion_entities = [
         item
+        for item in added_entities[0]
+        if getattr(item.entity_description, "key", None) == "moved"
+    ]
+    assert len(motion_entities) == 1
+    assert motion_entities[0]._dev_id == "camera-id"
+
+    discovered_camera.data["isMoved"] = "1"
+    listeners[0]()
+    listeners[0]()
+
+    assert sum(
+        1
         for batch in added_entities
         for item in batch
         if getattr(item.entity_description, "key", None) == "moved"
-    ]
-    assert motion_entities == []
+    ) == 1
 
 
 async def test_camera_platform_does_not_duplicate_camera_when_serial_appears_later():
