@@ -388,11 +388,15 @@ def has_camera_data(key: str) -> Callable[[Entity], bool]:
 
 def has_motion_detection(entity: Entity) -> bool:
     """Return if an entity can expose regular motion detection state."""
+    if is_camera_entity(entity):
+        return True
     return "isMoved" in entity.data
 
 
 def motion_detection_value(entity: Entity) -> bool | None:
     """Return motion state, defaulting supported cameras to idle before events."""
+    if is_camera_entity(entity):
+        return boolean_state(entity.data.get("cameraMotionDetected", False))
     return boolean_state(entity.data.get("isMoved"))
 
 

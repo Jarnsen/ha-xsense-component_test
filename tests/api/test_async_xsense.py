@@ -5425,6 +5425,134 @@ async def test_camera_event_record_history_uses_apk_event_filter_path():
 
 
 @pytest.mark.asyncio
+async def test_camera_event_record_history_for_cameras_uses_exact_home_and_identity():
+    client = async_xsense.AsyncXSense()
+    house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
+    client.houses = {"house-1": house}
+    identity_updates = []
+    camera = SimpleNamespace(
+        sn="camera-label",
+        entity_id="camera-access-id",
+        data={"addxSerialNumber": "camera-list-id"},
+        house=house,
+        set_data=lambda data: identity_updates.append(data),
+    )
+    calls = []
+
+    async def get_event_history(serials, start_timestamp, end_timestamp, **kwargs):
+        calls.append((serials, kwargs["house"]))
+        if serials == ["camera-access-id"]:
+            return {
+                "list": [
+                    {
+                        "serialNumber": "camera-access-id",
+                        "timestamp": 1781484300,
+                        "videoEvent": "motion",
+                    }
+                ]
+            }
+        return {"list": []}
+
+    client.get_camera_event_record_history = get_event_history
+
+    result = await client.get_camera_event_record_history_for_cameras(
+        [camera], 1781484300, 1781487900
+    )
+
+    assert calls == [
+        (["camera-list-id"], house),
+        (["camera-access-id"], house),
+    ]
+    assert result["list"] == [
+        {
+            "serialNumber": "camera-access-id",
+            "timestamp": 1781484300,
+            "videoEvent": "motion",
+        }
+    ]
+    assert identity_updates == [
+        {
+            "addxAccessSerialNumber": "camera-access-id",
+            "addxSerialNumber": "camera-access-id",
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_camera_event_record_history_rejects_cross_camera_rows():
+    client = async_xsense.AsyncXSense()
+    house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
+    client.houses = {"house-1": house}
+    cameras = [
+        SimpleNamespace(
+            sn=f"camera-{index}",
+            entity_id=f"camera-{index}",
+            data={},
+            house=house,
+            set_data=lambda data: None,
+        )
+        for index in (1, 2)
+    ]
+
+    async def get_event_history(serials, *args, **kwargs):
+        other_serial = "camera-2" if serials == ["camera-1"] else "camera-1"
+        return {
+            "list": [
+                {
+                    "serialNumber": other_serial,
+                    "timestamp": 1781484300,
+                    "videoEvent": "motion",
+                }
+            ]
+        }
+
+    client.get_camera_event_record_history = get_event_history
+
+    result = await client.get_camera_event_record_history_for_cameras(
+        cameras, 1781484300, 1781487900
+    )
+
+    assert result == {"list": [], "total": 0}
+
+
+@pytest.mark.asyncio
+async def test_camera_event_record_history_accepts_same_camera_real_serial_alias():
+    client = async_xsense.AsyncXSense()
+    house = SimpleNamespace(house_id="house-1", mqtt_region="eu-west-1")
+    client.houses = {"house-1": house}
+    camera = SimpleNamespace(
+        sn="camera-label",
+        entity_id="camera-access-id",
+        data={
+            "addxAccessSerialNumber": "camera-access-id",
+            "addxRealSerialNumber": "camera-real-id",
+        },
+        house=house,
+        set_data=lambda data: None,
+    )
+
+    async def get_event_history(serials, *args, **kwargs):
+        assert serials == ["camera-access-id"]
+        return {
+            "list": [
+                {
+                    "serialNumber": "camera-real-id",
+                    "timestamp": 1781484300,
+                    "videoEvent": "motion",
+                }
+            ]
+        }
+
+    client.get_camera_event_record_history = get_event_history
+
+    result = await client.get_camera_event_record_history_for_cameras(
+        [camera], 1781484300, 1781487900
+    )
+
+    assert result["list"][0]["serialNumber"] == "camera-real-id"
+
+
+@pytest.mark.asyncio
 async def test_camera_single_library_lookup_uses_apk_trace_payloads():
     client = async_xsense.AsyncXSense()
     calls = []
@@ -6178,10 +6306,10 @@ def test_camera_data_normalizes_charging_as_boolean():
     assert async_xsense._camera_data({"isCharging": "true"})["isCharging"] is True
 
 
-def test_camera_data_only_updates_motion_when_addx_reports_it():
+def test_camera_data_ignores_non_camera_is_moved_field():
     assert "isMoved" not in async_xsense._camera_data({})
-    assert async_xsense._camera_data({"isMoved": "0"})["isMoved"] == "0"
-    assert async_xsense._camera_data({"isMoved": "1"})["isMoved"] == "1"
+    assert "isMoved" not in async_xsense._camera_data({"isMoved": "0"})
+    assert "isMoved" not in async_xsense._camera_data({"isMoved": "1"})
 
 
 def test_camera_data_uses_explicit_apk_webrtc_support_flag():

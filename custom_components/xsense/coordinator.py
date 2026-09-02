@@ -25,6 +25,9 @@ from .python_xsense import (
 from .python_xsense.async_xsense import is_camera_entity
 from .python_xsense.event_parser import (
     camera_ai_history_event_key as _camera_ai_history_event_key,
+    camera_event_record_event_key as _camera_event_record_event_key,
+    camera_event_record_station_data as _camera_event_record_station_data,
+    camera_event_records as _camera_event_records,
     is_presence_topic as _is_presence_topic,
     is_self_test_topic as _is_self_test_topic,
     mqtt_identifier_candidates as _mqtt_identifier_candidates,
@@ -34,7 +37,6 @@ from .python_xsense.event_parser import (
     self_test_report_payload as _self_test_report_payload,
 )
 from .python_xsense.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
-from .python_xsense.mapping import bool_state
 from .const import (
     CAMERA_AI_HISTORY_SCAN_INTERVAL,
     CAMERA_AI_SERVICE_AVAILABLE,
@@ -71,6 +73,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._last_camera_update_attempt: datetime | None = None
         self._camera_station_cache: dict[str, Any] = {}
         self._camera_ai_history_seen: set[str] = set()
+        self._camera_event_history_seen: set[str] = set()
+        self._camera_event_history_initialized = False
         self._camera_ai_service_houses: dict[str, set[str]] = {}
         self._camera_ai_history_unsub = None
         self._camera_ai_history_lock = asyncio.Lock()
@@ -496,7 +500,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             updated = await self._update_camera_ai_service_history(server_ids)
 
-        return updated
+        return await self._update_camera_event_history(cameras) or updated
 
     async def _update_camera_ai_service_history(self, server_ids: list[str]) -> bool:
         """Poll APK AI service history for camera events."""
@@ -555,6 +559,73 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             first_poll,
         )
         return applied > 0
+
+    async def _update_camera_event_history(self, cameras: list[Any]) -> bool:
+        """Poll the APK event-filtered camera library for motion records."""
+        now = int(datetime.now(timezone.utc).timestamp())
+        try:
+            history = await self.xsense.get_camera_event_record_history_for_cameras(
+                cameras,
+                now - 86400,
+                now,
+            )
+        except APIFailure as ex:
+            LOGGER.debug("Could not update X-Sense camera event history: %s", ex)
+            return False
+
+        first_poll = not self._camera_event_history_initialized
+        self._camera_event_history_initialized = True
+        applied = 0
+        baselined = 0
+        skipped = 0
+        seen_now: set[str] = set()
+        active_cameras: set[int] = set()
+        records = _camera_event_records(history)
+        for record in reversed(records):
+            event_key = _camera_event_record_event_key(record)
+            station_data = _camera_event_record_station_data(record)
+            station = (
+                _camera_station_for_event_data(self, station_data, record)
+                if station_data
+                else None
+            )
+            if station is None:
+                continue
+            seen_now.add(event_key)
+            if first_poll:
+                baselined += 1
+                continue
+            if event_key in self._camera_event_history_seen:
+                skipped += 1
+                continue
+            station_data["cameraMotionDetected"] = True
+            self.xsense.parse_get_state(station, station_data)
+            active_cameras.add(id(station))
+            applied += 1
+
+        self._camera_event_history_seen.update(seen_now)
+        state_changed = False
+        for camera in cameras:
+            detected = id(camera) in active_cameras
+            previous = (
+                getattr(camera, "data", {}).get("cameraMotionDetected") is True
+            )
+            if previous == detected:
+                continue
+            camera.set_data({"cameraMotionDetected": detected})
+            state_changed = True
+        LOGGER.debug(
+            "X-Sense camera event history poll: cameras=%s records=%s "
+            "seen=%s applied=%s baselined=%s skipped=%s first_poll=%s",
+            len(cameras),
+            len(records),
+            len(self._camera_event_history_seen),
+            applied,
+            baselined,
+            skipped,
+            first_poll,
+        )
+        return applied > 0 or state_changed
 
     def _apply_camera_ai_history_item(
         self, server_id: str, alarm_item: dict[str, Any]
@@ -782,7 +853,6 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             and target_device_sn != station.sn
             and target_device
         ):
-            _normalize_camera_motion_change(target_device, station_data)
             self.xsense.parse_get_state(
                 station,
                 {
@@ -792,7 +862,6 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 },
             )
         else:
-            _normalize_camera_motion_change(station, station_data)
             if isinstance(children, (dict, list)):
                 station_data["devs"] = children
             self.xsense.parse_get_state(station, station_data)
@@ -888,22 +957,6 @@ def _apply_safe_mode(station, safe_mode: str) -> None:
     """Store safeMode consistently for HTTP polling and MQTT updates."""
     station.safe_mode = safe_mode
     station._data["safeMode"] = safe_mode
-
-
-def _normalize_camera_motion_change(station, station_data: dict[str, Any]) -> None:
-    """Keep camera motion timestamps on detections, never on clear updates."""
-    if not is_camera_entity(station) or "isMoved" not in station_data:
-        return
-
-    motion_state = bool_state(station_data.get("isMoved"))
-    if motion_state is True:
-        if event_time := station_data.get("eventTime") or station_data.get("time"):
-            station_data.setdefault("eventTime", event_time)
-            station_data.setdefault("time", event_time)
-        return
-    if motion_state is False:
-        station_data.pop("eventTime", None)
-        station_data.pop("time", None)
 
 
 def _mqtt_target_device_sn(data: dict[str, Any]) -> str | None:
