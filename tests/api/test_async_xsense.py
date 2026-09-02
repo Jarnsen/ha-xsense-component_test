@@ -1399,7 +1399,7 @@ async def test_get_station_state_uses_second_info_for_new_wifi_devices_like_apk(
 
 
 @pytest.mark.asyncio
-async def test_get_alarm_state_ignores_stale_force_reason_without_local_request():
+async def test_get_alarm_state_does_not_create_prompt_from_polled_force_reason():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(
         None,
@@ -1428,10 +1428,11 @@ async def test_get_alarm_state_ignores_stale_force_reason_without_local_request(
     assert station_obj.safe_mode == "Disarmed"
     assert station_obj.alarm_data["safeMode"] == "Disarmed"
     assert station_obj.alarm_data.get("forceReason") is None
+    assert station_obj.alarm_data.get("requestedSafeMode") is None
 
 
 @pytest.mark.asyncio
-async def test_get_alarm_state_keeps_force_reason_for_active_local_request():
+async def test_get_alarm_state_does_not_create_prompt_during_active_request():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(
         None,
@@ -1459,7 +1460,45 @@ async def test_get_alarm_state_keeps_force_reason_for_active_local_request():
     await client.get_alarm_state(station_obj)
 
     assert station_obj.alarm_data["requestedSafeMode"] == "Away"
-    assert station_obj.alarm_data["forceReason"] == [{"door-sn": "1"}]
+    assert station_obj.alarm_data.get("forceReason") is None
+
+
+@pytest.mark.asyncio
+async def test_get_alarm_state_does_not_overwrite_live_force_arm_prompt():
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_alarm_data(
+        {
+            "requestedSafeMode": "Home",
+            "safeModeAim": "Home",
+            "forceReason": [{"deviceSN": "door-sn"}],
+            "exitDelay": "0",
+        }
+    )
+    client.get_thing = AsyncMock(
+        return_value={
+            "state": {
+                "reported": {
+                    "safeMode": "Disarmed",
+                    "forceReason": [],
+                    "safeModeAim": "Away",
+                }
+            }
+        }
+    )
+    client._lastres = SimpleNamespace(status=200)
+
+    await client.get_alarm_state(station_obj)
+
+    assert station_obj.alarm_data["requestedSafeMode"] == "Home"
+    assert station_obj.alarm_data["safeModeAim"] == "Home"
+    assert station_obj.alarm_data["forceReason"] == [{"deviceSN": "door-sn"}]
 
 
 def test_xc0m_ir_maps_compact_temperature_and_humidity_fields():
