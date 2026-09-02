@@ -30,7 +30,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
 
-from .python_xsense.async_xsense import camera_addx_serial, is_camera_entity
+from .python_xsense.async_xsense import (
+    camera_addx_serial,
+    camera_for_identifier,
+    camera_identifiers,
+    cameras_share_identity,
+    is_camera_entity,
+)
 from .recordings_gate import has_any_camera_entities
 from .const import (
     CONF_RECORDING_CACHE_MAX_SIZE_MB,
@@ -308,14 +314,15 @@ async def async_cache_recording_playback(
     camera_entity_id: str = "",
 ) -> str:
     """Cache one motion-event recording from APK playback metadata."""
-    if not getattr(entity, "sn", None):
+    serial = camera_addx_serial(entity)
+    if not serial:
         return ""
     started_at = monotonic()
 
     media_root = _recording_media_root(hass, entry_id)
     clip = _recording_clip_from_playback(
         entry_id,
-        str(entity.sn),
+        serial,
         camera_entity_id,
         playback,
         media_root,
@@ -325,7 +332,7 @@ async def async_cache_recording_playback(
         LOGGER.debug(
             "X-Sense motion recording cache skipped: %s",
             {
-                "camera": _short_serial(getattr(entity, "sn", "")),
+                "camera": _short_serial(serial),
                 "source": playback.get("source"),
                 "reason": "no_playable_clip",
                 "elapsed_ms": int((monotonic() - started_at) * 1000),
@@ -1658,10 +1665,12 @@ class XSenseRecordingsMediaSource(MediaSource):
     def _find_camera(
         index: dict[str, Any], entry_id: str, serial: str
     ) -> dict[str, Any] | None:
-        for camera in index.get("cameras", []):
-            if camera.get("entry_id") == entry_id and camera.get("serial") == serial:
-                return camera
-        return None
+        cameras = [
+            camera
+            for camera in index.get("cameras", [])
+            if camera.get("entry_id") == entry_id
+        ]
+        return _recording_camera_for_identifier(cameras, serial)
 
     @staticmethod
     def _find_clip(camera: dict[str, Any], start: int) -> dict[str, Any] | None:
@@ -1778,6 +1787,7 @@ class XSenseRecordingIndex:
             not force_refresh
             and self._cache
             and not _cache_expired(self._cache.get("generated_at"))
+            and _recording_index_matches_cameras(self._cache, cameras)
         ):
             cached = dict(self._cache)
             cached["cached"] = True
@@ -1787,7 +1797,9 @@ class XSenseRecordingIndex:
             index = await self._async_refresh()
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug("Could not refresh X-Sense recording index: %s", exc)
-            if self._cache:
+            if self._cache and _recording_index_matches_cameras(
+                self._cache, cameras
+            ):
                 stale = dict(self._cache)
                 stale["cached"] = True
                 stale["stale"] = True
@@ -1905,23 +1917,24 @@ def _coordinator_cameras(coordinator: Any, entry_id: str) -> list[dict[str, Any]
         return []
 
     cameras: list[dict[str, Any]] = []
-    seen: set[str] = set()
+    seen: list[Any] = []
     for entity in (
         *(data.get("stations") or {}).values(),
         *(data.get("devices") or {}).values(),
     ):
         if not is_camera_entity(entity):
             continue
-        serial = str(getattr(entity, "sn", "") or "")
-        if not serial or serial in seen:
+        serial = camera_addx_serial(entity)
+        if not serial or any(cameras_share_identity(entity, item) for item in seen):
             continue
-        seen.add(serial)
+        seen.append(entity)
         cameras.append(
             {
                 "entry_id": entry_id,
                 "serial": serial,
                 "addx_serial": camera_addx_serial(entity),
                 "entity_id": str(getattr(entity, "entity_id", "") or ""),
+                "identifiers": list(camera_identifiers(entity)),
                 "name": str(getattr(entity, "name", "") or serial),
                 "online": bool(getattr(entity, "online", False)),
                 "model": str(getattr(entity, "type", "") or ""),
@@ -1935,13 +1948,62 @@ def _coordinator_camera_entity(coordinator: Any, serial: str) -> Any | None:
     data = getattr(coordinator, "data", None)
     if not isinstance(data, dict):
         return None
-    for entity in (
-        *(data.get("stations") or {}).values(),
-        *(data.get("devices") or {}).values(),
-    ):
-        if str(getattr(entity, "sn", "") or "") == serial and is_camera_entity(entity):
-            return entity
-    return None
+    cameras = [
+        entity
+        for entity in (
+            *(data.get("stations") or {}).values(),
+            *(data.get("devices") or {}).values(),
+        )
+        if is_camera_entity(entity)
+    ]
+    return camera_for_identifier(cameras, serial)
+
+
+def _recording_camera_for_identifier(
+    cameras: list[dict[str, Any]], identifier: Any
+) -> dict[str, Any] | None:
+    """Return the uniquely owned recording camera for an APK serial."""
+    normalized = _normalized_recording_camera_identifier(identifier)
+    if not normalized:
+        return None
+    matches = []
+    for camera in cameras:
+        identifiers = {
+            camera.get("serial"),
+            camera.get("entity_id"),
+            camera.get("addx_serial"),
+            *(camera.get("identifiers") or []),
+        }
+        if normalized in {
+            _normalized_recording_camera_identifier(value)
+            for value in identifiers
+            if value not in (None, "")
+        }:
+            matches.append(camera)
+    if not matches:
+        return None
+    owners = {
+        _normalized_recording_camera_identifier(camera.get("serial"))
+        for camera in matches
+    }
+    return matches[0] if len(owners) == 1 else None
+
+
+def _recording_index_matches_cameras(
+    index: dict[str, Any], cameras: list[dict[str, Any]]
+) -> bool:
+    """Return whether a stored index uses the current strong camera identities."""
+    indexed = {
+        _normalized_recording_camera_identifier(camera.get("serial"))
+        for camera in index.get("cameras", [])
+        if isinstance(camera, dict) and camera.get("serial")
+    }
+    current = {
+        _normalized_recording_camera_identifier(camera.get("serial"))
+        for camera in cameras
+        if camera.get("serial")
+    }
+    return bool(current) and indexed == current
 
 
 def _recording_clip_from_record(
@@ -1955,20 +2017,7 @@ def _recording_clip_from_record(
     )
     if not serial:
         return None
-    normalized_serial = _normalized_recording_camera_identifier(serial)
-    camera = next(
-        (
-            item
-            for item in cameras
-            if normalized_serial
-            in {
-                _normalized_recording_camera_identifier(item.get("serial")),
-                _normalized_recording_camera_identifier(item.get("entity_id")),
-                _normalized_recording_camera_identifier(item.get("addx_serial")),
-            }
-        ),
-        None,
-    )
+    camera = _recording_camera_for_identifier(cameras, serial)
     if camera is None:
         return None
     media_root = media_root or _recording_media_root_from_value(None)

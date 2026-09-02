@@ -1249,13 +1249,19 @@ def test_camera_entities_do_not_duplicate_station_backed_cameras():
 
 
 def test_camera_entities_do_not_duplicate_station_backed_camera_serials():
-    station_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
+    station_camera = entity(
+        "SSC0A",
+        {"streamProtocol": "webrtc", "addxSerialNumber": "physical-camera"},
+    )
     station_camera.entity_id = "station-camera-id"
     station_camera.sn = "cam-sn"
     station_camera.name = "Station Camera"
     station_camera.online = True
 
-    device_camera = entity("SSC0A", {"streamProtocol": "webrtc"})
+    device_camera = entity(
+        "SSC0A",
+        {"streamProtocol": "webrtc", "addxSerialNumber": "physical-camera"},
+    )
     device_camera.entity_id = "device-camera-id"
     device_camera.sn = "CAM-SN"
     device_camera.name = "Device Camera"
@@ -1274,6 +1280,36 @@ def test_camera_entities_do_not_duplicate_station_backed_camera_serials():
 
     assert [entity._dev_id for entity in entities] == [station_camera.entity_id]
     assert entities[0]._station_id is None
+
+
+def test_camera_entities_keep_distinct_cameras_with_shared_secondary_serial():
+    cameras = []
+    for index in (1, 2):
+        camera_entity = entity(
+            "SSC0A",
+            {
+                "streamProtocol": "webrtc",
+                "addxSerialNumber": f"physical-camera-{index}",
+            },
+        )
+        camera_entity.entity_id = f"camera-{index}"
+        camera_entity.sn = "shared-label"
+        camera_entity.name = f"Camera {index}"
+        camera_entity.online = True
+        cameras.append(camera_entity)
+
+    class Coordinator:
+        data = {
+            "stations": {camera.entity_id: camera for camera in cameras},
+            "devices": {},
+        }
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    entities = camera._camera_entities(Coordinator())
+
+    assert [entity._dev_id for entity in entities] == ["camera-1", "camera-2"]
 
 
 def test_ai_detection_event_entities_include_standalone_device_cameras():
@@ -1413,7 +1449,7 @@ def test_motion_fingerprint_ignores_playback_enrichment_for_same_event():
 
 
 def test_motion_event_entity_adds_ha_sd_playback_url(monkeypatch):
-    camera_entity = entity("SSC0A", {})
+    camera_entity = entity("SSC0A", {"addxSerialNumber": "ADDX-CAMERA-SN"})
     camera_entity.entity_id = "camera-id"
     camera_entity.name = "Garden Camera"
     camera_entity.sn = "CAMERA-SN"
@@ -1447,10 +1483,10 @@ def test_motion_event_entity_adds_ha_sd_playback_url(monkeypatch):
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
     assert event_data["camera_name"] == "Garden Camera"
-    assert event_data["camera_serial"] == "CAMERA-SN"
+    assert event_data["camera_serial"] == "ADDX-CAMERA-SN"
     assert event_data["camera_entity_id"] == "camera.garden"
     assert event_data["recording_url"] == (
-        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "/xsense-recordings#entry_id=entry-id&serial=ADDX-CAMERA-SN"
         "&start=1782049304&end=1782049334"
     )
     assert event_data["recording_source"] == "sd_playback"
@@ -1490,7 +1526,7 @@ def test_motion_event_entity_derives_recording_url_end_from_period(monkeypatch):
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
     assert event_data["recording_url"] == (
-        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "/xsense-recordings#entry_id=entry-id&serial=camera-id"
         "&start=1782049304&end=1782049334"
     )
 
@@ -1528,7 +1564,7 @@ def test_motion_event_entity_adds_recordings_link_without_camera_entity(monkeypa
 
     assert "camera_entity_id" not in event_data
     assert event_data["recording_url"] == (
-        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "/xsense-recordings#entry_id=entry-id&serial=camera-id"
         "&start=1782049304&end=1782049334"
     )
 
@@ -1567,7 +1603,7 @@ def test_motion_event_entity_normalizes_ms_recording_times(monkeypatch):
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
     assert event_data["recording_url"] == (
-        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "/xsense-recordings#entry_id=entry-id&serial=camera-id"
         "&start=1782049304&end=1782049334"
     )
 
@@ -1596,7 +1632,7 @@ def test_motion_event_entity_replaces_direct_recording_url_with_panel_link(monke
     event_entity._add_motion_playback_url(camera_entity, event_data)
 
     assert event_data["recording_url"] == (
-        "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+        "/xsense-recordings#entry_id=entry-id&serial=camera-id"
         "&start=1782049304&end=1782049304"
     )
 
@@ -1677,7 +1713,7 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog
         (
             "trigger",
             "motion",
-            "/xsense-recordings#entry_id=entry-id&serial=CAMERA-SN"
+            "/xsense-recordings#entry_id=entry-id&serial=camera-id"
             "&start=1782049304&end=1782049334",
             "/media/local/xsense_recordings/videos/CAMERA-SN_1782049304_1782049334.mp4",
             "cached_media",
@@ -2092,6 +2128,82 @@ def test_recording_media_source_matches_addx_camera_serial_alias():
 
     assert clip is not None
     assert clip["serial"] == "IPC-CAMERA-SN"
+
+
+def test_recording_media_rejects_shared_secondary_camera_label():
+    from custom_components.xsense import recordings_media as media_source
+
+    cameras = [
+        {
+            "entry_id": "entry-id",
+            "serial": f"camera-{index}",
+            "entity_id": f"camera-{index}",
+            "identifiers": [f"camera-{index}", "shared-label"],
+        }
+        for index in (1, 2)
+    ]
+
+    assert (
+        media_source._recording_camera_for_identifier(cameras, "shared-label")
+        is None
+    )
+    assert (
+        media_source._recording_camera_for_identifier(cameras, "camera-2")
+        is cameras[1]
+    )
+
+
+def test_recording_index_rejects_legacy_weak_camera_identity():
+    from custom_components.xsense import recordings_media as media_source
+
+    current = [
+        {
+            "entry_id": "entry-id",
+            "serial": "physical-camera-1",
+            "entity_id": "camera-1",
+            "identifiers": ["physical-camera-1", "shared-label"],
+        },
+        {
+            "entry_id": "entry-id",
+            "serial": "physical-camera-2",
+            "entity_id": "camera-2",
+            "identifiers": ["physical-camera-2", "shared-label"],
+        },
+    ]
+    legacy_index = {
+        "cameras": [{"entry_id": "entry-id", "serial": "shared-label"}]
+    }
+    current_index = {"cameras": current}
+
+    assert not media_source._recording_index_matches_cameras(
+        legacy_index, current
+    )
+    assert media_source._recording_index_matches_cameras(current_index, current)
+
+
+def test_recording_media_keeps_cameras_with_shared_secondary_label_separate():
+    from custom_components.xsense import recordings_media as media_source
+
+    cameras = [
+        SimpleNamespace(
+            type="SSC0A",
+            entity_type=None,
+            entity_id=f"camera-{index}",
+            sn="shared-label",
+            data={"addxSerialNumber": f"camera-{index}"},
+            name=f"Camera {index}",
+            online=True,
+        )
+        for index in (1, 2)
+    ]
+    coordinator = SimpleNamespace(
+        data={"stations": {camera.entity_id: camera for camera in cameras}}
+    )
+
+    indexed = media_source._coordinator_cameras(coordinator, "entry-id")
+
+    assert [camera["serial"] for camera in indexed] == ["camera-1", "camera-2"]
+    assert all("shared-label" in camera["identifiers"] for camera in indexed)
 
 
 def test_recording_media_source_prefers_hd_direct_video_candidate():
@@ -5124,6 +5236,80 @@ def test_motion_event_entity_does_not_retrigger_when_history_enriches_mqtt_event
     event_entity._handle_coordinator_update()
 
     assert triggered == []
+
+
+def test_motion_event_entity_baselines_latest_apk_history_without_triggering():
+    camera_entity = entity(
+        "SSC0A",
+        {
+            "eventTime": "20260621134144",
+            "cameraEventBaseline": True,
+            "playback": {"image_url": "https://example.invalid/latest.jpg"},
+        },
+    )
+    event_entity = event.XSenseMotionEventEntity.__new__(
+        event.XSenseMotionEventEntity
+    )
+    event_entity._motion_initialized = True
+    event_entity._last_motion_fingerprint = ("20260620120000",)
+    event_entity.hass = object()
+    event_entity.platform = object()
+    event_entity._current_entity = lambda: camera_entity
+    triggered = []
+    event_entity._trigger_event = lambda *args: triggered.append(args)
+    event_entity.async_write_ha_state = lambda: None
+
+    event_entity._handle_coordinator_update()
+
+    assert triggered == []
+    assert event_entity._last_motion_fingerprint == ("20260621134144",)
+    assert camera_entity.data["cameraEventBaseline"] is False
+
+    camera_entity.data["eventTime"] = "20260621134200"
+    event_entity._handle_coordinator_update()
+
+    assert len(triggered) == 1
+
+
+def test_camera_entity_rebinds_by_strong_addx_identity_only():
+    original = entity("SSC0A", {"addxSerialNumber": "physical-camera-1"})
+    original.entity_id = "old-camera-id"
+    original.sn = "shared-label"
+    refreshed = entity("SSC0A", {"addxSerialNumber": "physical-camera-1"})
+    refreshed.entity_id = "new-camera-id"
+    refreshed.sn = "shared-label"
+    other = entity("SSC0A", {"addxSerialNumber": "physical-camera-2"})
+    other.entity_id = "other-camera-id"
+    other.sn = "shared-label"
+    camera_entity = camera.XSenseCameraEntity.__new__(camera.XSenseCameraEntity)
+    camera_entity.coordinator = SimpleNamespace(
+        data={"stations": {refreshed.entity_id: refreshed, other.entity_id: other}}
+    )
+    camera_entity._station_id = None
+    camera_entity._dev_id = original.entity_id
+    camera_entity._camera_identity = "physical-camera-1"
+
+    assert camera_entity._current_entity() is refreshed
+
+
+def test_camera_event_entity_rejects_ambiguous_weak_identity():
+    camera_1 = entity("SSC0A", {"addxSerialNumber": "physical-camera-1"})
+    camera_1.entity_id = "camera-1"
+    camera_1.sn = "shared-label"
+    camera_2 = entity("SSC0A", {"addxSerialNumber": "physical-camera-2"})
+    camera_2.entity_id = "camera-2"
+    camera_2.sn = "shared-label"
+    event_entity = event.XSenseMotionEventEntity.__new__(
+        event.XSenseMotionEventEntity
+    )
+    event_entity.coordinator = SimpleNamespace(
+        data={"stations": {camera_1.entity_id: camera_1, camera_2.entity_id: camera_2}}
+    )
+    event_entity._device_entity = False
+    event_entity._dev_id = "missing-camera-id"
+    event_entity._camera_identity = "shared-label"
+
+    assert event_entity._current_entity() is None
 
 
 def test_ai_detection_event_data_uses_apk_detection_payload():

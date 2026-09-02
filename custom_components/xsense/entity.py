@@ -7,6 +7,11 @@ from typing import TYPE_CHECKING, Any
 
 from .python_xsense.entity import Entity
 from .python_xsense.entity_map import EntityType
+from .python_xsense.async_xsense import (
+    camera_addx_serial,
+    camera_for_identifier,
+    is_camera_entity,
+)
 
 from homeassistant.const import ATTR_VIA_DEVICE
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -102,6 +107,9 @@ class XSenseEntity(CoordinatorEntity):
         self._dev_id = entity.entity_id
         self._station_id = station_id
         self._entity_serial = _entity_serial(entity)
+        self._camera_identity = (
+            camera_addx_serial(entity) if is_camera_entity(entity) else None
+        )
         station = getattr(entity, "station", None)
         self._station_serial = _entity_serial(station)
 
@@ -127,11 +135,22 @@ class XSenseEntity(CoordinatorEntity):
         """Return the current coordinator entity for this Home Assistant entity."""
         data = self.coordinator.data or {}
         if self._station_id is not None:
-            return _entity_by_id_or_serial(
-                data.get("devices", {}), self._dev_id, self._entity_serial
+            entities = data.get("devices", {})
+        else:
+            entities = data.get("stations", {})
+        return self._current_entity_from(entities)
+
+    def _current_entity_from(self, entities: dict[str, Entity]) -> Entity | None:
+        """Resolve this entity from one coordinator collection."""
+        if self._camera_identity:
+            if entity := entities.get(self._dev_id):
+                return entity
+            return camera_for_identifier(
+                [entity for entity in entities.values() if is_camera_entity(entity)],
+                self._camera_identity,
             )
         return _entity_by_id_or_serial(
-            data.get("stations", {}), self._dev_id, self._entity_serial
+            entities, self._dev_id, self._entity_serial
         )
 
     async def async_added_to_hass(self) -> None:
