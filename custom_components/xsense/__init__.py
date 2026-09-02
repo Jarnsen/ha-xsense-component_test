@@ -392,6 +392,21 @@ def _obsolete_action_unique_ids(data) -> set[str]:
     return unique_ids
 
 
+def _obsolete_camera_motion_unique_ids(data) -> set[str]:
+    """Return camera binary motion IDs replaced by timestamped event entities."""
+    unique_ids: set[str] = set()
+    for entity in (
+        *data.get("stations", {}).values(),
+        *data.get("devices", {}).values(),
+    ):
+        is_camera = False
+        with suppress(AttributeError):
+            is_camera = is_camera_entity(entity)
+        if is_camera:
+            unique_ids.add(_sensor_unique_id(entity.entity_id, "moved"))
+    return unique_ids
+
+
 def _unsupported_led_light_switch_unique_ids(data) -> set[str]:
     """Return LED light switches created before a device reported LED support."""
     unique_ids: set[str] = set()
@@ -523,6 +538,7 @@ def _remove_obsolete_sensor_entities(
         Platform.SENSOR: _obsolete_sensor_unique_ids(data),
         Platform.BINARY_SENSOR: _obsolete_binary_sensor_unique_ids(data),
     }
+    obsolete_camera_motion_unique_ids = _obsolete_camera_motion_unique_ids(data)
     unsupported_led_light_switch_unique_ids = _unsupported_led_light_switch_unique_ids(
         data
     )
@@ -555,6 +571,11 @@ def _remove_obsolete_sensor_entities(
             and getattr(registry_entry, "platform", None) == DOMAIN
             and _registry_entry_unique_id(registry_entry)
             in obsolete_action_unique_ids
+        ) or (
+            _registry_entry_domain(registry_entry) == Platform.BINARY_SENSOR
+            and getattr(registry_entry, "platform", None) == DOMAIN
+            and _registry_entry_unique_id(registry_entry)
+            in obsolete_camera_motion_unique_ids
         ) or (
             _registry_entry_domain(registry_entry) == Platform.SWITCH
             and getattr(registry_entry, "platform", None) == DOMAIN
@@ -596,6 +617,13 @@ def _remove_obsolete_sensor_entities(
     for unique_id in obsolete_action_unique_ids - checked_unique_ids:
         entity_id = entity_registry.async_get_entity_id(
             Platform.BUTTON, DOMAIN, unique_id
+        )
+        if entity_id is not None:
+            entity_registry.async_remove(entity_id)
+
+    for unique_id in obsolete_camera_motion_unique_ids - checked_unique_ids:
+        entity_id = entity_registry.async_get_entity_id(
+            Platform.BINARY_SENSOR, DOMAIN, unique_id
         )
         if entity_id is not None:
             entity_registry.async_remove(entity_id)

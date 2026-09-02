@@ -1265,61 +1265,6 @@ def test_mqtt_camera_motion_event_preserves_reported_is_moved_state():
     assert data["isMoved"] == "0"
 
 
-def test_camera_motion_change_uses_detection_time_as_event_time():
-    from custom_components.xsense.coordinator import _normalize_camera_motion_change
-    from custom_components.xsense.python_xsense.entity_map import EntityType
-
-    station = SimpleNamespace(entity_type=EntityType.CAMERA, type="SSC0A")
-    data = {"isMoved": "1", "time": "20260901213700"}
-
-    _normalize_camera_motion_change(station, data)
-
-    assert data == {
-        "isMoved": "1",
-        "time": "20260901213700",
-        "eventTime": "20260901213700",
-    }
-
-
-def test_camera_motion_clear_does_not_create_timestamped_event():
-    from custom_components.xsense.coordinator import _normalize_camera_motion_change
-    from custom_components.xsense.python_xsense.entity_map import EntityType
-
-    station = SimpleNamespace(entity_type=EntityType.CAMERA, type="SSC0A")
-    data = {
-        "isMoved": "0",
-        "time": "20260901213800",
-        "eventTime": "20260901213800",
-    }
-
-    _normalize_camera_motion_change(station, data)
-
-    assert data == {"isMoved": "0"}
-
-
-def test_non_camera_motion_change_keeps_original_payload():
-    from custom_components.xsense.coordinator import _normalize_camera_motion_change
-
-    station = SimpleNamespace(entity_type=None, type="SMS")
-    data = {"isMoved": "0", "time": "20260901213800"}
-
-    _normalize_camera_motion_change(station, data)
-
-    assert data == {"isMoved": "0", "time": "20260901213800"}
-
-
-def test_camera_motion_change_accepts_child_camera_target():
-    from custom_components.xsense.coordinator import _normalize_camera_motion_change
-    from custom_components.xsense.python_xsense.entity_map import EntityType
-
-    camera = SimpleNamespace(entity_type=EntityType.CAMERA, type="SSC0A")
-    data = {"isMoved": "1", "time": "20260901213700"}
-
-    _normalize_camera_motion_change(camera, data)
-
-    assert data["eventTime"] == "20260901213700"
-
-
 def test_mqtt_camera_motion_event_accepts_json_string_event_data():
     from custom_components.xsense.coordinator import _mqtt_reported_data
 
@@ -1942,6 +1887,11 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
         ):
             raise AssertionError("recording history must not drive live motion")
 
+        async def get_camera_event_record_history_for_cameras(
+            self, *args, **kwargs
+        ):
+            return {"list": []}
+
         def parse_get_state(self, station_arg, data):
             parsed.append((station_arg, data))
             station_arg.set_data(data)
@@ -1949,6 +1899,8 @@ async def test_camera_ai_history_poll_routes_apk_alarm_items():
     coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
     coordinator.xsense = Client()
     coordinator._camera_ai_history_seen = set()
+    coordinator._camera_event_history_seen = set()
+    coordinator._camera_event_history_initialized = False
     coordinator._camera_ai_history_lock = asyncio.Lock()
     coordinator.async_update_listeners = lambda: updates.append(True)
 
@@ -1983,12 +1935,102 @@ async def test_camera_ai_history_does_not_poll_recording_library():
         async def get_camera_library_history_for_cameras(self, *args, **kwargs):
             raise AssertionError("playback library must not drive live motion")
 
+        async def get_camera_event_record_history_for_cameras(
+            self, *args, **kwargs
+        ):
+            return {"list": []}
+
     coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
     coordinator.xsense = Client()
     coordinator._camera_ai_history_seen = set()
+    coordinator._camera_event_history_seen = set()
+    coordinator._camera_event_history_initialized = False
     coordinator._camera_ai_history_lock = asyncio.Lock()
 
     assert not await XSenseDataUpdateCoordinator._update_camera_ai_history(coordinator)
+
+
+async def test_camera_motion_history_routes_each_record_to_exact_camera_only():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Camera:
+        type = "SSC0A"
+
+        def __init__(self, serial):
+            self.sn = serial
+            self.entity_id = serial
+            self.data = {}
+
+        def set_data(self, data):
+            self.data.update(data)
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    camera_1 = Camera("camera-1")
+    camera_2 = Camera("camera-2")
+
+    class House:
+        stations = {camera_1.entity_id: camera_1, camera_2.entity_id: camera_2}
+
+        def get_station_by_sn(self, identifier):
+            return self.stations.get(identifier)
+
+    parsed = []
+
+    class Client:
+        houses = {"house-id": House()}
+
+        def __init__(self):
+            self.calls = 0
+
+        async def get_camera_event_record_history_for_cameras(
+            self, cameras, start_timestamp, end_timestamp
+        ):
+            assert cameras == [camera_1, camera_2]
+            assert end_timestamp - start_timestamp == 86400
+            self.calls += 1
+            records = [
+                {
+                    "serialNumber": "camera-1",
+                    "timestamp": 1782049304,
+                    "traceId": "baseline-camera-1",
+                    "videoEvent": "motion",
+                }
+            ]
+            if self.calls > 1:
+                records.insert(
+                    0,
+                    {
+                        "serialNumber": "camera-2",
+                        "timestamp": 1782049364,
+                        "traceId": "new-camera-2",
+                        "videoEvent": "motion",
+                        "imageUrl": "https://example.invalid/camera-2.jpg",
+                    },
+                )
+            return {"list": records}
+
+        def parse_get_state(self, station, data):
+            parsed.append((station, data))
+            station.set_data(data)
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = Client()
+    coordinator._camera_event_history_seen = set()
+    coordinator._camera_event_history_initialized = False
+
+    assert not await coordinator._update_camera_event_history([camera_1, camera_2])
+    assert await coordinator._update_camera_event_history([camera_1, camera_2])
+    assert not await coordinator._update_camera_event_history([camera_1, camera_2])
+
+    assert len(parsed) == 1
+    assert parsed[0][0] is camera_2
+    assert parsed[0][1]["serialNumber"] == "camera-2"
+    assert parsed[0][1]["lastEventImageUrl"] == (
+        "https://example.invalid/camera-2.jpg"
+    )
+    assert "eventTime" not in camera_1.data
 
 
 async def test_camera_ai_history_timer_notifies_only_when_history_changes():

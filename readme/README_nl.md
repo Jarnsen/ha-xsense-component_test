@@ -126,7 +126,7 @@ Camera-SD-kaartopnamen verschijnen in X-Sense Recordings. Alleen afspelen is de 
 
 [![Blueprint importeren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camerabeweging is beschikbaar als binaire sensor Gedetecteerd/Vrij en als eenmalige Motion-gebeurtenis voor elke nieuwe detectie. AI Detection is een eenmalige gebeurtenis. Gebruik voor handmatige automatiseringen de Home Assistant-trigger `event.received` met de camera-entiteit `Motion` of `AI Detection`; `event_type` is alleen nodig om AI Detection met abonnement te beperken tot typen zoals `person`, `pet`, `vehicle`, `package`, `other` of `ai_detection`.
+Motion en AI Detection zijn eenmalige events, geen aan/uit-statussen. Gebruik voor handmatige automatiseringen de Home Assistant-trigger `event.received` met de camera-entiteit `Motion` of `AI Detection`; `event_type` is alleen nodig om AI Detection met abonnement te beperken tot typen zoals `person`, `pet`, `vehicle`, `package`, `other` of `ai_detection`.
 
 Voorbeeldautomatisering:
 

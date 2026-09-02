@@ -128,7 +128,7 @@ Nagrania z kamery na karcie SD pojawiają się w X-Sense Recordings. Domyślnym 
 
 [![Importuj blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Ruch kamery jest dostępny jako czujnik binarny Wykryto/Wolne oraz jako jednorazowe zdarzenie Motion dla każdego nowego wykrycia. AI Detection jest jednorazowym zdarzeniem. W automatyzacjach ręcznych użyj wyzwalacza `event.received` Home Assistant z encją kamery `Motion` lub `AI Detection`; `event_type` jest potrzebny tylko do ograniczenia AI Detection z subskrypcją do typów takich jak `person`, `pet`, `vehicle`, `package`, `other` lub `ai_detection`.
+Motion i AI Detection to jednorazowe zdarzenia, a nie stany włączone/wyłączone. W automatyzacjach ręcznych użyj wyzwalacza `event.received` Home Assistant z encją kamery `Motion` lub `AI Detection`; `event_type` jest potrzebny tylko do ograniczenia AI Detection z subskrypcją do typów takich jak `person`, `pet`, `vehicle`, `package`, `other` lub `ai_detection`.
 
 Przykładowa automatyzacja:
 

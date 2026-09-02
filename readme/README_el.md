@@ -127,7 +127,7 @@ ____________________________________________________________
 
 [![Εισαγωγή blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Η κίνηση της κάμερας διατίθεται τόσο ως δυαδικός αισθητήρας Εντοπίστηκε/Ελεύθερο όσο και ως μεμονωμένο συμβάν Motion για κάθε νέα ανίχνευση. Το AI Detection είναι μεμονωμένο συμβάν. Για χειροκίνητους αυτοματισμούς χρησιμοποιήστε `event.received`; το `event_type` χρειάζεται μόνο για φιλτράρισμα τύπων όπως `person`, `pet`, `vehicle`, `package`, `other` ή `ai_detection`.
+Το Motion και το AI Detection είναι μεμονωμένα συμβάντα, όχι καταστάσεις ενεργό/ανενεργό. Για χειροκίνητους αυτοματισμούς χρησιμοποιήστε `event.received`; το `event_type` χρειάζεται μόνο για φιλτράρισμα τύπων όπως `person`, `pet`, `vehicle`, `package`, `other` ή `ai_detection`.
 
 Παράδειγμα αυτοματισμού:
 

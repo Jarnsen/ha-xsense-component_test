@@ -127,7 +127,7 @@ Le registrazioni sulla scheda SD della fotocamera vengono visualizzate in X-Sens
 
 [![Importa blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Il movimento della videocamera è disponibile sia come sensore binario Rilevato/Libero sia come evento Motion singolo per ogni nuova rilevazione. AI Detection è un evento singolo. Per automazioni manuali usa il trigger `event.received` di Home Assistant con l’entità videocamera `Motion` o `AI Detection`; `event_type` serve solo per filtrare una AI Detection con abbonamento su tipi come `person`, `pet`, `vehicle`, `package`, `other` o `ai_detection`.
+Motion e AI Detection sono eventi singoli, non stati acceso/spento. Per automazioni manuali usa il trigger `event.received` di Home Assistant con l’entità videocamera `Motion` o `AI Detection`; `event_type` serve solo per filtrare una AI Detection con abbonamento su tipi come `person`, `pet`, `vehicle`, `package`, `other` o `ai_detection`.
 
 Esempio di automazione:
 

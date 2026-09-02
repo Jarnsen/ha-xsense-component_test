@@ -67,7 +67,7 @@ Kaamera SD-kaardi salvestused kuvatakse X-Sense Recordings-s. Ainult taasesitus 
 
 [![Impordi blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Kaamera liikumine on saadaval nii Tuvastatud/Vaba binaarandurina kui ka ühekordse Motion-sündmusena iga uue tuvastuse jaoks. AI Detection on ühekordne sündmus. Käsitsi automaatikates kasuta `event.received`; `event_type` on vajalik ainult tüüpide filtreerimiseks nagu `person`, `pet`, `vehicle`, `package`, `other` või `ai_detection`.
+Motion ja AI Detection on ühekordsed sündmused, mitte sisse/välja olekud. Käsitsi automaatikates kasuta `event.received`; `event_type` on vajalik ainult tüüpide filtreerimiseks nagu `person`, `pet`, `vehicle`, `package`, `other` või `ai_detection`.
 
 Automatiseerimise näide:
 

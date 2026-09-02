@@ -67,7 +67,7 @@ Kameras SD kartes ieraksti tiek parādīti X-Sense Recordings. Tikai atskaņoša
 
 [![Importēt blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Kameras kustība ir pieejama gan kā binārais sensors Noteikts/Brīvs, gan kā vienreizējs Motion notikums katrai jaunai noteikšanai. AI Detection ir vienreizējs notikums. Manuālām automatizācijām izmantojiet `event.received`; `event_type` lietojiet tikai, lai filtrētu tipus kā `person`, `pet`, `vehicle`, `package`, `other` vai `ai_detection`.
+Motion un AI Detection ir vienreizēji notikumi, nevis ieslēgts/izslēgts stāvokļi. Manuālām automatizācijām izmantojiet `event.received`; `event_type` lietojiet tikai, lai filtrētu tipus kā `person`, `pet`, `vehicle`, `package`, `other` vai `ai_detection`.
 
 Automatizācijas piemērs:
 

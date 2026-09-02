@@ -213,7 +213,7 @@ Motion 이벤트에 X-Sense 재생 메타데이터가 포함된 경우 통합은
 
 [![blueprint 가져오기](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-카메라 Motion은 현재 감지됨/해제 상태를 보여 주는 이진 센서와 새 감지마다 한 번 발생하는 Motion 이벤트로 모두 제공됩니다. AI Detection은 일회성 이벤트입니다. 수동 자동화에서는 Home Assistant의 `event.received` 트리거를 카메라 `Motion` 또는 `AI Detection` 엔티티와 함께 사용하세요. 구독 AI Detection을 `person`, `pet`, `vehicle`, `package`, `other`, `ai_detection` 같은 유형으로 좁힐 때만 `event_type`을 사용하세요.
+Motion 및 AI Detection은 켜짐/꺼짐 상태가 아니라 일회성 이벤트입니다. 수동 자동화에서는 Home Assistant의 `event.received` 트리거를 카메라 `Motion` 또는 `AI Detection` 엔티티와 함께 사용하세요. 구독 AI Detection을 `person`, `pet`, `vehicle`, `package`, `other`, `ai_detection` 같은 유형으로 좁힐 때만 `event_type`을 사용하세요.
 
 자동화 예시:
 

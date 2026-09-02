@@ -67,7 +67,7 @@ Când un eveniment Motion include metadate de redare X-Sense, integrarea pregăt
 
 [![Importă blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Mișcarea camerei este disponibilă atât ca senzor binar Detectat/Liber, cât și ca eveniment Motion unic pentru fiecare detecție nouă. AI Detection este un eveniment unic. Pentru automatizări manuale folosiți `event.received`; `event_type` este necesar doar pentru filtrarea tipurilor ca `person`, `pet`, `vehicle`, `package`, `other` sau `ai_detection`.
+Motion și AI Detection sunt evenimente unice, nu stări pornit/oprit. Pentru automatizări manuale folosiți `event.received`; `event_type` este necesar doar pentru filtrarea tipurilor ca `person`, `pet`, `vehicle`, `package`, `other` sau `ai_detection`.
 
 Exemplu de automatizare:
 

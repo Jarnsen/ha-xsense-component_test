@@ -223,7 +223,7 @@ ____________________________________________________________
 
 [![استيراد blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-تتوفر حركة الكاميرا كمستشعر ثنائي مكتشف/خالي، وكذلك كحدث Motion لمرة واحدة لكل اكتشاف جديد. AI Detection حدث لمرة واحدة. للأتمتة اليدوية استخدم `event.received`؛ استخدم `event_type` فقط لتصفية أنواع مثل `person` أو `pet` أو `vehicle` أو `package` أو `other` أو `ai_detection`.
+Motion و AI Detection أحداث لمرة واحدة وليست حالات تشغيل/إيقاف. للأتمتة اليدوية استخدم `event.received`؛ استخدم `event_type` فقط لتصفية أنواع مثل `person` أو `pet` أو `vehicle` أو `package` أو `other` أو `ai_detection`.
 
 مثال أتمتة:
 

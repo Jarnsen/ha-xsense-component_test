@@ -211,7 +211,7 @@ ____________________________________________________________
 
 [![Blueprint import करें](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Camera Motion मौजूदा Detected/Clear स्थिति के लिए binary sensor और हर नई detection के लिए एक बार होने वाला Motion event, दोनों रूपों में उपलब्ध है। AI Detection एक बार होने वाला event है। Manual automations के लिए `event.received` इस्तेमाल करें; `event_type` केवल `person`, `pet`, `vehicle`, `package`, `other` या `ai_detection` जैसे types filter करने के लिए चाहिए।
+Motion और AI Detection एक बार होने वाले events हैं, on/off states नहीं। Manual automations के लिए `event.received` इस्तेमाल करें; `event_type` केवल `person`, `pet`, `vehicle`, `package`, `other` या `ai_detection` जैसे types filter करने के लिए चाहिए।
 
 Automation उदाहरण:
 

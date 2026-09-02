@@ -67,7 +67,7 @@ A fényképezőgép SD-kártyájára készült felvételek a X-Sense Recordings-
 
 [![Blueprint importálása](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-A kamera mozgása Elérzékelve/Szabad bináris érzékelőként és minden új észleléshez egyszeri Motion eseményként is elérhető. Az AI Detection egyszeri esemény. Kézi automatizációkhoz használd az `event.received` triggert; `event_type` csak típusok szűréséhez kell, például `person`, `pet`, `vehicle`, `package`, `other` vagy `ai_detection`.
+A Motion és AI Detection egyszeri események, nem be/ki állapotok. Kézi automatizációkhoz használd az `event.received` triggert; `event_type` csak típusok szűréséhez kell, például `person`, `pet`, `vehicle`, `package`, `other` vagy `ai_detection`.
 
 Példa automatizáció:
 

@@ -214,7 +214,7 @@ Kamera SD kart kayıtları X-Sense Recordings'de görünür. Yalnızca oynatma v
 
 [![Blueprint’i içe aktar](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Kamera hareketi hem Algılandı/Boş ikili sensörü hem de her yeni algılama için tek seferlik Motion olayı olarak sunulur. AI Detection tek seferlik bir olaydır. Manuel otomasyonlar için `event.received` kullanın; `event_type` yalnızca `person`, `pet`, `vehicle`, `package`, `other` veya `ai_detection` gibi türleri filtrelemek için gerekir.
+Motion ve AI Detection tek seferlik olaylardır, aç/kapat durumları değildir. Manuel otomasyonlar için `event.received` kullanın; `event_type` yalnızca `person`, `pet`, `vehicle`, `package`, `other` veya `ai_detection` gibi türleri filtrelemek için gerekir.
 
 Örnek otomasyon:
 

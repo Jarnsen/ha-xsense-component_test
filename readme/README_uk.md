@@ -200,7 +200,7 @@ ____________________________________________________________
 
 [![Імпортувати blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2Fha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fxsense%2Fcamera_ai_notification.yaml)
 
-Рух камери доступний і як бінарний датчик Виявлено/Вільно, і як одноразова подія Motion для кожного нового виявлення. AI Detection — одноразова подія. Для ручних автоматизацій використовуйте `event.received`; `event_type` потрібен лише для фільтрації типів на кшталт `person`, `pet`, `vehicle`, `package`, `other` або `ai_detection`.
+Motion і AI Detection — одноразові події, а не стани увімкнено/вимкнено. Для ручних автоматизацій використовуйте `event.received`; `event_type` потрібен лише для фільтрації типів на кшталт `person`, `pet`, `vehicle`, `package`, `other` або `ai_detection`.
 
 Приклад автоматизації:
 
