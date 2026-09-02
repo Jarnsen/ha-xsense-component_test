@@ -23,7 +23,12 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from webrtc_models import RTCIceCandidateInit
 
-from .python_xsense.async_xsense import camera_live_resolution, is_camera_entity
+from .python_xsense.async_xsense import (
+    camera_addx_serial,
+    camera_live_resolution,
+    cameras_share_identity,
+    is_camera_entity,
+)
 from .python_xsense.exceptions import APIFailure, SessionExpired
 from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
@@ -88,21 +93,22 @@ def _camera_entities(
     """Return X-Sense camera entities from station and device records."""
     entities: list[XSenseCameraEntity] = []
     seen_entity_ids: set[str] = set()
-    seen_camera_serials: set[str] = set()
+    seen_cameras: list = []
 
     for station in coordinator_stations(coordinator).values():
-        if is_camera_entity(station):
-            entities.append(_camera_entity(coordinator, station))
-            seen_entity_ids.add(station.entity_id)
-            if serial := _camera_serial(station):
-                seen_camera_serials.add(serial)
+        if not is_camera_entity(station) or any(
+            cameras_share_identity(station, seen) for seen in seen_cameras
+        ):
+            continue
+        entities.append(_camera_entity(coordinator, station))
+        seen_entity_ids.add(station.entity_id)
+        seen_cameras.append(station)
 
     for device in coordinator_devices(coordinator).values():
-        serial = _camera_serial(device)
         if (
             not is_camera_entity(device)
             or device.entity_id in seen_entity_ids
-            or (serial is not None and serial in seen_camera_serials)
+            or any(cameras_share_identity(device, seen) for seen in seen_cameras)
         ):
             continue
         entities.append(
@@ -110,6 +116,7 @@ def _camera_entities(
                 coordinator, device, station_id=DEVICE_ENTITY_WITHOUT_STATION
             )
         )
+        seen_cameras.append(device)
 
     return entities
 
@@ -130,9 +137,7 @@ def _camera_entity(
 
 def _camera_serial(entity) -> str | None:
     """Return a normalized camera serial for station/device de-duplication."""
-    serial = getattr(entity, "sn", None)
-    if serial is None:
-        serial = entity.data.get("serialNumber") if isinstance(entity.data, dict) else None
+    serial = camera_addx_serial(entity)
     normalized = str(serial or "").strip().upper()
     return normalized or None
 
@@ -140,7 +145,7 @@ def _camera_serial(entity) -> str | None:
 def _camera_entity_keys(entity: XSenseCameraEntity) -> set[str]:
     """Return stable keys used to avoid duplicate camera entity adds."""
     keys = {str(entity._dev_id).upper()}
-    serial = getattr(entity, "_entity_serial", None)
+    serial = getattr(entity, "_camera_identity", None)
     if serial:
         keys.add(str(serial).upper())
     return keys
@@ -162,6 +167,7 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         Camera.__init__(self)
         self.entity_description = entity_description
         self._last_camera_image: bytes | None = None
+        self._camera_identity = camera_addx_serial(entity)
         super().__init__(coordinator, entity, station_id=station_id)
 
     @callback
@@ -553,7 +559,7 @@ def _camera_webrtc_ticket_serial(entity, ticket_data) -> str:
         serial = ticket_data.get("serialNumber")
         if serial not in (None, ""):
             return str(serial)
-    return str(entity.sn)
+    return camera_addx_serial(entity)
 
 
 def _send_remote_candidate(send_message, entity, session_id, candidate) -> None:

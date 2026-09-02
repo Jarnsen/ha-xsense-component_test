@@ -204,8 +204,8 @@ def _camera_addx_serial(camera: Entity) -> str:
     return _camera_addx_serial_candidates(camera)[0]
 
 
-def _camera_addx_serial_candidates(camera: Entity) -> list[str]:
-    """Return APK camera identifiers in ADDX preference order."""
+def camera_primary_identifiers(camera: Entity) -> tuple[str, ...]:
+    """Return strong APK camera identifiers in ADDX preference order."""
     data = getattr(camera, "data", {}) or {}
     ticket = data.get("cameraWebrtcTicket")
     if not isinstance(ticket, dict):
@@ -218,14 +218,27 @@ def _camera_addx_serial_candidates(camera: Entity) -> list[str]:
         ticket.get("realCxSerialNumber"),
         data.get("addxSerialNumber"),
         getattr(camera, "entity_id", None),
-        getattr(camera, "sn", None),
     ):
         if value in (None, ""):
             continue
         serial = str(value)
         if serial not in result:
             result.append(serial)
-    return result or [""]
+    return tuple(result)
+
+
+def camera_identifiers(camera: Entity) -> tuple[str, ...]:
+    """Return all APK camera identifiers, including the secondary IPC label."""
+    result = list(camera_primary_identifiers(camera))
+    serial = getattr(camera, "sn", None)
+    if serial not in (None, "") and str(serial) not in result:
+        result.append(str(serial))
+    return tuple(result)
+
+
+def _camera_addx_serial_candidates(camera: Entity) -> list[str]:
+    """Return APK camera identifiers in ADDX preference order."""
+    return list(camera_identifiers(camera)) or [""]
 
 
 def camera_addx_serial(camera: Entity) -> str:
@@ -240,28 +253,70 @@ def camera_matches_identifier(camera: Entity, identifier: Any) -> bool:
         return False
     return any(
         _normalized_camera_serial(candidate) == normalized
-        for candidate in _camera_addx_serial_candidates(camera)
+        for candidate in camera_identifiers(camera)
     )
 
 
-def _camera_history_record_matches_serial(
-    record: dict[str, Any], serial: str
-) -> bool:
-    """Return whether a library row belongs to the exact requested camera."""
-    record_serial = (
+def cameras_share_identity(left: Entity, right: Entity) -> bool:
+    """Return whether two records share a strong APK camera identifier."""
+    left_identifiers = {
+        normalized
+        for value in camera_primary_identifiers(left)
+        if (normalized := _normalized_camera_serial(value)) is not None
+    }
+    right_identifiers = {
+        normalized
+        for value in camera_primary_identifiers(right)
+        if (normalized := _normalized_camera_serial(value)) is not None
+    }
+    return bool(left_identifiers & right_identifiers)
+
+
+def _camera_history_record_owner(
+    cameras: list[Entity], record: dict[str, Any]
+) -> Entity | None:
+    """Return the one camera proven to own an APK library record."""
+    identifier = (
         record.get("serialNumber") or record.get("deviceSn") or record.get("sn")
     )
-    return _normalized_camera_serial(record_serial) == _normalized_camera_serial(serial)
+    return camera_for_identifier(cameras, identifier)
 
 
-def _camera_history_record_matches_camera(
-    record: dict[str, Any], camera: Entity
-) -> bool:
-    """Return whether a library row carries a proven identity for this camera."""
-    record_serial = (
-        record.get("serialNumber") or record.get("deviceSn") or record.get("sn")
+def camera_for_identifier(
+    cameras: list[Entity], identifier: Any
+) -> Entity | None:
+    """Return the one camera proven to own an APK identifier."""
+    normalized = _normalized_camera_serial(identifier)
+    if normalized is None:
+        return None
+
+    primary_matches = [
+        camera
+        for camera in cameras
+        if any(
+            _normalized_camera_serial(candidate) == normalized
+            for candidate in camera_primary_identifiers(camera)
+        )
+    ]
+    if primary_matches:
+        owner = primary_matches[0]
+        return (
+            owner
+            if all(cameras_share_identity(owner, match) for match in primary_matches)
+            else None
+        )
+
+    secondary_matches = [
+        camera for camera in cameras if camera_matches_identifier(camera, identifier)
+    ]
+    if not secondary_matches:
+        return None
+    owner = secondary_matches[0]
+    return (
+        owner
+        if all(cameras_share_identity(owner, match) for match in secondary_matches)
+        else None
     )
-    return camera_matches_identifier(camera, record_serial)
 
 
 def _is_addx_device_no_access(error: Exception) -> bool:
@@ -609,15 +664,14 @@ class AsyncXSense(XSenseBase):
         records: list[dict[str, Any]] = []
         first_error: APIFailure | None = None
         successful_requests = 0
-        seen_cameras: set[str] = set()
+        seen_cameras: list[Entity] = []
         for camera in cameras:
             serials = _camera_addx_serial_candidates(camera)
             if not serials:
                 continue
-            camera_key = _normalized_camera_serial(serials[0]) or serials[0]
-            if camera_key in seen_cameras:
+            if any(cameras_share_identity(camera, seen) for seen in seen_cameras):
                 continue
-            seen_cameras.add(camera_key)
+            seen_cameras.append(camera)
             house = self._camera_addx_house(camera)
             camera_request_succeeded = False
             accepted_serial = None
@@ -656,7 +710,7 @@ class AsyncXSense(XSenseBase):
                     record
                     for record in group_records
                     if isinstance(record, dict)
-                    and _camera_history_record_matches_serial(record, serial)
+                    and _camera_history_record_owner(cameras, record) is camera
                 ]
                 if not matching_records:
                     continue
@@ -689,15 +743,14 @@ class AsyncXSense(XSenseBase):
         records: list[dict[str, Any]] = []
         first_error: APIFailure | None = None
         successful_requests = 0
-        seen_cameras: set[str] = set()
+        seen_cameras: list[Entity] = []
         for camera in cameras:
             serials = _camera_addx_serial_candidates(camera)
             if not serials:
                 continue
-            camera_key = _normalized_camera_serial(serials[0]) or serials[0]
-            if camera_key in seen_cameras:
+            if any(cameras_share_identity(camera, seen) for seen in seen_cameras):
                 continue
-            seen_cameras.add(camera_key)
+            seen_cameras.append(camera)
             house = self._camera_addx_house(camera)
             accepted_serial = None
             camera_request_succeeded = False
@@ -736,7 +789,7 @@ class AsyncXSense(XSenseBase):
                     record
                     for record in group_records
                     if isinstance(record, dict)
-                    and _camera_history_record_matches_camera(record, camera)
+                    and _camera_history_record_owner(cameras, record) is camera
                 ]
                 if not matching_records:
                     continue
@@ -1551,8 +1604,22 @@ class AsyncXSense(XSenseBase):
     async def _update_camera_push_image_metadata(self, camera: Entity) -> None:
         """Read the APK's latest stored push-image metadata for one camera."""
         data = await self._camera_addx_call(camera, "/device/devicePushImage")
+        cameras = [
+            station
+            for house in self.houses.values()
+            for station in house.stations.values()
+            if is_camera_entity(station)
+        ]
+        if not any(
+            known is camera or cameras_share_identity(known, camera)
+            for known in cameras
+        ):
+            cameras.append(camera)
         for item in _camera_push_image_rows(data):
-            if not camera_matches_identifier(camera, item.get("serialNumber")):
+            owner = camera_for_identifier(cameras, item.get("serialNumber"))
+            if owner is not camera and not (
+                owner is not None and cameras_share_identity(owner, camera)
+            ):
                 continue
             values = {
                 "lastPushImageUrl": item.get("lastPushImageUrl"),
@@ -1572,22 +1639,36 @@ class AsyncXSense(XSenseBase):
         if normalized_serial is None:
             return None
 
-        for house in self.houses.values():
-            for station in house.stations.values():
-                if (
-                    is_camera_entity(station)
-                    and normalized_serial
-                    in {
-                        _normalized_camera_serial(station.entity_id),
-                        _normalized_camera_serial(station.sn),
-                    }
-                ):
-                    camera_type = _camera_type(data)
-                    if camera_type:
-                        station.type = camera_type
-                    if data.get("deviceName"):
-                        station.name = data["deviceName"]
-                    return station
+        existing_cameras = [
+            station
+            for house in self.houses.values()
+            for station in house.stations.values()
+            if is_camera_entity(station)
+        ]
+        matches = [
+            camera
+            for camera in existing_cameras
+            if any(
+                _normalized_camera_serial(candidate) == normalized_serial
+                for candidate in camera_primary_identifiers(camera)
+            )
+        ]
+        if not matches:
+            matches = [
+                camera
+                for camera in existing_cameras
+                if camera_matches_identifier(camera, serial)
+            ]
+        if len(matches) > 1:
+            return None
+        if len(matches) == 1:
+            station = matches[0]
+            camera_type = _camera_type(data)
+            if camera_type:
+                station.type = camera_type
+            if data.get("deviceName"):
+                station.name = data["deviceName"]
+            return station
 
         device_house_id = data.get("houseId")
         if device_house_id in (None, ""):

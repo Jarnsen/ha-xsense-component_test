@@ -8,7 +8,10 @@ from time import monotonic
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from .python_xsense.async_xsense import is_camera_entity
+from .python_xsense.async_xsense import (
+    camera_addx_serial,
+    is_camera_entity,
+)
 from .python_xsense.device import Device
 from .python_xsense.entity import Entity
 
@@ -24,7 +27,11 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_registry as er
 
 from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN, LOGGER
-from .entity import XSenseEntity, coordinator_devices, setup_dynamic_entities
+from .entity import (
+    XSenseEntity,
+    coordinator_devices,
+    setup_dynamic_entities,
+)
 from .frontend import recordings_panel_url
 
 if TYPE_CHECKING:
@@ -137,7 +144,7 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
     def _current_entity(self) -> Entity | None:
         """Return the current coordinator entity for this event entity."""
         if self._device_entity:
-            return coordinator_devices(self.coordinator).get(self._dev_id)
+            return self._current_entity_from(coordinator_devices(self.coordinator))
         return super()._current_entity()
 
     def _add_camera_event_context(
@@ -148,8 +155,8 @@ class XSenseEventEntity(XSenseEntity, EventEntity):
             return
         if camera_name := getattr(entity, "name", None):
             event_data["camera_name"] = str(camera_name)
-        if camera_serial := getattr(entity, "sn", None):
-            event_data["camera_serial"] = str(camera_serial)
+        if camera_serial := camera_addx_serial(entity):
+            event_data["camera_serial"] = camera_serial
         if camera_entity_id := _camera_entity_id_for_event(self.hass, entity):
             event_data["camera_entity_id"] = camera_entity_id
 
@@ -244,7 +251,7 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
     def _current_entity(self) -> Entity | None:
         """Return the current coordinator entity for this event entity."""
         if self._device_entity:
-            return coordinator_devices(self.coordinator).get(self._dev_id)
+            return self._current_entity_from(coordinator_devices(self.coordinator))
         return super()._current_entity()
 
     def _trigger_event_after_recording_cache(
@@ -270,6 +277,13 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
         if fingerprint is None:
             if not self._motion_initialized:
                 self._motion_initialized = True
+            self._write_state_if_added()
+            return
+
+        if entity.data.get("cameraEventBaseline") is True:
+            self._last_motion_fingerprint = fingerprint
+            self._motion_initialized = True
+            entity.data["cameraEventBaseline"] = False
             self._write_state_if_added()
             return
 
@@ -300,8 +314,8 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
             return
         if camera_name := getattr(entity, "name", None):
             event_data["camera_name"] = str(camera_name)
-        if camera_serial := getattr(entity, "sn", None):
-            event_data["camera_serial"] = str(camera_serial)
+        if camera_serial := camera_addx_serial(entity):
+            event_data["camera_serial"] = camera_serial
         if camera_entity_id := _camera_entity_id_for_event(self.hass, entity):
             event_data["camera_entity_id"] = camera_entity_id
 
@@ -461,7 +475,8 @@ def _add_recording_panel_url(
             "timestamp",
         )
     )
-    if start_time in (None, "") or not getattr(entity, "sn", None):
+    camera_serial = camera_addx_serial(entity)
+    if start_time in (None, "") or not camera_serial:
         return
     end_time = _recording_epoch_seconds(
         _first_present(playback, "end_time_s", "end_time")
@@ -471,7 +486,7 @@ def _add_recording_panel_url(
     if not _is_recordings_panel_url(event_data.get("recording_url")):
         event_data["recording_url"] = recordings_panel_url(
             entry_id,
-            str(entity.sn),
+            camera_serial,
             int(start_time),
             end_time=end_time,
         )

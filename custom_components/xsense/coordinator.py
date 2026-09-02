@@ -20,7 +20,8 @@ from homeassistant.util.logging import catch_log_exception
 from .python_xsense import (
     AsyncXSense,
     House,
-    camera_matches_identifier,
+    camera_for_identifier,
+    cameras_share_identity,
 )
 from .python_xsense.async_xsense import is_camera_entity
 from .python_xsense.event_parser import (
@@ -370,6 +371,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 LOGGER.debug("X-Sense device state polling skipped during startup refresh")
 
             self._merge_cached_camera_stations(stations)
+            _deduplicate_camera_devices(stations, devices)
             LOGGER.debug(
                 "X-Sense coordinator refresh summary: stations=%s devices=%s camera_initialized=%s camera_cache=%s mqtt_servers=%s mqtt_connected=%s",
                 len(stations),
@@ -522,9 +524,10 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             alarm_items = history.get("alarmItems")
             if not isinstance(alarm_items, list):
                 continue
-            for alarm_item in reversed(alarm_items):
-                if not isinstance(alarm_item, dict):
-                    continue
+            for alarm_item in sorted(
+                (item for item in alarm_items if isinstance(item, dict)),
+                key=_camera_ai_history_sort_key,
+            ):
                 event_key = _camera_ai_history_event_key(server_id, alarm_item)
                 if first_poll:
                     payload = dict(alarm_item)
@@ -579,9 +582,12 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         baselined = 0
         skipped = 0
         seen_now: set[str] = set()
-        active_cameras: set[int] = set()
-        records = _camera_event_records(history)
-        for record in reversed(records):
+        active_cameras: list[Any] = []
+        baseline_changed = False
+        records = sorted(
+            _camera_event_records(history), key=_camera_event_record_sort_key
+        )
+        for record in records:
             event_key = _camera_event_record_event_key(record)
             station_data = _camera_event_record_station_data(record)
             station = (
@@ -594,19 +600,39 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             seen_now.add(event_key)
             if first_poll:
                 baselined += 1
+                if _camera_event_time_relation(station, station_data) < 0:
+                    continue
+                station_data["cameraMotionDetected"] = False
+                station_data["cameraEventBaseline"] = True
+                self.xsense.parse_get_state(station, station_data)
+                baseline_changed = True
                 continue
             if event_key in self._camera_event_history_seen:
                 skipped += 1
                 continue
+            time_relation = _camera_event_time_relation(station, station_data)
+            if time_relation < 0:
+                skipped += 1
+                continue
+            if time_relation == 0:
+                station_data["cameraMotionDetected"] = False
+                station_data["cameraEventBaseline"] = False
+                self.xsense.parse_get_state(station, station_data)
+                applied += 1
+                continue
             station_data["cameraMotionDetected"] = True
+            station_data["cameraEventBaseline"] = False
             self.xsense.parse_get_state(station, station_data)
-            active_cameras.add(id(station))
+            active_cameras.append(station)
             applied += 1
 
         self._camera_event_history_seen.update(seen_now)
         state_changed = False
         for camera in cameras:
-            detected = id(camera) in active_cameras
+            detected = any(
+                camera is active or cameras_share_identity(camera, active)
+                for active in active_cameras
+            )
             previous = (
                 getattr(camera, "data", {}).get("cameraMotionDetected") is True
             )
@@ -625,7 +651,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             skipped,
             first_poll,
         )
-        return applied > 0 or state_changed
+        return applied > 0 or state_changed or baseline_changed
 
     def _apply_camera_ai_history_item(
         self, server_id: str, alarm_item: dict[str, Any]
@@ -672,15 +698,66 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for station in house.stations.values():
                 if not is_camera_entity(station):
                     continue
-                previous = self._camera_station_cache.get(station.entity_id)
+                previous = next(
+                    (
+                        cached
+                        for cached in self._camera_station_cache.values()
+                        if cached is station
+                        or cameras_share_identity(cached, station)
+                    ),
+                    None,
+                )
                 if previous is not None:
                     _preserve_camera_event_image(previous, station)
-                refreshed_cache[station.entity_id] = station
+                duplicate = next(
+                    (
+                        cached
+                        for cached in refreshed_cache.values()
+                        if cameras_share_identity(cached, station)
+                    ),
+                    None,
+                )
+                if duplicate is None:
+                    refreshed_cache[station.entity_id] = station
+                else:
+                    _merge_camera_metadata(station, duplicate)
         self._camera_station_cache = refreshed_cache
 
     def _merge_cached_camera_stations(self, stations: dict[str, Any]) -> None:
         """Keep ADDX-only cameras present when the camera API refresh is skipped."""
-        stations.update(self._camera_station_cache)
+        canonical_cameras: list[Any] = []
+        for station_id, station in list(stations.items()):
+            if not is_camera_entity(station):
+                continue
+            existing = next(
+                (
+                    camera
+                    for camera in canonical_cameras
+                    if cameras_share_identity(camera, station)
+                ),
+                None,
+            )
+            if existing is None:
+                canonical_cameras.append(station)
+                continue
+            _merge_camera_metadata(station, existing)
+            stations.pop(station_id, None)
+
+        for cached_id, cached in self._camera_station_cache.items():
+            existing = next(
+                (
+                    camera
+                    for camera in canonical_cameras
+                    if camera is cached or cameras_share_identity(camera, cached)
+                ),
+                None,
+            )
+            if existing is None:
+                stations[cached_id] = cached
+                canonical_cameras.append(cached)
+                continue
+            if existing is not cached:
+                _merge_camera_metadata(cached, existing)
 
     async def _update_safe_mode(self, station) -> None:
         """Fetch safeMode from the 2nd_safemode AWS IoT shadow as a fallback."""
@@ -756,7 +833,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if station is None:
             station = self._get_station_by_id(station_sn)
         if station is None:
-            station = self._get_station_by_device_sn(device_sn)
+            station = _station_for_device_identifier(self, device_sn)
         identifier_candidates: list[str] = []
         if isinstance(station_data, dict):
             identifier_candidates.extend(_mqtt_identifier_candidates(station_data))
@@ -765,7 +842,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             for identifier in identifier_candidates:
                 station = self._get_station_by_id(identifier)
                 if station is None:
-                    station = self._get_station_by_device_sn(identifier)
+                    station = _station_for_device_identifier(self, identifier)
                 if station is None:
                     station = _camera_station_for_identifiers(self, [identifier])
                 if station is not None:
@@ -1015,12 +1092,78 @@ def _camera_entities(coordinator: XSenseDataUpdateCoordinator) -> list[Any]:
     """Return camera entities known to the coordinator."""
     if not coordinator.xsense:
         return []
-    return [
-        station
-        for house in coordinator.xsense.houses.values()
-        for station in house.stations.values()
-        if is_camera_entity(station)
-    ]
+    cameras: list[Any] = []
+    for house in coordinator.xsense.houses.values():
+        for station in house.stations.values():
+            if not is_camera_entity(station):
+                continue
+            if any(cameras_share_identity(station, camera) for camera in cameras):
+                continue
+            cameras.append(station)
+    return cameras
+
+
+def _deduplicate_camera_devices(
+    stations: dict[str, Any], devices: dict[str, Any]
+) -> None:
+    """Remove only duplicate camera representations from the device collection."""
+    canonical = [station for station in stations.values() if is_camera_entity(station)]
+    for device_id, device in list(devices.items()):
+        if not is_camera_entity(device):
+            continue
+        if any(
+            device is camera or cameras_share_identity(device, camera)
+            for camera in canonical
+        ):
+            devices.pop(device_id, None)
+            continue
+        canonical.append(device)
+
+
+def _merge_camera_metadata(source: Any, target: Any) -> None:
+    """Merge a duplicate camera record without replacing its stable HA identity."""
+    source_data = getattr(source, "data", None)
+    target_data = getattr(target, "data", None)
+    if not isinstance(source_data, dict) or not isinstance(target_data, dict):
+        return
+    _preserve_camera_event_image(source, target)
+    merged = {
+        key: value
+        for key, value in source_data.items()
+        if key != "cameraMotionDetected"
+    }
+    merged.update(target_data)
+    set_data = getattr(target, "set_data", None)
+    if callable(set_data):
+        set_data(merged)
+    else:
+        target_data.update(merged)
+
+
+def _camera_event_record_sort_key(record: dict[str, Any]) -> tuple[bool, str]:
+    """Return an order-independent APK event timestamp key."""
+    event_time = _camera_event_record_station_data(record).get("eventTime")
+    return (event_time not in (None, ""), str(event_time or ""))
+
+
+def _camera_ai_history_sort_key(item: dict[str, Any]) -> tuple[bool, str]:
+    """Return an order-independent APK AI event timestamp key."""
+    event_time = item.get("createTime")
+    if event_time in (None, ""):
+        station_data = _mqtt_reported_data(item)
+        event_time = station_data.get("eventTime") if station_data else None
+    return (event_time not in (None, ""), str(event_time or ""))
+
+
+def _camera_event_time_relation(station: Any, station_data: dict[str, Any]) -> int:
+    """Compare an event record with the newest event already held by a camera."""
+    current = str(getattr(station, "data", {}).get("eventTime") or "")
+    incoming = str(station_data.get("eventTime") or "")
+    if not current or incoming > current:
+        return 1
+    if incoming == current:
+        return 0
+    return -1
 
 
 _CAMERA_EVENT_IMAGE_KEYS = (
@@ -1104,6 +1247,17 @@ def _camera_station_for_event_data(
     return _camera_station_for_identifiers(coordinator, identifiers)
 
 
+def _station_for_device_identifier(
+    coordinator: XSenseDataUpdateCoordinator,
+    identifier: Any,
+):
+    """Resolve a child identifier without accepting an ambiguous camera label."""
+    station = coordinator._get_station_by_device_sn(identifier)
+    if station is None or not is_camera_entity(station):
+        return station
+    return camera_for_identifier(_camera_entities(coordinator), identifier)
+
+
 def _camera_station_for_identifiers(
     coordinator: XSenseDataUpdateCoordinator,
     identifiers: list[Any],
@@ -1113,13 +1267,10 @@ def _camera_station_for_identifiers(
         if identifier in (None, ""):
             continue
         station = coordinator._get_station_by_id(str(identifier))
-        if station is None:
-            station = coordinator._get_station_by_device_sn(str(identifier))
         if station is not None and is_camera_entity(station):
             return station
-        for camera in _camera_entities(coordinator):
-            if camera_matches_identifier(camera, identifier):
-                return camera
+        if camera := camera_for_identifier(_camera_entities(coordinator), identifier):
+            return camera
     return None
 
 
