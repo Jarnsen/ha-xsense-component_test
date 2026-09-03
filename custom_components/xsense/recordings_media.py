@@ -397,6 +397,39 @@ async def async_cache_recording_playback(
     return ""
 
 
+async def async_extract_camera_event_snapshot(
+    hass: HomeAssistant, playback: dict[str, Any]
+) -> bytes | None:
+    """Extract one high-quality still from the APK-provided event recording."""
+    video_url = _preferred_recording_video_url(playback, "HD")
+    if not video_url:
+        return None
+    try:
+        result = await hass.async_add_executor_job(
+            _extract_camera_event_snapshot,
+            video_url,
+        )
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.debug(
+            "X-Sense camera event snapshot extraction failed: %s",
+            {"error_type": type(exc).__name__},
+        )
+        return None
+    image = result.get("image")
+    LOGGER.debug(
+        "X-Sense camera event snapshot extraction: %s",
+        {
+            "ready": isinstance(image, bytes) and bool(image),
+            "width": result.get("width"),
+            "height": result.get("height"),
+            "bytes": len(image) if isinstance(image, bytes) else 0,
+            "reason": result.get("reason"),
+            "returncode": result.get("returncode"),
+        },
+    )
+    return image if isinstance(image, bytes) and image else None
+
+
 async def async_cache_recent_recording_media(
     hass: HomeAssistant,
     *,
@@ -2473,6 +2506,102 @@ def _write_cache_file(path: Path, payload: bytes) -> None:
     temp_path = path.with_name(f"{path.stem}.tmp{path.suffix}")
     temp_path.write_bytes(payload)
     temp_path.replace(path)
+
+
+def _extract_camera_event_snapshot(video_url: str) -> dict[str, Any]:
+    """Extract the first complete video frame without retaining the recording."""
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return {"reason": "ffmpeg_unavailable"}
+    command = [
+        ffmpeg,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        video_url,
+        "-map",
+        "0:v:0",
+        "-an",
+        "-ss",
+        "1",
+        "-frames:v",
+        "1",
+        "-c:v",
+        "mjpeg",
+        "-q:v",
+        "2",
+        "-f",
+        "image2pipe",
+        "pipe:1",
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return {"reason": "ffmpeg_failed"}
+    if result.returncode != 0:
+        return {"reason": "ffmpeg_failed", "returncode": result.returncode}
+    image = bytes(result.stdout or b"")
+    dimensions = _jpeg_dimensions(image)
+    if dimensions is None:
+        return {"reason": "invalid_jpeg", "returncode": result.returncode}
+    width, height = dimensions
+    return {
+        "image": image,
+        "width": width,
+        "height": height,
+        "returncode": result.returncode,
+    }
+
+
+def _jpeg_dimensions(payload: bytes) -> tuple[int, int] | None:
+    """Return JPEG dimensions without adding an image-library dependency."""
+    if len(payload) < 4 or payload[:2] != b"\xff\xd8":
+        return None
+    start_of_frame = {
+        0xC0,
+        0xC1,
+        0xC2,
+        0xC3,
+        0xC5,
+        0xC6,
+        0xC7,
+        0xC9,
+        0xCA,
+        0xCB,
+        0xCD,
+        0xCE,
+        0xCF,
+    }
+    index = 2
+    while index + 3 < len(payload):
+        if payload[index] != 0xFF:
+            index += 1
+            continue
+        while index < len(payload) and payload[index] == 0xFF:
+            index += 1
+        if index >= len(payload):
+            return None
+        marker = payload[index]
+        index += 1
+        if marker in {0x01, 0xD8, 0xD9}:
+            continue
+        if index + 2 > len(payload):
+            return None
+        segment_length = int.from_bytes(payload[index : index + 2], "big")
+        if segment_length < 2 or index + segment_length > len(payload):
+            return None
+        if marker in start_of_frame and segment_length >= 7:
+            height = int.from_bytes(payload[index + 3 : index + 5], "big")
+            width = int.from_bytes(payload[index + 5 : index + 7], "big")
+            return (width, height) if width > 0 and height > 0 else None
+        index += segment_length
+    return None
 
 
 def _hls_leading_playback_segment_path(path: Path) -> Path:

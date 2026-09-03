@@ -1799,6 +1799,119 @@ def test_trigger_camera_event_fires_entity_and_rich_bus_event(caplog):
     assert "CAMERA-SN" not in caplog.text
 
 
+def test_motion_event_stores_derived_frame_before_firing(monkeypatch):
+    from custom_components.xsense import event as event_module
+    from custom_components.xsense import recordings_media as media_source
+
+    scheduled = []
+    order = []
+
+    class Coordinator:
+        entry = SimpleNamespace(entry_id="entry-id")
+
+        def clear_camera_event_snapshot(self, camera_entity):
+            order.append(("clear", camera_entity.sn))
+
+        def store_camera_event_snapshot(self, camera_entity, event_time, image):
+            order.append(("store", camera_entity.sn, event_time, image))
+
+    event_entity = SimpleNamespace(
+        hass=SimpleNamespace(async_create_task=lambda coro: scheduled.append(coro)),
+        coordinator=Coordinator(),
+        _trigger_event=lambda event_type, data: order.append(
+            ("trigger", event_type, data.get("snapshot_url"))
+        ),
+    )
+    camera_entity = SimpleNamespace(sn="CAMERA-SN")
+    event_data = {
+        "time": "20260903172848",
+        "camera_entity_id": "camera.garden",
+        "snapshot_url": "https://example.invalid/event.jpg",
+        "playback": {
+            "video_url": "https://example.invalid/event.m3u8",
+            "start_time_s": 1788449308,
+            "end_time_s": 1788449326,
+        },
+    }
+
+    async def cache_recording(*args, **kwargs):
+        order.append(("recording", kwargs["playback"]["video_url"]))
+        return "/api/xsense/recordings/play/entry-id/1788449308/1788449326"
+
+    async def extract_snapshot(*args, **kwargs):
+        order.append(("extract", args[1]["video_url"]))
+        return b"high-resolution-event-frame"
+
+    monkeypatch.setattr(media_source, "async_cache_recording_playback", cache_recording)
+    monkeypatch.setattr(
+        media_source, "async_extract_camera_event_snapshot", extract_snapshot
+    )
+
+    assert event_module._trigger_event_after_recording_cache(
+        event_entity, "motion", camera_entity, event_data
+    )
+    asyncio.run(scheduled[0])
+
+    assert order == [
+        ("clear", "CAMERA-SN"),
+        ("recording", "https://example.invalid/event.m3u8"),
+        ("extract", "https://example.invalid/event.m3u8"),
+        (
+            "store",
+            "CAMERA-SN",
+            "20260903172848",
+            b"high-resolution-event-frame",
+        ),
+        ("trigger", "motion", "/api/camera_proxy/camera.garden"),
+    ]
+
+
+def test_motion_event_still_fires_when_snapshot_extraction_fails(monkeypatch):
+    from custom_components.xsense import event as event_module
+    from custom_components.xsense import recordings_media as media_source
+
+    scheduled = []
+    triggered = []
+    event_entity = SimpleNamespace(
+        hass=SimpleNamespace(async_create_task=lambda coro: scheduled.append(coro)),
+        coordinator=SimpleNamespace(entry=SimpleNamespace(entry_id="entry-id")),
+        _trigger_event=lambda event_type, data: triggered.append(
+            (event_type, data.get("snapshot_url"))
+        ),
+    )
+    event_data = {
+        "time": "20260903172848",
+        "camera_entity_id": "camera.garden",
+        "snapshot_url": "https://example.invalid/event.jpg",
+        "playback": {
+            "video_url": "https://example.invalid/event.m3u8",
+            "start_time_s": 1788449308,
+            "end_time_s": 1788449326,
+        },
+    }
+
+    async def cache_recording(*args, **kwargs):
+        return "/api/xsense/recordings/play/entry-id/1788449308/1788449326"
+
+    async def fail_snapshot(*args, **kwargs):
+        raise RuntimeError("snapshot unavailable")
+
+    monkeypatch.setattr(media_source, "async_cache_recording_playback", cache_recording)
+    monkeypatch.setattr(
+        media_source, "async_extract_camera_event_snapshot", fail_snapshot
+    )
+
+    assert event_module._trigger_event_after_recording_cache(
+        event_entity,
+        "motion",
+        SimpleNamespace(sn="CAMERA-SN"),
+        event_data,
+    )
+    asyncio.run(scheduled[0])
+
+    assert triggered == [("motion", "https://example.invalid/event.jpg")]
+
+
 def test_motion_event_entity_updates_state_only_when_recording_cache_returns_no_media(
     monkeypatch,
     caplog,
@@ -6014,6 +6127,10 @@ async def test_camera_image_uses_adapter_and_keeps_last_good_image():
                 get_camera_thumbnail=get_camera_thumbnail,
             )
 
+        def camera_event_snapshot(self, current):
+            assert current is camera_entity
+            return None
+
         def async_add_listener(self, *args, **kwargs):
             return lambda: None
 
@@ -6022,6 +6139,106 @@ async def test_camera_image_uses_adapter_and_keeps_last_good_image():
 
     assert await camera.async_camera_image() == b"jpeg-image"
     assert await camera.async_camera_image() == b"jpeg-image"
+
+
+async def test_camera_image_prefers_derived_event_frame_over_cloud_thumbnail():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseCameraEntity,
+    )
+
+    camera_entity = entity("SSC0A", {"eventTime": "20260903172848"})
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+
+    async def unexpected_thumbnail(current):
+        raise AssertionError("cloud thumbnail must remain a fallback")
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+            self.xsense = SimpleNamespace(get_camera_thumbnail=unexpected_thumbnail)
+
+        def camera_event_snapshot(self, current):
+            assert current is camera_entity
+            return b"high-resolution-event-frame"
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+
+    assert await camera.async_camera_image() == b"high-resolution-event-frame"
+
+
+def test_camera_event_snapshot_extraction_uses_video_only_ffmpeg(monkeypatch):
+    from custom_components.xsense import recordings_media as media_source
+
+    jpeg = b"\xff\xd8\xff\xc0\x00\x07\x08\x04\x38\x07\x80"
+    calls = []
+
+    monkeypatch.setattr(media_source.shutil, "which", lambda executable: "/ffmpeg")
+
+    def run(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=0, stdout=jpeg, stderr=b"")
+
+    monkeypatch.setattr(media_source.subprocess, "run", run)
+
+    result = media_source._extract_camera_event_snapshot(
+        "https://example.invalid/event-hd.m3u8"
+    )
+
+    assert result == {
+        "image": jpeg,
+        "width": 1920,
+        "height": 1080,
+        "returncode": 0,
+    }
+    command, kwargs = calls[0]
+    assert command[command.index("-i") + 1] == "https://example.invalid/event-hd.m3u8"
+    assert command[command.index("-map") + 1] == "0:v:0"
+    assert "-an" in command
+    assert command[command.index("-ss") + 1] == "1"
+    assert kwargs == {"capture_output": True, "check": False, "timeout": 10}
+
+
+def test_camera_event_snapshot_prefers_hd_recording_candidate(monkeypatch):
+    from custom_components.xsense import recordings_media as media_source
+
+    extracted = []
+
+    def extract(url):
+        extracted.append(url)
+        return {"image": b"jpeg", "width": 1920, "height": 1080, "returncode": 0}
+
+    monkeypatch.setattr(media_source, "_extract_camera_event_snapshot", extract)
+    hass = SimpleNamespace(
+        async_add_executor_job=lambda func, *args: asyncio.to_thread(func, *args)
+    )
+
+    image = asyncio.run(
+        media_source.async_extract_camera_event_snapshot(
+            hass,
+            {
+                "video_url": "https://example.invalid/event-720.m3u8",
+                "resolution": "1280x720",
+                "multi_resolution_videos": [
+                    {
+                        "videoUrl": "https://example.invalid/event-1080.m3u8",
+                        "resolutionInfo": "1920x1080",
+                    }
+                ],
+            },
+        )
+    )
+
+    assert image == b"jpeg"
+    assert extracted == ["https://example.invalid/event-1080.m3u8"]
 
 
 async def test_failed_webrtc_signal_start_is_removed_from_sessions(monkeypatch):
