@@ -23,7 +23,7 @@ from .python_xsense import (
     camera_for_identifier,
     cameras_share_identity,
 )
-from .python_xsense.async_xsense import is_camera_entity
+from .python_xsense.async_xsense import camera_addx_serial, is_camera_entity
 from .python_xsense.event_parser import (
     camera_ai_history_event_key as _camera_ai_history_event_key,
     camera_event_record_event_key as _camera_event_record_event_key,
@@ -76,6 +76,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._camera_ai_history_seen: set[str] = set()
         self._camera_event_history_seen: set[str] = set()
         self._camera_event_history_initialized = False
+        self._camera_event_snapshots: dict[str, tuple[str, bytes]] = {}
         self._camera_ai_service_houses: dict[str, set[str]] = {}
         self._camera_ai_history_unsub = None
         self._camera_ai_history_lock = asyncio.Lock()
@@ -94,6 +95,33 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def mqtt_server(self, host: str):
         """Get mqtt server instance for specific host."""
         return self.mqtt_servers.get(host)
+
+    def clear_camera_event_snapshot(self, camera: Any) -> None:
+        """Discard the derived event frame for one camera."""
+        if serial := camera_addx_serial(camera):
+            self._camera_event_snapshots.pop(serial, None)
+
+    def store_camera_event_snapshot(
+        self, camera: Any, event_time: Any, image: bytes
+    ) -> None:
+        """Store one derived event frame for the matching camera event."""
+        serial = camera_addx_serial(camera)
+        timestamp = str(event_time or "")
+        if serial and timestamp and image:
+            self._camera_event_snapshots[serial] = (timestamp, image)
+
+    def camera_event_snapshot(self, camera: Any) -> bytes | None:
+        """Return the derived frame only while it matches the current event."""
+        serial = camera_addx_serial(camera)
+        if not serial:
+            return None
+        snapshot = self._camera_event_snapshots.get(serial)
+        if snapshot is None:
+            return None
+        event_time, image = snapshot
+        if event_time != str(getattr(camera, "data", {}).get("eventTime") or ""):
+            return None
+        return image
 
     def _async_create_entry_task(self, coro, name: str):
         """Create a task owned by this config entry when supported."""
