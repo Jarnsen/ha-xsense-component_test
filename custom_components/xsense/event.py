@@ -552,12 +552,19 @@ def _trigger_event_after_recording_cache(
     if not entry_id:
         return False
     _add_recording_panel_url(event_data, entry_id=entry_id, entity=entity)
+    coordinator = getattr(event_entity, "coordinator", None)
+    clear_snapshot = getattr(coordinator, "clear_camera_event_snapshot", None)
+    if callable(clear_snapshot):
+        clear_snapshot(entity)
     event_received_at = monotonic()
     event_data["recording_cache_pending"] = True
     event_data["recording_cache_ready"] = False
 
     async def _async_cache_then_trigger() -> None:
-        from .recordings_media import async_cache_recording_playback
+        from .recordings_media import (
+            async_cache_recording_playback,
+            async_extract_camera_event_snapshot,
+        )
 
         cache_started_at = monotonic()
         LOGGER.debug(
@@ -610,6 +617,19 @@ def _trigger_event_after_recording_cache(
             _write_event_state(event_entity)
             return
         proxied = cached_url.startswith(f"/api/{DOMAIN}/recordings/play/")
+        try:
+            snapshot = await async_extract_camera_event_snapshot(hass, playback)
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.debug(
+                "X-Sense camera event snapshot preparation failed: %s",
+                {"error_type": type(exc).__name__},
+            )
+            snapshot = None
+        store_snapshot = getattr(coordinator, "store_camera_event_snapshot", None)
+        if snapshot and callable(store_snapshot):
+            store_snapshot(entity, event_data.get("time"), snapshot)
+            if camera_entity_id := event_data.get("camera_entity_id"):
+                event_data["snapshot_url"] = f"/api/camera_proxy/{camera_entity_id}"
         event_data["recording_media_url"] = cached_url
         event_data["recording_cache_ready"] = True
         event_data["recording_cache_pending"] = False

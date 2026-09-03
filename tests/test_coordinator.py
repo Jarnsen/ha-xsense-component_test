@@ -1227,6 +1227,36 @@ def test_camera_metadata_refresh_preserves_latest_motion_event_image():
     assert refreshed.data["lastEventImageTime"] == 1_700_000_100
 
 
+def test_camera_event_snapshot_is_scoped_to_camera_and_current_event():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator._camera_event_snapshots = {}
+    first = SimpleNamespace(
+        entity_id="camera-one",
+        sn="CAMERA-ONE",
+        data={"eventTime": "20260903172848"},
+    )
+    second = SimpleNamespace(
+        entity_id="camera-two",
+        sn="CAMERA-TWO",
+        data={"eventTime": "20260903172948"},
+    )
+
+    coordinator.store_camera_event_snapshot(
+        first, "20260903172848", b"camera-one-frame"
+    )
+
+    assert coordinator.camera_event_snapshot(first) == b"camera-one-frame"
+    assert coordinator.camera_event_snapshot(second) is None
+
+    first.data["eventTime"] = "20260903173048"
+    assert coordinator.camera_event_snapshot(first) is None
+
+    coordinator.clear_camera_event_snapshot(first)
+    assert coordinator._camera_event_snapshots == {}
+
+
 def test_mqtt_camera_motion_event_preserves_apk_event_time():
     from custom_components.xsense.coordinator import _mqtt_reported_data
 
