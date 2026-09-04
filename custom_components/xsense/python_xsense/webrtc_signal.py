@@ -24,7 +24,6 @@ SIGNAL_VIEWER_TYPE = "a4x_sdk"
 _SIGNAL_NAME = "test-123"
 _DEFAULT_RESOLUTION = "1280x720"
 _ANSWER_TIMEOUT = 40
-_ONLINE_PEER_GRACE = 5
 _SIGNAL_RECONNECT_DELAY = 5
 _SIGNAL_TERMINAL_CLOSE_CODES = {3002, 3004}
 _DATA_CHANNEL_CONNECTION_ID = "7893feb"
@@ -139,9 +138,7 @@ class XSenseWebRTCSignalSession:
         self._answer: asyncio.Future[str] = asyncio.get_running_loop().create_future()
         self._closed = False
         self._offer_sent = False
-        self._offer_sent_before_peer_ready = False
         self._camera_peer_ready = False
-        self._camera_peer_event = asyncio.Event()
         self._signal_event_counts: Counter[str] = Counter()
         self._local_candidate_count = 0
         self._sent_candidate_count = 0
@@ -165,7 +162,6 @@ class XSenseWebRTCSignalSession:
                 "camera_online": self._camera_online,
                 "camera_peer_ready": self._camera_peer_ready,
                 "offer_sent": self._offer_sent,
-                "offer_sent_before_peer_ready": self._offer_sent_before_peer_ready,
                 "sdp_answer_received": _future_has_result(self._answer),
                 "last_signal_event": self._last_signal_event,
                 "signal_events": dict(self._signal_event_counts),
@@ -184,13 +180,10 @@ class XSenseWebRTCSignalSession:
         """Return the X-Sense SDP answer for a Home Assistant WebRTC offer."""
         LOGGER.debug("X-Sense WebRTC signal relay starting: %s", self._debug_context())
         await self._connect_signal()
-        if self._camera_online:
-            await self._send_online_offer_after_peer_grace()
-        else:
-            LOGGER.debug(
-                "X-Sense WebRTC waiting for PEER_IN before relay offer: %s",
-                self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),
-            )
+        LOGGER.debug(
+            "X-Sense WebRTC waiting for PEER_IN before relay offer: %s",
+            self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),
+        )
         try:
             return await asyncio.wait_for(self._answer, timeout=_ANSWER_TIMEOUT)
         except Exception as err:
@@ -333,7 +326,6 @@ class XSenseWebRTCSignalSession:
             return
         self._reset_offer_attempt("signal_reconnect")
         self._camera_peer_ready = False
-        self._camera_peer_event.clear()
         with suppress(Exception):
             await self.close_signal_only()
         self._signal_reconnect_count += 1
@@ -343,8 +335,6 @@ class XSenseWebRTCSignalSession:
         )
         try:
             await self._connect_signal()
-            if self._camera_online:
-                await self._send_online_offer_after_peer_grace()
         except Exception as err:
             LOGGER.debug(
                 "X-Sense WebRTC signal relay reconnect failed: %s",
@@ -352,22 +342,6 @@ class XSenseWebRTCSignalSession:
             )
             if not self._answer.done():
                 self._answer.set_exception(err)
-
-    async def _send_online_offer_after_peer_grace(self) -> None:
-        """Prefer camera readiness, with a bounded fallback for missing peer events."""
-        try:
-            await asyncio.wait_for(
-                self._camera_peer_event.wait(), timeout=_ONLINE_PEER_GRACE
-            )
-        except TimeoutError:
-            LOGGER.debug(
-                "X-Sense WebRTC sending relay offer after online peer grace: %s",
-                self._debug_context(
-                    peer_grace_s=_ONLINE_PEER_GRACE,
-                    answer_timeout_s=_ANSWER_TIMEOUT,
-                ),
-            )
-            await self._send_offer()
 
     async def close_signal_only(self) -> None:
         """Close only the current signal websocket before reconnecting."""
@@ -391,7 +365,6 @@ class XSenseWebRTCSignalSession:
                     or self._should_log_signal_event(event)
                 )
                 self._camera_peer_ready = True
-                self._camera_peer_event.set()
                 if should_log_peer:
                     LOGGER.debug(
                         "X-Sense WebRTC signal relay matched camera peer: %s",
@@ -400,11 +373,6 @@ class XSenseWebRTCSignalSession:
                             **_peer_event_debug(payload, self._ticket.serial_number),
                         ),
                     )
-                if (
-                    self._offer_sent_before_peer_ready
-                    and not _future_has_result(self._answer)
-                ):
-                    self._reset_offer_attempt("peer_ready_after_online_fallback")
                 await self._send_offer()
             else:
                 LOGGER.debug(
@@ -418,7 +386,6 @@ class XSenseWebRTCSignalSession:
         if event == "PEER_OUT":
             if _is_owned_peer_message(payload, self._ticket.serial_number):
                 self._camera_peer_ready = False
-                self._camera_peer_event.clear()
                 if not _future_has_result(self._answer):
                     self._reset_offer_attempt("peer_out_before_answer")
                     LOGGER.debug(
@@ -518,12 +485,10 @@ class XSenseWebRTCSignalSession:
             ),
         )
         self._offer_sent = True
-        self._offer_sent_before_peer_ready = not self._camera_peer_ready
         try:
             await self._ws.send_str(offer)
         except Exception:
             self._offer_sent = False
-            self._offer_sent_before_peer_ready = False
             raise
 
         candidates = _local_sdp_candidates(self._offer_sdp)
@@ -587,7 +552,6 @@ class XSenseWebRTCSignalSession:
 
     def _reset_offer_attempt(self, reason: str) -> None:
         self._offer_sent = False
-        self._offer_sent_before_peer_ready = False
         self._local_candidate_count = 0
         self._sent_candidate_count = 0
         LOGGER.debug(
