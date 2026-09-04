@@ -18,7 +18,7 @@ STATIC_URL_PATH = f"/{DOMAIN}_recordings_static"
 PANEL_ELEMENT_NAME = "xsense-recordings-panel"
 FORCE_ARM_PANEL_ELEMENT_NAME = "xsense-force-arm-panel"
 PANEL_TITLE = "X-Sense Recordings"
-PANEL_ASSET_VERSION = "1.4.20.15"
+PANEL_ASSET_VERSION = "1.4.20.16"
 
 
 def _recordings_panel_module_url() -> str:
