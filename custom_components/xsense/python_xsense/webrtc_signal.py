@@ -180,10 +180,17 @@ class XSenseWebRTCSignalSession:
         """Return the X-Sense SDP answer for a Home Assistant WebRTC offer."""
         LOGGER.debug("X-Sense WebRTC signal relay starting: %s", self._debug_context())
         await self._connect_signal()
-        LOGGER.debug(
-            "X-Sense WebRTC waiting for PEER_IN before relay offer: %s",
-            self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),
-        )
+        if self._camera_online:
+            LOGGER.debug(
+                "X-Sense WebRTC sending relay offer for online camera: %s",
+                self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),
+            )
+            await self._send_offer()
+        else:
+            LOGGER.debug(
+                "X-Sense WebRTC waiting for PEER_IN before relay offer: %s",
+                self._debug_context(answer_timeout_s=_ANSWER_TIMEOUT),
+            )
         try:
             return await asyncio.wait_for(self._answer, timeout=_ANSWER_TIMEOUT)
         except Exception as err:
@@ -484,8 +491,12 @@ class XSenseWebRTCSignalSession:
                 offer_envelope=_signal_envelope_debug(offer),
             ),
         )
-        await self._ws.send_str(offer)
         self._offer_sent = True
+        try:
+            await self._ws.send_str(offer)
+        except Exception:
+            self._offer_sent = False
+            raise
 
         candidates = _local_sdp_candidates(self._offer_sdp)
         self._local_candidate_count = len(candidates)
