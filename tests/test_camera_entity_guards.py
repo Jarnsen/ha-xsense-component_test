@@ -5856,7 +5856,7 @@ def test_webrtc_client_config_uses_signal_relay_defaults():
 
 
 def test_known_good_live_webrtc_path_does_not_reintroduce_drift():
-    """Lock the live camera path to the protected WebRTC success checkpoints."""
+    """Lock the relay architecture confirmed in v1.3.12.10 on June 25."""
     import inspect
     from pathlib import Path
 
