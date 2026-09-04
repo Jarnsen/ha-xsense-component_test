@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import sys
@@ -182,6 +183,95 @@ async def test_webrtc_signal_session_constructs_without_local_media_stack():
     )
 
     assert session is not None
+
+
+async def test_webrtc_signal_online_camera_sends_offer_without_peer_in(monkeypatch):
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    offer_calls = 0
+
+    async def connect_signal():
+        session._ws = FakeWebSocket()
+
+    async def send_offer():
+        nonlocal offer_calls
+        offer_calls += 1
+        session._offer_sent = True
+        session._answer.set_result("v=0\r\nanswer")
+
+    monkeypatch.setattr(session, "_connect_signal", connect_signal)
+    monkeypatch.setattr(session, "_send_offer", send_offer)
+
+    answer = await session.start()
+
+    assert offer_calls == 1
+    assert answer == "v=0\r\nanswer"
+
+
+async def test_webrtc_signal_offline_camera_waits_for_peer_in(monkeypatch):
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=False,
+    )
+    offer_calls = 0
+
+    async def connect_signal():
+        session._ws = FakeWebSocket()
+
+    async def send_offer():
+        nonlocal offer_calls
+        offer_calls += 1
+
+    async def return_answer(_future, *, timeout):
+        assert timeout == webrtc_signal._ANSWER_TIMEOUT
+        return "v=0\r\nanswer"
+
+    monkeypatch.setattr(session, "_connect_signal", connect_signal)
+    monkeypatch.setattr(session, "_send_offer", send_offer)
+    monkeypatch.setattr(webrtc_signal.asyncio, "wait_for", return_answer)
+
+    answer = await session.start()
+
+    assert offer_calls == 0
+    assert answer == "v=0\r\nanswer"
+
+
+async def test_webrtc_signal_online_offer_is_guarded_before_websocket_send():
+    send_started = asyncio.Event()
+    release_send = asyncio.Event()
+
+    class BlockingWebSocket(FakeWebSocket):
+        async def send_str(self, message):
+            self.messages.append(json.loads(message))
+            send_started.set()
+            await release_send.wait()
+
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    websocket = BlockingWebSocket()
+    session._ws = websocket
+
+    first_offer = asyncio.create_task(session._send_offer())
+    await send_started.wait()
+    await session._send_offer()
+    release_send.set()
+    await first_offer
+
+    assert session._offer_attempt_count == 1
+    assert [message["messageType"] for message in websocket.messages] == ["SDP_OFFER"]
 
 
 async def test_webrtc_signal_flushes_trickled_ha_candidates_after_answer():
