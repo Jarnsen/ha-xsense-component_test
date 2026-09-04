@@ -172,6 +172,8 @@ def test_webrtc_signal_relay_path_is_locked_to_v1_3_12_10_success_shape():
     assert "start_forwarding_remote_candidates" in source
     assert "_forward_remote_candidate" in source
     assert "class XSenseWebRTCSession" not in source
+    assert "_ONLINE_PEER_GRACE" not in source
+    assert "_send_online_offer_after_peer_grace" not in source
 
 
 async def test_webrtc_signal_session_constructs_without_local_media_stack():
@@ -186,7 +188,7 @@ async def test_webrtc_signal_session_constructs_without_local_media_stack():
     assert session is not None
 
 
-async def test_webrtc_signal_online_camera_prefers_peer_in_before_offer(monkeypatch):
+async def test_webrtc_signal_online_camera_waits_for_peer_in_before_offer(monkeypatch):
     session = webrtc_signal.XSenseWebRTCSignalSession(
         session=object(),
         ticket=ticket(),
@@ -194,8 +196,6 @@ async def test_webrtc_signal_online_camera_prefers_peer_in_before_offer(monkeypa
         resolution="1920x1080",
         camera_online=True,
     )
-    offer_calls = 0
-
     async def connect_signal():
         session._ws = FakeWebSocket()
 
@@ -203,16 +203,9 @@ async def test_webrtc_signal_online_camera_prefers_peer_in_before_offer(monkeypa
     start_task = asyncio.create_task(session.start())
     await asyncio.sleep(0)
 
-    assert offer_calls == 0
+    assert session._ws.messages == []
+    assert not session._offer_sent
 
-    original_send_offer = session._send_offer
-
-    async def send_offer():
-        nonlocal offer_calls
-        offer_calls += 1
-        await original_send_offer()
-
-    monkeypatch.setattr(session, "_send_offer", send_offer)
     await session._handle_signal_event(
         "PEER_IN", {"id": "SSC0ATEST", "role": "master"}
     )
@@ -220,66 +213,13 @@ async def test_webrtc_signal_online_camera_prefers_peer_in_before_offer(monkeypa
 
     answer = await start_task
 
-    assert offer_calls == 1
-    assert answer == "v=0\r\nanswer"
-
-
-async def test_webrtc_signal_online_camera_falls_back_without_peer_in(monkeypatch):
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-
-    async def connect_signal():
-        session._ws = FakeWebSocket()
-
-    monkeypatch.setattr(session, "_connect_signal", connect_signal)
-    monkeypatch.setattr(webrtc_signal, "_ONLINE_PEER_GRACE", 0)
-    start_task = asyncio.create_task(session.start())
-    for _ in range(10):
-        if session._offer_sent:
-            break
-        await asyncio.sleep(0)
-
-    assert session._offer_sent
-    assert session._offer_sent_before_peer_ready
     assert [message["messageType"] for message in session._ws.messages] == [
         "SDP_OFFER"
     ]
-
-    session._answer.set_result("v=0\r\nanswer")
-    assert await start_task == "v=0\r\nanswer"
+    assert answer == "v=0\r\nanswer"
 
 
-async def test_webrtc_signal_resends_fallback_when_peer_becomes_ready(monkeypatch):
-    session = webrtc_signal.XSenseWebRTCSignalSession(
-        session=object(),
-        ticket=ticket(),
-        offer_sdp="v=0\r\n",
-        resolution="1920x1080",
-        camera_online=True,
-    )
-    session._ws = FakeWebSocket()
-
-    await session._send_offer()
-    await session._handle_signal_event(
-        "PEER_IN", {"id": "SSC0ATEST", "role": "master"}
-    )
-
-    assert session._offer_attempt_count == 2
-    assert not session._offer_sent_before_peer_ready
-    assert [message["messageType"] for message in session._ws.messages] == [
-        "SDP_OFFER",
-        "SDP_OFFER",
-    ]
-
-
-async def test_webrtc_signal_reconnect_clears_stale_peer_and_keeps_fallback(
-    monkeypatch,
-):
+async def test_webrtc_signal_reconnect_waits_for_fresh_peer_in(monkeypatch):
     session = webrtc_signal.XSenseWebRTCSignalSession(
         session=object(),
         ticket=ticket(),
@@ -288,12 +228,9 @@ async def test_webrtc_signal_reconnect_clears_stale_peer_and_keeps_fallback(
         camera_online=True,
     )
     session._camera_peer_ready = True
-    session._camera_peer_event.set()
-    connect_calls = 0
+    session._offer_sent = True
 
     async def connect_signal():
-        nonlocal connect_calls
-        connect_calls += 1
         session._ws = FakeWebSocket()
 
     async def no_delay(_delay):
@@ -301,15 +238,20 @@ async def test_webrtc_signal_reconnect_clears_stale_peer_and_keeps_fallback(
 
     monkeypatch.setattr(session, "_connect_signal", connect_signal)
     monkeypatch.setattr(webrtc_signal.asyncio, "sleep", no_delay)
-    monkeypatch.setattr(webrtc_signal, "_ONLINE_PEER_GRACE", 0)
 
     await session._reconnect_signal()
 
-    assert connect_calls == 1
     assert not session._camera_peer_ready
-    assert not session._camera_peer_event.is_set()
-    assert session._offer_sent
-    assert session._offer_sent_before_peer_ready
+    assert not session._offer_sent
+    assert session._ws.messages == []
+
+    await session._handle_signal_event(
+        "PEER_IN", {"id": "SSC0ATEST", "role": "master"}
+    )
+
+    assert [message["messageType"] for message in session._ws.messages] == [
+        "SDP_OFFER"
+    ]
 
 
 async def test_webrtc_signal_offline_camera_waits_for_peer_in(monkeypatch):
