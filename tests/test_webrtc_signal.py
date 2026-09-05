@@ -6,6 +6,8 @@ import time
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from custom_components.xsense.python_xsense import webrtc_signal
 
 
@@ -285,7 +287,7 @@ async def test_webrtc_signal_offline_camera_waits_for_peer_in(monkeypatch):
     assert answer == "v=0\r\nanswer"
 
 
-async def test_webrtc_signal_online_offer_is_guarded_before_websocket_send():
+async def test_webrtc_signal_marks_offer_sent_after_websocket_send():
     send_started = asyncio.Event()
     release_send = asyncio.Event()
 
@@ -307,12 +309,35 @@ async def test_webrtc_signal_online_offer_is_guarded_before_websocket_send():
 
     first_offer = asyncio.create_task(session._send_offer())
     await send_started.wait()
-    await session._send_offer()
+
+    assert session._offer_sent is False
+
     release_send.set()
     await first_offer
 
     assert session._offer_attempt_count == 1
+    assert session._offer_sent is True
     assert [message["messageType"] for message in websocket.messages] == ["SDP_OFFER"]
+
+
+async def test_webrtc_signal_failed_offer_send_remains_retryable():
+    class FailingWebSocket(FakeWebSocket):
+        async def send_str(self, message):
+            raise RuntimeError("send failed")
+
+    session = webrtc_signal.XSenseWebRTCSignalSession(
+        session=object(),
+        ticket=ticket(),
+        offer_sdp="v=0\r\n",
+        resolution="1920x1080",
+        camera_online=True,
+    )
+    session._ws = FailingWebSocket()
+
+    with pytest.raises(RuntimeError, match="send failed"):
+        await session._send_offer()
+
+    assert session._offer_sent is False
 
 
 async def test_online_camera_preserves_confirmed_offer_answer_ice_order(monkeypatch):

@@ -20,6 +20,6 @@
     "pycognito==2024.5.1"
   ],
   "ssdp": [],
-  "version": "1.4.20.16",
+  "version": "1.4.20.17",
   "zeroconf": []
 }
