@@ -6175,7 +6175,7 @@ async def test_camera_image_prefers_derived_event_frame_over_cloud_thumbnail():
     assert await camera.async_camera_image() == b"high-resolution-event-frame"
 
 
-def test_camera_event_snapshot_extraction_uses_video_only_ffmpeg(monkeypatch):
+def test_camera_event_snapshot_extraction_uses_best_video_only_ffmpeg(monkeypatch):
     from custom_components.xsense import recordings_media as media_source
 
     jpeg = b"\xff\xd8\xff\xc0\x00\x07\x08\x04\x38\x07\x80"
@@ -6201,10 +6201,57 @@ def test_camera_event_snapshot_extraction_uses_video_only_ffmpeg(monkeypatch):
     }
     command, kwargs = calls[0]
     assert command[command.index("-i") + 1] == "https://example.invalid/event-hd.m3u8"
-    assert command[command.index("-map") + 1] == "0:v:0"
     assert "-an" in command
-    assert command[command.index("-ss") + 1] == "1"
+    assert "-map" not in command
+    assert "-ss" not in command
     assert kwargs == {"capture_output": True, "check": False, "timeout": 10}
+
+
+async def test_camera_image_waits_for_current_event_frame_before_thumbnail():
+    from custom_components.xsense.camera import (
+        CAMERA_DESCRIPTION,
+        XSenseCameraEntity,
+    )
+
+    camera_entity = entity(
+        "SSC0A",
+        {
+            "eventTime": "20260905190000",
+            "playback": {"video_url": "https://example.invalid/event.m3u8"},
+        },
+    )
+    camera_entity.entity_id = "camera-test"
+    camera_entity.sn = "SSC0ATEST"
+    camera_entity.name = "Camera"
+    order = []
+
+    async def prepare_snapshot(current):
+        assert current is camera_entity
+        order.append("extract")
+        await asyncio.sleep(0)
+        return b"full-resolution-frame"
+
+    async def unexpected_thumbnail(current):
+        order.append("thumbnail")
+        return b"low-resolution-thumbnail"
+
+    class Coordinator:
+        def __init__(self):
+            self.data = {
+                "stations": {camera_entity.entity_id: camera_entity},
+                "devices": {},
+            }
+            self.xsense = SimpleNamespace(get_camera_thumbnail=unexpected_thumbnail)
+
+        async_camera_event_snapshot = staticmethod(prepare_snapshot)
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    camera = XSenseCameraEntity(Coordinator(), camera_entity, CAMERA_DESCRIPTION)
+
+    assert await camera.async_camera_image() == b"full-resolution-frame"
+    assert order == ["extract"]
 
 
 def test_camera_event_snapshot_prefers_hd_recording_candidate(monkeypatch):

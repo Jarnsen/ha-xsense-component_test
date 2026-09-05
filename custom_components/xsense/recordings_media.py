@@ -2513,6 +2513,7 @@ def _extract_camera_event_snapshot(video_url: str) -> dict[str, Any]:
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         return {"reason": "ffmpeg_unavailable"}
+    # Let ffmpeg select the highest-resolution video variant from HLS masters.
     command = [
         ffmpeg,
         "-hide_banner",
@@ -2520,11 +2521,7 @@ def _extract_camera_event_snapshot(video_url: str) -> dict[str, Any]:
         "error",
         "-i",
         video_url,
-        "-map",
-        "0:v:0",
         "-an",
-        "-ss",
-        "1",
         "-frames:v",
         "1",
         "-c:v",

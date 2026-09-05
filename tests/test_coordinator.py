@@ -1257,6 +1257,82 @@ def test_camera_event_snapshot_is_scoped_to_camera_and_current_event():
     assert coordinator._camera_event_snapshots == {}
 
 
+async def test_camera_event_snapshot_extraction_is_shared_per_camera_event(monkeypatch):
+    from custom_components.xsense import recordings_media
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    release = asyncio.Event()
+    calls = []
+
+    async def extract(_hass, playback):
+        calls.append(playback["video_url"])
+        await release.wait()
+        return b"full-resolution-frame"
+
+    monkeypatch.setattr(recordings_media, "async_extract_camera_event_snapshot", extract)
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = SimpleNamespace(create_task=asyncio.create_task)
+    coordinator.entry = None
+    coordinator._camera_event_snapshots = {}
+    coordinator._camera_event_snapshot_tasks = {}
+    camera = SimpleNamespace(
+        entity_id="camera-one",
+        sn="CAMERA-ONE",
+        data={
+            "eventTime": "20260905190000",
+            "playback": {"video_url": "https://example.invalid/event.m3u8"},
+        },
+    )
+
+    first = asyncio.create_task(coordinator.async_camera_event_snapshot(camera))
+    second = asyncio.create_task(coordinator.async_camera_event_snapshot(camera))
+    await asyncio.sleep(0)
+    release.set()
+
+    assert await first == b"full-resolution-frame"
+    assert await second == b"full-resolution-frame"
+    assert calls == ["https://example.invalid/event.m3u8"]
+
+
+async def test_camera_event_snapshot_does_not_store_frame_for_superseded_event(
+    monkeypatch,
+):
+    from custom_components.xsense import recordings_media
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    release = asyncio.Event()
+
+    async def extract(_hass, _playback):
+        await release.wait()
+        return b"old-event-frame"
+
+    monkeypatch.setattr(recordings_media, "async_extract_camera_event_snapshot", extract)
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.hass = SimpleNamespace(create_task=asyncio.create_task)
+    coordinator.entry = None
+    coordinator._camera_event_snapshots = {}
+    coordinator._camera_event_snapshot_tasks = {}
+    camera = SimpleNamespace(
+        entity_id="camera-one",
+        sn="CAMERA-ONE",
+        data={
+            "eventTime": "20260905190000",
+            "playback": {"video_url": "https://example.invalid/old.m3u8"},
+        },
+    )
+
+    pending = asyncio.create_task(coordinator.async_camera_event_snapshot(camera))
+    await asyncio.sleep(0)
+    camera.data = {
+        "eventTime": "20260905190100",
+        "playback": {"video_url": "https://example.invalid/new.m3u8"},
+    }
+    release.set()
+
+    assert await pending is None
+    assert coordinator.camera_event_snapshot(camera) is None
+
+
 def test_mqtt_camera_motion_event_preserves_apk_event_time():
     from custom_components.xsense.coordinator import _mqtt_reported_data
 

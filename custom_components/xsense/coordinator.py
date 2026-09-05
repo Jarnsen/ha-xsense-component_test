@@ -77,6 +77,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._camera_event_history_seen: set[str] = set()
         self._camera_event_history_initialized = False
         self._camera_event_snapshots: dict[str, tuple[str, bytes]] = {}
+        self._camera_event_snapshot_tasks: dict[
+            str, tuple[str, asyncio.Task[bytes | None]]
+        ] = {}
         self._camera_ai_service_houses: dict[str, set[str]] = {}
         self._camera_ai_history_unsub = None
         self._camera_ai_history_lock = asyncio.Lock()
@@ -123,6 +126,54 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return None
         return image
 
+    async def async_camera_event_snapshot(self, camera: Any) -> bytes | None:
+        """Return the current event frame, extracting it once when necessary."""
+        if image := self.camera_event_snapshot(camera):
+            return image
+
+        serial = camera_addx_serial(camera)
+        data = getattr(camera, "data", {})
+        event_time = str(data.get("eventTime") or "") if isinstance(data, dict) else ""
+        playback = data.get("playback") if isinstance(data, dict) else None
+        if not serial or not event_time or not isinstance(playback, dict):
+            return None
+
+        tasks = self._camera_event_snapshot_tasks
+        pending = tasks.get(serial)
+        if pending is not None and pending[0] != event_time:
+            if not pending[1].done():
+                pending[1].cancel()
+            tasks.pop(serial, None)
+            pending = None
+
+        if pending is None:
+            from .recordings_media import async_extract_camera_event_snapshot
+
+            task = self._async_create_entry_task(
+                async_extract_camera_event_snapshot(self.hass, playback),
+                f"X-Sense camera event snapshot {serial}",
+            )
+            pending = (event_time, task)
+            tasks[serial] = pending
+
+        try:
+            image = await asyncio.shield(pending[1])
+        except asyncio.CancelledError:
+            if pending[1].cancelled():
+                return None
+            raise
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.debug(
+                "X-Sense camera event snapshot task failed: %s",
+                {"error_type": type(exc).__name__},
+            )
+            return None
+
+        current_time = str(getattr(camera, "data", {}).get("eventTime") or "")
+        if image and current_time == event_time:
+            self.store_camera_event_snapshot(camera, event_time, image)
+        return self.camera_event_snapshot(camera)
+
     def _async_create_entry_task(self, coro, name: str):
         """Create a task owned by this config entry when supported."""
         create_task = getattr(getattr(self, "entry", None), "async_create_task", None)
@@ -146,6 +197,14 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._camera_ai_history_unsub is not None:
             self._camera_ai_history_unsub()
             self._camera_ai_history_unsub = None
+
+        snapshot_tasks = [task for _, task in self._camera_event_snapshot_tasks.values()]
+        self._camera_event_snapshot_tasks.clear()
+        for task in snapshot_tasks:
+            if not task.done():
+                task.cancel()
+        if snapshot_tasks:
+            await asyncio.gather(*snapshot_tasks, return_exceptions=True)
 
         mqtt_servers = list(self.mqtt_servers.values())
         self.mqtt_servers.clear()
