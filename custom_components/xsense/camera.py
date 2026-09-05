@@ -202,7 +202,14 @@ class XSenseCameraEntity(XSenseEntity, Camera):
         if entity is None:
             return None
 
-        image = self.coordinator.camera_event_snapshot(entity)
+        prepare_snapshot = getattr(
+            self.coordinator, "async_camera_event_snapshot", None
+        )
+        image = (
+            await prepare_snapshot(entity)
+            if callable(prepare_snapshot)
+            else self.coordinator.camera_event_snapshot(entity)
+        )
         if image is None:
             image = await self.coordinator.xsense.get_camera_thumbnail(entity)
         if image:

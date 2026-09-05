@@ -561,10 +561,7 @@ def _trigger_event_after_recording_cache(
     event_data["recording_cache_ready"] = False
 
     async def _async_cache_then_trigger() -> None:
-        from .recordings_media import (
-            async_cache_recording_playback,
-            async_extract_camera_event_snapshot,
-        )
+        from .recordings_media import async_cache_recording_playback
 
         cache_started_at = monotonic()
         LOGGER.debug(
@@ -618,7 +615,13 @@ def _trigger_event_after_recording_cache(
             return
         proxied = cached_url.startswith(f"/api/{DOMAIN}/recordings/play/")
         try:
-            snapshot = await async_extract_camera_event_snapshot(hass, playback)
+            prepare_snapshot = getattr(coordinator, "async_camera_event_snapshot", None)
+            if callable(prepare_snapshot):
+                snapshot = await prepare_snapshot(entity)
+            else:
+                from .recordings_media import async_extract_camera_event_snapshot
+
+                snapshot = await async_extract_camera_event_snapshot(hass, playback)
         except Exception as exc:  # noqa: BLE001
             LOGGER.debug(
                 "X-Sense camera event snapshot preparation failed: %s",
