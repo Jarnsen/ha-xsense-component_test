@@ -484,12 +484,8 @@ class XSenseWebRTCSignalSession:
                 offer_envelope=_signal_envelope_debug(offer),
             ),
         )
+        await self._ws.send_str(offer)
         self._offer_sent = True
-        try:
-            await self._ws.send_str(offer)
-        except Exception:
-            self._offer_sent = False
-            raise
 
         candidates = _local_sdp_candidates(self._offer_sdp)
         self._local_candidate_count = len(candidates)
