@@ -17,6 +17,7 @@ from .exceptions import APIFailure, SessionExpired, XSenseError
 from .house import House
 from .mapping import bool_state
 from .station import Station
+from .webrtc_trace import trace_host, trace_id
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1293,6 +1294,17 @@ class AsyncXSense(XSenseBase):
         data = self._addx_body(addx_session, kwargs)
 
         session = await self._get_session()
+        if endpoint == "/device/getWebrtcTicket":
+            LOGGER.debug(
+                "X-Sense WebRTC ticket HTTP route trace: %s",
+                {
+                    "request_serial": trace_id(data.get("serialNumber")),
+                    "house": trace_id(getattr(_house, "house_id", None)),
+                    "node": node,
+                    "api_host": trace_host(base_url),
+                    "auth_retry": not _retry,
+                },
+            )
         async with session.post(
             f"{base_url}{endpoint}",
             json=data,
@@ -1945,12 +1957,38 @@ class AsyncXSense(XSenseBase):
             serials = [ticket_serial, *(value for value in serials if value != ticket_serial)]
         for serial in serials:
             try:
+                house = self._camera_addx_house(camera)
+                LOGGER.debug(
+                    "X-Sense WebRTC ticket request trace: %s",
+                    {
+                        "camera": trace_id(camera.sn),
+                        "request_serial": trace_id(serial),
+                        "house": trace_id(getattr(house, "house_id", None)),
+                        "node": _ipc_node_type(house.mqtt_region) if house else None,
+                        "attempt": serials.index(serial) + 1,
+                        "force_refresh": force_refresh,
+                    },
+                )
                 data = await self._camera_addx_call(
                     camera,
                     "/device/getWebrtcTicket",
                     serialNumber=serial,
                     verifyDormancyStatus=True,
                 )
+                if isinstance(data, dict):
+                    LOGGER.debug(
+                        "X-Sense WebRTC ticket response trace: %s",
+                        {
+                            "request_serial": trace_id(serial),
+                            "id": trace_id(data.get("id")),
+                            "groupId": trace_id(data.get("groupId")),
+                            "realCxSerialNumber": trace_id(data.get("realCxSerialNumber")),
+                            "response_serial": trace_id(data.get("serialNumber")),
+                            "role": data.get("role") if data.get("role") in ("viewer", "device", "camera") else "other",
+                            "signal_host": trace_host(data.get("signalServer")),
+                            "expirationTime": data.get("expirationTime") if isinstance(data.get("expirationTime"), (int, float)) else None,
+                        },
+                    )
                 camera.set_data(
                     {
                         "addxAccessSerialNumber": serial,

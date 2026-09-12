@@ -17,6 +17,8 @@ from urllib.parse import urlparse, urlunparse
 
 import aiohttp
 
+from .webrtc_trace import frame_context
+
 LOGGER = logging.getLogger(__name__)
 
 SIGNAL_MODE = "vicoo"
@@ -137,6 +139,7 @@ class XSenseWebRTCSignalSession:
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._answer: asyncio.Future[str] = asyncio.get_running_loop().create_future()
         self._closed = False
+        self._received_frame_count = 0
         self._created_at = time.monotonic()
         self._offer_sent = False
         self._camera_peer_ready = False
@@ -162,6 +165,7 @@ class XSenseWebRTCSignalSession:
                 "recipient": _short_id(self._recipient_client_id),
                 "resolution": self._resolution,
                 "camera_online": self._camera_online,
+                "received_frame_count": self._received_frame_count,
                 "camera_peer_ready": self._camera_peer_ready,
                 "offer_sent": self._offer_sent,
                 "sdp_answer_received": _future_has_result(self._answer),
@@ -289,6 +293,16 @@ class XSenseWebRTCSignalSession:
         try:
             assert ws is not None
             async for message in ws:
+                self._received_frame_count += 1
+                if self._received_frame_count <= 12 and LOGGER.isEnabledFor(logging.DEBUG):
+                    details = (
+                        frame_context(message.data)
+                        if isinstance(message.data, (str, bytes)) else {}
+                    )
+                    LOGGER.debug(
+                        "X-Sense WebRTC initial frame trace: %s",
+                        self._debug_context(frame_type=message.type.name, frame=details),
+                    )
                 if message.type not in (
                     aiohttp.WSMsgType.TEXT,
                     aiohttp.WSMsgType.BINARY,
