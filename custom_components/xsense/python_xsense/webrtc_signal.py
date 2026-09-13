@@ -162,10 +162,10 @@ class XSenseWebRTCSignalSession:
             {
                 "session": _short_id(self._session_id),
                 "session_age_s": round(time.monotonic() - self._created_at, 3),
+                "received_frame_count": self._received_frame_count,
                 "recipient": _short_id(self._recipient_client_id),
                 "resolution": self._resolution,
                 "camera_online": self._camera_online,
-                "received_frame_count": self._received_frame_count,
                 "camera_peer_ready": self._camera_peer_ready,
                 "offer_sent": self._offer_sent,
                 "sdp_answer_received": _future_has_result(self._answer),
@@ -202,26 +202,17 @@ class XSenseWebRTCSignalSession:
     async def close(self) -> None:
         """Close the X-Sense signal connection."""
         self._closed = True
-        if not self._answer.done():
-            self._answer.cancel()
         ws = self._ws
         self._ws = None
-        current = asyncio.current_task()
-        tasks = [
-            task for task in (self._read_task, self._reconnect_task)
-            if task is not None and task is not current
-        ]
-        self._read_task = None
-        self._reconnect_task = None
-        try:
-            if ws is not None and not ws.closed:
-                with suppress(Exception):
-                    await ws.close()
-        finally:
-            for task in tasks:
-                task.cancel()
-            if tasks:
-                await asyncio.gather(*tasks, return_exceptions=True)
+        if ws is not None and not ws.closed:
+            with suppress(Exception):
+                await ws.close()
+        if self._read_task is not None:
+            self._read_task.cancel()
+            self._read_task = None
+        if self._reconnect_task is not None:
+            self._reconnect_task.cancel()
+            self._reconnect_task = None
 
     def start_forwarding_remote_candidates(self) -> None:
         """Forward queued X-Sense ICE candidates to Home Assistant."""
@@ -271,15 +262,9 @@ class XSenseWebRTCSignalSession:
         await self._send_candidate(payload)
 
     async def _connect_signal(self) -> None:
-        if self._closed:
-            raise asyncio.CancelledError
         options = self._ticket.signal_connect_options()
         url = options.pop("url", self._ticket.signal_url())
-        ws = await self._session.ws_connect(url, **options)
-        if self._closed:
-            await ws.close()
-            raise asyncio.CancelledError
-        self._ws = ws
+        self._ws = await self._session.ws_connect(url, **options)
         LOGGER.debug(
             "X-Sense WebRTC signal relay connected: %s",
             self._debug_context(connect_host=_safe_host(url)),
@@ -291,6 +276,7 @@ class XSenseWebRTCSignalSession:
         reader_exit = "socket_iteration_ended"
         ws = self._ws
         try:
+            ws = self._ws
             assert ws is not None
             async for message in ws:
                 self._received_frame_count += 1
@@ -538,14 +524,7 @@ class XSenseWebRTCSignalSession:
             await self._send_candidate(candidate)
 
     async def _flush_pending_remote_candidates(self) -> None:
-        """Send trickled HA candidates after the answer, as in 65984b9."""
-        if (
-            self._ws is None
-            or self._ws.closed
-            or not self._offer_sent
-            or not _future_has_result(self._answer)
-        ):
-            return
+        """Send any HA candidates that arrived before the X-Sense answer."""
         pending = len(self._pending_remote_candidates)
         if pending:
             LOGGER.debug(
@@ -555,12 +534,7 @@ class XSenseWebRTCSignalSession:
                     **_candidate_debug_summary(self._pending_remote_candidates),
                 ),
             )
-        while (
-            self._pending_remote_candidates
-            and not self._closed
-            and self._ws is not None
-            and not self._ws.closed
-        ):
+        while self._pending_remote_candidates and not self._closed:
             await self._send_candidate(self._pending_remote_candidates.pop(0))
 
     async def _send_candidate(self, candidate: dict[str, Any]) -> None:
