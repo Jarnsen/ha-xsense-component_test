@@ -202,17 +202,26 @@ class XSenseWebRTCSignalSession:
     async def close(self) -> None:
         """Close the X-Sense signal connection."""
         self._closed = True
+        if not self._answer.done():
+            self._answer.cancel()
         ws = self._ws
         self._ws = None
-        if ws is not None and not ws.closed:
-            with suppress(Exception):
-                await ws.close()
-        if self._read_task is not None:
-            self._read_task.cancel()
-            self._read_task = None
-        if self._reconnect_task is not None:
-            self._reconnect_task.cancel()
-            self._reconnect_task = None
+        current = asyncio.current_task()
+        tasks = [
+            task for task in (self._read_task, self._reconnect_task)
+            if task is not None and task is not current
+        ]
+        self._read_task = None
+        self._reconnect_task = None
+        try:
+            if ws is not None and not ws.closed:
+                with suppress(Exception):
+                    await ws.close()
+        finally:
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
 
     def start_forwarding_remote_candidates(self) -> None:
         """Forward queued X-Sense ICE candidates to Home Assistant."""
@@ -262,9 +271,15 @@ class XSenseWebRTCSignalSession:
         await self._send_candidate(payload)
 
     async def _connect_signal(self) -> None:
+        if self._closed:
+            raise asyncio.CancelledError
         options = self._ticket.signal_connect_options()
         url = options.pop("url", self._ticket.signal_url())
-        self._ws = await self._session.ws_connect(url, **options)
+        ws = await self._session.ws_connect(url, **options)
+        if self._closed:
+            await ws.close()
+            raise asyncio.CancelledError
+        self._ws = ws
         LOGGER.debug(
             "X-Sense WebRTC signal relay connected: %s",
             self._debug_context(connect_host=_safe_host(url)),

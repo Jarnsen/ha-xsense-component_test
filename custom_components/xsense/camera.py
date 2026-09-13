@@ -308,27 +308,39 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
                 entity, session_id, offer_sdp=_sdp_debug_context(offer_sdp)
             ),
         )
-        self._pending_webrtc_candidates[session_id] = []
-        await self._close_existing_webrtc_sessions(
-            preserve_pending_session_id=session_id
-        )
-
+        pending_candidates: list[object] = []
+        self._pending_webrtc_candidates[session_id] = pending_candidates
         try:
+            await self._close_existing_webrtc_sessions(
+                preserve_pending_session_id=session_id
+            )
+            if self._pending_webrtc_candidates.get(session_id) is not pending_candidates:
+                return
             ticket_data = await self.coordinator.xsense.get_camera_webrtc_ticket(
                 entity, force_refresh=True
             )
+        except asyncio.CancelledError:
+            if self._pending_webrtc_candidates.get(session_id) is pending_candidates:
+                self._pending_webrtc_candidates.pop(session_id, None)
+            raise
         except (APIFailure, SessionExpired, ClientError, OSError) as err:
+            if self._pending_webrtc_candidates.get(session_id) is not pending_candidates:
+                return
             self._pending_webrtc_candidates.pop(session_id, None)
             LOGGER.warning(
                 "X-Sense camera WebRTC ticket request failed: %s",
                 _camera_debug_context(
-                    entity, session_id, error=_error_debug_context(err),
-                    error_type=type(err).__name__,
+                    entity, session_id, error=_error_debug_context(err), error_type=type(err).__name__
                 ),
             )
-            send_message(WebRTCError(
-                "xsense_webrtc_ticket_failed", "Unable to get X-Sense WebRTC ticket"
-            ))
+            send_message(
+                WebRTCError(
+                    "xsense_webrtc_ticket_failed",
+                    "Unable to get X-Sense WebRTC ticket",
+                )
+            )
+            return
+        if self._pending_webrtc_candidates.get(session_id) is not pending_candidates:
             return
         LOGGER.debug(
             "X-Sense camera WebRTC ticket response: %s",
@@ -344,11 +356,20 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             self._pending_webrtc_candidates.pop(session_id, None)
             return
 
-        webrtc_signal = await self.hass.async_add_import_executor_job(
-            import_module, __package__ + ".python_xsense.webrtc_signal"
-        )
         try:
-            ticket = webrtc_signal.XSenseWebRTCTicket.from_api(_camera_webrtc_ticket_serial(entity, ticket_data), ticket_data)
+            webrtc_signal = await self.hass.async_add_import_executor_job(
+                import_module, __package__ + ".python_xsense.webrtc_signal"
+            )
+        except BaseException:
+            if self._pending_webrtc_candidates.get(session_id) is pending_candidates:
+                self._pending_webrtc_candidates.pop(session_id, None)
+            raise
+        if self._pending_webrtc_candidates.get(session_id) is not pending_candidates:
+            return
+        try:
+            ticket = webrtc_signal.XSenseWebRTCTicket.from_api(
+                _camera_webrtc_ticket_serial(entity, ticket_data), ticket_data
+            )
         except (KeyError, TypeError, ValueError) as err:
             LOGGER.debug(
                 "X-Sense camera WebRTC ticket parse failed: %s",
@@ -387,33 +408,50 @@ class XSenseWebRTCCameraEntity(XSenseCameraEntity):
             ),
         )
         self._webrtc_sessions[session_id] = session
-        await self._flush_pending_webrtc_candidates(entity, session_id, session)
         try:
+            await self._flush_pending_webrtc_candidates(entity, session_id, session)
             answer = await session.start()
         except asyncio.CancelledError:
             task = asyncio.current_task()
             task_cancel_requested = bool(task and task.cancelling())
+            if self._webrtc_sessions.get(session_id) is session:
+                self._webrtc_sessions.pop(session_id, None)
             LOGGER.debug(
                 "X-Sense camera WebRTC startup cancelled: %s",
                 _camera_debug_context(
                     entity, session_id,
                     close_reason=("offer_task_cancelled" if task_cancel_requested else "answer_wait_cancelled"),
-                    task_cancel_requested=task_cancel_requested,
+                    task_cancel_requested=task_cancel_requested
                 ),
             )
+            await session.close()
             raise
         except Exception as err:  # noqa: BLE001 - HA frontend needs a clean error
-            self._webrtc_sessions.pop(session_id, None)
-            self._pending_webrtc_candidates.pop(session_id, None)
+            current = self._webrtc_sessions.get(session_id) is session
+            if current:
+                self._webrtc_sessions.pop(session_id, None)
             await session.close()
+            if not current:
+                return
             LOGGER.debug(
                 "X-Sense camera WebRTC signal relay failed: %s",
                 _camera_debug_context(
-                    entity, session_id, error=_error_debug_context(err),
+                    entity, session_id,
+                    error=_error_debug_context(err),
                     close_reason="startup_failed",
                 ),
             )
             send_message(WebRTCError("xsense_webrtc_start_failed", str(err)))
+            return
+
+        if self._webrtc_sessions.get(session_id) is not session:
+            LOGGER.debug(
+                "X-Sense camera WebRTC discarded superseded answer: %s",
+                _camera_debug_context(
+                    entity, session_id, close_reason="superseded_answer"
+                ),
+            )
+            await session.close()
             return
 
         LOGGER.debug(
