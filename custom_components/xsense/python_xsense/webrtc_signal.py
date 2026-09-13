@@ -162,10 +162,10 @@ class XSenseWebRTCSignalSession:
             {
                 "session": _short_id(self._session_id),
                 "session_age_s": round(time.monotonic() - self._created_at, 3),
+                "received_frame_count": self._received_frame_count,
                 "recipient": _short_id(self._recipient_client_id),
                 "resolution": self._resolution,
                 "camera_online": self._camera_online,
-                "received_frame_count": self._received_frame_count,
                 "camera_peer_ready": self._camera_peer_ready,
                 "offer_sent": self._offer_sent,
                 "sdp_answer_received": _future_has_result(self._answer),
@@ -291,6 +291,7 @@ class XSenseWebRTCSignalSession:
         reader_exit = "socket_iteration_ended"
         ws = self._ws
         try:
+            ws = self._ws
             assert ws is not None
             async for message in ws:
                 self._received_frame_count += 1
@@ -538,14 +539,7 @@ class XSenseWebRTCSignalSession:
             await self._send_candidate(candidate)
 
     async def _flush_pending_remote_candidates(self) -> None:
-        """Send trickled HA candidates after the answer, as in 65984b9."""
-        if (
-            self._ws is None
-            or self._ws.closed
-            or not self._offer_sent
-            or not _future_has_result(self._answer)
-        ):
-            return
+        """Send any HA candidates that arrived before the X-Sense answer."""
         pending = len(self._pending_remote_candidates)
         if pending:
             LOGGER.debug(
@@ -555,12 +549,7 @@ class XSenseWebRTCSignalSession:
                     **_candidate_debug_summary(self._pending_remote_candidates),
                 ),
             )
-        while (
-            self._pending_remote_candidates
-            and not self._closed
-            and self._ws is not None
-            and not self._ws.closed
-        ):
+        while self._pending_remote_candidates and not self._closed:
             await self._send_candidate(self._pending_remote_candidates.pop(0))
 
     async def _send_candidate(self, candidate: dict[str, Any]) -> None:
