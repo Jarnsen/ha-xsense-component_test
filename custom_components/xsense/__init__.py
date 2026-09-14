@@ -775,10 +775,10 @@ def _clear_visible_device_metadata(device_registry, device) -> None:
 def _device_by_identifier(device_registry, identifier, entry_id):
     """Return one registry device by its config-entry-scoped identifier."""
     get_device = getattr(device_registry, "async_get_device_by_identifier", None)
-    if get_device is not None:
-        return get_device(identifier, config_entry_id=entry_id)
+    if get_device is None:
+        return None
 
-    return device_registry.async_get_device(identifiers={identifier})
+    return get_device(identifier, config_entry_id=entry_id)
 
 
 def _remove_obsolete_device_metadata(
