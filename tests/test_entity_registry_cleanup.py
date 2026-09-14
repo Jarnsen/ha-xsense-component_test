@@ -601,21 +601,13 @@ def test_obsolete_device_metadata_cleanup_scans_config_entry_devices(monkeypatch
     ]
 
 
-def test_obsolete_device_metadata_cleanup_keeps_legacy_lookup_fallback(monkeypatch):
-    device = SimpleNamespace(
-        id="device-id",
-        serial_number=None,
-        connections=set(),
-    )
-    lookups = []
-
+def test_obsolete_device_metadata_cleanup_avoids_deprecated_legacy_lookup(monkeypatch):
     class FakeLegacyDeviceRegistry:
         def async_get_device(self, *, identifiers):
-            lookups.append(identifiers)
-            return device
+            raise AssertionError("Deprecated async_get_device must not be called")
 
         def async_update_device(self, device_id, **kwargs):
-            raise AssertionError("Clean device metadata must not be updated")
+            raise AssertionError("No device metadata should be updated")
 
     import custom_components.xsense as xsense
 
@@ -640,8 +632,6 @@ def test_obsolete_device_metadata_cleanup_keeps_legacy_lookup_fallback(monkeypat
         },
         SimpleNamespace(entry_id="entry-id"),
     )
-
-    assert lookups == [{("xsense", "station_1")}]
 
 
 def test_obsolete_sensor_entry_detection_is_scoped_to_xsense_sensors():
