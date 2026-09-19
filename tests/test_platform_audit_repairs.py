@@ -1,5 +1,6 @@
 """Behavioral regressions for the bounded September platform audit."""
 
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -284,9 +285,17 @@ def test_parent_and_child_rollover_keep_original_identifiers(monkeypatch):
     monkeypatch.delattr(
         entity_module.dr, "async_get_device_id_by_identifier", raising=False
     )
+    registry = SimpleNamespace(
+        async_get_device_by_identifier=lambda identifier, *, config_entry_id: SimpleNamespace(
+            id="old-parent-device-id"
+        )
+    )
+    monkeypatch.setattr(entity_module.dr, "async_get", lambda hass: registry)
     parent = station(model="SBS50")
     child = Device(parent, deviceId="old-child", deviceSn="CHILD", deviceType="STH51")
     coordinator = Coordinator({parent.entity_id: parent}, {child.entity_id: child})
+    coordinator.hass = object()
+    coordinator.entry = SimpleNamespace(entry_id="entry-id")
     original = sensor.XSenseSensorEntity(
         coordinator, child, description(sensor, "battery"), parent.entity_id
     )
@@ -304,7 +313,8 @@ def test_parent_and_child_rollover_keep_original_identifiers(monkeypatch):
     assert original._current_entity() is new_child
     assert replacement.unique_id == original.unique_id == "old-child-battery"
     assert replacement.device_info["identifiers"] == {("xsense", "old-child")}
-    assert replacement.device_info["via_device"] == ("xsense", "old-id")
+    assert replacement.device_info["via_device_id"] == "old-parent-device-id"
+    assert "via_device" not in replacement.device_info
 
 
 def test_missing_serial_keeps_api_identifier():
@@ -322,3 +332,17 @@ def test_missing_serial_keeps_api_identifier():
         ).unique_id
         == "new-id-battery"
     )
+
+
+def test_production_source_never_uses_deprecated_device_registry_apis():
+    forbidden = (
+        '"via_device"',
+        "'via_device'",
+        "ATTR_VIA_DEVICE",
+        "async_get_device(",
+        "CONCENTRATION_PARTS_PER_MILLION",
+    )
+    for source_path in Path("custom_components/xsense").rglob("*.py"):
+        source = source_path.read_text(encoding="utf-8")
+        for pattern in forbidden:
+            assert pattern not in source, f"{pattern} found in {source_path}"

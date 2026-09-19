@@ -93,37 +93,47 @@ def _parent_device_info(
     station: Entity | None,
     station_id: str,
 ) -> tuple[str, object] | None:
-    """Return the HA-version-specific parent-device field and value."""
-    identifier = (DOMAIN, station_id)
-    get_device_id = getattr(dr, "async_get_device_id_by_identifier", None)
-    if get_device_id is None:
-        return "via_device", identifier
+    """Return the non-deprecated parent-device field and value."""
     if not hasattr(coordinator, "entry") or not hasattr(coordinator, "hass"):
         return None
 
+    identifier = (DOMAIN, station_id)
     entry_id = coordinator.entry.entry_id
     registry = dr.async_get(coordinator.hass)
-    try:
-        device_id = get_device_id(
-            coordinator.hass,
-            identifier,
-            config_entry_id=entry_id,
-        )
-    except ValueError:
-        parent_info: dict[str, Any] = {
-            "config_entry_id": entry_id,
-            "identifiers": {identifier},
-            "manufacturer": MANUFACTURER,
-        }
-        if station is not None:
-            parent_info.update(
-                model=_device_info_str(station.type),
-                name=_device_info_str(station.name),
+
+    get_device_id = getattr(dr, "async_get_device_id_by_identifier", None)
+    if get_device_id is not None:
+        try:
+            device_id = get_device_id(
+                coordinator.hass,
+                identifier,
+                config_entry_id=entry_id,
             )
-            if sw_version := _software_version(station.data.get("sw")):
-                parent_info["sw_version"] = sw_version
-        device_id = registry.async_get_or_create(**parent_info).id
-    return "via_device_id", device_id
+        except ValueError:
+            device_id = None
+        else:
+            if device_id is not None:
+                return "via_device_id", device_id
+
+    get_device = getattr(registry, "async_get_device_by_identifier", None)
+    if get_device is not None:
+        device = get_device(identifier, config_entry_id=entry_id)
+        if device is not None:
+            return "via_device_id", device.id
+
+    parent_info: dict[str, Any] = {
+        "config_entry_id": entry_id,
+        "identifiers": {identifier},
+        "manufacturer": MANUFACTURER,
+    }
+    if station is not None:
+        parent_info.update(
+            model=_device_info_str(station.type),
+            name=_device_info_str(station.name),
+        )
+        if sw_version := _software_version(station.data.get("sw")):
+            parent_info["sw_version"] = sw_version
+    return "via_device_id", registry.async_get_or_create(**parent_info).id
 
 
 def _apk_entity_is_available(entity: Entity) -> bool:
