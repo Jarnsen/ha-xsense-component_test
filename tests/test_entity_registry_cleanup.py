@@ -306,6 +306,50 @@ def test_child_device_info_uses_current_via_device_id(monkeypatch):
     assert "via_device" not in device_info
 
 
+
+def test_child_device_info_handles_empty_module_helper_result(monkeypatch):
+    from custom_components.xsense import entity as entity_module
+
+    class ProbeEntity(entity_module.XSenseEntity):
+        entity_description = SimpleNamespace(key="probe")
+
+    coordinator = SimpleNamespace(
+        hass=object(),
+        entry=SimpleNamespace(entry_id="entry_1"),
+    )
+    station = SimpleNamespace(
+        entity_id="station_1",
+        data={},
+        sn="station-serial",
+        type="SBS50",
+        name="Base Station",
+    )
+    child = SimpleNamespace(
+        entity_id="device_1",
+        data={},
+        sn="device-serial",
+        type="SWS51",
+        name="Leak Sensor",
+        station=station,
+    )
+    registry = SimpleNamespace(
+        async_get_device_by_identifier=lambda identifier, *, config_entry_id: None,
+        async_get_or_create=lambda **kwargs: SimpleNamespace(id="created-parent-id"),
+    )
+    monkeypatch.setattr(entity_module.dr, "async_get", lambda value: registry)
+    monkeypatch.setattr(
+        entity_module.dr,
+        "async_get_device_id_by_identifier",
+        lambda value, identifier, *, config_entry_id: None,
+        raising=False,
+    )
+
+    device_info = ProbeEntity(coordinator, child, station.entity_id).device_info
+
+    assert device_info["via_device_id"] == "created-parent-id"
+    assert "via_device" not in device_info
+
+
 def test_child_device_info_registers_parent_before_current_lookup(monkeypatch):
     from custom_components.xsense import entity as entity_module
 
@@ -363,13 +407,19 @@ def test_child_device_info_registers_parent_before_current_lookup(monkeypatch):
     ]
 
 
-def test_child_device_info_keeps_legacy_parent_identifier_on_older_ha(monkeypatch):
+def test_child_device_info_uses_registry_lookup_when_module_helper_is_missing(
+    monkeypatch,
+):
     from custom_components.xsense import entity as entity_module
 
     class ProbeEntity(entity_module.XSenseEntity):
         entity_description = SimpleNamespace(key="probe")
 
-    coordinator = SimpleNamespace()
+    hass = object()
+    coordinator = SimpleNamespace(
+        hass=hass,
+        entry=SimpleNamespace(entry_id="entry_1"),
+    )
     station = SimpleNamespace(
         entity_id="station_1",
         data={},
@@ -385,16 +435,22 @@ def test_child_device_info_keeps_legacy_parent_identifier_on_older_ha(monkeypatc
         name="Leak Sensor",
         station=station,
     )
+    registry = SimpleNamespace(
+        async_get_device_by_identifier=lambda identifier, *, config_entry_id: SimpleNamespace(
+            id="registry-parent-device-id"
+        )
+    )
     monkeypatch.delattr(
         entity_module.dr,
         "async_get_device_id_by_identifier",
         raising=False,
     )
+    monkeypatch.setattr(entity_module.dr, "async_get", lambda value: registry)
 
     device_info = ProbeEntity(coordinator, child, station.entity_id).device_info
 
-    assert device_info["via_device"] == ("xsense", "station_1")
-    assert "via_device_id" not in device_info
+    assert device_info["via_device_id"] == "registry-parent-device-id"
+    assert "via_device" not in device_info
 
 
 def test_alarm_panel_device_info_does_not_expose_serial_number():
