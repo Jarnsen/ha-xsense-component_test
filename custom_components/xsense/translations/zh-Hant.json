@@ -372,7 +372,7 @@
         "name": "裝置時區"
       },
       "zone_name": {
-        "name": "語音播報位置"
+        "name": "裝置時區"
       },
       "location": {
         "name": "位置"

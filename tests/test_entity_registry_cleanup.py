@@ -1,6 +1,8 @@
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 for module_name in list(sys.modules):
     if module_name == "custom_components.xsense" or module_name.startswith(
         "custom_components.xsense."
@@ -152,6 +154,37 @@ def test_apk_unsupported_generic_states_are_removed_by_model():
     assert "sws0b-mute-status" in unique_ids
     assert "sws0b-water-alarm-status" not in unique_ids
     assert "sws0b-temperature-alarm-status" not in unique_ids
+
+
+@pytest.mark.parametrize(
+    ("model", "entity_key", "payload"),
+    (
+        ("SMS01", "alarm_status", {"alarmStatus": False}),
+        ("SDA51", "mute_status", {"muteStatus": 0}),
+        ("STH51", "mute_status", {"mute": False}),
+        ("SWS0B", "alarm_status", {"alarmStatus": False}),
+        ("SWS0B", "mute_status", {"muteStatus": 0}),
+        ("SWS51", "water_alarm_status", {"waterAlarmStatus": False}),
+        ("SWS51", "water_mute_status", {"waterMuteStatus": 0}),
+        ("SWS51", "temperature_alarm_status", {"tempAlarmStatus": False}),
+        ("SWS51", "temperature_mute_status", {"tempMuteStatus": 0}),
+        ("XR0A-iR", "mute_status", {"muteStatus": 0}),
+    ),
+)
+def test_cleanup_preserves_unexpected_state_when_cloud_reports_it(
+    model, entity_key, payload
+):
+    entity = SimpleNamespace(
+        entity_id=model.lower(),
+        type=model,
+        data=payload,
+    )
+
+    unique_ids = _obsolete_binary_sensor_unique_ids(
+        {"stations": {}, "devices": {model: entity}}
+    )
+
+    assert f"{model.lower()}-{entity_key.replace('_', '-')}" not in unique_ids
 
 
 def test_raw_state_aliases_are_removed_after_canonical_normalization():

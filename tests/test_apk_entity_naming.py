@@ -42,7 +42,7 @@ def test_detector_names_match_apk_1400_terms():
         "Security Mode"
     )
     assert _description_name("sensor", sensor.SENSORS, "zone_name") == (
-        "Voice Location"
+        "Device Time Zone"
     )
     assert _description_name(
         "binary_sensor", binary_sensor.SENSORS, "mute_status"

@@ -254,6 +254,14 @@ OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE = {
     ),
     "XR0A-iR": ("mute_status",),
 }
+_BINARY_SENSOR_PAYLOAD_KEYS = {
+    "alarm_status": ("alarmStatus",),
+    "mute_status": ("muteStatus", "mute"),
+    "temperature_alarm_status": ("tempAlarmStatus",),
+    "temperature_mute_status": ("tempMuteStatus",),
+    "water_alarm_status": ("waterAlarmStatus",),
+    "water_mute_status": ("waterMuteStatus",),
+}
 BLUEPRINT_MAINTENANCE_CHECK_INTERVAL = timedelta(minutes=5)
 STARTUP_MAINTENANCE_DELAY = 30
 
@@ -396,10 +404,15 @@ def _obsolete_binary_sensor_unique_ids(data) -> set[str]:
             _sensor_unique_id(entity.entity_id, key)
             for key in OBSOLETE_BINARY_SENSOR_KEYS
         )
+        entity_data = getattr(entity, "data", {}) or {}
         unique_ids.update(
             _sensor_unique_id(entity.entity_id, key)
             for key in OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE.get(
                 getattr(entity, "type", None), ()
+            )
+            if not any(
+                payload_key in entity_data
+                for payload_key in _BINARY_SENSOR_PAYLOAD_KEYS.get(key, ())
             )
         )
     return unique_ids
