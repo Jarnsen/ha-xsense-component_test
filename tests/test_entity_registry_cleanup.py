@@ -307,7 +307,7 @@ def test_child_device_info_uses_current_via_device_id(monkeypatch):
 
 
 
-def test_child_device_info_handles_empty_module_helper_result(monkeypatch):
+def test_child_device_info_omits_parent_when_module_helper_cannot_resolve(monkeypatch):
     from custom_components.xsense import entity as entity_module
 
     class ProbeEntity(entity_module.XSenseEntity):
@@ -334,7 +334,9 @@ def test_child_device_info_handles_empty_module_helper_result(monkeypatch):
     )
     registry = SimpleNamespace(
         async_get_device_by_identifier=lambda identifier, *, config_entry_id: None,
-        async_get_or_create=lambda **kwargs: SimpleNamespace(id="created-parent-id"),
+        async_get_or_create=lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("entity construction must not create registry devices")
+        ),
     )
     monkeypatch.setattr(entity_module.dr, "async_get", lambda value: registry)
     monkeypatch.setattr(
@@ -346,11 +348,11 @@ def test_child_device_info_handles_empty_module_helper_result(monkeypatch):
 
     device_info = ProbeEntity(coordinator, child, station.entity_id).device_info
 
-    assert device_info["via_device_id"] == "created-parent-id"
+    assert "via_device_id" not in device_info
     assert "via_device" not in device_info
 
 
-def test_child_device_info_registers_parent_before_current_lookup(monkeypatch):
+def test_child_device_info_omits_parent_when_current_lookup_misses(monkeypatch):
     from custom_components.xsense import entity as entity_module
 
     class ProbeEntity(entity_module.XSenseEntity):
@@ -376,9 +378,10 @@ def test_child_device_info_registers_parent_before_current_lookup(monkeypatch):
     )
     calls = []
     registry = SimpleNamespace(
+        async_get_device_by_identifier=lambda identifier, *, config_entry_id: None,
         async_get_or_create=lambda **kwargs: (
             calls.append(kwargs) or SimpleNamespace(id="new-parent-device-id")
-        )
+        ),
     )
 
     def _missing_parent(value, identifier, *, config_entry_id):
@@ -394,17 +397,9 @@ def test_child_device_info_registers_parent_before_current_lookup(monkeypatch):
 
     device_info = ProbeEntity(coordinator, child, station.entity_id).device_info
 
-    assert device_info["via_device_id"] == "new-parent-device-id"
-    assert calls == [
-        {
-            "config_entry_id": "entry_1",
-            "identifiers": {("xsense", "station_1")},
-            "manufacturer": "X-Sense",
-            "model": "50",
-            "name": "12345",
-            "sw_version": "123",
-        }
-    ]
+    assert "via_device_id" not in device_info
+    assert "via_device" not in device_info
+    assert calls == []
 
 
 def test_child_device_info_uses_registry_lookup_when_module_helper_is_missing(
