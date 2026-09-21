@@ -602,7 +602,7 @@
         "name": "Device Time Zone"
       },
       "zone_name": {
-        "name": "Voice Location"
+        "name": "Device Time Zone"
       },
       "location": {
         "name": "Location"

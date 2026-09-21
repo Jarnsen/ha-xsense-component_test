@@ -601,7 +601,7 @@
         "name": "Gerätezeitzone"
       },
       "zone_name": {
-        "name": "Sprachansage des Standorts"
+        "name": "Gerätezeitzone"
       },
       "location": {
         "name": "Standort"

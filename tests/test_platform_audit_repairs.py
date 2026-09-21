@@ -288,7 +288,10 @@ def test_parent_and_child_rollover_keep_original_identifiers(monkeypatch):
     registry = SimpleNamespace(
         async_get_device_by_identifier=lambda identifier, *, config_entry_id: SimpleNamespace(
             id="old-parent-device-id"
-        )
+        ),
+        async_get_or_create=lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("entity construction must not create registry devices")
+        ),
     )
     monkeypatch.setattr(entity_module.dr, "async_get", lambda hass: registry)
     parent = station(model="SBS50")
@@ -315,6 +318,86 @@ def test_parent_and_child_rollover_keep_original_identifiers(monkeypatch):
     assert replacement.device_info["identifiers"] == {("xsense", "old-child")}
     assert replacement.device_info["via_device_id"] == "old-parent-device-id"
     assert "via_device" not in replacement.device_info
+
+
+
+@pytest.mark.parametrize("module", [binary_sensor, button, number, select, sensor, switch])
+@pytest.mark.asyncio
+async def test_child_platform_setup_survives_unresolved_parent_device(monkeypatch, module):
+    from custom_components.xsense import entity as entity_module
+
+    parent = station(model="SBS50")
+    child = Device(parent, deviceId="child-id", deviceSn="CHILD", deviceType="STH51")
+    child.set_data(
+        {
+            "batInfo": "3",
+            "alarmStatus": "0",
+            "tempUnit": "1",
+            "alarmVol": "75",
+            "alarmEnable": "1",
+        }
+    )
+    coordinator = Coordinator({parent.entity_id: parent}, {child.entity_id: child})
+    coordinator.hass = object()
+    coordinator.entry = SimpleNamespace(entry_id="entry-id")
+
+    monkeypatch.setattr(
+        entity_module.dr,
+        "async_get_device_id_by_identifier",
+        lambda hass, identifier, *, config_entry_id: (_ for _ in ()).throw(ValueError),
+        raising=False,
+    )
+
+    class Registry:
+        def async_get_device_by_identifier(self, identifier, *, config_entry_id):
+            return None
+
+        def async_get_or_create(self, **kwargs):
+            raise AssertionError("entity construction must not create registry devices")
+
+    monkeypatch.setattr(entity_module.dr, "async_get", lambda hass: Registry())
+
+    added = []
+    entry = SimpleNamespace(entry_id="entry-id", async_on_unload=lambda cb: None)
+    hass = SimpleNamespace(data={"xsense": {entry.entry_id: coordinator}})
+
+    await module.async_setup_entry(hass, entry, lambda entities: added.extend(entities))
+
+    assert added
+    child_entities = [entity for entity in added if getattr(entity, "_station_id", None)]
+    assert child_entities
+    assert all("via_device" not in entity.device_info for entity in child_entities)
+
+
+def test_child_parent_link_resolves_after_station_device_is_registered(monkeypatch):
+    from custom_components.xsense import entity as entity_module
+
+    parent = station(model="SBS50")
+    child = Device(parent, deviceId="child-id", deviceSn="CHILD", deviceType="STH51")
+    coordinator = Coordinator({parent.entity_id: parent}, {child.entity_id: child})
+    coordinator.hass = object()
+    coordinator.entry = SimpleNamespace(entry_id="entry-id")
+    registered = {"device_id": None}
+
+    def get_device_id(hass, identifier, *, config_entry_id):
+        assert identifier == ("xsense", parent.entity_id)
+        assert config_entry_id == "entry-id"
+        return registered["device_id"]
+
+    monkeypatch.setattr(
+        entity_module.dr,
+        "async_get_device_id_by_identifier",
+        get_device_id,
+        raising=False,
+    )
+
+    entity = sensor.XSenseSensorEntity(
+        coordinator, child, description(sensor, "battery"), parent.entity_id
+    )
+
+    assert "via_device_id" not in entity.device_info
+    registered["device_id"] = "registered-parent-device-id"
+    assert entity.device_info["via_device_id"] == "registered-parent-device-id"
 
 
 def test_missing_serial_keeps_api_identifier():

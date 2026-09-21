@@ -601,7 +601,7 @@
         "name": "Zona horaria del dispositivo"
       },
       "zone_name": {
-        "name": "Ubicación anunciada por voz"
+        "name": "Zona horaria del dispositivo"
       },
       "location": {
         "name": "Ubicación"

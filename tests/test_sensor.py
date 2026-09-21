@@ -10,9 +10,12 @@ from custom_components.xsense.sensor import (
     SENSORS,
     UNIT_PARTS_PER_MILLION,
     battery_percentage,
+    data_timestamp,
+    data_value,
     has_report_time,
     has_self_test_report,
     optional_data_timestamp,
+    rf_level,
     self_test_result,
 )
 
@@ -25,6 +28,15 @@ def test_battery_percentage_returns_unknown_for_non_numeric_value():
     entity = SimpleNamespace(data={"batInfo": "unknown"})
 
     assert battery_percentage(entity) is None
+
+
+def test_existing_sensor_readers_tolerate_partial_refresh_payloads():
+    entity = SimpleNamespace(data={})
+
+    assert battery_percentage(entity) is None
+    assert rf_level(entity) is None
+    assert data_value("missing")(entity) is None
+    assert data_timestamp("missing")(entity) is None
 
 
 def test_base_station_report_time_is_internal_metadata():
@@ -76,17 +88,15 @@ def test_self_test_result_preserves_failure_code():
 
 
 @pytest.mark.parametrize("device_type", ["XS01-M", "XS01-WX", "SC06-WX", "XS0B-iR"])
-def test_self_test_report_sensor_exists_for_report_capable_device_before_first_report(
-    device_type,
-):
+def test_self_test_report_sensor_waits_for_actual_report(device_type):
     entity = SimpleNamespace(data={}, type=device_type)
 
-    assert has_self_test_report(entity)
+    assert not has_self_test_report(entity)
 
 
 @pytest.mark.parametrize("device_type", ["XS01-WX", "SC06-WX", "XS0B-iR"])
-def test_self_test_report_does_not_require_remote_test_action(device_type):
-    entity = SimpleNamespace(data={}, type=device_type)
+def test_self_test_report_does_not_require_remote_test_action_after_report(device_type):
+    entity = SimpleNamespace(data={"lastSelfTest": "0"}, type=device_type)
 
     assert has_self_test_report(entity)
 

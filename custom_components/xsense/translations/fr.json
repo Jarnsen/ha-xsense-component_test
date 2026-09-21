@@ -601,7 +601,7 @@
         "name": "Fuseau horaire de l'appareil"
       },
       "zone_name": {
-        "name": "Emplacement annoncé vocalement"
+        "name": "Fuseau horaire de l'appareil"
       },
       "location": {
         "name": "Emplacement"

@@ -1,6 +1,8 @@
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 for module_name in list(sys.modules):
     if module_name == "custom_components.xsense" or module_name.startswith(
         "custom_components.xsense."
@@ -46,14 +48,14 @@ def test_obsolete_sensor_cleanup_targets_static_identifier_entities_only():
         {"stations": {"station_1": station}, "devices": {"device_1": device}}
     )
 
-    assert len(unique_ids) == len(OBSOLETE_SENSOR_KEYS) * 2
+    assert len(unique_ids) == len(OBSOLETE_SENSOR_KEYS) * 2 + 4
     assert "station-1-serial-number" in unique_ids
     assert "station-1-station-sn" in unique_ids
     assert "station-1-device-mac" in unique_ids
     assert "device-1-bluetooth-mac" in unique_ids
     assert "station-1-ip" not in unique_ids
     assert "device-1-wifi-rssi" not in unique_ids
-    assert "station-1-last-self-test" not in unique_ids
+    assert "station-1-last-self-test" in unique_ids
 
 
 def test_obsolete_sensor_cleanup_targets_removed_model_sensors_only():
@@ -64,9 +66,11 @@ def test_obsolete_sensor_cleanup_targets_removed_model_sensors_only():
         {"stations": {"wifi": xs01_wx}, "devices": {"rf": xs01_m}}
     )
 
-    assert "kitchen-smoke-last-self-test" not in unique_ids
-    assert "kitchen-smoke-last-self-test-time" not in unique_ids
-    assert "hall-smoke-last-self-test" not in unique_ids
+    assert "kitchen-smoke-last-self-test" in unique_ids
+    assert "kitchen-smoke-last-self-test-time" in unique_ids
+    assert "kitchen-smoke-safe-mode" in unique_ids
+    assert "kitchen-smoke-zone-name" in unique_ids
+    assert "hall-smoke-last-self-test" in unique_ids
 
 
 def test_obsolete_action_unique_ids_target_removed_model_actions_only():
@@ -152,14 +156,49 @@ def test_apk_unsupported_generic_states_are_removed_by_model():
     assert "sws0b-temperature-alarm-status" not in unique_ids
 
 
+@pytest.mark.parametrize(
+    ("model", "entity_key", "payload"),
+    (
+        ("SMS01", "alarm_status", {"alarmStatus": False}),
+        ("SDA51", "mute_status", {"muteStatus": 0}),
+        ("STH51", "mute_status", {"mute": False}),
+        ("SWS0B", "alarm_status", {"alarmStatus": False}),
+        ("SWS0B", "mute_status", {"muteStatus": 0}),
+        ("SWS51", "water_alarm_status", {"waterAlarmStatus": False}),
+        ("SWS51", "water_mute_status", {"waterMuteStatus": 0}),
+        ("SWS51", "temperature_alarm_status", {"tempAlarmStatus": False}),
+        ("SWS51", "temperature_mute_status", {"tempMuteStatus": 0}),
+        ("XR0A-iR", "mute_status", {"muteStatus": 0}),
+    ),
+)
+def test_cleanup_preserves_unexpected_state_when_cloud_reports_it(
+    model, entity_key, payload
+):
+    entity = SimpleNamespace(
+        entity_id=model.lower(),
+        type=model,
+        data=payload,
+    )
+
+    unique_ids = _obsolete_binary_sensor_unique_ids(
+        {"stations": {}, "devices": {model: entity}}
+    )
+
+    assert f"{model.lower()}-{entity_key.replace('_', '-')}" not in unique_ids
+
+
 def test_raw_state_aliases_are_removed_after_canonical_normalization():
     assert {"alarm_active", "activated", "mute"} <= set(
         OBSOLETE_BINARY_SENSOR_KEYS
     )
 
 
-def test_xs01_wx_self_test_report_entities_are_not_obsolete():
-    xs01_wx = SimpleNamespace(entity_id="kitchen_smoke", type="XS01-WX")
+def test_self_test_report_entities_are_kept_after_report_payload():
+    xs01_wx = SimpleNamespace(
+        entity_id="kitchen_smoke",
+        type="XS01-WX",
+        data={"lastSelfTest": "0", "lastSelfTestTime": "20260921010101"},
+    )
 
     unique_ids = _obsolete_sensor_unique_ids(
         {"stations": {"wifi": xs01_wx}, "devices": {}}
@@ -307,7 +346,7 @@ def test_child_device_info_uses_current_via_device_id(monkeypatch):
 
 
 
-def test_child_device_info_handles_empty_module_helper_result(monkeypatch):
+def test_child_device_info_omits_parent_when_module_helper_cannot_resolve(monkeypatch):
     from custom_components.xsense import entity as entity_module
 
     class ProbeEntity(entity_module.XSenseEntity):
@@ -334,7 +373,9 @@ def test_child_device_info_handles_empty_module_helper_result(monkeypatch):
     )
     registry = SimpleNamespace(
         async_get_device_by_identifier=lambda identifier, *, config_entry_id: None,
-        async_get_or_create=lambda **kwargs: SimpleNamespace(id="created-parent-id"),
+        async_get_or_create=lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("entity construction must not create registry devices")
+        ),
     )
     monkeypatch.setattr(entity_module.dr, "async_get", lambda value: registry)
     monkeypatch.setattr(
@@ -346,11 +387,11 @@ def test_child_device_info_handles_empty_module_helper_result(monkeypatch):
 
     device_info = ProbeEntity(coordinator, child, station.entity_id).device_info
 
-    assert device_info["via_device_id"] == "created-parent-id"
+    assert "via_device_id" not in device_info
     assert "via_device" not in device_info
 
 
-def test_child_device_info_registers_parent_before_current_lookup(monkeypatch):
+def test_child_device_info_omits_parent_when_current_lookup_misses(monkeypatch):
     from custom_components.xsense import entity as entity_module
 
     class ProbeEntity(entity_module.XSenseEntity):
@@ -376,9 +417,10 @@ def test_child_device_info_registers_parent_before_current_lookup(monkeypatch):
     )
     calls = []
     registry = SimpleNamespace(
+        async_get_device_by_identifier=lambda identifier, *, config_entry_id: None,
         async_get_or_create=lambda **kwargs: (
             calls.append(kwargs) or SimpleNamespace(id="new-parent-device-id")
-        )
+        ),
     )
 
     def _missing_parent(value, identifier, *, config_entry_id):
@@ -394,17 +436,9 @@ def test_child_device_info_registers_parent_before_current_lookup(monkeypatch):
 
     device_info = ProbeEntity(coordinator, child, station.entity_id).device_info
 
-    assert device_info["via_device_id"] == "new-parent-device-id"
-    assert calls == [
-        {
-            "config_entry_id": "entry_1",
-            "identifiers": {("xsense", "station_1")},
-            "manufacturer": "X-Sense",
-            "model": "50",
-            "name": "12345",
-            "sw_version": "123",
-        }
-    ]
+    assert "via_device_id" not in device_info
+    assert "via_device" not in device_info
+    assert calls == []
 
 
 def test_child_device_info_uses_registry_lookup_when_module_helper_is_missing(
@@ -1153,8 +1187,6 @@ def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
         'xs01-wx-alarm-status',
         'xs01-wx-battery',
         'xs01-wx-ip-address',
-        'xs01-wx-last-self-test',
-        'xs01-wx-last-self-test-time',
         'xs01-wx-mute-status',
         'xs01-wx-report-time',
         'xs01-wx-signal-strength',

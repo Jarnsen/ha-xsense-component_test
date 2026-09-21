@@ -464,7 +464,12 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
     @property
     def available(self) -> bool:
         """Return if this control can be used."""
-        return self._current_entity_is_online()
+        entity = self._current_entity()
+        return (
+            entity is not None
+            and self._current_entity_is_online()
+            and self.entity_description.exists_fn(entity)
+        )
 
     @property
     def options(self) -> list[str]:
@@ -509,7 +514,7 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         """Write the selected camera setting through the Android app endpoint."""
         entity = self._current_entity()
-        if entity is None:
+        if entity is None or not self.entity_description.exists_fn(entity):
             raise xsense_error("entity_unavailable")
         if option not in self.options:
             raise xsense_error("unsupported_option", option=option)

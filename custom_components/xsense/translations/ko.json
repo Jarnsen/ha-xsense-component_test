@@ -372,7 +372,7 @@
         "name": "기기 시간대"
       },
       "zone_name": {
-        "name": "음성 안내 위치"
+        "name": "기기 시간대"
       },
       "location": {
         "name": "위치"

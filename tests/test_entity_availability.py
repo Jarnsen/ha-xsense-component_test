@@ -19,10 +19,19 @@ from custom_components.xsense.binary_sensor import (
     XSenseBinarySensorEntityDescription,
     XSenseMQTTConnectedEntity,
     MQTTSensor,
+    data_bool as binary_data_bool,
 )
 from custom_components.xsense.button import (
     XSenseButtonEntity,
     XSenseButtonEntityDescription,
+)
+from custom_components.xsense.number import (
+    XSenseNumberEntity,
+    XSenseNumberEntityDescription,
+)
+from custom_components.xsense.select import (
+    XSenseSelectEntity,
+    XSenseSelectEntityDescription,
 )
 from custom_components.xsense.sensor import (
     XSenseSensorEntity,
@@ -31,8 +40,10 @@ from custom_components.xsense.sensor import (
 from custom_components.xsense.switch import (
     XSenseSwitchEntity,
     XSenseSwitchEntityDescription,
+    data_bool as switch_data_bool,
 )
 from custom_components.xsense.entity import device_station_id
+from homeassistant.exceptions import HomeAssistantError
 
 
 class Coordinator:
@@ -164,6 +175,80 @@ def test_reported_test_active_state_is_exposed_from_device_data():
 
     assert description.exists_fn(station)
     assert description.value_fn(station) is False
+
+
+def test_existing_boolean_entities_tolerate_partial_refresh_payloads():
+    entity = SimpleNamespace(data={})
+
+    assert binary_data_bool("missing")(entity) is None
+    assert switch_data_bool("missing")(entity) is None
+
+
+@pytest.mark.asyncio
+async def test_existing_controls_become_unavailable_when_support_data_disappears():
+    station = _xs01_wx_from_real_shadow()
+    station.data["temporarySetting"] = 1
+    coordinator = Coordinator(station)
+    exists = lambda current: "temporarySetting" in current.data
+
+    number = XSenseNumberEntity(
+        coordinator,
+        station,
+        XSenseNumberEntityDescription(
+            key="temporary_number",
+            data_key="temporarySetting",
+            exists_fn=exists,
+        ),
+    )
+    select = XSenseSelectEntity(
+        coordinator,
+        station,
+        XSenseSelectEntityDescription(
+            key="temporary_select",
+            data_key="temporarySetting",
+            fixed_options=("0", "1"),
+            exists_fn=exists,
+        ),
+    )
+    switch = XSenseSwitchEntity(
+        coordinator,
+        station,
+        XSenseSwitchEntityDescription(
+            key="temporary_switch",
+            data_key="temporarySetting",
+            exists_fn=exists,
+            value_fn=switch_data_bool("temporarySetting"),
+        ),
+    )
+    button = XSenseButtonEntity(
+        coordinator,
+        station,
+        XSenseButtonEntityDescription(
+            key="temporary_button",
+            exists_fn=lambda current, api: exists(current),
+            press_fn=_noop_press,
+        ),
+    )
+
+    assert number.available
+    assert select.available
+    assert switch.available
+    assert button.available
+
+    station.data.pop("temporarySetting")
+
+    assert not number.available
+    assert not select.available
+    assert not switch.available
+    assert not button.available
+    with pytest.raises(HomeAssistantError):
+        await number.async_set_native_value(1)
+    with pytest.raises(HomeAssistantError):
+        await select.async_select_option("1")
+    with pytest.raises(HomeAssistantError):
+        await switch.async_turn_on()
+    with pytest.raises(HomeAssistantError):
+        await button.async_press()
 
 
 @pytest.mark.parametrize(
