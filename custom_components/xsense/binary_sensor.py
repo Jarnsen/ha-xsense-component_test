@@ -376,7 +376,7 @@ def boolean_state(value) -> bool | None:
 
 def data_bool(key: str) -> Callable[[Entity], bool | None]:
     """Return a value function for a boolean X-Sense data key."""
-    return lambda entity: boolean_state(entity.data[key])
+    return lambda entity: boolean_state(entity.data.get(key))
 
 
 def has_data(key: str) -> Callable[[Entity], bool]:
@@ -423,7 +423,7 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         translation_key="activate",
         icon="mdi:bell-ring",
         exists_fn=lambda entity: "activate" in entity.data,
-        value_fn=lambda entity: boolean_state(entity.data["activate"]),
+        value_fn=lambda entity: boolean_state(entity.data.get("activate")),
     ),
     XSenseBinarySensorEntityDescription(
         key="ac_break",
@@ -484,7 +484,11 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
             and "deviceStatus" in entity.data
             and entity.data.get("supportSleep") is True
         ),
-        value_fn=lambda entity: entity.data["deviceStatus"] == 3,
+        value_fn=lambda entity: (
+            entity.data.get("deviceStatus") == 3
+            if entity.data.get("deviceStatus") is not None
+            else None
+        ),
     ),
     XSenseBinarySensorEntityDescription(
         key="base_removed",
@@ -622,7 +626,7 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="door",
         translation_key="door",
         device_class=BinarySensorDeviceClass.DOOR,
-        value_fn=lambda device: boolean_state(device.data["isOpen"]),
+        value_fn=lambda device: boolean_state(device.data.get("isOpen")),
         exists_fn=lambda device: "isOpen" in device.data,
     ),
 )

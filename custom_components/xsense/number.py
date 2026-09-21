@@ -566,7 +566,12 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
     @property
     def available(self) -> bool:
         """Return if this control can be used."""
-        return self._current_entity_is_online()
+        entity = self._current_entity()
+        return (
+            entity is not None
+            and self._current_entity_is_online()
+            and self.entity_description.exists_fn(entity)
+        )
 
     @property
     def native_value(self) -> float | None:
@@ -587,7 +592,7 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         """Write the X-Sense numeric setting."""
         entity = self._current_entity()
-        if entity is None:
+        if entity is None or not self.entity_description.exists_fn(entity):
             raise xsense_error("entity_unavailable")
 
         if self.entity_description.data_key in {"minRadon", "maxRadon"}:

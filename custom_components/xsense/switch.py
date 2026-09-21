@@ -228,7 +228,7 @@ def has_camera_ai_assistant(event_object: str) -> Callable[[Entity], bool]:
 
 def data_bool(key: str) -> Callable[[Entity], bool | None]:
     """Return a value function for an X-Sense boolean data key."""
-    return lambda entity: boolean_state(entity.data[key])
+    return lambda entity: boolean_state(entity.data.get(key))
 
 
 def optional_data_bool(key: str) -> Callable[[Entity], bool | None]:
@@ -761,7 +761,12 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
     @property
     def available(self) -> bool:
         """Return if this control can be used."""
-        return self._current_entity_is_online()
+        entity = self._current_entity()
+        return (
+            entity is not None
+            and self._current_entity_is_online()
+            and self.entity_description.exists_fn(entity)
+        )
 
     @property
     def is_on(self) -> bool | None:
@@ -966,7 +971,7 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         """Write the switch state through the X-Sense device settings shadow."""
         xsense = self.coordinator.xsense
         entity = self._current_entity()
-        if entity is None:
+        if entity is None or not self.entity_description.exists_fn(entity):
             raise xsense_error("entity_unavailable")
 
         if self.entity_description.data_key == "on":

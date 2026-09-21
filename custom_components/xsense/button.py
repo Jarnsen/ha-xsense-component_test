@@ -153,6 +153,7 @@ class XSenseButtonEntity(XSenseEntity, ButtonEntity):
         return (
             device is not None
             and self._current_entity_is_online()
+            and self.entity_description.exists_fn(device, self.coordinator.xsense)
             and self.entity_description.available_fn(device)
         )
 
@@ -161,7 +162,7 @@ class XSenseButtonEntity(XSenseEntity, ButtonEntity):
 
         xsense = self.coordinator.xsense
         device = self._current_entity()
-        if device is None:
+        if device is None or not self.entity_description.exists_fn(device, xsense):
             raise xsense_error("entity_unavailable")
 
         LOGGER.debug(

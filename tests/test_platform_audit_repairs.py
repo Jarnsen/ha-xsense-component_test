@@ -368,6 +368,38 @@ async def test_child_platform_setup_survives_unresolved_parent_device(monkeypatc
     assert child_entities
     assert all("via_device" not in entity.device_info for entity in child_entities)
 
+
+def test_child_parent_link_resolves_after_station_device_is_registered(monkeypatch):
+    from custom_components.xsense import entity as entity_module
+
+    parent = station(model="SBS50")
+    child = Device(parent, deviceId="child-id", deviceSn="CHILD", deviceType="STH51")
+    coordinator = Coordinator({parent.entity_id: parent}, {child.entity_id: child})
+    coordinator.hass = object()
+    coordinator.entry = SimpleNamespace(entry_id="entry-id")
+    registered = {"device_id": None}
+
+    def get_device_id(hass, identifier, *, config_entry_id):
+        assert identifier == ("xsense", parent.entity_id)
+        assert config_entry_id == "entry-id"
+        return registered["device_id"]
+
+    monkeypatch.setattr(
+        entity_module.dr,
+        "async_get_device_id_by_identifier",
+        get_device_id,
+        raising=False,
+    )
+
+    entity = sensor.XSenseSensorEntity(
+        coordinator, child, description(sensor, "battery"), parent.entity_id
+    )
+
+    assert "via_device_id" not in entity.device_info
+    registered["device_id"] = "registered-parent-device-id"
+    assert entity.device_info["via_device_id"] == "registered-parent-device-id"
+
+
 def test_missing_serial_keeps_api_identifier():
     item = station(serial=None)
     coordinator = Coordinator({item.entity_id: item})

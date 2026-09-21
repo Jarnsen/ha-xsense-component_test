@@ -59,7 +59,7 @@ class XSenseSensorEntityDescription(SensorEntityDescription):
 
 def battery_percentage(device: Entity) -> int | None:
     """Return the X-Sense battery level as a whole Home Assistant percentage."""
-    value = device.data["batInfo"]
+    value = device.data.get("batInfo")
     if value is None:
         return None
     try:
@@ -71,7 +71,7 @@ def battery_percentage(device: Entity) -> int | None:
 
 def rf_level(device: Entity) -> str | None:
     """Return the X-Sense RF signal level."""
-    value = device.data["rfLevel"]
+    value = device.data.get("rfLevel")
     if value is None:
         return None
     try:
@@ -82,7 +82,7 @@ def rf_level(device: Entity) -> str | None:
 
 def data_value(key: str) -> Callable[[Entity], StateType]:
     """Return a value function for a X-Sense data key."""
-    return lambda entity: entity.data[key]
+    return lambda entity: entity.data.get(key)
 
 
 def optional_data_value(key: str) -> Callable[[Entity], StateType]:
@@ -141,9 +141,9 @@ def has_data_or_sbs50(key: str) -> Callable[[Entity], bool]:
     return lambda entity: key in entity.data or sbs50_station(entity)
 
 
-def has_sbs50_data_or_placeholder(key: str) -> Callable[[Entity], bool]:
+def has_sbs50_management_data(entity: Entity) -> bool:
     """Expose SBS50-only management diagnostics without leaking them to detectors."""
-    return lambda entity: sbs50_station(entity)
+    return sbs50_station(entity)
 
 
 def timestamp_value(value) -> datetime | None:
@@ -181,7 +181,7 @@ def timestamp_value(value) -> datetime | None:
 
 def data_timestamp(key: str) -> Callable[[Entity], datetime | None]:
     """Return a value function for a X-Sense timestamp data key."""
-    return lambda entity: timestamp_value(entity.data[key])
+    return lambda entity: timestamp_value(entity.data.get(key))
 
 
 def optional_data_timestamp(key: str) -> Callable[[Entity], datetime | None]:
@@ -253,7 +253,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:chip",
         exists_fn=lambda device: "wifi_sw" in device.data,
-        value_fn=lambda station: station.data["wifi_sw"],
+        value_fn=optional_data_value("wifi_sw"),
     ),
     XSenseSensorEntityDescription(
         key="ip",
@@ -322,7 +322,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda device: device.data["temperature"],
+        value_fn=optional_data_value("temperature"),
         exists_fn=lambda device: "temperature" in device.data,
     ),
     XSenseSensorEntityDescription(
@@ -330,7 +330,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.HUMIDITY,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda device: device.data["humidity"],
+        value_fn=optional_data_value("humidity"),
         exists_fn=lambda device: "humidity" in device.data,
     ),
     XSenseSensorEntityDescription(
@@ -675,7 +675,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:map-marker-outline",
         value_fn=optional_data_value("zoneName"),
-        exists_fn=has_sbs50_data_or_placeholder("zoneName"),
+        exists_fn=has_sbs50_management_data,
     ),
     XSenseSensorEntityDescription(
         key="location",
@@ -731,7 +731,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:shield-home",
         value_fn=optional_data_value("safeMode"),
-        exists_fn=has_sbs50_data_or_placeholder("safeMode"),
+        exists_fn=has_sbs50_management_data,
     ),
 )
 

@@ -10,9 +10,12 @@ from custom_components.xsense.sensor import (
     SENSORS,
     UNIT_PARTS_PER_MILLION,
     battery_percentage,
+    data_timestamp,
+    data_value,
     has_report_time,
     has_self_test_report,
     optional_data_timestamp,
+    rf_level,
     self_test_result,
 )
 
@@ -25,6 +28,15 @@ def test_battery_percentage_returns_unknown_for_non_numeric_value():
     entity = SimpleNamespace(data={"batInfo": "unknown"})
 
     assert battery_percentage(entity) is None
+
+
+def test_existing_sensor_readers_tolerate_partial_refresh_payloads():
+    entity = SimpleNamespace(data={})
+
+    assert battery_percentage(entity) is None
+    assert rf_level(entity) is None
+    assert data_value("missing")(entity) is None
+    assert data_timestamp("missing")(entity) is None
 
 
 def test_base_station_report_time_is_internal_metadata():
