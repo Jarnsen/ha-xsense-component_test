@@ -2629,7 +2629,10 @@ def test_recording_media_source_resolve_includes_local_path(monkeypatch, tmp_pat
 
     assert resolved.url == "/media/local/custom.mp4"
     assert resolved.mime_type == media_source.MIME_TYPE
-    assert resolved.path == output_path
+    if "path" in media_source.PlayMedia.__dataclass_fields__:
+        assert resolved.path == output_path
+    else:
+        assert not hasattr(resolved, "path")
 
 
 def test_recording_media_source_playback_only_resolves_proxy_without_local_path(
@@ -2689,7 +2692,7 @@ def test_recording_media_source_playback_only_resolves_proxy_without_local_path(
         "/entry-id/1782049304/1782049334?serial=CAMERA-SN"
     )
     assert resolved.mime_type == media_source.HLS_MIME_TYPE
-    assert resolved.path is None
+    assert getattr(resolved, "path", None) is None
 
 
 def test_recording_media_source_does_not_fall_back_to_external_video_url(

@@ -92,12 +92,17 @@ def _parent_device_info(
     coordinator: XSenseDataUpdateCoordinator,
     station_id: str,
 ) -> tuple[str, object] | None:
-    """Return an already registered non-deprecated parent-device link."""
+    """Return a parent-device link supported by the running HA version."""
     if not hasattr(coordinator, "entry") or not hasattr(coordinator, "hass"):
         return None
 
     identifier = (DOMAIN, station_id)
     entry_id = coordinator.entry.entry_id
+
+    # DeviceInfo gained via_device_id in HA 2026.8. Older supported releases
+    # require the identifier-based field and reject the newer key entirely.
+    if "via_device_id" not in getattr(DeviceInfo, "__annotations__", {}):
+        return "via_device", identifier
 
     get_device_id = getattr(dr, "async_get_device_id_by_identifier", None)
     if get_device_id is not None:

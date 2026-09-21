@@ -282,6 +282,8 @@ def test_ambiguous_serials_do_not_merge_or_pick_first():
 def test_parent_and_child_rollover_keep_original_identifiers(monkeypatch):
     from custom_components.xsense import entity as entity_module
 
+    monkeypatch.setitem(entity_module.DeviceInfo.__annotations__, "via_device_id", str)
+
     monkeypatch.delattr(
         entity_module.dr, "async_get_device_id_by_identifier", raising=False
     )
@@ -325,6 +327,8 @@ def test_parent_and_child_rollover_keep_original_identifiers(monkeypatch):
 @pytest.mark.asyncio
 async def test_child_platform_setup_survives_unresolved_parent_device(monkeypatch, module):
     from custom_components.xsense import entity as entity_module
+
+    monkeypatch.setitem(entity_module.DeviceInfo.__annotations__, "via_device_id", str)
 
     parent = station(model="SBS50")
     child = Device(parent, deviceId="child-id", deviceSn="CHILD", deviceType="STH51")
@@ -371,6 +375,8 @@ async def test_child_platform_setup_survives_unresolved_parent_device(monkeypatc
 
 def test_child_parent_link_resolves_after_station_device_is_registered(monkeypatch):
     from custom_components.xsense import entity as entity_module
+
+    monkeypatch.setitem(entity_module.DeviceInfo.__annotations__, "via_device_id", str)
 
     parent = station(model="SBS50")
     child = Device(parent, deviceId="child-id", deviceSn="CHILD", deviceType="STH51")
@@ -419,8 +425,6 @@ def test_missing_serial_keeps_api_identifier():
 
 def test_production_source_never_uses_deprecated_device_registry_apis():
     forbidden = (
-        '"via_device"',
-        "'via_device'",
         "ATTR_VIA_DEVICE",
         "async_get_device(",
         "CONCENTRATION_PARTS_PER_MILLION",
@@ -429,3 +433,11 @@ def test_production_source_never_uses_deprecated_device_registry_apis():
         source = source_path.read_text(encoding="utf-8")
         for pattern in forbidden:
             assert pattern not in source, f"{pattern} found in {source_path}"
+
+    entity_source = Path("custom_components/xsense/entity.py").read_text(
+        encoding="utf-8"
+    )
+    assert entity_source.count('return "via_device", identifier') == 1
+    assert '"via_device_id" not in getattr(DeviceInfo, "__annotations__", {})' in (
+        entity_source
+    )
