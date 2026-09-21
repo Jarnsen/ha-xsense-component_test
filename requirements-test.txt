@@ -1,6 +1,9 @@
 pytest==9.1.1
 pytest-asyncio==1.4.0
-homeassistant==2026.2.3; python_version < "3.14"
+# Exercise the declared minimum HA version on Python 3.13. Its aiohttp pin was
+# yanked upstream, so list the exact dependency to keep minimum-version CI reproducible.
+aiohttp==3.11.13; python_version < "3.14"
+homeassistant==2025.3.0; python_version < "3.14"
 homeassistant==2026.8.3; python_version >= "3.14"
 paho-mqtt==2.1.0
 numpy==2.5.2

@@ -309,6 +309,8 @@ def test_device_info_software_version_accepts_string_prefix_and_ignores_empty_va
 def test_child_device_info_uses_current_via_device_id(monkeypatch):
     from custom_components.xsense import entity as entity_module
 
+    monkeypatch.setitem(entity_module.DeviceInfo.__annotations__, "via_device_id", str)
+
     class ProbeEntity(entity_module.XSenseEntity):
         entity_description = SimpleNamespace(key="probe")
 
@@ -345,9 +347,54 @@ def test_child_device_info_uses_current_via_device_id(monkeypatch):
     assert "via_device" not in device_info
 
 
+def test_child_device_info_uses_legacy_parent_link_on_older_ha(monkeypatch):
+    from custom_components.xsense import entity as entity_module
+
+    class ProbeEntity(entity_module.XSenseEntity):
+        entity_description = SimpleNamespace(key="probe")
+
+    coordinator = SimpleNamespace(
+        hass=object(),
+        entry=SimpleNamespace(entry_id="entry_1"),
+    )
+    station = SimpleNamespace(
+        entity_id="station_1",
+        data={},
+        sn="station-serial",
+        type="SBS50",
+        name="Base Station",
+    )
+    child = SimpleNamespace(
+        entity_id="device_1",
+        data={},
+        sn="device-serial",
+        type="SWS51",
+        name="Leak Sensor",
+        station=station,
+    )
+    class LegacyDeviceInfo(dict):
+        __annotations__ = {"via_device": tuple[str, str]}
+
+    monkeypatch.setattr(entity_module, "DeviceInfo", LegacyDeviceInfo)
+    monkeypatch.setattr(
+        entity_module.dr,
+        "async_get",
+        lambda value: (_ for _ in ()).throw(
+            AssertionError("legacy parent links do not require a registry lookup")
+        ),
+    )
+
+    device_info = ProbeEntity(coordinator, child, station.entity_id).device_info
+
+    assert device_info["via_device"] == ("xsense", "station_1")
+    assert "via_device_id" not in device_info
+
+
 
 def test_child_device_info_omits_parent_when_module_helper_cannot_resolve(monkeypatch):
     from custom_components.xsense import entity as entity_module
+
+    monkeypatch.setitem(entity_module.DeviceInfo.__annotations__, "via_device_id", str)
 
     class ProbeEntity(entity_module.XSenseEntity):
         entity_description = SimpleNamespace(key="probe")
@@ -393,6 +440,8 @@ def test_child_device_info_omits_parent_when_module_helper_cannot_resolve(monkey
 
 def test_child_device_info_omits_parent_when_current_lookup_misses(monkeypatch):
     from custom_components.xsense import entity as entity_module
+
+    monkeypatch.setitem(entity_module.DeviceInfo.__annotations__, "via_device_id", str)
 
     class ProbeEntity(entity_module.XSenseEntity):
         entity_description = SimpleNamespace(key="probe")
@@ -445,6 +494,8 @@ def test_child_device_info_uses_registry_lookup_when_module_helper_is_missing(
     monkeypatch,
 ):
     from custom_components.xsense import entity as entity_module
+
+    monkeypatch.setitem(entity_module.DeviceInfo.__annotations__, "via_device_id", str)
 
     class ProbeEntity(entity_module.XSenseEntity):
         entity_description = SimpleNamespace(key="probe")

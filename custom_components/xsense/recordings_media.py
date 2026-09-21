@@ -109,6 +109,18 @@ SERVICE_CLEAR_RECORDINGS_CACHE = "clear_recordings_cache"
 SERVICE_REFRESH_RECORDINGS_SCHEMA = vol.Schema({vol.Optional("entry_id"): str})
 
 
+def _play_media(
+    url: str,
+    mime_type: str,
+    *,
+    path: Path | None = None,
+) -> PlayMedia:
+    """Build PlayMedia across supported Home Assistant API versions."""
+    if "path" in getattr(PlayMedia, "__dataclass_fields__", {}):
+        return PlayMedia(url, mime_type, path=path)
+    return PlayMedia(url, mime_type)
+
+
 def _create_recording_background_task(
     hass: HomeAssistant,
     entry_id: str,
@@ -1229,7 +1241,7 @@ class XSenseRecordingsMediaSource(MediaSource):
             resolved_url = recording_playback_api_url(clip)
             if not resolved_url:
                 raise Unresolvable("X-Sense recording playback URL is unavailable")
-            return PlayMedia(resolved_url, HLS_MIME_TYPE)
+            return _play_media(resolved_url, HLS_MIME_TYPE)
 
         resolved_url = await self._async_cached_playback_url(clip)
         hls_ready = await self._async_hls_ready(clip)
@@ -1240,7 +1252,7 @@ class XSenseRecordingsMediaSource(MediaSource):
             else output_path if await self._async_mp4_ready(output_path) else None
         )
         mime_type = HLS_MIME_TYPE if hls_ready else MIME_TYPE
-        return PlayMedia(str(resolved_url), mime_type, path=local_path)
+        return _play_media(str(resolved_url), mime_type, path=local_path)
 
     async def _async_cached_playback_url(self, clip: dict[str, Any]) -> str:
         """Return a cached media URL for an APK-provided direct recording."""

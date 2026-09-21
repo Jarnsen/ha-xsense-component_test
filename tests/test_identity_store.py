@@ -311,10 +311,10 @@ async def test_real_store_removal_joins_running_delayed_write(tmp_path, monkeypa
         store = current._xsense_identity_store._store
         original_write = store._async_write_data
 
-        async def write(data):
+        async def write(*args):
             entered.set()
             await release.wait()
-            await original_write(data)
+            await original_write(*args)
 
         monkeypatch.setattr(store, "_async_write_data", write)
         writing = asyncio.create_task(store._async_callback_delayed_write())
