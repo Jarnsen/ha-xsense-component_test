@@ -301,6 +301,7 @@ async def test_standalone_detector_station_creates_reported_entities(device_type
     station.set_data(
         {
             "safeMode": "Disarmed",
+            "zoneName": "Hallway",
             "wifiRSSI": -44,
             "batInfo": 3,
             "alarmStatus": False,
@@ -323,14 +324,16 @@ async def test_standalone_detector_station_creates_reported_entities(device_type
     sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
 
     assert {"alarm_status", "mute_status"} <= binary_keys
-    assert {"battery", "wifi_rssi", "device_status", "safe_mode"} <= sensor_keys
+    assert {"battery", "wifi_rssi", "device_status"} <= sensor_keys
+    assert "safe_mode" not in sensor_keys
+    assert "zone_name" not in sensor_keys
 
 
 @pytest.mark.parametrize(
     ("module", "expected_keys"),
     [
         (binary_sensor, {"alarm_status", "mute_status"}),
-        (sensor, {"battery", "wifi_rssi", "device_status", "safe_mode"}),
+        (sensor, {"battery", "wifi_rssi", "device_status"}),
     ],
 )
 async def test_standalone_stations_discovered_after_setup_add_entities_once(

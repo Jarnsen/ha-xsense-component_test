@@ -76,17 +76,15 @@ def test_self_test_result_preserves_failure_code():
 
 
 @pytest.mark.parametrize("device_type", ["XS01-M", "XS01-WX", "SC06-WX", "XS0B-iR"])
-def test_self_test_report_sensor_exists_for_report_capable_device_before_first_report(
-    device_type,
-):
+def test_self_test_report_sensor_waits_for_actual_report(device_type):
     entity = SimpleNamespace(data={}, type=device_type)
 
-    assert has_self_test_report(entity)
+    assert not has_self_test_report(entity)
 
 
 @pytest.mark.parametrize("device_type", ["XS01-WX", "SC06-WX", "XS0B-iR"])
-def test_self_test_report_does_not_require_remote_test_action(device_type):
-    entity = SimpleNamespace(data={}, type=device_type)
+def test_self_test_report_does_not_require_remote_test_action_after_report(device_type):
+    entity = SimpleNamespace(data={"lastSelfTest": "0"}, type=device_type)
 
     assert has_self_test_report(entity)
 

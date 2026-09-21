@@ -49,10 +49,6 @@ if TYPE_CHECKING:
     from .coordinator import XSenseDataUpdateCoordinator
 
 
-# These models report physical self-tests but have no remote self-test command.
-SELF_TEST_REPORT_ONLY_MODELS = {"SC06-WX", "XS01-WX", "XS0B-iR"}
-
-
 @dataclass(kw_only=True, frozen=True)
 class XSenseSensorEntityDescription(SensorEntityDescription):
     """Describes XSense sensor entity."""
@@ -145,6 +141,11 @@ def has_data_or_sbs50(key: str) -> Callable[[Entity], bool]:
     return lambda entity: key in entity.data or sbs50_station(entity)
 
 
+def has_sbs50_data_or_placeholder(key: str) -> Callable[[Entity], bool]:
+    """Expose SBS50-only management diagnostics without leaking them to detectors."""
+    return lambda entity: sbs50_station(entity)
+
+
 def timestamp_value(value) -> datetime | None:
     """Return an aware datetime for X-Sense timestamp payload values."""
     if value in (None, ""):
@@ -214,16 +215,8 @@ def has_report_time(entity: Entity) -> bool:
 
 
 def has_self_test_report(entity: Entity) -> bool:
-    """Return whether the entity can report an app-style self-test result."""
-    entity_def = entities.get(entity.type, {})
-    return (
-        entity.type in SELF_TEST_REPORT_ONLY_MODELS
-        or "lastSelfTest" in entity.data
-        or any(
-            action.get("action") == "test"
-            for action in entity_def.get("actions", [])
-        )
-    )
+    """Return whether an actual self-test result report is present."""
+    return "lastSelfTest" in entity.data or "lastSelfTestTime" in entity.data
 
 
 _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
@@ -682,7 +675,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:map-marker-outline",
         value_fn=optional_data_value("zoneName"),
-        exists_fn=has_data_or_sbs50("zoneName"),
+        exists_fn=has_sbs50_data_or_placeholder("zoneName"),
     ),
     XSenseSensorEntityDescription(
         key="location",
@@ -738,7 +731,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:shield-home",
         value_fn=optional_data_value("safeMode"),
-        exists_fn=has_data_or_sbs50("safeMode"),
+        exists_fn=has_sbs50_data_or_placeholder("safeMode"),
     ),
 )
 

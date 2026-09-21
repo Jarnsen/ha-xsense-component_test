@@ -370,6 +370,18 @@ def _obsolete_sensor_unique_ids(data) -> set[str]:
                 getattr(entity, "type", None), ()
             )
         )
+        entity_data = getattr(entity, "data", {}) or {}
+        entity_type = getattr(entity, "type", None)
+        if entity_type is not None and entity_type != "SBS50":
+            unique_ids.update(
+                _sensor_unique_id(entity.entity_id, key)
+                for key in ("safe_mode", "zone_name")
+            )
+        if "lastSelfTest" not in entity_data and "lastSelfTestTime" not in entity_data:
+            unique_ids.update(
+                _sensor_unique_id(entity.entity_id, key)
+                for key in ("last_self_test", "last_self_test_time")
+            )
     return unique_ids
 
 

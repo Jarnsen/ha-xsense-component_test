@@ -46,14 +46,14 @@ def test_obsolete_sensor_cleanup_targets_static_identifier_entities_only():
         {"stations": {"station_1": station}, "devices": {"device_1": device}}
     )
 
-    assert len(unique_ids) == len(OBSOLETE_SENSOR_KEYS) * 2
+    assert len(unique_ids) == len(OBSOLETE_SENSOR_KEYS) * 2 + 4
     assert "station-1-serial-number" in unique_ids
     assert "station-1-station-sn" in unique_ids
     assert "station-1-device-mac" in unique_ids
     assert "device-1-bluetooth-mac" in unique_ids
     assert "station-1-ip" not in unique_ids
     assert "device-1-wifi-rssi" not in unique_ids
-    assert "station-1-last-self-test" not in unique_ids
+    assert "station-1-last-self-test" in unique_ids
 
 
 def test_obsolete_sensor_cleanup_targets_removed_model_sensors_only():
@@ -64,9 +64,11 @@ def test_obsolete_sensor_cleanup_targets_removed_model_sensors_only():
         {"stations": {"wifi": xs01_wx}, "devices": {"rf": xs01_m}}
     )
 
-    assert "kitchen-smoke-last-self-test" not in unique_ids
-    assert "kitchen-smoke-last-self-test-time" not in unique_ids
-    assert "hall-smoke-last-self-test" not in unique_ids
+    assert "kitchen-smoke-last-self-test" in unique_ids
+    assert "kitchen-smoke-last-self-test-time" in unique_ids
+    assert "kitchen-smoke-safe-mode" in unique_ids
+    assert "kitchen-smoke-zone-name" in unique_ids
+    assert "hall-smoke-last-self-test" in unique_ids
 
 
 def test_obsolete_action_unique_ids_target_removed_model_actions_only():
@@ -158,8 +160,12 @@ def test_raw_state_aliases_are_removed_after_canonical_normalization():
     )
 
 
-def test_xs01_wx_self_test_report_entities_are_not_obsolete():
-    xs01_wx = SimpleNamespace(entity_id="kitchen_smoke", type="XS01-WX")
+def test_self_test_report_entities_are_kept_after_report_payload():
+    xs01_wx = SimpleNamespace(
+        entity_id="kitchen_smoke",
+        type="XS01-WX",
+        data={"lastSelfTest": "0", "lastSelfTestTime": "20260921010101"},
+    )
 
     unique_ids = _obsolete_sensor_unique_ids(
         {"stations": {"wifi": xs01_wx}, "devices": {}}
@@ -1148,8 +1154,6 @@ def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
         'xs01-wx-alarm-status',
         'xs01-wx-battery',
         'xs01-wx-ip-address',
-        'xs01-wx-last-self-test',
-        'xs01-wx-last-self-test-time',
         'xs01-wx-mute-status',
         'xs01-wx-report-time',
         'xs01-wx-signal-strength',
