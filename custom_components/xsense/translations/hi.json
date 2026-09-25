@@ -255,22 +255,22 @@
         "name": "डिवाइस परीक्षण का समय"
       },
       "radon": {
-        "name": "Radon"
+        "name": "रेडॉन"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "दीर्घकालिक रेडॉन दिन"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "1-दिन रेडॉन स्तर"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "7-दिन रेडॉन स्तर"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "30-दिन रेडॉन स्तर"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "90-दिन रेडॉन स्तर"
       },
       "radon_peak": {
         "name": "पीक रेडॉन स्तर"

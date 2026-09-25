@@ -255,22 +255,22 @@
         "name": "وقت اختبار الجهاز"
       },
       "radon": {
-        "name": "Radon"
+        "name": "الرادون"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "أيام الرادون طويلة الأجل"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "مستوى الرادون ليوم واحد"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "مستوى الرادون لـ 7 أيام"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "مستوى الرادون لـ 30 يوماً"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "مستوى الرادون لـ 90 يوماً"
       },
       "radon_peak": {
         "name": "مستوى الذروة للرادون"

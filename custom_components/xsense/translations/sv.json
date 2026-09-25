@@ -255,22 +255,22 @@
         "name": "Testtid för enheten"
       },
       "radon": {
-        "name": "Radon"
+        "name": "Radonnivå"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "Långsiktiga radondagar"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "1-dagars radonnivå"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "7-dagars radonnivå"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "30-dagars radonnivå"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "90-dagars radonnivå"
       },
       "radon_peak": {
         "name": "Högsta radonnivå"

@@ -255,22 +255,22 @@
         "name": "Waktu Uji Perangkat"
       },
       "radon": {
-        "name": "Radon"
+        "name": "Tingkat radon"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "Hari radon jangka panjang"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "Tingkat radon 1 hari"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "Tingkat radon 7 hari"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "Tingkat radon 30 hari"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "Tingkat radon 90 hari"
       },
       "radon_peak": {
         "name": "Tingkat Puncak Radon"

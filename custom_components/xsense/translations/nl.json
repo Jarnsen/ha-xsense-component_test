@@ -255,22 +255,22 @@
         "name": "Testtijd apparaat"
       },
       "radon": {
-        "name": "Radon"
+        "name": "Radonwaarde"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "Langetermijn-radondagen"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "1-daags radonniveau"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "7-daags radonniveau"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "30-daags radonniveau"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "90-daags radonniveau"
       },
       "radon_peak": {
         "name": "Piekradonniveau"

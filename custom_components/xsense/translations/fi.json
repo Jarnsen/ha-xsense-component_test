@@ -255,22 +255,22 @@
         "name": "Laitteen testausaika"
       },
       "radon": {
-        "name": "Radon"
+        "name": "Radonpitoisuus"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "Pitkän aikavälin radonpäivät"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "1 päivän radonitaso"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "7 päivän radonitaso"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "30 päivän radonitaso"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "90 päivän radonitaso"
       },
       "radon_peak": {
         "name": "Radonin huipputaso"

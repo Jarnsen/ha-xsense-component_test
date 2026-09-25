@@ -484,22 +484,22 @@
         "name": "Tiempo de prueba del dispositivo"
       },
       "radon": {
-        "name": "Radon"
+        "name": "Radón"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "Días de radón a largo plazo"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "Nivel de radón de 1 día"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "Nivel de radón de 7 días"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "Nivel de radón de 30 días"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "Nivel de radón de 90 días"
       },
       "radon_peak": {
         "name": "Nivel máximo de radón"

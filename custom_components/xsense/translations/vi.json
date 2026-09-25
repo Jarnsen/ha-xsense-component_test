@@ -255,22 +255,22 @@
         "name": "Thời gian kiểm tra thiết bị"
       },
       "radon": {
-        "name": "Radon"
+        "name": "Mức radon"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "Số ngày radon dài hạn"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "Mức radon 1 ngày"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "Mức radon 7 ngày"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "Mức radon 30 ngày"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "Mức radon 90 ngày"
       },
       "radon_peak": {
         "name": "Mức Radon cao nhất"

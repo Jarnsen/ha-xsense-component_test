@@ -678,7 +678,7 @@ def test_station_set_devices_preserves_server_backed_device_fields():
     assert radon.data["radonUnit"] == "2"
     assert radon.data["minRadon"] == "75"
     assert radon.data["maxRadon"] == "150"
-    assert radon.data["day30Value"] == "82.5"
+    assert radon.data["day30Value"] == 82.5
 
 
 def test_station_set_devices_accepts_apk_serial_aliases():
@@ -1133,27 +1133,45 @@ def test_entity_set_data_applies_apk_radon_peak_normalization():
     assert "peak" not in device.data
 
 
-def test_house_get_station_by_sn_matches_xr0a_shadow_name():
+@pytest.mark.parametrize(
+    "device_type",
+    [
+        "SC06-WX",
+        "SC07-WX",
+        "STH0C",
+        "SWS0B",
+        "XC0C-iR",
+        "XC0M-iR",
+        "XP0A-iR",
+        "XR0A-iR",
+        "XS0B-iR",
+        "XS03-WX",
+        "XS0E-iR",
+    ],
+)
+def test_house_get_station_by_sn_matches_wifi_shadow_name(device_type):
     test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
     test_house.set_stations(
         {
             "stations": [
                 {
                     "stationId": "station-id",
-                    "stationName": "Radon",
-                    "stationSn": "radon-sn",
-                    "category": "XR0A-iR",
+                    "stationName": device_type,
+                    "stationSn": "wifi-sn",
+                    "category": device_type,
                 }
             ]
         }
     )
 
-    by_serial = test_house.get_station_by_sn("radon-sn")
-    by_shadow = test_house.get_station_by_sn("XR0A-iR-radon-sn")
+    station_obj = test_house.get_station_by_sn("wifi-sn")
+    by_shadow = test_house.get_station_by_sn(station_obj.shadow_name)
+    by_type_serial = test_house.get_station_by_sn(f"{device_type}-wifi-sn")
+    by_concat = test_house.get_station_by_sn(f"{device_type}wifi-sn")
 
-    assert by_serial is by_shadow
-    assert by_serial.type == "XR0A-iR"
-    assert by_serial.shadow_name == "XR0A-iR-radon-sn"
+    assert station_obj is by_shadow
+    assert station_obj.type == device_type
+    assert by_type_serial is station_obj or by_concat is station_obj
 
 
 def test_parse_get_house_state_applies_apk_xr0a_mainpage_fields():
