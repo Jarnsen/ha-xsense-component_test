@@ -104,6 +104,11 @@ def co_device(entity: Entity) -> bool:
     } or entity.type.startswith("XC")
 
 
+def radon_device(entity: Entity) -> bool:
+    """Return whether this entity is the APK XR0A-iR radon station."""
+    return entity.type == "XR0A-iR"
+
+
 def co_alarm_standard(entity: Entity) -> str | None:
     """Return the CO alarm standard label used by the X-Sense app."""
     value = entity.data.get("standard")
@@ -299,13 +304,76 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         exists_fn=has_data("coPpmPeakTime"),
     ),
     XSenseSensorEntityDescription(
+        key="radon",
+        translation_key="radon",
+        native_unit_of_measurement="Bq/m³",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:radioactive",
+        value_fn=optional_data_value("longTermValue"),
+        exists_fn=lambda device: radon_device(device)
+        or "longTermValue" in device.data,
+    ),
+    XSenseSensorEntityDescription(
+        key="radon_long_term_day",
+        translation_key="radon_long_term_day",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:calendar-range",
+        value_fn=optional_data_value("longTermDay"),
+        exists_fn=lambda device: radon_device(device)
+        or "longTermDay" in device.data,
+    ),
+    XSenseSensorEntityDescription(
+        key="radon_1_day",
+        translation_key="radon_1_day",
+        native_unit_of_measurement="Bq/m³",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:radioactive",
+        value_fn=optional_data_value("day1Value"),
+        exists_fn=lambda device: radon_device(device)
+        or "day1Value" in device.data,
+    ),
+    XSenseSensorEntityDescription(
+        key="radon_7_day",
+        translation_key="radon_7_day",
+        native_unit_of_measurement="Bq/m³",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:radioactive",
+        value_fn=optional_data_value("day7Value"),
+        exists_fn=lambda device: radon_device(device)
+        or "day7Value" in device.data,
+    ),
+    XSenseSensorEntityDescription(
+        key="radon_30_day",
+        translation_key="radon_30_day",
+        native_unit_of_measurement="Bq/m³",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:radioactive",
+        value_fn=optional_data_value("day30Value"),
+        exists_fn=lambda device: radon_device(device)
+        or "day30Value" in device.data,
+    ),
+    XSenseSensorEntityDescription(
+        key="radon_90_day",
+        translation_key="radon_90_day",
+        native_unit_of_measurement="Bq/m³",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:radioactive",
+        value_fn=optional_data_value("day90Value"),
+        exists_fn=lambda device: radon_device(device)
+        or "day90Value" in device.data,
+    ),
+    XSenseSensorEntityDescription(
         key="radon_peak",
         translation_key="radon_peak",
         native_unit_of_measurement="Bq/m³",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:radioactive",
         value_fn=optional_data_value("radonPeak"),
-        exists_fn=lambda device: device.type == "XR0A-iR"
+        exists_fn=lambda device: radon_device(device)
         or "radonPeak" in device.data,
     ),
     XSenseSensorEntityDescription(
@@ -314,7 +382,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=optional_data_timestamp("radonPeakTime"),
-        exists_fn=lambda device: device.type == "XR0A-iR"
+        exists_fn=lambda device: radon_device(device)
         or "radonPeakTime" in device.data,
     ),
     XSenseSensorEntityDescription(

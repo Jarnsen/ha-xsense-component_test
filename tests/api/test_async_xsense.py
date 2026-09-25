@@ -1133,6 +1133,73 @@ def test_entity_set_data_applies_apk_radon_peak_normalization():
     assert "peak" not in device.data
 
 
+def test_house_get_station_by_sn_matches_xr0a_shadow_name():
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stations": [
+                {
+                    "stationId": "station-id",
+                    "stationName": "Radon",
+                    "stationSn": "radon-sn",
+                    "category": "XR0A-iR",
+                }
+            ]
+        }
+    )
+
+    by_serial = test_house.get_station_by_sn("radon-sn")
+    by_shadow = test_house.get_station_by_sn("XR0A-iR-radon-sn")
+
+    assert by_serial is by_shadow
+    assert by_serial.type == "XR0A-iR"
+    assert by_serial.shadow_name == "XR0A-iR-radon-sn"
+
+
+def test_parse_get_house_state_applies_apk_xr0a_mainpage_fields():
+    client = async_xsense.AsyncXSense()
+    test_house = house.House(None, "house-id", "Home", "US", "us-east-1", "mqtt")
+    test_house.set_stations(
+        {
+            "stations": [
+                {
+                    "stationId": "station-id",
+                    "stationName": "Radon",
+                    "stationSn": "radon-sn",
+                    "category": "XR0A-iR",
+                }
+            ]
+        }
+    )
+
+    client._parse_get_house_state(
+        test_house,
+        {
+            "XR0A-iR-radon-sn": {
+                "longTermValue": "82.5",
+                "longTermDay": "30",
+                "day1Value": "12.0",
+                "day7Value": "40.0",
+                "day30Value": "82.5",
+                "day90Value": "90.0",
+                "batInfo": "3",
+                "wifiRssi": "-36",
+                "alarmStatus": "0",
+                "isLifeEnd": "0",
+            }
+        },
+    )
+
+    radon = test_house.get_station_by_sn("radon-sn")
+    assert radon.data["longTermValue"] == 82.5
+    assert radon.data["longTermDay"] == 30
+    assert radon.data["day30Value"] == 82.5
+    assert radon.data["batInfo"] == 3
+    assert radon.data["wifiRSSI"] == -36
+    assert radon.data["alarmStatus"] is False
+    assert radon.data["isLifeEnd"] is False
+
+
 def test_parse_get_state_accepts_apk_reported_device_list():
     client = async_xsense.AsyncXSense()
     station_obj = station.Station(

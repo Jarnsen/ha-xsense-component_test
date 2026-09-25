@@ -10,6 +10,10 @@ This file tracks user-visible entity changes that may affect dashboards, automat
 
 ## Recent Changes
 
+### 1.4.25.1
+
+- XR0A-iR Wi-Fi radon stations expose the app home-card radon reading (`longTermValue`, Bq/m³), 1/7/30/90-day averages, long-term day count, and peak radon. Battery, Wi-Fi, alarm, and end-of-life entities are created for that station.
+
 ### 1.4.18
 
 - Combo smoke/CO detectors such as XP0A-MR are treated as CO-capable devices so CO and CO Level entities are created before late CO payload values arrive.
