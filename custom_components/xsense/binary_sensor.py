@@ -84,6 +84,7 @@ LIFE_END_STATUS_DEVICE_TYPES = frozenset(
         "XP0T-iA",
         "XP0V-iA",
         "XP0W-iA",
+        "XR0A-iR",
         "XS01-M",
         "XS01-WX",
         "XS03-WX",

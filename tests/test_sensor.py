@@ -138,3 +138,37 @@ def test_radon_peak_entities_use_apk_values():
     assert _sensor_description("radon_peak_time").value_fn(entity) == datetime(
         2026, 7, 19, 10, 10, 11, tzinfo=timezone.utc
     )
+
+
+def test_radon_card_entities_are_model_backed_before_first_report():
+    entity = SimpleNamespace(data={}, type="XR0A-iR")
+
+    assert _sensor_description("radon").exists_fn(entity)
+    assert _sensor_description("radon").value_fn(entity) is None
+    assert _sensor_description("radon_long_term_day").exists_fn(entity)
+    assert _sensor_description("radon_1_day").exists_fn(entity)
+    assert _sensor_description("radon_7_day").exists_fn(entity)
+    assert _sensor_description("radon_30_day").exists_fn(entity)
+    assert _sensor_description("radon_90_day").exists_fn(entity)
+
+
+def test_radon_card_entities_use_apk_mainpage_values():
+    entity = SimpleNamespace(
+        data={
+            "longTermValue": 82.5,
+            "longTermDay": 30,
+            "day1Value": 12.0,
+            "day7Value": 40.0,
+            "day30Value": 82.5,
+            "day90Value": 90.0,
+        },
+        type="XR0A-iR",
+    )
+
+    assert _sensor_description("radon").value_fn(entity) == 82.5
+    assert _sensor_description("radon_long_term_day").value_fn(entity) == 30
+    assert _sensor_description("radon_1_day").value_fn(entity) == 12.0
+    assert _sensor_description("radon_7_day").value_fn(entity) == 40.0
+    assert _sensor_description("radon_30_day").value_fn(entity) == 82.5
+    assert _sensor_description("radon_90_day").value_fn(entity) == 90.0
+

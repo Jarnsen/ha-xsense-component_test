@@ -110,4 +110,18 @@ class House:
         self.stations = stations
 
     def get_station_by_sn(self, sn: str):
-        return next((i for _, i in self.stations.items() if i.sn == sn), None)
+        if sn in (None, ""):
+            return None
+        key = str(sn)
+        for station in self.stations.values():
+            serial = getattr(station, "sn", None)
+            if serial is not None and str(serial) == key:
+                return station
+            shadow_name = getattr(station, "shadow_name", None)
+            if shadow_name is not None and str(shadow_name) == key:
+                return station
+            station_type = getattr(station, "type", None)
+            if station_type and serial not in (None, ""):
+                if key in {f"{station_type}-{serial}", f"{station_type}{serial}"}:
+                    return station
+        return None

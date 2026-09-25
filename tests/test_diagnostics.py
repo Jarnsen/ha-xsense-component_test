@@ -37,6 +37,8 @@ def test_entity_diagnostics_keeps_only_functional_state_data():
             "wifiRSSI": -55,
             "safeMode": 1,
             "sensorStatus": "0",
+            "longTermValue": "82.5",
+            "radonPeak": "148.5",
         },
     )
 
@@ -63,6 +65,8 @@ def test_entity_diagnostics_keeps_only_functional_state_data():
         "wifiRSSI": -55,
         "safeMode": 1,
         "wiredMacAddress": "**REDACTED**",
+        "longTermValue": "82.5",
+        "radonPeak": "148.5",
     }
 
 

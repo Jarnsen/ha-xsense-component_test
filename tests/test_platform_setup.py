@@ -537,6 +537,7 @@ async def test_detector_lifecycle_fields_remain_entities():
         "XP0T-iA",
         "XP0V-iA",
         "XP0W-iA",
+        "XR0A-iR",
         "XS01-M",
         "XS01-WX",
         "XS03-WX",
@@ -646,6 +647,61 @@ def test_life_end_status_preserves_explicit_payload_semantics(value, expected):
     detector = SimpleNamespace(data={"isLifeEnd": value}, type="XS01-WX")
 
     assert binary_sensor.life_end_status(detector) is expected
+
+
+async def test_xr0a_station_creates_apk_card_and_status_entities():
+    radon = SimpleNamespace(
+        data={
+            "safeMode": "Disarmed",
+            "wifiRSSI": -36,
+            "wifiRssiLevel": 3,
+            "batInfo": 3,
+            "isLifeEnd": False,
+            "alarmStatus": False,
+            "sw": "v1.4.0",
+            "ssid": "home",
+            "ip": "192.0.2.10",
+        },
+        entity_id="station-id",
+        name="Radon",
+        online=True,
+        shadow_name="XR0A-iR-radon-sn",
+        sn="radon-sn",
+        type="XR0A-iR",
+    )
+
+    class Coordinator:
+        data = {"stations": {radon.entity_id: radon}, "devices": {}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    sensor_keys = {
+        entity.entity_description.key
+        for entity in (await _setup_platform(sensor, Coordinator()))[0]
+    }
+    binary_keys = {
+        entity.entity_description.key
+        for entity in (await _setup_platform(binary_sensor, Coordinator()))[0]
+    }
+
+    assert {
+        "radon",
+        "radon_long_term_day",
+        "radon_1_day",
+        "radon_7_day",
+        "radon_30_day",
+        "radon_90_day",
+        "radon_peak",
+        "battery",
+        "wifi_rssi",
+        "wifi_rssi_level",
+        "wifi_ssid",
+        "ip",
+    } <= sensor_keys
+    assert {"alarm_status", "is_life_end", "connected"} <= binary_keys
 
 
 async def test_sbs50_station_entities_load_before_late_shadow_keys():
