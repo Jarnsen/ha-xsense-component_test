@@ -255,22 +255,22 @@
         "name": "Čas testu zariadenia"
       },
       "radon": {
-        "name": "Radon"
+        "name": "Radón"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "Dni dlhodobého radónu"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "1-dňová hladina radónu"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "7-dňová hladina radónu"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "30-dňová hladina radónu"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "90-dňová hladina radónu"
       },
       "radon_peak": {
         "name": "Najvyššia hladina radónu"

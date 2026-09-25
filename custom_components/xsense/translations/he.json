@@ -255,22 +255,22 @@
         "name": "זמן בדיקת מכשיר"
       },
       "radon": {
-        "name": "Radon"
+        "name": "ראדון"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "ימי ראדון לטווח ארוך"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "רמת ראדון ליום אחד"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "רמת ראדון ל-7 ימים"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "רמת ראדון ל-30 ימים"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "רמת ראדון ל-90 ימים"
       },
       "radon_peak": {
         "name": "שיא רמת ראדון"

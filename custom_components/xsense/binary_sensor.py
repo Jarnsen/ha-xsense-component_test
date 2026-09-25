@@ -126,6 +126,7 @@ ALARM_STATUS_DEVICE_TYPES = frozenset(
         "SMS0A",
         "STH0A",
         "STH0B",
+        "STH0C",
         "STH51",
         "SWS0A",
         "SWS51",
@@ -579,7 +580,8 @@ _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="water_alarm_status",
         translation_key="water_alarm_status",
         device_class=BinarySensorDeviceClass.MOISTURE,
-        exists_fn=has_data("waterAlarmStatus"),
+        exists_fn=lambda entity: "waterAlarmStatus" in entity.data
+        or entity.type == "SWS0B",
         value_fn=data_bool("waterAlarmStatus"),
     ),
     XSenseBinarySensorEntityDescription(

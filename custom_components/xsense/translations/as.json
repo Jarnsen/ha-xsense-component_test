@@ -255,22 +255,22 @@
         "name": "ডিভাইচ পৰীক্ষাৰ সময়"
       },
       "radon": {
-        "name": "Radon"
+        "name": "ৰেডন"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "দীৰ্ঘম্যাদী ৰেডন দিন"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "১ দিনীয়া ৰেডন স্তৰ"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "৭ দিনীয়া ৰেডন স্তৰ"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "৩০ দিনীয়া ৰেডন স্তৰ"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "৯০ দিনীয়া ৰেডন স্তৰ"
       },
       "radon_peak": {
         "name": "শীৰ্ষ ৰেডন স্তৰ"

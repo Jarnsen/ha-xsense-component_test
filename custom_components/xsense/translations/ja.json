@@ -255,22 +255,22 @@
         "name": "デバイスのテスト時間"
       },
       "radon": {
-        "name": "Radon"
+        "name": "ラドン"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "長期ラドン日数"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "1日ラドンレベル"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "7日ラドンレベル"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "30日ラドンレベル"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "90日ラドンレベル"
       },
       "radon_peak": {
         "name": "ピークラドンレベル"

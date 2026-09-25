@@ -255,22 +255,22 @@
         "name": "Eszköz tesztelési ideje"
       },
       "radon": {
-        "name": "Radon"
+        "name": "Radonszint"
       },
       "radon_long_term_day": {
-        "name": "Radon Long Term Days"
+        "name": "Hosszú távú radonnapok"
       },
       "radon_1_day": {
-        "name": "1-Day Radon Level"
+        "name": "1 napos radonszint"
       },
       "radon_7_day": {
-        "name": "7-Day Radon Level"
+        "name": "7 napos radonszint"
       },
       "radon_30_day": {
-        "name": "30-Day Radon Level"
+        "name": "30 napos radonszint"
       },
       "radon_90_day": {
-        "name": "90-Day Radon Level"
+        "name": "90 napos radonszint"
       },
       "radon_peak": {
         "name": "Csúcs radon szint"
