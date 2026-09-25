@@ -13,7 +13,6 @@ This file tracks user-visible entity changes that may affect dashboards, automat
 ### 1.4.25.1
 
 - XR0A-iR Wi-Fi radon stations expose the app home-card radon reading (`longTermValue`, Bq/m³), 1/7/30/90-day averages, long-term day count, and peak radon. Battery, Wi-Fi, alarm, and end-of-life entities are created for that station.
-- STH0C Wi-Fi temperature/humidity stations create temperature, humidity, and alarm entities before late mainpage values arrive. SWS0B Wi-Fi water stations create the water alarm entity. Wi-Fi combo climate models XC04-WX, XC0C-iA, XC0C-iR, and XC0M-iR create temperature and humidity entities the same way.
 
 ### 1.4.18
 

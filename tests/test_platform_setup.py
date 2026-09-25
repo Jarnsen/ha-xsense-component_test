@@ -704,68 +704,6 @@ async def test_xr0a_station_creates_apk_card_and_status_entities():
     assert {"alarm_status", "is_life_end", "connected"} <= binary_keys
 
 
-async def test_sth0c_station_creates_climate_and_alarm_entities():
-    climate = SimpleNamespace(
-        data={},
-        entity_id="sth0c-id",
-        name="Climate",
-        online=True,
-        shadow_name="STH0C-climate-sn",
-        sn="climate-sn",
-        type="STH0C",
-    )
-
-    class Coordinator:
-        data = {"stations": {climate.entity_id: climate}, "devices": {}}
-        last_update_success = True
-        xsense = None
-
-        def async_add_listener(self, *args, **kwargs):
-            return lambda: None
-
-    sensor_keys = {
-        entity.entity_description.key
-        for entity in (await _setup_platform(sensor, Coordinator()))[0]
-    }
-    binary_keys = {
-        entity.entity_description.key
-        for entity in (await _setup_platform(binary_sensor, Coordinator()))[0]
-    }
-
-    assert {"temperature", "humidity"} <= sensor_keys
-    assert {"alarm_status", "connected"} <= binary_keys
-    assert "mute_status" not in binary_keys
-
-
-async def test_sws0b_station_creates_water_alarm_entity():
-    water = SimpleNamespace(
-        data={},
-        entity_id="sws0b-id",
-        name="Water",
-        online=True,
-        shadow_name="SWS0B-water-sn",
-        sn="water-sn",
-        type="SWS0B",
-    )
-
-    class Coordinator:
-        data = {"stations": {water.entity_id: water}, "devices": {}}
-        last_update_success = True
-        xsense = None
-
-        def async_add_listener(self, *args, **kwargs):
-            return lambda: None
-
-    binary_keys = {
-        entity.entity_description.key
-        for entity in (await _setup_platform(binary_sensor, Coordinator()))[0]
-    }
-
-    assert "water_alarm_status" in binary_keys
-    assert "alarm_status" not in binary_keys
-    assert "mute_status" not in binary_keys
-
-
 async def test_sbs50_station_entities_load_before_late_shadow_keys():
     station = SimpleNamespace(
         data={},
