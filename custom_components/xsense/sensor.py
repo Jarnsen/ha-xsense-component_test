@@ -109,17 +109,6 @@ def radon_device(entity: Entity) -> bool:
     return entity.type == "XR0A-iR"
 
 
-def temperature_device(entity: Entity) -> bool:
-    """Return whether this entity reports APK temperature/humidity readings."""
-    entity_def = entities.get(entity.type) or {}
-    return entity_def.get("type") == EntityType.TEMPERATURE or entity.type in {
-        "XC04-WX",
-        "XC0C-iA",
-        "XC0C-iR",
-        "XC0M-iR",
-    }
-
-
 def co_alarm_standard(entity: Entity) -> str | None:
     """Return the CO alarm standard label used by the X-Sense app."""
     value = entity.data.get("standard")
@@ -402,8 +391,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=optional_data_value("temperature"),
-        exists_fn=lambda device: temperature_device(device)
-        or "temperature" in device.data,
+        exists_fn=lambda device: "temperature" in device.data,
     ),
     XSenseSensorEntityDescription(
         key="humidity",
@@ -411,8 +399,7 @@ _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.HUMIDITY,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=optional_data_value("humidity"),
-        exists_fn=lambda device: temperature_device(device)
-        or "humidity" in device.data,
+        exists_fn=lambda device: "humidity" in device.data,
     ),
     XSenseSensorEntityDescription(
         key="battery",
