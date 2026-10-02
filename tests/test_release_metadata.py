@@ -152,7 +152,7 @@ def test_runtime_requirements_match_manifest():
     assert requirements == manifest["requirements"]
 
 
-def test_manifest_declares_direct_mqtt_without_pinning_transitive_aws_packages():
+def test_manifest_declares_direct_mqtt_with_minimum_version_constraint():
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     requirement_names = {
         re.split(r"[<>=!~]", requirement, maxsplit=1)[0].lower()
@@ -160,7 +160,7 @@ def test_manifest_declares_direct_mqtt_without_pinning_transitive_aws_packages()
     }
 
     assert requirement_names.isdisjoint({"boto3", "botocore"})
-    assert "paho-mqtt==2.1.0" in manifest["requirements"]
+    assert "paho-mqtt>=2.1.0" in manifest["requirements"]
 
 
 def test_legacy_pion_adapter_binaries_are_not_packaged():
