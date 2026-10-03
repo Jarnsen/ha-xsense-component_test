@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-import voluptuous as vol
-
 from .python_xsense.device import Device
 from .python_xsense.entity import Entity
 from .python_xsense.entity_map import EntityType
@@ -24,6 +22,8 @@ from homeassistant.core import HomeAssistant
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_platform
+
+import voluptuous as vol
 
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator

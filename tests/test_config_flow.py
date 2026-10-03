@@ -4,12 +4,12 @@ import threading
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import homeassistant.helpers.config_validation as cv
+from homeassistant.config_entries import OptionsFlowManager
+from homeassistant.helpers import entity_registry as er
 import pytest
 import voluptuous as vol
 import voluptuous_serialize
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers import entity_registry as er
-from homeassistant.config_entries import OptionsFlowManager
 
 from custom_components.xsense import config_flow
 
@@ -20,6 +20,15 @@ from custom_components.xsense.config_flow import (
     recording_media_storage_path,
     recording_media_storage_path_changed,
 )
+
+
+def _serialize_options_schema(schema):
+    """Use the serializer provided by the active Home Assistant schema backend."""
+    if type(schema).__module__.startswith("probatio."):
+        from probatio.codecs import to_field_list
+
+        return to_field_list(schema, custom_serializer=cv.custom_serializer)
+    return voluptuous_serialize.convert(schema, custom_serializer=cv.custom_serializer)
 
 
 @pytest.mark.parametrize("path", [
@@ -161,9 +170,7 @@ def test_options_schema_accepts_recording_sync_options():
 
 
 def test_options_schema_can_be_serialized_for_home_assistant_options_ui():
-    converted = voluptuous_serialize.convert(
-        options_schema({}), custom_serializer=cv.custom_serializer
-    )
+    converted = _serialize_options_schema(options_schema({}))
     storage_path_field = next(
         item
         for item in converted

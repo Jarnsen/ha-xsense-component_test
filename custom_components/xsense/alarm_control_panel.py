@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from urllib.parse import urlencode
 
-import voluptuous as vol
 from homeassistant.components import persistent_notification
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
@@ -19,6 +18,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.translation import async_get_translations
+
+import voluptuous as vol
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import XSenseDataUpdateCoordinator

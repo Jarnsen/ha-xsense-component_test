@@ -8,7 +8,6 @@ from pathlib import Path, PurePosixPath
 from stat import S_ISDIR
 from typing import Any
 
-import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
@@ -17,6 +16,8 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import selector
 from homeassistant.helpers import entity_registry as er
+
+import voluptuous as vol
 
 from .python_xsense import AsyncXSense
 from .python_xsense.async_xsense import is_camera_entity

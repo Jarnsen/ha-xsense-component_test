@@ -17,7 +17,6 @@ from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse
 from weakref import WeakValueDictionary
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-import voluptuous as vol
 from homeassistant.components.media_player import MediaClass
 from homeassistant.components.media_source import (
     BrowseMediaSource,
@@ -32,6 +31,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
+
+import voluptuous as vol
 
 from .cache_ownership import (
     CacheIdentityConflict,
