@@ -5,6 +5,6 @@
     "vendor:hls": "node scripts/vendor-hls.mjs"
   },
   "devDependencies": {
-    "hls.js": "1.7.1"
+    "hls.js": "1.7.3"
   }
 }
