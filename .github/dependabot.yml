@@ -1,0 +1,43 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/St_Johns
+    open-pull-requests-limit: 3
+    groups:
+      routine-updates:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/St_Johns
+    open-pull-requests-limit: 3
+    groups:
+      routine-updates:
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/St_Johns
+    open-pull-requests-limit: 3
+    groups:
+      routine-updates:
+        update-types:
+          - minor
+          - patch
