@@ -5,11 +5,13 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from custom_components.xsense.const import DOMAIN
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.xsense import (
     binary_sensor,
     button,
+    event,
     number,
     select,
     sensor,
@@ -21,89 +23,75 @@ from custom_components.xsense.python_xsense.entity_map import EntityType, entiti
 from custom_components.xsense.python_xsense.station import Station
 
 
-# Device-card families explicitly routed by the v1.4 Android APK. Keep this
-# separate from data fields: a product must first map to its real family before
-# a platform can decide which reported fields are applicable.
-APK_DEVICE_CARD_TYPES = {
-    "SAL51": EntityType.LISTENER,
-    "SAL100": EntityType.LISTENER,
-    "SBS10": EntityType.BASESTATION,
-    "SBS50": EntityType.BASESTATION,
-    "SSC0A": EntityType.CAMERA,
-    "SSC0B": EntityType.CAMERA,
-    "SC01-MN": EntityType.COMBI,
-    "SC01-MR": EntityType.COMBI,
-    "SC06-WX": EntityType.COMBI,
-    "SC07-MR": EntityType.COMBI,
-    "SC07-WX": EntityType.COMBI,
-    "SC07-iA": EntityType.COMBI,
-    "SD11-MR": EntityType.SMOKE,
-    "SD19-MN": EntityType.SMOKE,
-    "SDA51": EntityType.ALARM,
-    "SDS0A": EntityType.DOOR,
-    "SES01": EntityType.DOOR,
-    "SKF01": EntityType.REMOTE,
-    "SK0Z-3S": EntityType.SMOKE,
-    "SKP01": EntityType.KEYPAD,
-    "SKP0A": EntityType.KEYPAD,
-    "SMA0A": EntityType.MAILBOX,
-    "SMA51": EntityType.MAILBOX,
-    "SMS01": EntityType.MOTION,
-    "SMS0A": EntityType.MOTION,
-    "SPL51": EntityType.LIGHT,
-    "SSD01": EntityType.SMARTDROP,
-    "SSL51": EntityType.LIGHT,
-    "STH0A": EntityType.TEMPERATURE,
-    "STH0B": EntityType.TEMPERATURE,
-    "STH0C": EntityType.TEMPERATURE,
-    "STH51": EntityType.TEMPERATURE,
-    "SWL51": EntityType.LIGHT,
-    "SWS0A": EntityType.WATER,
-    "SWS0B": EntityType.WATER,
-    "SWS51": EntityType.WATER,
-    "CB0Z-3S": EntityType.COMBI,
-    "LP/N-SA-0B": EntityType.SMOKE,
-    "LP/N-SCA-0A": EntityType.COMBI,
-    "XC01-M": EntityType.CO,
-    "XC04-WX": EntityType.CO,
-    "XC0C-MR": EntityType.CO,
-    "XC0C-iA": EntityType.CO,
-    "XC0C-iR": EntityType.CO,
-    "XC0M-iR": EntityType.CO,
-    "XH02-M": EntityType.HEAT,
-    "XP02S-MR": EntityType.SMOKE,
-    "XP0A-MR": EntityType.COMBI,
-    "XP0A-iR": EntityType.COMBI,
-    "XP0H-MR": EntityType.COMBI,
-    "XP0H-iR": EntityType.COMBI,
-    "XP0J-iA": EntityType.COMBI,
-    "XP0P-MR": EntityType.COMBI,
-    "XP0S-iA": EntityType.COMBI,
-    "XP0T-iA": EntityType.COMBI,
-    "XP0V-iA": EntityType.COMBI,
-    "XP0W-iA": EntityType.COMBI,
-    "XR0A-iR": EntityType.RADON,
-    "XS01-M": EntityType.SMOKE,
-    "XS01-WX": EntityType.SMOKE,
-    "XS03-iWX": EntityType.SMOKE,
-    "XS03-WX": EntityType.SMOKE,
-    "XS0AA-iA": EntityType.SMOKE,
-    "XS0AB-iA": EntityType.SMOKE,
-    "XS0B-MR": EntityType.SMOKE,
-    "XS0B-iR": EntityType.SMOKE,
-    "XS0D-MR": EntityType.SMOKE,
-    "XS0E-iR": EntityType.SMOKE,
-    "XS0F-PMA": EntityType.SMOKE,
-    "XS0R-iA": EntityType.SMOKE,
-    "XS0X-MN": EntityType.SMOKE,
-}
 
+@pytest.mark.asyncio
+async def test_apk_non_camera_product_models_create_real_platform_entities():
+    """Ensure every APK product card has a real Home Assistant surface."""
 
-def test_apk_device_card_models_keep_explicit_entity_families():
-    """Keep every APK-routed product out of an unsupported generic fallback."""
-    assert {
-        model: entities[model]["type"] for model in APK_DEVICE_CARD_TYPES
-    } == APK_DEVICE_CARD_TYPES
+    class Coordinator:
+        last_update_success = True
+        xsense = AsyncXSense()
+
+        def __init__(self, stations, devices):
+            self.data = {"stations": stations, "devices": devices}
+
+        def async_add_listener(self, _callback):
+            return lambda: None
+
+    modules = (binary_sensor, button, event, number, select, sensor, switch)
+    sample_data = {"batInfo": "3", "online": "1"}
+
+    for model in entities:
+        if model in {"SSC0A", "SSC0B"}:
+            continue
+
+        if model in {"SBS10", "SBS50"}:
+            candidate = Station(
+                None,
+                stationId=f"{model}-station",
+                stationSn=f"{model}-sn",
+                category=model,
+                online=1,
+            )
+            candidate.set_data(sample_data)
+            stations = {candidate.entity_id: candidate}
+            devices = {}
+        else:
+            parent = Station(
+                None,
+                stationId="parent",
+                stationSn="parent-sn",
+                category="SBS50",
+                online=1,
+            )
+            candidate = Device(
+                parent,
+                deviceId=f"{model}-device",
+                deviceSn=f"{model}-sn",
+                deviceType=model,
+                online=1,
+            )
+            candidate.set_data(sample_data)
+            stations = {parent.entity_id: parent}
+            devices = {candidate.entity_id: candidate}
+
+        coordinator = Coordinator(stations, devices)
+        hass = SimpleNamespace(data={DOMAIN: {"audit": coordinator}})
+        entry = SimpleNamespace(entry_id="audit")
+        keys = set()
+        for module in modules:
+            created = []
+            await module.async_setup_entry(
+                hass, entry, lambda values: created.extend(values)
+            )
+            keys.update(
+                item.entity_description.key
+                for item in created
+                if item._dev_id == candidate.entity_id
+            )
+
+        assert keys, model
+
 
 
 def station(identifier="old-id", serial="SERIAL", model="SC07-iA", house=None):
