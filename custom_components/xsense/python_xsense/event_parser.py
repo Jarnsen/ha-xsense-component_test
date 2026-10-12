@@ -44,6 +44,20 @@ APK_AI_DETECTION_DATA_KEYS = {
 
 APK_MAILBOX_DEVICE_TYPES = {"SMA0A", "SMA51"}
 
+# EventSafeAlarmResult.EventData.EventItem fields copied by the Android app's
+# AbstractC2124d.c() before it dispatches any model-specific alarm handler.
+APK_EVENT_SAFE_ITEM_KEYS = (
+    "coPpm",
+    "coLevel",
+    "alarmStatus",
+    "alarmSource",
+    "continueAlarm",
+    "mailNotice",
+    "reAlarm",
+    "initiativeAlarm",
+    "smokeEdition",
+)
+
 MQTT_IDENTIFIER_KEYS = {
     "camerasn",
     "cxserialnumber",
@@ -88,12 +102,14 @@ __all__ = [
     "APK_AI_DETECTION_DATA_KEYS",
     "APK_AI_DETECTION_GROUPS",
     "APK_AI_DETECTION_OBJECTS",
+    "APK_EVENT_SAFE_ITEM_KEYS",
     "APK_MAILBOX_DEVICE_TYPES",
     "MQTT_IDENTIFIER_KEYS",
     "apk_ai_detection_name_times",
     "apk_ai_detection_names",
     "apk_ai_detection_object_times",
     "apply_apk_ai_detection_aliases",
+    "apply_apk_event_safe_alarm_aliases",
     "apply_apk_mailbox_alarm_aliases",
     "apply_apk_dispatch_aliases",
     "apply_apk_event_aliases",
@@ -511,23 +527,16 @@ def _first_alias(data: dict[str, Any], keys: tuple[str, ...]) -> Any:
 
 def apply_apk_event_aliases(data: dict[str, Any]) -> None:
     """Apply APK event aliases that are not reported as shadow keys."""
+    apply_apk_event_safe_alarm_aliases(data)
     apply_apk_mailbox_alarm_aliases(data)
     apply_apk_ai_detection_aliases(data)
 
 
-def apply_apk_mailbox_alarm_aliases(data: dict[str, Any]) -> None:
-    """Normalize the SBS50 mailbox alarm event consumed by the Android app."""
+def apply_apk_event_safe_alarm_aliases(data: dict[str, Any]) -> None:
+    """Flatten the APK EventSafeAlarmResult eventData/eventItem envelope."""
     event_item = data.get("eventItem")
     if isinstance(event_item, dict):
-        for key in (
-            "alarmStatus",
-            "continueAlarm",
-            "mailNotice",
-            "deviceSN",
-            "stationSN",
-            "time",
-            "type",
-        ):
+        for key in APK_EVENT_SAFE_ITEM_KEYS:
             value = event_item.get(key)
             if value not in (None, ""):
                 data.setdefault(key, value)
@@ -539,6 +548,9 @@ def apply_apk_mailbox_alarm_aliases(data: dict[str, Any]) -> None:
     if data.get("type") in (None, ""):
         data["type"] = data.get("deviceType")
 
+
+def apply_apk_mailbox_alarm_aliases(data: dict[str, Any]) -> None:
+    """Normalize the SBS50 mailbox alarm event consumed by the Android app."""
     if str(data.get("type") or "").upper() not in APK_MAILBOX_DEVICE_TYPES:
         return
     if str(data.get("isAlarm") or "").strip().lower() not in {"1", "true"}:
