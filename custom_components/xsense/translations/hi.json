@@ -186,9 +186,6 @@
       },
       "motion": {
         "name": "गति"
-      },
-      "mailbox_alarm": {
-        "name": "अलार्म स्थिति"
       }
     },
     "sensor": {
@@ -983,6 +980,79 @@
           "name": "समय-सारिणी पहचानकर्ता"
         }
       }
+    },
+    "query_mailbox_schedules": {
+        "name": "ईमेल अनुस्मारक (SMA0A): Query mailbox schedules",
+        "description": "ईमेल अनुस्मारक (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "ईमेल अनुस्मारक (SMA0A): Create mailbox schedule",
+        "description": "ईमेल अनुस्मारक (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "प्रदर्शित नाम"
+            },
+            "start_time": {
+                "name": "आरंभ समय (HH:MM या HHMM)"
+            },
+            "end_time": {
+                "name": "समाप्ति समय (HH:MM या HHMM)"
+            },
+            "week_days": {
+                "name": "सप्ताह के दिन (1 = रविवार, 7 = शनिवार)"
+            },
+            "enabled": {
+                "name": "सक्षम स्थिति"
+            },
+            "time_zone": {
+                "name": "समय क्षेत्र"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "ईमेल अनुस्मारक (SMA0A): Update mailbox schedule",
+        "description": "ईमेल अनुस्मारक (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "समय-सारिणी पहचानकर्ता"
+            },
+            "start_time": {
+                "name": "आरंभ समय (HH:MM या HHMM)"
+            },
+            "end_time": {
+                "name": "समाप्ति समय (HH:MM या HHMM)"
+            },
+            "week_days": {
+                "name": "सप्ताह के दिन (1 = रविवार, 7 = शनिवार)"
+            },
+            "enabled": {
+                "name": "सक्षम स्थिति"
+            },
+            "time_zone": {
+                "name": "समय क्षेत्र"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "ईमेल अनुस्मारक (SMA0A): Rename mailbox schedule",
+        "description": "ईमेल अनुस्मारक (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "समय-सारिणी पहचानकर्ता"
+            },
+            "name": {
+                "name": "प्रदर्शित नाम"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "ईमेल अनुस्मारक (SMA0A): Delete mailbox schedule",
+        "description": "ईमेल अनुस्मारक (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "समय-सारिणी पहचानकर्ता"
+            }
+        }
     },
     "query_light_groups": {
       "name": "लाइट समूह प्राप्त करें",

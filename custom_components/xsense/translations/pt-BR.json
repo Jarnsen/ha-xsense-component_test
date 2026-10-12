@@ -186,9 +186,6 @@
       },
       "motion": {
         "name": "Movimento"
-      },
-      "mailbox_alarm": {
-        "name": "Status do alarme"
       }
     },
     "sensor": {
@@ -983,6 +980,79 @@
       },
       "name": "Excluir programação de iluminação",
       "description": "Exclua uma programação de iluminação. Selecione o interruptor de alimentação da iluminação do SBS50 como alvo."
+    },
+    "query_mailbox_schedules": {
+        "name": "Lembrete de correio (SMA0A): Query mailbox schedules",
+        "description": "Lembrete de correio (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Lembrete de correio (SMA0A): Create mailbox schedule",
+        "description": "Lembrete de correio (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Nome de exibição"
+            },
+            "start_time": {
+                "name": "Hora de início (HH:MM ou HHMM)"
+            },
+            "end_time": {
+                "name": "Hora de término (HH:MM ou HHMM)"
+            },
+            "week_days": {
+                "name": "Dias da semana (1 = domingo, 7 = sábado)"
+            },
+            "enabled": {
+                "name": "Estado de ativação"
+            },
+            "time_zone": {
+                "name": "Fuso horário"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Lembrete de correio (SMA0A): Update mailbox schedule",
+        "description": "Lembrete de correio (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identificador da programação"
+            },
+            "start_time": {
+                "name": "Hora de início (HH:MM ou HHMM)"
+            },
+            "end_time": {
+                "name": "Hora de término (HH:MM ou HHMM)"
+            },
+            "week_days": {
+                "name": "Dias da semana (1 = domingo, 7 = sábado)"
+            },
+            "enabled": {
+                "name": "Estado de ativação"
+            },
+            "time_zone": {
+                "name": "Fuso horário"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Lembrete de correio (SMA0A): Rename mailbox schedule",
+        "description": "Lembrete de correio (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identificador da programação"
+            },
+            "name": {
+                "name": "Nome de exibição"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Lembrete de correio (SMA0A): Delete mailbox schedule",
+        "description": "Lembrete de correio (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identificador da programação"
+            }
+        }
     },
     "query_light_groups": {
       "name": "Consultar grupos de iluminação",

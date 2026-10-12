@@ -186,9 +186,6 @@
       },
       "motion": {
         "name": "การเคลื่อนไหว"
-      },
-      "mailbox_alarm": {
-        "name": "สถานะการเตือน"
       }
     },
     "sensor": {
@@ -983,6 +980,79 @@
       },
       "name": "ลบตารางเวลาไฟ",
       "description": "ลบตารางเวลาไฟ โดยเลือกสวิตช์เปิดปิดไฟของ SBS50 เป็นเป้าหมาย"
+    },
+    "query_mailbox_schedules": {
+        "name": "การแจ้งเตือนจดหมาย (SMA0A): Query mailbox schedules",
+        "description": "การแจ้งเตือนจดหมาย (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "การแจ้งเตือนจดหมาย (SMA0A): Create mailbox schedule",
+        "description": "การแจ้งเตือนจดหมาย (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "ชื่อที่แสดง"
+            },
+            "start_time": {
+                "name": "เวลาเริ่มต้น (HH:MM หรือ HHMM)"
+            },
+            "end_time": {
+                "name": "เวลาสิ้นสุด (HH:MM หรือ HHMM)"
+            },
+            "week_days": {
+                "name": "วันในสัปดาห์ (1 = วันอาทิตย์, 7 = วันเสาร์)"
+            },
+            "enabled": {
+                "name": "สถานะการเปิดใช้งาน"
+            },
+            "time_zone": {
+                "name": "เขตเวลา"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "การแจ้งเตือนจดหมาย (SMA0A): Update mailbox schedule",
+        "description": "การแจ้งเตือนจดหมาย (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "ตัวระบุตารางเวลา"
+            },
+            "start_time": {
+                "name": "เวลาเริ่มต้น (HH:MM หรือ HHMM)"
+            },
+            "end_time": {
+                "name": "เวลาสิ้นสุด (HH:MM หรือ HHMM)"
+            },
+            "week_days": {
+                "name": "วันในสัปดาห์ (1 = วันอาทิตย์, 7 = วันเสาร์)"
+            },
+            "enabled": {
+                "name": "สถานะการเปิดใช้งาน"
+            },
+            "time_zone": {
+                "name": "เขตเวลา"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "การแจ้งเตือนจดหมาย (SMA0A): Rename mailbox schedule",
+        "description": "การแจ้งเตือนจดหมาย (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "ตัวระบุตารางเวลา"
+            },
+            "name": {
+                "name": "ชื่อที่แสดง"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "การแจ้งเตือนจดหมาย (SMA0A): Delete mailbox schedule",
+        "description": "การแจ้งเตือนจดหมาย (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "ตัวระบุตารางเวลา"
+            }
+        }
     },
     "query_light_groups": {
       "name": "เรียกดูกลุ่มไฟ",

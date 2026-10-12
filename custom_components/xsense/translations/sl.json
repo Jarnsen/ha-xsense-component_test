@@ -186,9 +186,6 @@
       },
       "motion": {
         "name": "Gibanje"
-      },
-      "mailbox_alarm": {
-        "name": "Stanje alarma"
       }
     },
     "sensor": {
@@ -983,6 +980,79 @@
       },
       "name": "Izbriši urnik luči",
       "description": "Izbrišite urnik luči. Za cilj izberite stikalo za napajanje luči SBS50."
+    },
+    "query_mailbox_schedules": {
+        "name": "Opomnik za pošto (SMA0A): Query mailbox schedules",
+        "description": "Opomnik za pošto (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Opomnik za pošto (SMA0A): Create mailbox schedule",
+        "description": "Opomnik za pošto (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Prikazno ime"
+            },
+            "start_time": {
+                "name": "Začetni čas (HH:MM ali HHMM)"
+            },
+            "end_time": {
+                "name": "Končni čas (HH:MM ali HHMM)"
+            },
+            "week_days": {
+                "name": "Dnevi v tednu (1 = nedelja, 7 = sobota)"
+            },
+            "enabled": {
+                "name": "Stanje omogočenosti"
+            },
+            "time_zone": {
+                "name": "Časovni pas"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Opomnik za pošto (SMA0A): Update mailbox schedule",
+        "description": "Opomnik za pošto (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifikator urnika"
+            },
+            "start_time": {
+                "name": "Začetni čas (HH:MM ali HHMM)"
+            },
+            "end_time": {
+                "name": "Končni čas (HH:MM ali HHMM)"
+            },
+            "week_days": {
+                "name": "Dnevi v tednu (1 = nedelja, 7 = sobota)"
+            },
+            "enabled": {
+                "name": "Stanje omogočenosti"
+            },
+            "time_zone": {
+                "name": "Časovni pas"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Opomnik za pošto (SMA0A): Rename mailbox schedule",
+        "description": "Opomnik za pošto (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifikator urnika"
+            },
+            "name": {
+                "name": "Prikazno ime"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Opomnik za pošto (SMA0A): Delete mailbox schedule",
+        "description": "Opomnik za pošto (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifikator urnika"
+            }
+        }
     },
     "query_light_groups": {
       "name": "Pridobi skupine luči",

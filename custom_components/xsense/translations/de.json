@@ -142,6 +142,79 @@
         }
       }
     },
+    "query_mailbox_schedules": {
+        "name": "Posterinnerung (SMA0A): Query mailbox schedules",
+        "description": "Posterinnerung (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Posterinnerung (SMA0A): Create mailbox schedule",
+        "description": "Posterinnerung (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Anzeigename"
+            },
+            "start_time": {
+                "name": "Startzeit (HH:MM oder HHMM)"
+            },
+            "end_time": {
+                "name": "Endzeit (HH:MM oder HHMM)"
+            },
+            "week_days": {
+                "name": "Wochentage (1 = Sonntag, 7 = Samstag)"
+            },
+            "enabled": {
+                "name": "Aktivierungszustand"
+            },
+            "time_zone": {
+                "name": "Zeitzone"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Posterinnerung (SMA0A): Update mailbox schedule",
+        "description": "Posterinnerung (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Zeitplankennung"
+            },
+            "start_time": {
+                "name": "Startzeit (HH:MM oder HHMM)"
+            },
+            "end_time": {
+                "name": "Endzeit (HH:MM oder HHMM)"
+            },
+            "week_days": {
+                "name": "Wochentage (1 = Sonntag, 7 = Samstag)"
+            },
+            "enabled": {
+                "name": "Aktivierungszustand"
+            },
+            "time_zone": {
+                "name": "Zeitzone"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Posterinnerung (SMA0A): Rename mailbox schedule",
+        "description": "Posterinnerung (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Zeitplankennung"
+            },
+            "name": {
+                "name": "Anzeigename"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Posterinnerung (SMA0A): Delete mailbox schedule",
+        "description": "Posterinnerung (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Zeitplankennung"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Lichtgruppen abfragen",
       "description": "Lichtgruppen abfragen. Den Lichtschalter der SBS50 als Ziel auswählen."
@@ -415,9 +488,6 @@
       },
       "motion": {
         "name": "Bewegung"
-      },
-      "mailbox_alarm": {
-        "name": "Alarmstatus"
       }
     },
     "sensor": {

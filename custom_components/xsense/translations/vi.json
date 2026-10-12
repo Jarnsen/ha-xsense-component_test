@@ -186,9 +186,6 @@
       },
       "motion": {
         "name": "chuyển động"
-      },
-      "mailbox_alarm": {
-        "name": "Trạng thái cảnh báo"
       }
     },
     "sensor": {
@@ -983,6 +980,79 @@
       },
       "name": "Xóa lịch đèn",
       "description": "Xóa lịch đèn. Chọn công tắc nguồn đèn SBS50 làm đối tượng."
+    },
+    "query_mailbox_schedules": {
+        "name": "Nhắc nhở thư (SMA0A): Query mailbox schedules",
+        "description": "Nhắc nhở thư (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Nhắc nhở thư (SMA0A): Create mailbox schedule",
+        "description": "Nhắc nhở thư (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Tên hiển thị"
+            },
+            "start_time": {
+                "name": "Giờ bắt đầu (HH:MM hoặc HHMM)"
+            },
+            "end_time": {
+                "name": "Giờ kết thúc (HH:MM hoặc HHMM)"
+            },
+            "week_days": {
+                "name": "Ngày trong tuần (1 = Chủ nhật, 7 = Thứ bảy)"
+            },
+            "enabled": {
+                "name": "Trạng thái bật"
+            },
+            "time_zone": {
+                "name": "Múi giờ"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Nhắc nhở thư (SMA0A): Update mailbox schedule",
+        "description": "Nhắc nhở thư (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Mã định danh lịch"
+            },
+            "start_time": {
+                "name": "Giờ bắt đầu (HH:MM hoặc HHMM)"
+            },
+            "end_time": {
+                "name": "Giờ kết thúc (HH:MM hoặc HHMM)"
+            },
+            "week_days": {
+                "name": "Ngày trong tuần (1 = Chủ nhật, 7 = Thứ bảy)"
+            },
+            "enabled": {
+                "name": "Trạng thái bật"
+            },
+            "time_zone": {
+                "name": "Múi giờ"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Nhắc nhở thư (SMA0A): Rename mailbox schedule",
+        "description": "Nhắc nhở thư (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Mã định danh lịch"
+            },
+            "name": {
+                "name": "Tên hiển thị"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Nhắc nhở thư (SMA0A): Delete mailbox schedule",
+        "description": "Nhắc nhở thư (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Mã định danh lịch"
+            }
+        }
     },
     "query_light_groups": {
       "name": "Truy vấn nhóm đèn",

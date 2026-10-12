@@ -3929,6 +3929,99 @@ async def test_light_schedule_api_uses_apk_biz_codes_and_payloads():
 
 
 @pytest.mark.asyncio
+async def test_sma0a_schedule_api_uses_apk_biz_codes_and_payloads():
+    client = async_xsense.AsyncXSense()
+    station = FakeXSenseStation("SBS50")
+    station.entity_id = "station-id"
+    device = fake_child_device(
+        "SMA0A",
+        station=station,
+        entity_type=entity_map.EntityType.MAILBOX,
+    )
+    device.entity_id = "device-id"
+    calls = []
+
+    async def api_call(code, **kwargs):
+        calls.append((code, kwargs))
+        return {"requestId": f"request-{code}"}
+
+    client.api_call = api_call
+
+    await client.query_mailbox_schedules(device)
+    await client.create_mailbox_schedule(
+        device,
+        name="Evening",
+        start_time="1800",
+        end_time="2300",
+        week_days=["1", "2"],
+        enabled=True,
+        time_zone="America/St_Johns",
+    )
+    await client.update_mailbox_schedule(
+        device,
+        schedule_id="schedule-id",
+        start_time="1900",
+        end_time="2200",
+        week_days=["3"],
+        enabled=False,
+        time_zone="America/St_Johns",
+    )
+    await client.rename_mailbox_schedule(
+        device, schedule_id="schedule-id", name="Night"
+    )
+    await client.delete_mailbox_schedule(device, schedule_id="schedule-id")
+
+    assert calls == [
+        ("409107", {"stationId": "station-id", "deviceId": "device-id"}),
+        (
+            "409103",
+            {
+                "stationId": "station-id",
+                "deviceId": "device-id",
+                "schedName": "Evening",
+                "timeZone": "America/St_Johns",
+                "startTime": "1800",
+                "endTime": "2300",
+                "isEnable": "1",
+                "weekDays": ["1", "2"],
+                "newTimeZoneMode": "1",
+            },
+        ),
+        (
+            "409105",
+            {
+                "stationId": "station-id",
+                "deviceId": "device-id",
+                "schedId": "schedule-id",
+                "timeZone": "America/St_Johns",
+                "startTime": "1900",
+                "endTime": "2200",
+                "isEnable": "0",
+                "weekDays": ["3"],
+                "newTimeZoneMode": "1",
+            },
+        ),
+        (
+            "409104",
+            {
+                "stationId": "station-id",
+                "deviceId": "device-id",
+                "schedId": "schedule-id",
+                "schedName": "Night",
+            },
+        ),
+        (
+            "409106",
+            {
+                "stationId": "station-id",
+                "deviceId": "device-id",
+                "schedId": "schedule-id",
+            },
+        ),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_light_group_api_uses_apk_biz_codes_and_payloads():
     client = async_xsense.AsyncXSense()
     station = FakeXSenseStation("SBS50")

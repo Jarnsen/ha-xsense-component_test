@@ -674,6 +674,31 @@ async def async_setup_entry(
             "async_delete_light_schedule",
         )
         platform.async_register_entity_service(
+            "query_mailbox_schedules",
+            {},
+            "async_query_mailbox_schedules",
+        )
+        platform.async_register_entity_service(
+            "create_mailbox_schedule",
+            LIGHT_SCHEDULE_CREATE_SCHEMA,
+            "async_create_mailbox_schedule",
+        )
+        platform.async_register_entity_service(
+            "update_mailbox_schedule",
+            LIGHT_SCHEDULE_UPDATE_SCHEMA,
+            "async_update_mailbox_schedule",
+        )
+        platform.async_register_entity_service(
+            "rename_mailbox_schedule",
+            LIGHT_SCHEDULE_RENAME_SCHEMA,
+            "async_rename_mailbox_schedule",
+        )
+        platform.async_register_entity_service(
+            "delete_mailbox_schedule",
+            LIGHT_SCHEDULE_DELETE_SCHEMA,
+            "async_delete_mailbox_schedule",
+        )
+        platform.async_register_entity_service(
             "query_light_groups",
             {},
             "async_query_light_groups",
@@ -781,16 +806,18 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
     def extra_state_attributes(self) -> dict | None:
         """Return cached light schedule data for schedule-capable switches."""
         entity = self._current_entity()
-        if (
-            entity is None
-            or self.entity_description.data_key != "on"
-        ):
+        if entity is None:
             return None
         attrs = {}
-        if "lightSchedules" in entity.data:
+        if self.entity_description.data_key == "on" and "lightSchedules" in entity.data:
             attrs["light_schedules"] = entity.data["lightSchedules"]
-        if "lightGroups" in entity.data:
+        if self.entity_description.data_key == "on" and "lightGroups" in entity.data:
             attrs["light_groups"] = entity.data["lightGroups"]
+        if (
+            self.entity_description.data_key == "mailNotice"
+            and "mailboxSchedules" in entity.data
+        ):
+            attrs["mailbox_schedules"] = entity.data["mailboxSchedules"]
         return attrs or None
 
     async def async_turn_on(self, **kwargs) -> None:
@@ -868,6 +895,75 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         )
         self.coordinator.async_update_listeners()
 
+    async def async_query_mailbox_schedules(self) -> None:
+        """Query and cache SMA0A mailbox schedules from the APK schedule API."""
+        entity = self._mailbox_schedule_entity()
+        schedules = await self.coordinator.xsense.query_mailbox_schedules(entity)
+        entity.data["mailboxSchedules"] = _light_schedule_list(schedules)
+        self.coordinator.async_update_listeners()
+
+    async def async_create_mailbox_schedule(
+        self,
+        name: str,
+        start_time: str,
+        end_time: str,
+        week_days: list[str],
+        enabled: bool = True,
+        time_zone: str | None = None,
+    ) -> None:
+        """Create an SMA0A mailbox schedule using the APK schedule API."""
+        entity = self._mailbox_schedule_entity()
+        await self.coordinator.xsense.create_mailbox_schedule(
+            entity,
+            name=name,
+            start_time=_schedule_time(start_time),
+            end_time=_schedule_time(end_time),
+            week_days=_schedule_week_days(week_days),
+            enabled=enabled,
+            time_zone=self._schedule_time_zone(time_zone),
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_update_mailbox_schedule(
+        self,
+        schedule_id: str,
+        start_time: str,
+        end_time: str,
+        week_days: list[str],
+        enabled: bool = True,
+        time_zone: str | None = None,
+    ) -> None:
+        """Update an SMA0A mailbox schedule using the APK schedule API."""
+        entity = self._mailbox_schedule_entity()
+        await self.coordinator.xsense.update_mailbox_schedule(
+            entity,
+            schedule_id=schedule_id,
+            start_time=_schedule_time(start_time),
+            end_time=_schedule_time(end_time),
+            week_days=_schedule_week_days(week_days),
+            enabled=enabled,
+            time_zone=self._schedule_time_zone(time_zone),
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_rename_mailbox_schedule(
+        self, schedule_id: str, name: str
+    ) -> None:
+        """Rename an SMA0A mailbox schedule using the APK schedule API."""
+        entity = self._mailbox_schedule_entity()
+        await self.coordinator.xsense.rename_mailbox_schedule(
+            entity, schedule_id=schedule_id, name=name
+        )
+        self.coordinator.async_update_listeners()
+
+    async def async_delete_mailbox_schedule(self, schedule_id: str) -> None:
+        """Delete an SMA0A mailbox schedule using the APK schedule API."""
+        entity = self._mailbox_schedule_entity()
+        await self.coordinator.xsense.delete_mailbox_schedule(
+            entity, schedule_id=schedule_id
+        )
+        self.coordinator.async_update_listeners()
+
     async def async_query_light_groups(self) -> None:
         """Query and cache SBS50 light groups from the APK group API."""
         entity = self._light_group_entity()
@@ -940,6 +1036,23 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
     def _light_schedule_entity(self) -> Entity:
         """Return the current light entity or raise for unsupported switches."""
         return self._sbs50_light_power_entity("light schedule services")
+
+    def _mailbox_schedule_entity(self) -> Entity:
+        """Return an SMA0A mail-notice switch for the APK schedule API."""
+        entity = self._current_entity()
+        if entity is None:
+            raise xsense_error("entity_unavailable")
+        if (
+            self.entity_description.data_key != "mailNotice"
+            or getattr(entity, "type", None) != "SMA0A"
+        ):
+            raise xsense_error("entity_unavailable")
+        station = getattr(entity, "station", None)
+        if not station or not getattr(entity, "entity_id", None) or not getattr(
+            station, "entity_id", None
+        ):
+            raise xsense_error("ids_missing", service="mailbox schedule services")
+        return entity
 
     def _light_group_entity(self) -> Entity:
         """Return the current SBS50 light/group entity for group services."""

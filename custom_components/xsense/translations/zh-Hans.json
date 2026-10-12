@@ -186,9 +186,6 @@
       },
       "motion": {
         "name": "运动"
-      },
-      "mailbox_alarm": {
-        "name": "报警状态"
       }
     },
     "sensor": {
@@ -983,6 +980,79 @@
       },
       "name": "删除灯光计划",
       "description": "删除灯光计划。目标应为 SBS50 灯光电源开关。"
+    },
+    "query_mailbox_schedules": {
+        "name": "邮件提醒 (SMA0A): Query mailbox schedules",
+        "description": "邮件提醒 (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "邮件提醒 (SMA0A): Create mailbox schedule",
+        "description": "邮件提醒 (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "显示名称"
+            },
+            "start_time": {
+                "name": "开始时间（HH:MM 或 HHMM）"
+            },
+            "end_time": {
+                "name": "结束时间（HH:MM 或 HHMM）"
+            },
+            "week_days": {
+                "name": "星期（1 = 星期日，7 = 星期六）"
+            },
+            "enabled": {
+                "name": "启用状态"
+            },
+            "time_zone": {
+                "name": "时区"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "邮件提醒 (SMA0A): Update mailbox schedule",
+        "description": "邮件提醒 (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "计划标识符"
+            },
+            "start_time": {
+                "name": "开始时间（HH:MM 或 HHMM）"
+            },
+            "end_time": {
+                "name": "结束时间（HH:MM 或 HHMM）"
+            },
+            "week_days": {
+                "name": "星期（1 = 星期日，7 = 星期六）"
+            },
+            "enabled": {
+                "name": "启用状态"
+            },
+            "time_zone": {
+                "name": "时区"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "邮件提醒 (SMA0A): Rename mailbox schedule",
+        "description": "邮件提醒 (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "计划标识符"
+            },
+            "name": {
+                "name": "显示名称"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "邮件提醒 (SMA0A): Delete mailbox schedule",
+        "description": "邮件提醒 (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "计划标识符"
+            }
+        }
     },
     "query_light_groups": {
       "name": "查询灯光组",

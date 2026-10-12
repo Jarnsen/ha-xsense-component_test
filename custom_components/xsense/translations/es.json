@@ -142,6 +142,79 @@
         }
       }
     },
+    "query_mailbox_schedules": {
+        "name": "Recordatorio de correo (SMA0A): Query mailbox schedules",
+        "description": "Recordatorio de correo (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Recordatorio de correo (SMA0A): Create mailbox schedule",
+        "description": "Recordatorio de correo (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Nombre visible"
+            },
+            "start_time": {
+                "name": "Hora de inicio (HH:MM o HHMM)"
+            },
+            "end_time": {
+                "name": "Hora de fin (HH:MM o HHMM)"
+            },
+            "week_days": {
+                "name": "Días (1 = domingo, 7 = sábado)"
+            },
+            "enabled": {
+                "name": "Estado de activación"
+            },
+            "time_zone": {
+                "name": "Zona horaria"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Recordatorio de correo (SMA0A): Update mailbox schedule",
+        "description": "Recordatorio de correo (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identificador del horario"
+            },
+            "start_time": {
+                "name": "Hora de inicio (HH:MM o HHMM)"
+            },
+            "end_time": {
+                "name": "Hora de fin (HH:MM o HHMM)"
+            },
+            "week_days": {
+                "name": "Días (1 = domingo, 7 = sábado)"
+            },
+            "enabled": {
+                "name": "Estado de activación"
+            },
+            "time_zone": {
+                "name": "Zona horaria"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Recordatorio de correo (SMA0A): Rename mailbox schedule",
+        "description": "Recordatorio de correo (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identificador del horario"
+            },
+            "name": {
+                "name": "Nombre visible"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Recordatorio de correo (SMA0A): Delete mailbox schedule",
+        "description": "Recordatorio de correo (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identificador del horario"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Consultar grupos de luces",
       "description": "Consultar grupos de luces. Seleccionar el interruptor de alimentación de la luz SBS50."
@@ -415,9 +488,6 @@
       },
       "motion": {
         "name": "Movimiento"
-      },
-      "mailbox_alarm": {
-        "name": "Estado de alarma"
       }
     },
     "sensor": {

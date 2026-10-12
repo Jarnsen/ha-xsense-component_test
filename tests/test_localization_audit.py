@@ -62,7 +62,7 @@ def test_all_locale_leaf_and_placeholder_contracts(path):
 @pytest.mark.parametrize("path", LOCALES, ids=lambda path: path.stem)
 def test_service_names_descriptions_and_all_fields_are_localized(path):
     localized = json.loads(path.read_text(encoding="utf-8"))
-    assert len(SERVICES) == 22
+    assert set(SERVICES) == set(SOURCE["services"])
     assert set(localized["services"]) == set(SERVICES)
     for key, schema in SERVICES.items():
         text = localized["services"][key]

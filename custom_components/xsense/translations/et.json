@@ -186,9 +186,6 @@
       },
       "motion": {
         "name": "Liikumine"
-      },
-      "mailbox_alarm": {
-        "name": "Häire olek"
       }
     },
     "sensor": {
@@ -983,6 +980,79 @@
       },
       "name": "Kustuta valgustuse ajakava",
       "description": "Kustuta valgustuse ajakava. Vali sihtmärgiks SBS50 valgustuse toitelüliti."
+    },
+    "query_mailbox_schedules": {
+        "name": "Posti meeldetuletus (SMA0A): Query mailbox schedules",
+        "description": "Posti meeldetuletus (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Posti meeldetuletus (SMA0A): Create mailbox schedule",
+        "description": "Posti meeldetuletus (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Kuvatav nimi"
+            },
+            "start_time": {
+                "name": "Algusaeg (HH:MM või HHMM)"
+            },
+            "end_time": {
+                "name": "Lõpuaeg (HH:MM või HHMM)"
+            },
+            "week_days": {
+                "name": "Nädalapäevad (1 = pühapäev, 7 = laupäev)"
+            },
+            "enabled": {
+                "name": "Lubatud olek"
+            },
+            "time_zone": {
+                "name": "Ajavöönd"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Posti meeldetuletus (SMA0A): Update mailbox schedule",
+        "description": "Posti meeldetuletus (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Ajakava tunnus"
+            },
+            "start_time": {
+                "name": "Algusaeg (HH:MM või HHMM)"
+            },
+            "end_time": {
+                "name": "Lõpuaeg (HH:MM või HHMM)"
+            },
+            "week_days": {
+                "name": "Nädalapäevad (1 = pühapäev, 7 = laupäev)"
+            },
+            "enabled": {
+                "name": "Lubatud olek"
+            },
+            "time_zone": {
+                "name": "Ajavöönd"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Posti meeldetuletus (SMA0A): Rename mailbox schedule",
+        "description": "Posti meeldetuletus (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Ajakava tunnus"
+            },
+            "name": {
+                "name": "Kuvatav nimi"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Posti meeldetuletus (SMA0A): Delete mailbox schedule",
+        "description": "Posti meeldetuletus (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Ajakava tunnus"
+            }
+        }
     },
     "query_light_groups": {
       "name": "Päri valgustite rühmi",

@@ -186,9 +186,6 @@
       },
       "motion": {
         "name": "Pohyb"
-      },
-      "mailbox_alarm": {
-        "name": "Stav alarmu"
       }
     },
     "sensor": {
@@ -983,6 +980,79 @@
       },
       "name": "Odstrániť plán osvetlenia",
       "description": "Odstráňte plán osvetlenia. Ako cieľ vyberte vypínač napájania osvetlenia SBS50."
+    },
+    "query_mailbox_schedules": {
+        "name": "Pripomienka pošty (SMA0A): Query mailbox schedules",
+        "description": "Pripomienka pošty (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Pripomienka pošty (SMA0A): Create mailbox schedule",
+        "description": "Pripomienka pošty (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Zobrazovaný názov"
+            },
+            "start_time": {
+                "name": "Čas začiatku (HH:MM alebo HHMM)"
+            },
+            "end_time": {
+                "name": "Čas konca (HH:MM alebo HHMM)"
+            },
+            "week_days": {
+                "name": "Dni v týždni (1 = nedeľa, 7 = sobota)"
+            },
+            "enabled": {
+                "name": "Stav zapnutia"
+            },
+            "time_zone": {
+                "name": "Časové pásmo"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Pripomienka pošty (SMA0A): Update mailbox schedule",
+        "description": "Pripomienka pošty (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifikátor plánu"
+            },
+            "start_time": {
+                "name": "Čas začiatku (HH:MM alebo HHMM)"
+            },
+            "end_time": {
+                "name": "Čas konca (HH:MM alebo HHMM)"
+            },
+            "week_days": {
+                "name": "Dni v týždni (1 = nedeľa, 7 = sobota)"
+            },
+            "enabled": {
+                "name": "Stav zapnutia"
+            },
+            "time_zone": {
+                "name": "Časové pásmo"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Pripomienka pošty (SMA0A): Rename mailbox schedule",
+        "description": "Pripomienka pošty (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifikátor plánu"
+            },
+            "name": {
+                "name": "Zobrazovaný názov"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Pripomienka pošty (SMA0A): Delete mailbox schedule",
+        "description": "Pripomienka pošty (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifikátor plánu"
+            }
+        }
     },
     "query_light_groups": {
       "name": "Načítať skupiny osvetlenia",

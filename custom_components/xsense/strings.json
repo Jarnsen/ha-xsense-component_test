@@ -142,6 +142,79 @@
         }
       }
     },
+    "query_mailbox_schedules": {
+      "name": "Query mailbox schedules",
+      "description": "Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+      "name": "Create mailbox schedule",
+      "description": "Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Display name"
+        },
+        "start_time": {
+          "name": "Start time (HH:MM or HHMM)"
+        },
+        "end_time": {
+          "name": "End time (HH:MM or HHMM)"
+        },
+        "week_days": {
+          "name": "Weekdays (1 = Sunday, 7 = Saturday)"
+        },
+        "enabled": {
+          "name": "Enabled state"
+        },
+        "time_zone": {
+          "name": "Time zone"
+        }
+      }
+    },
+    "update_mailbox_schedule": {
+      "name": "Update mailbox schedule",
+      "description": "Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Schedule identifier"
+        },
+        "start_time": {
+          "name": "Start time (HH:MM or HHMM)"
+        },
+        "end_time": {
+          "name": "End time (HH:MM or HHMM)"
+        },
+        "week_days": {
+          "name": "Weekdays (1 = Sunday, 7 = Saturday)"
+        },
+        "enabled": {
+          "name": "Enabled state"
+        },
+        "time_zone": {
+          "name": "Time zone"
+        }
+      }
+    },
+    "rename_mailbox_schedule": {
+      "name": "Rename mailbox schedule",
+      "description": "Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Schedule identifier"
+        },
+        "name": {
+          "name": "Display name"
+        }
+      }
+    },
+    "delete_mailbox_schedule": {
+      "name": "Delete mailbox schedule",
+      "description": "Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Schedule identifier"
+        }
+      }
+    },
     "query_light_groups": {
       "name": "Query light groups",
       "description": "Query light groups. Target the SBS50 light power switch."
@@ -413,9 +486,6 @@
     "event": {
       "ai_detection": {
         "name": "AI Detection"
-      },
-      "mailbox_alarm": {
-        "name": "Mailbox Alarm"
       },
       "motion": {
         "name": "Motion"

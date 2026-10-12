@@ -186,9 +186,6 @@
       },
       "motion": {
         "name": "Beweging"
-      },
-      "mailbox_alarm": {
-        "name": "Alarmstatus"
       }
     },
     "sensor": {
@@ -983,6 +980,79 @@
       },
       "name": "Lichtschema verwijderen",
       "description": "Verwijder een lichtschema. Selecteer de lichtschakelaar van de SBS50 als doel."
+    },
+    "query_mailbox_schedules": {
+        "name": "E-mailherinnering (SMA0A): Query mailbox schedules",
+        "description": "E-mailherinnering (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "E-mailherinnering (SMA0A): Create mailbox schedule",
+        "description": "E-mailherinnering (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Weergavenaam"
+            },
+            "start_time": {
+                "name": "Begintijd (HH:MM of HHMM)"
+            },
+            "end_time": {
+                "name": "Eindtijd (HH:MM of HHMM)"
+            },
+            "week_days": {
+                "name": "Weekdagen (1 = zondag, 7 = zaterdag)"
+            },
+            "enabled": {
+                "name": "Ingeschakelde status"
+            },
+            "time_zone": {
+                "name": "Tijdzone"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "E-mailherinnering (SMA0A): Update mailbox schedule",
+        "description": "E-mailherinnering (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Schema-ID"
+            },
+            "start_time": {
+                "name": "Begintijd (HH:MM of HHMM)"
+            },
+            "end_time": {
+                "name": "Eindtijd (HH:MM of HHMM)"
+            },
+            "week_days": {
+                "name": "Weekdagen (1 = zondag, 7 = zaterdag)"
+            },
+            "enabled": {
+                "name": "Ingeschakelde status"
+            },
+            "time_zone": {
+                "name": "Tijdzone"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "E-mailherinnering (SMA0A): Rename mailbox schedule",
+        "description": "E-mailherinnering (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Schema-ID"
+            },
+            "name": {
+                "name": "Weergavenaam"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "E-mailherinnering (SMA0A): Delete mailbox schedule",
+        "description": "E-mailherinnering (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Schema-ID"
+            }
+        }
     },
     "query_light_groups": {
       "name": "Lichtgroepen opvragen",

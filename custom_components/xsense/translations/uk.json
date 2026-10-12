@@ -186,9 +186,6 @@
       },
       "motion": {
         "name": "Рух"
-      },
-      "mailbox_alarm": {
-        "name": "Статус будильника"
       }
     },
     "sensor": {
@@ -983,6 +980,79 @@
       },
       "name": "Видалити розклад освітлення",
       "description": "Видаліть розклад освітлення. Виберіть ціллю вимикач живлення освітлення SBS50."
+    },
+    "query_mailbox_schedules": {
+        "name": "Нагадування про пошту (SMA0A): Query mailbox schedules",
+        "description": "Нагадування про пошту (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Нагадування про пошту (SMA0A): Create mailbox schedule",
+        "description": "Нагадування про пошту (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Відображувана назва"
+            },
+            "start_time": {
+                "name": "Час початку (HH:MM або HHMM)"
+            },
+            "end_time": {
+                "name": "Час завершення (HH:MM або HHMM)"
+            },
+            "week_days": {
+                "name": "Дні тижня (1 = неділя, 7 = субота)"
+            },
+            "enabled": {
+                "name": "Стан увімкнення"
+            },
+            "time_zone": {
+                "name": "Часовий пояс"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Нагадування про пошту (SMA0A): Update mailbox schedule",
+        "description": "Нагадування про пошту (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Ідентифікатор розкладу"
+            },
+            "start_time": {
+                "name": "Час початку (HH:MM або HHMM)"
+            },
+            "end_time": {
+                "name": "Час завершення (HH:MM або HHMM)"
+            },
+            "week_days": {
+                "name": "Дні тижня (1 = неділя, 7 = субота)"
+            },
+            "enabled": {
+                "name": "Стан увімкнення"
+            },
+            "time_zone": {
+                "name": "Часовий пояс"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Нагадування про пошту (SMA0A): Rename mailbox schedule",
+        "description": "Нагадування про пошту (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Ідентифікатор розкладу"
+            },
+            "name": {
+                "name": "Відображувана назва"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Нагадування про пошту (SMA0A): Delete mailbox schedule",
+        "description": "Нагадування про пошту (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Ідентифікатор розкладу"
+            }
+        }
     },
     "query_light_groups": {
       "name": "Отримати групи освітлення",
