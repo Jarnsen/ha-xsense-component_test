@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Kustība"
+      },
+      "mailbox_alarm": {
+        "name": "Trauksmes statuss"
       }
     },
     "sensor": {

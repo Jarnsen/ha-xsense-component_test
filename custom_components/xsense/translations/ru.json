@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Движение"
+      },
+      "mailbox_alarm": {
+        "name": "Статус тревоги"
       }
     },
     "sensor": {

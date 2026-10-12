@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Gerakan"
+      },
+      "mailbox_alarm": {
+        "name": "Status Alarm"
       }
     },
     "sensor": {

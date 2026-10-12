@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Hareket"
+      },
+      "mailbox_alarm": {
+        "name": "Alarm Durumu"
       }
     },
     "sensor": {

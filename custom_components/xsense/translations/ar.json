@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "الحركة"
+      },
+      "mailbox_alarm": {
+        "name": "حالة التنبيه"
       }
     },
     "sensor": {

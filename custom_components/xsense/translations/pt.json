@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Movimento"
+      },
+      "mailbox_alarm": {
+        "name": "Status do alarme"
       }
     },
     "sensor": {

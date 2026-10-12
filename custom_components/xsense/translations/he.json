@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "תנועה"
+      },
+      "mailbox_alarm": {
+        "name": "מצב אזעקה"
       }
     },
     "sensor": {

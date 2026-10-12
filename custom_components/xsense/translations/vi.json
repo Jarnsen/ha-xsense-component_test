@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "chuyển động"
+      },
+      "mailbox_alarm": {
+        "name": "Trạng thái cảnh báo"
       }
     },
     "sensor": {

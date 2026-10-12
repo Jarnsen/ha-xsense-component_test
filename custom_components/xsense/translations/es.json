@@ -415,6 +415,9 @@
       },
       "motion": {
         "name": "Movimiento"
+      },
+      "mailbox_alarm": {
+        "name": "Estado de alarma"
       }
     },
     "sensor": {

@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "গতি"
+      },
+      "mailbox_alarm": {
+        "name": "এলাৰ্মৰ অৱস্থা"
       }
     },
     "sensor": {

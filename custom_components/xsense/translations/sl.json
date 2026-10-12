@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Gibanje"
+      },
+      "mailbox_alarm": {
+        "name": "Stanje alarma"
       }
     },
     "sensor": {

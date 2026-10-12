@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Kretanje"
+      },
+      "mailbox_alarm": {
+        "name": "Status alarma"
       }
     },
     "sensor": {

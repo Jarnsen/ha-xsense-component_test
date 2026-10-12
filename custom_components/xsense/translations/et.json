@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Liikumine"
+      },
+      "mailbox_alarm": {
+        "name": "Häire olek"
       }
     },
     "sensor": {

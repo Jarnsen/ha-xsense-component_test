@@ -1400,6 +1400,81 @@ def test_motion_event_data_uses_apk_history_record_time():
     assert event.motion_fingerprint(event_data) == ("20260621134144",)
 
 
+def test_mailbox_alarm_event_entities_include_sbs50_mailbox_children():
+    station = entity("SBS50", {})
+    station.entity_id = "station-1"
+    station.name = "Base Station"
+    mailbox = minimal_entity("SMA51", EntityType.MAILBOX)
+    mailbox.entity_id = "mailbox-1"
+    mailbox.name = "Mailbox"
+    mailbox.station = station
+
+    entities = event._mailbox_alarm_event_entities(
+        SimpleNamespace(data={"devices": {mailbox.entity_id: mailbox}})
+    )
+
+    assert len(entities) == 1
+    assert entities[0]._station_id == station.entity_id
+
+
+def test_mailbox_alarm_event_data_uses_apk_alarm_timestamp():
+    event_data = event.mailbox_alarm_event_data(
+        {
+            "mailboxAlarmActive": True,
+            "mailboxAlarmTime": "20261012122958",
+            "alarmStatus": "1",
+            "mailNotice": "1",
+            "continueAlarm": "0",
+        }
+    )
+
+    assert event_data == {
+        "time": "20261012122958",
+        "alarm_status": "1",
+        "mail_notice": "1",
+        "continue_alarm": "0",
+    }
+    assert event.mailbox_alarm_fingerprint(event_data) == ("20261012122958",)
+
+
+def test_mailbox_alarm_event_data_requires_active_apk_alarm():
+    assert (
+        event.mailbox_alarm_event_data({"mailboxAlarmTime": "20261012122958"})
+        is None
+    )
+
+
+def test_mailbox_alarm_event_ignores_restored_state_then_triggers_new_alarm():
+    mailbox = minimal_entity(
+        "SMA51",
+        EntityType.MAILBOX,
+        {
+            "mailboxAlarmActive": True,
+            "mailboxAlarmTime": "20261012122958",
+            "alarmStatus": "1",
+        },
+    )
+    event_entity = event.XSenseMailboxAlarmEventEntity.__new__(
+        event.XSenseMailboxAlarmEventEntity
+    )
+    event_entity._mailbox_alarm_initialized = False
+    event_entity._last_mailbox_alarm_fingerprint = None
+    event_entity.hass = object()
+    event_entity.platform = object()
+    event_entity._current_entity = lambda: mailbox
+    triggered = []
+    event_entity._trigger_event = lambda event_type, data: triggered.append(
+        (event_type, data["time"])
+    )
+    event_entity.async_write_ha_state = lambda: None
+
+    event_entity._handle_coordinator_update()
+    mailbox.data["mailboxAlarmTime"] = "20261012123058"
+    event_entity._handle_coordinator_update()
+
+    assert triggered == [("mailbox_alarm", "20261012123058")]
+
+
 def test_motion_event_data_ignores_generic_camera_report_time():
     assert event.motion_event_data({"time": "20260621134144"}) is None
 

@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Judėjimas"
+      },
+      "mailbox_alarm": {
+        "name": "Signalizacijos būsena"
       }
     },
     "sensor": {

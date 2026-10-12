@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "运动"
+      },
+      "mailbox_alarm": {
+        "name": "报警状态"
       }
     },
     "sensor": {

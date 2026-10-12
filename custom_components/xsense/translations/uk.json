@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Рух"
+      },
+      "mailbox_alarm": {
+        "name": "Статус будильника"
       }
     },
     "sensor": {

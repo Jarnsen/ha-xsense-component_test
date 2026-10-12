@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "गति"
+      },
+      "mailbox_alarm": {
+        "name": "अलार्म स्थिति"
       }
     },
     "sensor": {

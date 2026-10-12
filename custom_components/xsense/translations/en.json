@@ -416,6 +416,9 @@
       },
       "motion": {
         "name": "Motion"
+      },
+      "mailbox_alarm": {
+        "name": "Mailbox Alarm"
       }
     },
     "sensor": {

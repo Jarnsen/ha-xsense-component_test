@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Rörelse"
+      },
+      "mailbox_alarm": {
+        "name": "Larmstatus"
       }
     },
     "sensor": {

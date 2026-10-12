@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Mozgás"
+      },
+      "mailbox_alarm": {
+        "name": "Riasztás állapota"
       }
     },
     "sensor": {

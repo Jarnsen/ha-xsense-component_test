@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Pohyb"
+      },
+      "mailbox_alarm": {
+        "name": "Stav alarmu"
       }
     },
     "sensor": {

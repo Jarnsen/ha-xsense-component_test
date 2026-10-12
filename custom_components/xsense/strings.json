@@ -414,6 +414,9 @@
       "ai_detection": {
         "name": "AI Detection"
       },
+      "mailbox_alarm": {
+        "name": "Mailbox Alarm"
+      },
       "motion": {
         "name": "Motion"
       }

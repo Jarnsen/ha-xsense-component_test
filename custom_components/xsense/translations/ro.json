@@ -186,6 +186,9 @@
       },
       "motion": {
         "name": "Mișcare"
+      },
+      "mailbox_alarm": {
+        "name": "Starea alarmei"
       }
     },
     "sensor": {
