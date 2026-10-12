@@ -981,6 +981,79 @@
       "name": "Șterge programul de iluminat",
       "description": "Șterge un program de iluminat. Selectează ca țintă întrerupătorul de alimentare a iluminatului SBS50."
     },
+    "query_mailbox_schedules": {
+        "name": "Memento pentru corespondență (SMA0A): Query mailbox schedules",
+        "description": "Memento pentru corespondență (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Memento pentru corespondență (SMA0A): Create mailbox schedule",
+        "description": "Memento pentru corespondență (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Nume afișat"
+            },
+            "start_time": {
+                "name": "Ora de început (HH:MM sau HHMM)"
+            },
+            "end_time": {
+                "name": "Ora de sfârșit (HH:MM sau HHMM)"
+            },
+            "week_days": {
+                "name": "Zilele săptămânii (1 = duminică, 7 = sâmbătă)"
+            },
+            "enabled": {
+                "name": "Stare de activare"
+            },
+            "time_zone": {
+                "name": "Fus orar"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Memento pentru corespondență (SMA0A): Update mailbox schedule",
+        "description": "Memento pentru corespondență (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identificatorul programului"
+            },
+            "start_time": {
+                "name": "Ora de început (HH:MM sau HHMM)"
+            },
+            "end_time": {
+                "name": "Ora de sfârșit (HH:MM sau HHMM)"
+            },
+            "week_days": {
+                "name": "Zilele săptămânii (1 = duminică, 7 = sâmbătă)"
+            },
+            "enabled": {
+                "name": "Stare de activare"
+            },
+            "time_zone": {
+                "name": "Fus orar"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Memento pentru corespondență (SMA0A): Rename mailbox schedule",
+        "description": "Memento pentru corespondență (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identificatorul programului"
+            },
+            "name": {
+                "name": "Nume afișat"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Memento pentru corespondență (SMA0A): Delete mailbox schedule",
+        "description": "Memento pentru corespondență (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identificatorul programului"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Interoghează grupurile de iluminat",
       "description": "Interoghează grupurile de iluminat. Selectează ca țintă întrerupătorul de alimentare a iluminatului SBS50."

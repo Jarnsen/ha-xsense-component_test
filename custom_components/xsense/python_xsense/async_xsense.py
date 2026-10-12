@@ -2858,6 +2858,95 @@ class AsyncXSense(XSenseBase):
             deviceId=entity.entity_id,
         )
 
+    async def query_mailbox_schedules(self, entity: Entity):
+        """Query SMA0A mailbox schedules through the APK schedule API."""
+        station = getattr(entity, "station", entity)
+        data = await self.api_call(
+            "409107",
+            stationId=station.entity_id,
+            deviceId=entity.entity_id,
+        )
+        return light_schedule_list(data)
+
+    async def create_mailbox_schedule(
+        self,
+        entity: Entity,
+        *,
+        name: str,
+        start_time: str,
+        end_time: str,
+        week_days: list[str],
+        enabled: bool,
+        time_zone: str,
+    ):
+        """Create an SMA0A mailbox schedule through the APK schedule API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "409103",
+            stationId=station.entity_id,
+            deviceId=entity.entity_id,
+            schedName=name,
+            timeZone=time_zone,
+            startTime=schedule_time(start_time),
+            endTime=schedule_time(end_time),
+            isEnable="1" if enabled else "0",
+            weekDays=schedule_week_days(week_days),
+            newTimeZoneMode="1",
+        )
+
+    async def update_mailbox_schedule(
+        self,
+        entity: Entity,
+        *,
+        schedule_id: str,
+        start_time: str,
+        end_time: str,
+        week_days: list[str],
+        enabled: bool,
+        time_zone: str,
+    ):
+        """Update an SMA0A mailbox schedule through the APK schedule API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "409105",
+            stationId=station.entity_id,
+            deviceId=entity.entity_id,
+            schedId=schedule_id,
+            timeZone=time_zone,
+            startTime=schedule_time(start_time),
+            endTime=schedule_time(end_time),
+            isEnable="1" if enabled else "0",
+            weekDays=schedule_week_days(week_days),
+            newTimeZoneMode="1",
+        )
+
+    async def rename_mailbox_schedule(
+        self,
+        entity: Entity,
+        *,
+        schedule_id: str,
+        name: str,
+    ):
+        """Rename an SMA0A mailbox schedule through the APK schedule API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "409104",
+            stationId=station.entity_id,
+            deviceId=entity.entity_id,
+            schedId=schedule_id,
+            schedName=name,
+        )
+
+    async def delete_mailbox_schedule(self, entity: Entity, *, schedule_id: str):
+        """Delete an SMA0A mailbox schedule through the APK schedule API."""
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "409106",
+            stationId=station.entity_id,
+            deviceId=entity.entity_id,
+            schedId=schedule_id,
+        )
+
     async def query_light_groups(self, entity: Entity):
         """Query SBS50 light groups through the same REST API as the APK."""
         station = getattr(entity, "station", entity)

@@ -981,6 +981,79 @@
       "name": "Poista valaistusaikataulu",
       "description": "Poista valaistusaikataulu. Valitse kohteeksi SBS50:n valaistuksen virtakytkin."
     },
+    "query_mailbox_schedules": {
+        "name": "Postimuistutus (SMA0A): Query mailbox schedules",
+        "description": "Postimuistutus (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Postimuistutus (SMA0A): Create mailbox schedule",
+        "description": "Postimuistutus (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Näyttönimi"
+            },
+            "start_time": {
+                "name": "Aloitusaika (HH:MM tai HHMM)"
+            },
+            "end_time": {
+                "name": "Lopetusaika (HH:MM tai HHMM)"
+            },
+            "week_days": {
+                "name": "Viikonpäivät (1 = sunnuntai, 7 = lauantai)"
+            },
+            "enabled": {
+                "name": "Käytössä-tila"
+            },
+            "time_zone": {
+                "name": "Aikavyöhyke"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Postimuistutus (SMA0A): Update mailbox schedule",
+        "description": "Postimuistutus (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Aikataulun tunnus"
+            },
+            "start_time": {
+                "name": "Aloitusaika (HH:MM tai HHMM)"
+            },
+            "end_time": {
+                "name": "Lopetusaika (HH:MM tai HHMM)"
+            },
+            "week_days": {
+                "name": "Viikonpäivät (1 = sunnuntai, 7 = lauantai)"
+            },
+            "enabled": {
+                "name": "Käytössä-tila"
+            },
+            "time_zone": {
+                "name": "Aikavyöhyke"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Postimuistutus (SMA0A): Rename mailbox schedule",
+        "description": "Postimuistutus (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Aikataulun tunnus"
+            },
+            "name": {
+                "name": "Näyttönimi"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Postimuistutus (SMA0A): Delete mailbox schedule",
+        "description": "Postimuistutus (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Aikataulun tunnus"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Hae valoryhmät",
       "description": "Hae valoryhmät. Valitse kohteeksi SBS50:n valaistuksen virtakytkin."

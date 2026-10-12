@@ -981,6 +981,79 @@
       "name": "Удалить расписание освещения",
       "description": "Удалите расписание освещения. Выберите выключатель питания освещения SBS50 в качестве цели."
     },
+    "query_mailbox_schedules": {
+        "name": "Напоминание о почте (SMA0A): Query mailbox schedules",
+        "description": "Напоминание о почте (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Напоминание о почте (SMA0A): Create mailbox schedule",
+        "description": "Напоминание о почте (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Отображаемое имя"
+            },
+            "start_time": {
+                "name": "Время начала (HH:MM или HHMM)"
+            },
+            "end_time": {
+                "name": "Время окончания (HH:MM или HHMM)"
+            },
+            "week_days": {
+                "name": "Дни недели (1 = воскресенье, 7 = суббота)"
+            },
+            "enabled": {
+                "name": "Состояние включения"
+            },
+            "time_zone": {
+                "name": "Часовой пояс"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Напоминание о почте (SMA0A): Update mailbox schedule",
+        "description": "Напоминание о почте (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Идентификатор расписания"
+            },
+            "start_time": {
+                "name": "Время начала (HH:MM или HHMM)"
+            },
+            "end_time": {
+                "name": "Время окончания (HH:MM или HHMM)"
+            },
+            "week_days": {
+                "name": "Дни недели (1 = воскресенье, 7 = суббота)"
+            },
+            "enabled": {
+                "name": "Состояние включения"
+            },
+            "time_zone": {
+                "name": "Часовой пояс"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Напоминание о почте (SMA0A): Rename mailbox schedule",
+        "description": "Напоминание о почте (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Идентификатор расписания"
+            },
+            "name": {
+                "name": "Отображаемое имя"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Напоминание о почте (SMA0A): Delete mailbox schedule",
+        "description": "Напоминание о почте (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Идентификатор расписания"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Запросить группы освещения",
       "description": "Запросите группы освещения. Выберите выключатель питания освещения SBS50 в качестве цели."

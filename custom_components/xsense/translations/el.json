@@ -981,6 +981,79 @@
       "name": "Διαγραφή προγράμματος φωτισμού",
       "description": "Διαγραφή προγράμματος φωτισμού. Επιλέξτε ως στόχο τον διακόπτη τροφοδοσίας φωτισμού του SBS50."
     },
+    "query_mailbox_schedules": {
+        "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Query mailbox schedules",
+        "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Create mailbox schedule",
+        "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Εμφανιζόμενο όνομα"
+            },
+            "start_time": {
+                "name": "Ώρα έναρξης (HH:MM ή HHMM)"
+            },
+            "end_time": {
+                "name": "Ώρα λήξης (HH:MM ή HHMM)"
+            },
+            "week_days": {
+                "name": "Ημέρες εβδομάδας (1 = Κυριακή, 7 = Σάββατο)"
+            },
+            "enabled": {
+                "name": "Κατάσταση ενεργοποίησης"
+            },
+            "time_zone": {
+                "name": "Ζώνη ώρας"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Update mailbox schedule",
+        "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Αναγνωριστικό προγράμματος"
+            },
+            "start_time": {
+                "name": "Ώρα έναρξης (HH:MM ή HHMM)"
+            },
+            "end_time": {
+                "name": "Ώρα λήξης (HH:MM ή HHMM)"
+            },
+            "week_days": {
+                "name": "Ημέρες εβδομάδας (1 = Κυριακή, 7 = Σάββατο)"
+            },
+            "enabled": {
+                "name": "Κατάσταση ενεργοποίησης"
+            },
+            "time_zone": {
+                "name": "Ζώνη ώρας"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Rename mailbox schedule",
+        "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Αναγνωριστικό προγράμματος"
+            },
+            "name": {
+                "name": "Εμφανιζόμενο όνομα"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Delete mailbox schedule",
+        "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Αναγνωριστικό προγράμματος"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Ανάκτηση ομάδων φωτισμού",
       "description": "Ανάκτηση ομάδων φωτισμού. Επιλέξτε ως στόχο τον διακόπτη τροφοδοσίας φωτισμού του SBS50."

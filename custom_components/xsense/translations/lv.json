@@ -981,6 +981,79 @@
         }
       }
     },
+    "query_mailbox_schedules": {
+        "name": "E-pasta atgādinājums (SMA0A): Query mailbox schedules",
+        "description": "E-pasta atgādinājums (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "E-pasta atgādinājums (SMA0A): Create mailbox schedule",
+        "description": "E-pasta atgādinājums (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Parādāmais nosaukums"
+            },
+            "start_time": {
+                "name": "Sākuma laiks (HH:MM vai HHMM)"
+            },
+            "end_time": {
+                "name": "Beigu laiks (HH:MM vai HHMM)"
+            },
+            "week_days": {
+                "name": "Nedēļas dienas (1 = svētdiena, 7 = sestdiena)"
+            },
+            "enabled": {
+                "name": "Iespējošanas stāvoklis"
+            },
+            "time_zone": {
+                "name": "Laika josla"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "E-pasta atgādinājums (SMA0A): Update mailbox schedule",
+        "description": "E-pasta atgādinājums (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Grafika identifikators"
+            },
+            "start_time": {
+                "name": "Sākuma laiks (HH:MM vai HHMM)"
+            },
+            "end_time": {
+                "name": "Beigu laiks (HH:MM vai HHMM)"
+            },
+            "week_days": {
+                "name": "Nedēļas dienas (1 = svētdiena, 7 = sestdiena)"
+            },
+            "enabled": {
+                "name": "Iespējošanas stāvoklis"
+            },
+            "time_zone": {
+                "name": "Laika josla"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "E-pasta atgādinājums (SMA0A): Rename mailbox schedule",
+        "description": "E-pasta atgādinājums (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Grafika identifikators"
+            },
+            "name": {
+                "name": "Parādāmais nosaukums"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "E-pasta atgādinājums (SMA0A): Delete mailbox schedule",
+        "description": "E-pasta atgādinājums (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Grafika identifikators"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Iegūt apgaismojuma grupas",
       "description": "Iegūstiet apgaismojuma grupas. Kā mērķi izvēlieties SBS50 apgaismojuma barošanas slēdzi."

@@ -981,6 +981,79 @@
         }
       }
     },
+    "query_mailbox_schedules": {
+        "name": "Podsjetnik e-poštom (SMA0A): Query mailbox schedules",
+        "description": "Podsjetnik e-poštom (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Podsjetnik e-poštom (SMA0A): Create mailbox schedule",
+        "description": "Podsjetnik e-poštom (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Prikazni naziv"
+            },
+            "start_time": {
+                "name": "Vrijeme početka (HH:MM ili HHMM)"
+            },
+            "end_time": {
+                "name": "Vrijeme završetka (HH:MM ili HHMM)"
+            },
+            "week_days": {
+                "name": "Dani u tjednu (1 = nedjelja, 7 = subota)"
+            },
+            "enabled": {
+                "name": "Omogućeno stanje"
+            },
+            "time_zone": {
+                "name": "Vremenska zona"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Podsjetnik e-poštom (SMA0A): Update mailbox schedule",
+        "description": "Podsjetnik e-poštom (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifikator rasporeda"
+            },
+            "start_time": {
+                "name": "Vrijeme početka (HH:MM ili HHMM)"
+            },
+            "end_time": {
+                "name": "Vrijeme završetka (HH:MM ili HHMM)"
+            },
+            "week_days": {
+                "name": "Dani u tjednu (1 = nedjelja, 7 = subota)"
+            },
+            "enabled": {
+                "name": "Omogućeno stanje"
+            },
+            "time_zone": {
+                "name": "Vremenska zona"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Podsjetnik e-poštom (SMA0A): Rename mailbox schedule",
+        "description": "Podsjetnik e-poštom (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifikator rasporeda"
+            },
+            "name": {
+                "name": "Prikazni naziv"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Podsjetnik e-poštom (SMA0A): Delete mailbox schedule",
+        "description": "Podsjetnik e-poštom (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifikator rasporeda"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Dohvati grupe svjetala",
       "description": "Dohvatite grupe svjetala. Kao cilj odaberite prekidač napajanja svjetla SBS50."

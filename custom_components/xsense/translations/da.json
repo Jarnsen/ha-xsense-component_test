@@ -981,6 +981,79 @@
       "name": "Slet lysplan",
       "description": "Slet lysplan. Vælg SBS50-lysets strømkontakt som mål."
     },
+    "query_mailbox_schedules": {
+        "name": "Postpåmindelse (SMA0A): Query mailbox schedules",
+        "description": "Postpåmindelse (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Postpåmindelse (SMA0A): Create mailbox schedule",
+        "description": "Postpåmindelse (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Vist navn"
+            },
+            "start_time": {
+                "name": "Starttidspunkt (HH:MM eller HHMM)"
+            },
+            "end_time": {
+                "name": "Sluttidspunkt (HH:MM eller HHMM)"
+            },
+            "week_days": {
+                "name": "Ugedage (1 = søndag, 7 = lørdag)"
+            },
+            "enabled": {
+                "name": "Aktiveringstilstand"
+            },
+            "time_zone": {
+                "name": "Tidszone"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Postpåmindelse (SMA0A): Update mailbox schedule",
+        "description": "Postpåmindelse (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Planidentifikator"
+            },
+            "start_time": {
+                "name": "Starttidspunkt (HH:MM eller HHMM)"
+            },
+            "end_time": {
+                "name": "Sluttidspunkt (HH:MM eller HHMM)"
+            },
+            "week_days": {
+                "name": "Ugedage (1 = søndag, 7 = lørdag)"
+            },
+            "enabled": {
+                "name": "Aktiveringstilstand"
+            },
+            "time_zone": {
+                "name": "Tidszone"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Postpåmindelse (SMA0A): Rename mailbox schedule",
+        "description": "Postpåmindelse (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Planidentifikator"
+            },
+            "name": {
+                "name": "Vist navn"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Postpåmindelse (SMA0A): Delete mailbox schedule",
+        "description": "Postpåmindelse (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Planidentifikator"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Hent lysgrupper",
       "description": "Hent lysgrupper. Vælg SBS50-lysets strømkontakt som mål."

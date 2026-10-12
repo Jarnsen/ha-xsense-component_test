@@ -215,6 +215,126 @@ delete_light_schedule:
       selector:
         text:
 
+query_mailbox_schedules:
+  name: "Query mailbox schedules"
+  description: "Query schedules. Target the SMA0A Mail Notice switch."
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+
+create_mailbox_schedule:
+  name: "Create mailbox schedule"
+  description: "Create a schedule. Target the SMA0A Mail Notice switch."
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    name:
+      required: true
+      selector:
+        text:
+    start_time:
+      required: true
+      selector:
+        text:
+    end_time:
+      required: true
+      selector:
+        text:
+    week_days:
+      required: true
+      selector:
+        select:
+          multiple: true
+          options:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+    enabled:
+      default: true
+      selector:
+        boolean:
+    time_zone:
+      selector:
+        text:
+
+update_mailbox_schedule:
+  name: "Update mailbox schedule"
+  description: "Update a schedule. Target the SMA0A Mail Notice switch."
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    schedule_id:
+      required: true
+      selector:
+        text:
+    start_time:
+      required: true
+      selector:
+        text:
+    end_time:
+      required: true
+      selector:
+        text:
+    week_days:
+      required: true
+      selector:
+        select:
+          multiple: true
+          options:
+            - "1"
+            - "2"
+            - "3"
+            - "4"
+            - "5"
+            - "6"
+            - "7"
+    enabled:
+      default: true
+      selector:
+        boolean:
+    time_zone:
+      selector:
+        text:
+
+rename_mailbox_schedule:
+  name: "Rename mailbox schedule"
+  description: "Rename a schedule. Target the SMA0A Mail Notice switch."
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    schedule_id:
+      required: true
+      selector:
+        text:
+    name:
+      required: true
+      selector:
+        text:
+
+delete_mailbox_schedule:
+  name: "Delete mailbox schedule"
+  description: "Delete a schedule. Target the SMA0A Mail Notice switch."
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    schedule_id:
+      required: true
+      selector:
+        text:
+
 query_light_groups:
   name: "Query light groups"
   description: "Query light groups. Target the SBS50 light power switch."

@@ -5,11 +5,13 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from custom_components.xsense.const import DOMAIN
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.xsense import (
     binary_sensor,
     button,
+    event,
     number,
     select,
     sensor,
@@ -19,6 +21,77 @@ from custom_components.xsense.python_xsense.async_xsense import AsyncXSense
 from custom_components.xsense.python_xsense.device import Device
 from custom_components.xsense.python_xsense.entity_map import EntityType, entities
 from custom_components.xsense.python_xsense.station import Station
+
+
+
+@pytest.mark.asyncio
+async def test_apk_non_camera_product_models_create_real_platform_entities():
+    """Ensure every APK product card has a real Home Assistant surface."""
+
+    class Coordinator:
+        last_update_success = True
+        xsense = AsyncXSense()
+
+        def __init__(self, stations, devices):
+            self.data = {"stations": stations, "devices": devices}
+
+        def async_add_listener(self, _callback):
+            return lambda: None
+
+    modules = (binary_sensor, button, event, number, select, sensor, switch)
+    sample_data = {"batInfo": "3", "online": "1"}
+
+    for model in entities:
+        if model in {"SSC0A", "SSC0B"}:
+            continue
+
+        if model in {"SBS10", "SBS50"}:
+            candidate = Station(
+                None,
+                stationId=f"{model}-station",
+                stationSn=f"{model}-sn",
+                category=model,
+                online=1,
+            )
+            candidate.set_data(sample_data)
+            stations = {candidate.entity_id: candidate}
+            devices = {}
+        else:
+            parent = Station(
+                None,
+                stationId="parent",
+                stationSn="parent-sn",
+                category="SBS50",
+                online=1,
+            )
+            candidate = Device(
+                parent,
+                deviceId=f"{model}-device",
+                deviceSn=f"{model}-sn",
+                deviceType=model,
+                online=1,
+            )
+            candidate.set_data(sample_data)
+            stations = {parent.entity_id: parent}
+            devices = {candidate.entity_id: candidate}
+
+        coordinator = Coordinator(stations, devices)
+        hass = SimpleNamespace(data={DOMAIN: {"audit": coordinator}})
+        entry = SimpleNamespace(entry_id="audit")
+        keys = set()
+        for module in modules:
+            created = []
+            await module.async_setup_entry(
+                hass, entry, lambda values: created.extend(values)
+            )
+            keys.update(
+                item.entity_description.key
+                for item in created
+                if item._dev_id == candidate.entity_id
+            )
+
+        assert keys, model
+
 
 
 def station(identifier="old-id", serial="SERIAL", model="SC07-iA", house=None):

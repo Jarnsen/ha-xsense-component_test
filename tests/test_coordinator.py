@@ -655,6 +655,65 @@ def test_mqtt_child_devs_payload_is_routed_to_apk_state_parser():
     ]
 
 
+def test_mqtt_ssd01_notice_routes_apk_door_state_to_child():
+    """Route the APK Device2PushShadowBean SSD01 notice to its device."""
+    from types import SimpleNamespace
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Station:
+        sn = "station-sn"
+        shadow_name = "station-sn"
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    station = Station()
+    parsed = []
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.hass = object()
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/station-sn/shadow/name/2nd_safenotice/update",
+        (
+            '{"state":{"reported":{"stationSN":"station-sn",'
+            '"notices":[{"type":"SSD01","deviceSN":"smartdrop-sn",'
+            '"eventTime":"20261012134500",'
+            '"eventParam":{"isOpen":"1"}}]}}}'
+        ).encode(),
+    )
+
+    assert parsed == [
+        (
+            station,
+            {
+                "stationSN": "station-sn",
+                "notices": [
+                    {
+                        "type": "SSD01",
+                        "deviceSN": "smartdrop-sn",
+                        "eventTime": "20261012134500",
+                        "eventParam": {"isOpen": "1"},
+                    }
+                ],
+                "devs": {
+                    "smartdrop-sn": {
+                        "stationSN": "station-sn",
+                        "deviceSN": "smartdrop-sn",
+                        "type": "SSD01",
+                        "isOpen": "1",
+                        "eventTime": "20261012134500",
+                    }
+                },
+            },
+        )
+    ]
+
+
 def test_mqtt_target_device_payload_is_routed_to_apk_state_parser():
     from types import SimpleNamespace
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
@@ -697,6 +756,102 @@ def test_mqtt_target_device_payload_is_routed_to_apk_state_parser():
                         "time": "20260701075100",
                     },
                 },
+            },
+        )
+    ]
+
+
+def test_mqtt_sma51_alarm_event_preserves_apk_mailbox_fields():
+    from custom_components.xsense.coordinator import _mqtt_reported_data
+
+    data = _mqtt_reported_data(
+        {
+            "eventTime": "20261012123000",
+            "eventData": {
+                "stationSn": "station-sn",
+                "deviceSn": "mailbox-sn",
+                "deviceType": "SMA51",
+                "isAlarm": "1",
+                "alarmTime": "20261012122958",
+                "eventItem": {
+                    "alarmStatus": "1",
+                    "mailNotice": "1",
+                    "continueAlarm": "0",
+                },
+            },
+        }
+    )
+
+    assert data["stationSN"] == "station-sn"
+    assert data["deviceSN"] == "mailbox-sn"
+    assert data["type"] == "SMA51"
+    assert data["alarmStatus"] == "1"
+    assert data["mailNotice"] == "1"
+    assert data["continueAlarm"] == "0"
+    assert data["mailboxAlarmActive"] is True
+    assert data["mailboxAlarmTime"] == "20261012122958"
+
+
+def test_mqtt_sma51_alarm_event_routes_normalized_payload_to_child():
+    from types import SimpleNamespace
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Station:
+        sn = "station-sn"
+        shadow_name = "SBS50station-sn"
+
+        def get_device_by_sn(self, identifier):
+            return object() if identifier == "mailbox-sn" else None
+
+    station = Station()
+    parsed = []
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "@xsense/events/house-id/mailbox",
+        json.dumps(
+            {
+                "eventTime": "20261012123000",
+                "eventData": {
+                    "stationSn": "station-sn",
+                    "deviceSn": "mailbox-sn",
+                    "deviceType": "SMA51",
+                    "isAlarm": "1",
+                    "alarmTime": "20261012122958",
+                    "eventItem": {"mailNotice": "1", "continueAlarm": "0"},
+                },
+            }
+        ).encode(),
+    )
+
+    assert parsed == [
+        (
+            station,
+            {
+                "devs": {
+                    "mailbox-sn": {
+                        "stationSn": "station-sn",
+                        "deviceSn": "mailbox-sn",
+                        "deviceType": "SMA51",
+                        "isAlarm": "1",
+                        "alarmTime": "20261012122958",
+                        "eventItem": {"mailNotice": "1", "continueAlarm": "0"},
+                        "time": "20261012123000",
+                        "eventTime": "20261012123000",
+                        "stationSN": "station-sn",
+                        "deviceSN": "mailbox-sn",
+                        "type": "SMA51",
+                        "mailNotice": "1",
+                        "continueAlarm": "0",
+                        "mailboxAlarmActive": True,
+                        "mailboxAlarmTime": "20261012122958",
+                    }
+                }
             },
         )
     ]

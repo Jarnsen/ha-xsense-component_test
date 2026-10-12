@@ -27,6 +27,7 @@ aws_signer = load_api_module("aws_signer")
 entity = load_api_module("entity")
 device_module = load_api_module("device")
 entity_map = load_api_module("entity_map")
+event_parser = load_api_module("event_parser")
 exceptions = load_api_module("exceptions")
 house = load_api_module("house")
 mapping = load_api_module("mapping")
@@ -1393,6 +1394,89 @@ def test_parse_get_state_maps_child_apk_alarm_topic_is_alarm_to_status():
 
     child = station_obj.devices["device-id"]
     assert child.data["alarmStatus"] is True
+
+
+# These models are dispatched by the APK's EventSafeAlarmResult factory. They
+# share one eventData envelope, but each must reach its own child state.
+APK_EVENT_SAFE_CHILD_MODELS = (
+    "CB0Z-3S", "LP/N-SA-0B", "LP/N-SCA-0A", "SAL100", "SAL51",
+    "SC01-MN", "SC01-MR", "SC06-WX", "SC07-MR", "SC07-WX", "SC07-iA",
+    "SD11-MR", "SD19-MN", "SDA51", "SDS0A", "SMA0A", "SMA51", "SMS0A",
+    "STH0A", "STH51", "SWS0A", "SWS51", "XC01-M", "XC04-WX",
+    "XC0C-MR", "XC0C-iA", "XC0C-iR", "XC0M-iR", "XH02-M", "XP02S-MR",
+    "XP0A-MR", "XP0A-iR", "XP0H-MR", "XP0H-iR", "XP0J-iA", "XP0P-MR",
+    "XP0S-iA", "XP0T-iA", "XP0V-iA", "XP0W-iA", "XS01-M", "XS01-WX",
+    "XS03-WX", "XS03-iWX", "XS0AA-iA", "XS0AB-iA", "XS0B-MR", "XS0B-iR",
+    "XS0D-MR", "XS0E-iR", "XS0F-PMA", "XS0R-iA", "XS0X-MN",
+)
+
+
+@pytest.mark.parametrize("device_type", APK_EVENT_SAFE_CHILD_MODELS)
+def test_apk_event_safe_alarm_models_route_to_their_child(device_type):
+    """Keep APK EventSafe child models on the tested MQTT state path."""
+    client = async_xsense.AsyncXSense()
+    station_obj = station.Station(
+        None,
+        stationId="station-id",
+        stationName="Station",
+        stationSn="station-sn",
+        category="SBS50",
+    )
+    station_obj.set_devices(
+        {"devices": [{
+            "deviceId": "device-id",
+            "deviceName": "Device",
+            "deviceSn": "child-sn",
+            "deviceType": device_type,
+        }]}
+    )
+
+    client.parse_get_state(
+        station_obj,
+        {"devs": {"child-sn": {
+            "stationSn": "station-sn",
+            "deviceSn": "child-sn",
+            "deviceType": device_type,
+            "isAlarm": "1",
+            "alarmTime": "20261012123000",
+            "eventItem": {"alarmStatus": "1"},
+        }}},
+    )
+
+    child = station_obj.devices["device-id"]
+    assert child.data["alarmStatus"] is True
+    assert station_obj.has_alarm is False
+
+
+def test_mqtt_reported_data_flattens_apk_event_safe_alarm_envelope():
+    """Mirror the shared EventSafeAlarmResult handling used by the APK."""
+    data = event_parser.mqtt_reported_data(
+        {
+            "eventData": {
+                "stationSn": "station-sn",
+                "deviceSn": "driveway-sn",
+                "deviceType": "SDA51",
+                "isAlarm": "1",
+                "alarmTime": "20261012123000",
+                "eventItem": {
+                    "alarmStatus": "1",
+                    "alarmSource": "pir",
+                    "continueAlarm": "1",
+                    "reAlarm": "0",
+                    "initiativeAlarm": "1",
+                },
+            }
+        }
+    )
+
+    assert data["stationSN"] == "station-sn"
+    assert data["deviceSN"] == "driveway-sn"
+    assert data["type"] == "SDA51"
+    assert data["alarmStatus"] == "1"
+    assert data["alarmSource"] == "pir"
+    assert data["continueAlarm"] == "1"
+    assert data["reAlarm"] == "0"
+    assert data["initiativeAlarm"] == "1"
 
 
 def test_parse_get_state_applies_apk_group_light_result_to_group_device():
@@ -3839,6 +3923,99 @@ async def test_light_schedule_api_uses_apk_biz_codes_and_payloads():
                 "stationId": "station-id",
                 "schedId": "schedule-id",
                 "deviceId": "device-id",
+            },
+        ),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_sma0a_schedule_api_uses_apk_biz_codes_and_payloads():
+    client = async_xsense.AsyncXSense()
+    station = FakeXSenseStation("SBS50")
+    station.entity_id = "station-id"
+    device = fake_child_device(
+        "SMA0A",
+        station=station,
+        entity_type=entity_map.EntityType.MAILBOX,
+    )
+    device.entity_id = "device-id"
+    calls = []
+
+    async def api_call(code, **kwargs):
+        calls.append((code, kwargs))
+        return {"requestId": f"request-{code}"}
+
+    client.api_call = api_call
+
+    await client.query_mailbox_schedules(device)
+    await client.create_mailbox_schedule(
+        device,
+        name="Evening",
+        start_time="1800",
+        end_time="2300",
+        week_days=["1", "2"],
+        enabled=True,
+        time_zone="America/St_Johns",
+    )
+    await client.update_mailbox_schedule(
+        device,
+        schedule_id="schedule-id",
+        start_time="1900",
+        end_time="2200",
+        week_days=["3"],
+        enabled=False,
+        time_zone="America/St_Johns",
+    )
+    await client.rename_mailbox_schedule(
+        device, schedule_id="schedule-id", name="Night"
+    )
+    await client.delete_mailbox_schedule(device, schedule_id="schedule-id")
+
+    assert calls == [
+        ("409107", {"stationId": "station-id", "deviceId": "device-id"}),
+        (
+            "409103",
+            {
+                "stationId": "station-id",
+                "deviceId": "device-id",
+                "schedName": "Evening",
+                "timeZone": "America/St_Johns",
+                "startTime": "1800",
+                "endTime": "2300",
+                "isEnable": "1",
+                "weekDays": ["1", "2"],
+                "newTimeZoneMode": "1",
+            },
+        ),
+        (
+            "409105",
+            {
+                "stationId": "station-id",
+                "deviceId": "device-id",
+                "schedId": "schedule-id",
+                "timeZone": "America/St_Johns",
+                "startTime": "1900",
+                "endTime": "2200",
+                "isEnable": "0",
+                "weekDays": ["3"],
+                "newTimeZoneMode": "1",
+            },
+        ),
+        (
+            "409104",
+            {
+                "stationId": "station-id",
+                "deviceId": "device-id",
+                "schedId": "schedule-id",
+                "schedName": "Night",
+            },
+        ),
+        (
+            "409106",
+            {
+                "stationId": "station-id",
+                "deviceId": "device-id",
+                "schedId": "schedule-id",
             },
         ),
     ]

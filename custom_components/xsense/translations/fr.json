@@ -142,6 +142,79 @@
         }
       }
     },
+    "query_mailbox_schedules": {
+        "name": "Rappel de courrier (SMA0A): Query mailbox schedules",
+        "description": "Rappel de courrier (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Rappel de courrier (SMA0A): Create mailbox schedule",
+        "description": "Rappel de courrier (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Nom affiché"
+            },
+            "start_time": {
+                "name": "Heure de début (HH:MM ou HHMM)"
+            },
+            "end_time": {
+                "name": "Heure de fin (HH:MM ou HHMM)"
+            },
+            "week_days": {
+                "name": "Jours (1 = dimanche, 7 = samedi)"
+            },
+            "enabled": {
+                "name": "État d’activation"
+            },
+            "time_zone": {
+                "name": "Fuseau horaire"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Rappel de courrier (SMA0A): Update mailbox schedule",
+        "description": "Rappel de courrier (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifiant de l’horaire"
+            },
+            "start_time": {
+                "name": "Heure de début (HH:MM ou HHMM)"
+            },
+            "end_time": {
+                "name": "Heure de fin (HH:MM ou HHMM)"
+            },
+            "week_days": {
+                "name": "Jours (1 = dimanche, 7 = samedi)"
+            },
+            "enabled": {
+                "name": "État d’activation"
+            },
+            "time_zone": {
+                "name": "Fuseau horaire"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Rappel de courrier (SMA0A): Rename mailbox schedule",
+        "description": "Rappel de courrier (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifiant de l’horaire"
+            },
+            "name": {
+                "name": "Nom affiché"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Rappel de courrier (SMA0A): Delete mailbox schedule",
+        "description": "Rappel de courrier (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Identifiant de l’horaire"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Consulter les groupes d’éclairage",
       "description": "Consulter les groupes d’éclairage. Cibler l’interrupteur d’éclairage de la SBS50."

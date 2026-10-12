@@ -981,6 +981,79 @@
         }
       }
     },
+    "query_mailbox_schedules": {
+        "name": "이메일 알림 (SMA0A): Query mailbox schedules",
+        "description": "이메일 알림 (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "이메일 알림 (SMA0A): Create mailbox schedule",
+        "description": "이메일 알림 (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "표시 이름"
+            },
+            "start_time": {
+                "name": "시작 시간 (HH:MM 또는 HHMM)"
+            },
+            "end_time": {
+                "name": "종료 시간 (HH:MM 또는 HHMM)"
+            },
+            "week_days": {
+                "name": "요일 (1 = 일요일, 7 = 토요일)"
+            },
+            "enabled": {
+                "name": "활성화 상태"
+            },
+            "time_zone": {
+                "name": "시간대"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "이메일 알림 (SMA0A): Update mailbox schedule",
+        "description": "이메일 알림 (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "일정 식별자"
+            },
+            "start_time": {
+                "name": "시작 시간 (HH:MM 또는 HHMM)"
+            },
+            "end_time": {
+                "name": "종료 시간 (HH:MM 또는 HHMM)"
+            },
+            "week_days": {
+                "name": "요일 (1 = 일요일, 7 = 토요일)"
+            },
+            "enabled": {
+                "name": "활성화 상태"
+            },
+            "time_zone": {
+                "name": "시간대"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "이메일 알림 (SMA0A): Rename mailbox schedule",
+        "description": "이메일 알림 (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "일정 식별자"
+            },
+            "name": {
+                "name": "표시 이름"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "이메일 알림 (SMA0A): Delete mailbox schedule",
+        "description": "이메일 알림 (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "일정 식별자"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "조명 그룹 조회",
       "description": "조명 그룹을 조회합니다. SBS50 조명 전원 스위치를 대상으로 선택하세요."

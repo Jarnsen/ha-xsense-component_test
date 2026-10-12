@@ -287,6 +287,64 @@ async def test_supported_co_status_loads_before_payload_keys():
     assert {"co", "co_level", "device_status"} <= sensor_keys
 
 
+@pytest.mark.parametrize(
+    "device_type",
+    [
+        "SC06-WX",
+        "SC07-WX",
+        "SC07-iA",
+        "STH0C",
+        "SWS0B",
+        "XC04-WX",
+        "XC0C-iA",
+        "XC0C-iR",
+        "XC0M-iR",
+        "XP0A-iR",
+        "XP0H-iR",
+        "XP0J-iA",
+        "XP0S-iA",
+        "XP0T-iA",
+        "XP0V-iA",
+        "XP0W-iA",
+        "XR0A-iR",
+        "XS01-WX",
+        "XS03-WX",
+        "XS0AA-iA",
+        "XS0AB-iA",
+        "XS0B-iR",
+        "XS0E-iR",
+        "XS0R-iA",
+    ],
+)
+async def test_standalone_wifi_station_never_gets_sbs50_management_entities(
+    device_type,
+):
+    """Keep SBS50-only Security Mode and Voice Location off standalone devices."""
+    station = Station(
+        None,
+        stationId=f"{device_type}-station-id",
+        stationName=f"{device_type} Device",
+        stationSn=f"{device_type}-station-sn",
+        category=device_type,
+        online=True,
+    )
+    station.set_data({"safeMode": "Disarmed", "zoneName": "Hallway"})
+
+    class Coordinator:
+        data = {"stations": {station.entity_id: station}, "devices": {}}
+        last_update_success = True
+        xsense = None
+
+        def async_add_listener(self, *args, **kwargs):
+            return lambda: None
+
+    sensor_calls = await _setup_platform(sensor, Coordinator())
+    sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
+
+    assert "safe_mode" not in sensor_keys
+    assert "zone_name" not in sensor_keys
+
+
 @pytest.mark.parametrize("device_type", ["XC0C-iR", "XS0B-iR"])
 async def test_standalone_detector_station_creates_reported_entities(device_type):
     """Standalone Wi-Fi detectors expose station-backed HA entities."""

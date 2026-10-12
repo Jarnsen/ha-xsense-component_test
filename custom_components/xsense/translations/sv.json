@@ -981,6 +981,79 @@
       "name": "Ta bort belysningsschema",
       "description": "Ta bort ett belysningsschema. Välj SBS50:s strömbrytare för belysning som mål."
     },
+    "query_mailbox_schedules": {
+        "name": "Postpåminnelse (SMA0A): Query mailbox schedules",
+        "description": "Postpåminnelse (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Postpåminnelse (SMA0A): Create mailbox schedule",
+        "description": "Postpåminnelse (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Visningsnamn"
+            },
+            "start_time": {
+                "name": "Starttid (HH:MM eller HHMM)"
+            },
+            "end_time": {
+                "name": "Sluttid (HH:MM eller HHMM)"
+            },
+            "week_days": {
+                "name": "Veckodagar (1 = söndag, 7 = lördag)"
+            },
+            "enabled": {
+                "name": "Aktiveringsstatus"
+            },
+            "time_zone": {
+                "name": "Tidszon"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Postpåminnelse (SMA0A): Update mailbox schedule",
+        "description": "Postpåminnelse (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Schemaidentifierare"
+            },
+            "start_time": {
+                "name": "Starttid (HH:MM eller HHMM)"
+            },
+            "end_time": {
+                "name": "Sluttid (HH:MM eller HHMM)"
+            },
+            "week_days": {
+                "name": "Veckodagar (1 = söndag, 7 = lördag)"
+            },
+            "enabled": {
+                "name": "Aktiveringsstatus"
+            },
+            "time_zone": {
+                "name": "Tidszon"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Postpåminnelse (SMA0A): Rename mailbox schedule",
+        "description": "Postpåminnelse (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Schemaidentifierare"
+            },
+            "name": {
+                "name": "Visningsnamn"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Postpåminnelse (SMA0A): Delete mailbox schedule",
+        "description": "Postpåminnelse (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Schemaidentifierare"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Hämta belysningsgrupper",
       "description": "Hämta belysningsgrupper. Välj SBS50:s strömbrytare för belysning som mål."

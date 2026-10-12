@@ -981,6 +981,79 @@
       "name": "刪除燈光排程",
       "description": "刪除燈光排程。目標應為 SBS50 燈光電源開關。"
     },
+    "query_mailbox_schedules": {
+        "name": "郵件提醒 (SMA0A): Query mailbox schedules",
+        "description": "郵件提醒 (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "郵件提醒 (SMA0A): Create mailbox schedule",
+        "description": "郵件提醒 (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "顯示名稱"
+            },
+            "start_time": {
+                "name": "開始時間（HH:MM 或 HHMM）"
+            },
+            "end_time": {
+                "name": "結束時間（HH:MM 或 HHMM）"
+            },
+            "week_days": {
+                "name": "星期（1 = 星期日，7 = 星期六）"
+            },
+            "enabled": {
+                "name": "啟用狀態"
+            },
+            "time_zone": {
+                "name": "時區"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "郵件提醒 (SMA0A): Update mailbox schedule",
+        "description": "郵件提醒 (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "排程識別碼"
+            },
+            "start_time": {
+                "name": "開始時間（HH:MM 或 HHMM）"
+            },
+            "end_time": {
+                "name": "結束時間（HH:MM 或 HHMM）"
+            },
+            "week_days": {
+                "name": "星期（1 = 星期日，7 = 星期六）"
+            },
+            "enabled": {
+                "name": "啟用狀態"
+            },
+            "time_zone": {
+                "name": "時區"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "郵件提醒 (SMA0A): Rename mailbox schedule",
+        "description": "郵件提醒 (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "排程識別碼"
+            },
+            "name": {
+                "name": "顯示名稱"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "郵件提醒 (SMA0A): Delete mailbox schedule",
+        "description": "郵件提醒 (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "排程識別碼"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "查詢燈光群組",
       "description": "查詢燈光群組。目標應為 SBS50 燈光電源開關。"

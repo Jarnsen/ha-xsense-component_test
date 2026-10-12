@@ -981,6 +981,79 @@
       "name": "লাইটৰ সময়সূচী মচক",
       "description": "লাইটৰ সময়সূচী মচক। SBS50-ৰ লাইটৰ পাৱাৰ চুইচটো লক্ষ্য হিচাপে বাছক।"
     },
+    "query_mailbox_schedules": {
+        "name": "ডাকৰ সোঁৱৰণী (SMA0A): Query mailbox schedules",
+        "description": "ডাকৰ সোঁৱৰণী (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "ডাকৰ সোঁৱৰণী (SMA0A): Create mailbox schedule",
+        "description": "ডাকৰ সোঁৱৰণী (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "প্ৰদৰ্শিত নাম"
+            },
+            "start_time": {
+                "name": "আৰম্ভণিৰ সময় (HH:MM বা HHMM)"
+            },
+            "end_time": {
+                "name": "সমাপ্তিৰ সময় (HH:MM বা HHMM)"
+            },
+            "week_days": {
+                "name": "সপ্তাহৰ দিন (1 = দেওবাৰ, 7 = শনিবাৰ)"
+            },
+            "enabled": {
+                "name": "সক্ৰিয় অৱস্থা"
+            },
+            "time_zone": {
+                "name": "সময় অঞ্চল"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "ডাকৰ সোঁৱৰণী (SMA0A): Update mailbox schedule",
+        "description": "ডাকৰ সোঁৱৰণী (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "সময়সূচীৰ পৰিচয়ক"
+            },
+            "start_time": {
+                "name": "আৰম্ভণিৰ সময় (HH:MM বা HHMM)"
+            },
+            "end_time": {
+                "name": "সমাপ্তিৰ সময় (HH:MM বা HHMM)"
+            },
+            "week_days": {
+                "name": "সপ্তাহৰ দিন (1 = দেওবাৰ, 7 = শনিবাৰ)"
+            },
+            "enabled": {
+                "name": "সক্ৰিয় অৱস্থা"
+            },
+            "time_zone": {
+                "name": "সময় অঞ্চল"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "ডাকৰ সোঁৱৰণী (SMA0A): Rename mailbox schedule",
+        "description": "ডাকৰ সোঁৱৰণী (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "সময়সূচীৰ পৰিচয়ক"
+            },
+            "name": {
+                "name": "প্ৰদৰ্শিত নাম"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "ডাকৰ সোঁৱৰণী (SMA0A): Delete mailbox schedule",
+        "description": "ডাকৰ সোঁৱৰণী (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "সময়সূচীৰ পৰিচয়ক"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "লাইটৰ গোটসমূহ বিচাৰক",
       "description": "লাইটৰ গোটসমূহ বিচাৰক। SBS50-ৰ লাইটৰ পাৱাৰ চুইচটো লক্ষ্য হিচাপে বাছক।"

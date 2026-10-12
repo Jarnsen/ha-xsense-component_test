@@ -981,6 +981,79 @@
       "name": "מחיקת לוח זמנים לתאורה",
       "description": "מחיקת לוח זמנים לתאורה. יש לבחור במתג החשמל של תאורת SBS50 כיעד."
     },
+    "query_mailbox_schedules": {
+        "name": "תזכורת דואר (SMA0A): Query mailbox schedules",
+        "description": "תזכורת דואר (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "תזכורת דואר (SMA0A): Create mailbox schedule",
+        "description": "תזכורת דואר (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "שם תצוגה"
+            },
+            "start_time": {
+                "name": "שעת התחלה (HH:MM או HHMM)"
+            },
+            "end_time": {
+                "name": "שעת סיום (HH:MM או HHMM)"
+            },
+            "week_days": {
+                "name": "ימי השבוע (1 = יום ראשון, 7 = שבת)"
+            },
+            "enabled": {
+                "name": "מצב הפעלה"
+            },
+            "time_zone": {
+                "name": "אזור זמן"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "תזכורת דואר (SMA0A): Update mailbox schedule",
+        "description": "תזכורת דואר (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "מזהה לוח זמנים"
+            },
+            "start_time": {
+                "name": "שעת התחלה (HH:MM או HHMM)"
+            },
+            "end_time": {
+                "name": "שעת סיום (HH:MM או HHMM)"
+            },
+            "week_days": {
+                "name": "ימי השבוע (1 = יום ראשון, 7 = שבת)"
+            },
+            "enabled": {
+                "name": "מצב הפעלה"
+            },
+            "time_zone": {
+                "name": "אזור זמן"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "תזכורת דואר (SMA0A): Rename mailbox schedule",
+        "description": "תזכורת דואר (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "מזהה לוח זמנים"
+            },
+            "name": {
+                "name": "שם תצוגה"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "תזכורת דואר (SMA0A): Delete mailbox schedule",
+        "description": "תזכורת דואר (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "מזהה לוח זמנים"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "שליפת קבוצות תאורה",
       "description": "שליפת קבוצות תאורה. יש לבחור במתג החשמל של תאורת SBS50 כיעד."

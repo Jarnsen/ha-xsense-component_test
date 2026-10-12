@@ -981,6 +981,79 @@
         }
       }
     },
+    "query_mailbox_schedules": {
+        "name": "Pengingat email (SMA0A): Query mailbox schedules",
+        "description": "Pengingat email (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+    },
+    "create_mailbox_schedule": {
+        "name": "Pengingat email (SMA0A): Create mailbox schedule",
+        "description": "Pengingat email (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "name": {
+                "name": "Nama tampilan"
+            },
+            "start_time": {
+                "name": "Waktu mulai (HH:MM atau HHMM)"
+            },
+            "end_time": {
+                "name": "Waktu selesai (HH:MM atau HHMM)"
+            },
+            "week_days": {
+                "name": "Hari dalam seminggu (1 = Minggu, 7 = Sabtu)"
+            },
+            "enabled": {
+                "name": "Status diaktifkan"
+            },
+            "time_zone": {
+                "name": "Zona waktu"
+            }
+        }
+    },
+    "update_mailbox_schedule": {
+        "name": "Pengingat email (SMA0A): Update mailbox schedule",
+        "description": "Pengingat email (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Pengenal jadwal"
+            },
+            "start_time": {
+                "name": "Waktu mulai (HH:MM atau HHMM)"
+            },
+            "end_time": {
+                "name": "Waktu selesai (HH:MM atau HHMM)"
+            },
+            "week_days": {
+                "name": "Hari dalam seminggu (1 = Minggu, 7 = Sabtu)"
+            },
+            "enabled": {
+                "name": "Status diaktifkan"
+            },
+            "time_zone": {
+                "name": "Zona waktu"
+            }
+        }
+    },
+    "rename_mailbox_schedule": {
+        "name": "Pengingat email (SMA0A): Rename mailbox schedule",
+        "description": "Pengingat email (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Pengenal jadwal"
+            },
+            "name": {
+                "name": "Nama tampilan"
+            }
+        }
+    },
+    "delete_mailbox_schedule": {
+        "name": "Pengingat email (SMA0A): Delete mailbox schedule",
+        "description": "Pengingat email (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+        "fields": {
+            "schedule_id": {
+                "name": "Pengenal jadwal"
+            }
+        }
+    },
     "query_light_groups": {
       "name": "Ambil grup lampu",
       "description": "Ambil grup lampu. Pilih sakelar daya lampu SBS50 sebagai target."

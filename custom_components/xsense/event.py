@@ -17,6 +17,7 @@ from .python_xsense.async_xsense import (
 )
 from .python_xsense.device import Device
 from .python_xsense.entity import Entity
+from .python_xsense.entity_map import EntityType
 
 from homeassistant import config_entries
 from homeassistant.components.event import (
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
 
 AI_DETECTION_EVENT_TYPE = "ai_detection"
 MOTION_EVENT_TYPE = "motion"
+MAILBOX_ALARM_EVENT_TYPE = "mailbox_alarm"
 CAMERA_EVENT_BUS_TYPE = "xsense_camera_event"
 RECORDING_CACHE_TASKS = "_recording_cache_tasks"
 AI_DETECTION_TYPES: tuple[str, ...] = (
@@ -98,6 +100,14 @@ MOTION_DESCRIPTION = XSenseEventEntityDescription(
     exists_fn=is_camera_entity,
 )
 
+MAILBOX_ALARM_DESCRIPTION = XSenseEventEntityDescription(
+    key=MAILBOX_ALARM_EVENT_TYPE,
+    translation_key="mailbox_alarm",
+    event_types=[MAILBOX_ALARM_EVENT_TYPE],
+    exists_fn=lambda entity: getattr(entity, "entity_type", None)
+    == EntityType.MAILBOX,
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -114,6 +124,7 @@ async def async_setup_entry(
         lambda: [
             *_ai_detection_event_entities(coordinator),
             *_motion_event_entities(coordinator),
+            *_mailbox_alarm_event_entities(coordinator),
         ],
     )
 
@@ -367,6 +378,67 @@ class XSenseMotionEventEntity(XSenseEntity, EventEntity):
         self.async_write_ha_state()
 
 
+class XSenseMailboxAlarmEventEntity(XSenseEntity, EventEntity):
+    """Representation of an APK SBS50 mailbox alarm event."""
+
+    entity_description: XSenseEventEntityDescription
+
+    def __init__(
+        self,
+        coordinator: XSenseDataUpdateCoordinator,
+        entity: Device,
+        entity_description: XSenseEventEntityDescription,
+        station_id: str | None = None,
+    ) -> None:
+        """Set up the instance."""
+        self._station_id = station_id
+        self.entity_description = entity_description
+        self._last_mailbox_alarm_fingerprint: tuple[Any, ...] | None = None
+        self._mailbox_alarm_initialized = False
+        super().__init__(coordinator, entity, station_id)
+
+    def _current_entity(self) -> Device | None:
+        """Return the current mailbox child device."""
+        return self._current_entity_from(coordinator_devices(self.coordinator))
+
+    def _handle_coordinator_update(self) -> None:
+        """Trigger only new active mailbox alarms."""
+        entity = self._current_entity()
+        if entity is None:
+            return
+
+        event_data = mailbox_alarm_event_data(entity.data)
+        fingerprint = mailbox_alarm_fingerprint(event_data)
+        if fingerprint is None:
+            if not self._mailbox_alarm_initialized:
+                self._mailbox_alarm_initialized = True
+            self._write_state_if_added()
+            return
+
+        if not self._mailbox_alarm_initialized:
+            self._last_mailbox_alarm_fingerprint = fingerprint
+            self._mailbox_alarm_initialized = True
+            self._write_state_if_added()
+            return
+
+        if fingerprint == self._last_mailbox_alarm_fingerprint:
+            self._write_state_if_added()
+            return
+
+        self._last_mailbox_alarm_fingerprint = fingerprint
+        self._trigger_event(MAILBOX_ALARM_EVENT_TYPE, event_data)
+        self._write_state_if_added()
+
+    def _write_state_if_added(self) -> None:
+        """Write event state after the entity is registered."""
+        if (
+            getattr(self, "hass", None) is None
+            or getattr(self, "platform", None) is None
+        ):
+            return
+        self.async_write_ha_state()
+
+
 def _ai_detection_event_entities(
     coordinator: XSenseDataUpdateCoordinator,
 ) -> list[XSenseEventEntity]:
@@ -431,6 +503,23 @@ def _motion_event_entities(
     return entities
 
 
+def _mailbox_alarm_event_entities(
+    coordinator: XSenseDataUpdateCoordinator,
+) -> list[XSenseMailboxAlarmEventEntity]:
+    """Return mailbox alarm events for SBS50 mailbox children."""
+    data = coordinator.data or {}
+    return [
+        XSenseMailboxAlarmEventEntity(
+            coordinator,
+            device,
+            MAILBOX_ALARM_DESCRIPTION,
+            station_id=_device_station_id(device),
+        )
+        for device in data.get("devices", {}).values()
+        if MAILBOX_ALARM_DESCRIPTION.exists_fn(device)
+    ]
+
+
 def _device_station_id(device: Device) -> str | None:
     """Return the parent station ID for a device entity."""
     station = getattr(device, "station", None)
@@ -465,6 +554,30 @@ def motion_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
         event_data["playback"] = playback
         event_data.update(_recording_event_data(playback))
     return event_data
+
+
+def mailbox_alarm_event_data(data: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the active SBS50 mailbox alarm event from APK-normalized data."""
+    if data.get("mailboxAlarmActive") is not True:
+        return None
+    event_time = data.get("mailboxAlarmTime")
+    if event_time in (None, ""):
+        return None
+    return {
+        "time": event_time,
+        "alarm_status": data.get("alarmStatus"),
+        "mail_notice": data.get("mailNotice"),
+        "continue_alarm": data.get("continueAlarm"),
+    }
+
+
+def mailbox_alarm_fingerprint(
+    event_data: dict[str, Any] | None,
+) -> tuple[Any, ...] | None:
+    """Return a stable duplicate-detection fingerprint for mailbox alarms."""
+    if event_data is None:
+        return None
+    return (event_data.get("time"),)
 
 
 def _recording_event_data(playback: dict[str, Any]) -> dict[str, Any]:
