@@ -655,6 +655,65 @@ def test_mqtt_child_devs_payload_is_routed_to_apk_state_parser():
     ]
 
 
+def test_mqtt_ssd01_notice_routes_apk_door_state_to_child():
+    """Route the APK Device2PushShadowBean SSD01 notice to its device."""
+    from types import SimpleNamespace
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    class Station:
+        sn = "station-sn"
+        shadow_name = "station-sn"
+
+        def get_device_by_sn(self, _identifier):
+            return None
+
+    station = Station()
+    parsed = []
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(
+        houses={"house-id": PresenceHouse(station)},
+        parse_get_state=lambda station_arg, data: parsed.append((station_arg, data)),
+    )
+    coordinator.hass = object()
+    coordinator.async_update_listeners = lambda: None
+
+    coordinator.async_event_received(
+        "$aws/things/station-sn/shadow/name/2nd_safenotice/update",
+        (
+            '{"state":{"reported":{"stationSN":"station-sn",'
+            '"notices":[{"type":"SSD01","deviceSN":"smartdrop-sn",'
+            '"eventTime":"20261012134500",'
+            '"eventParam":{"isOpen":"1"}}]}}}'
+        ).encode(),
+    )
+
+    assert parsed == [
+        (
+            station,
+            {
+                "stationSN": "station-sn",
+                "notices": [
+                    {
+                        "type": "SSD01",
+                        "deviceSN": "smartdrop-sn",
+                        "eventTime": "20261012134500",
+                        "eventParam": {"isOpen": "1"},
+                    }
+                ],
+                "devs": {
+                    "smartdrop-sn": {
+                        "stationSN": "station-sn",
+                        "deviceSN": "smartdrop-sn",
+                        "type": "SSD01",
+                        "isOpen": "1",
+                        "eventTime": "20261012134500",
+                    }
+                },
+            },
+        )
+    ]
+
+
 def test_mqtt_target_device_payload_is_routed_to_apk_state_parser():
     from types import SimpleNamespace
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator

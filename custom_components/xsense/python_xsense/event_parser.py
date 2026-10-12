@@ -43,6 +43,7 @@ APK_AI_DETECTION_DATA_KEYS = {
 }
 
 APK_MAILBOX_DEVICE_TYPES = {"SMA0A", "SMA51"}
+APK_SMARTDROP_DEVICE_TYPES = {"SSD01"}
 
 # EventSafeAlarmResult.EventData.EventItem fields copied by the Android app's
 # AbstractC2124d.c() before it dispatches any model-specific alarm handler.
@@ -104,6 +105,7 @@ __all__ = [
     "APK_AI_DETECTION_OBJECTS",
     "APK_EVENT_SAFE_ITEM_KEYS",
     "APK_MAILBOX_DEVICE_TYPES",
+    "APK_SMARTDROP_DEVICE_TYPES",
     "MQTT_IDENTIFIER_KEYS",
     "apk_ai_detection_name_times",
     "apk_ai_detection_names",
@@ -111,6 +113,7 @@ __all__ = [
     "apply_apk_ai_detection_aliases",
     "apply_apk_event_safe_alarm_aliases",
     "apply_apk_mailbox_alarm_aliases",
+    "apply_apk_smartdrop_notice_aliases",
     "apply_apk_dispatch_aliases",
     "apply_apk_event_aliases",
     "camera_ai_history_event_key",
@@ -141,7 +144,9 @@ def mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any] | list[Any]:
     """Return device data from either shadow reports or X-Sense event payloads."""
     reported = data.get("state", {}).get("reported")
     if isinstance(reported, dict):
-        return reported.copy()
+        result = reported.copy()
+        apply_apk_smartdrop_notice_aliases(result)
+        return result
     if isinstance(reported, list):
         return list(reported)
 
@@ -530,6 +535,49 @@ def apply_apk_event_aliases(data: dict[str, Any]) -> None:
     apply_apk_event_safe_alarm_aliases(data)
     apply_apk_mailbox_alarm_aliases(data)
     apply_apk_ai_detection_aliases(data)
+
+
+def apply_apk_smartdrop_notice_aliases(data: dict[str, Any]) -> None:
+    """Route the APK's nested SSD01 door-state notices to their child device."""
+    notices = data.get("notices")
+    if not isinstance(notices, list):
+        return
+
+    children = data.get("devs")
+    if not isinstance(children, dict):
+        children = {}
+        data["devs"] = children
+
+    station_sn = _first_alias(
+        data, ("stationSN", "stationSn", "_stationSN", "_stationSn")
+    )
+    for notice in notices:
+        if not isinstance(notice, dict):
+            continue
+        if str(notice.get("type") or "").upper() not in APK_SMARTDROP_DEVICE_TYPES:
+            continue
+        device_sn = _first_alias(notice, ("deviceSN", "deviceSn", "_deviceSN"))
+        event_param = notice.get("eventParam")
+        if (
+            device_sn in (None, "")
+            or not isinstance(event_param, dict)
+            or "isOpen" not in event_param
+        ):
+            continue
+
+        child = dict(children.get(str(device_sn), {}))
+        child.update(
+            {
+                "deviceSN": device_sn,
+                "type": notice.get("type"),
+                "isOpen": event_param["isOpen"],
+            }
+        )
+        if station_sn not in (None, ""):
+            child["stationSN"] = station_sn
+        if notice.get("eventTime") not in (None, ""):
+            child["eventTime"] = notice["eventTime"]
+        children[str(device_sn)] = child
 
 
 def apply_apk_event_safe_alarm_aliases(data: dict[str, Any]) -> None:
