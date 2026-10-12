@@ -21,6 +21,91 @@ from custom_components.xsense.python_xsense.entity_map import EntityType, entiti
 from custom_components.xsense.python_xsense.station import Station
 
 
+# Device-card families explicitly routed by the v1.4 Android APK. Keep this
+# separate from data fields: a product must first map to its real family before
+# a platform can decide which reported fields are applicable.
+APK_DEVICE_CARD_TYPES = {
+    "SAL51": EntityType.LISTENER,
+    "SAL100": EntityType.LISTENER,
+    "SBS10": EntityType.BASESTATION,
+    "SBS50": EntityType.BASESTATION,
+    "SSC0A": EntityType.CAMERA,
+    "SSC0B": EntityType.CAMERA,
+    "SC01-MN": EntityType.COMBI,
+    "SC01-MR": EntityType.COMBI,
+    "SC06-WX": EntityType.COMBI,
+    "SC07-MR": EntityType.COMBI,
+    "SC07-WX": EntityType.COMBI,
+    "SC07-iA": EntityType.COMBI,
+    "SD11-MR": EntityType.SMOKE,
+    "SD19-MN": EntityType.SMOKE,
+    "SDA51": EntityType.ALARM,
+    "SDS0A": EntityType.DOOR,
+    "SES01": EntityType.DOOR,
+    "SKF01": EntityType.REMOTE,
+    "SK0Z-3S": EntityType.SMOKE,
+    "SKP01": EntityType.KEYPAD,
+    "SKP0A": EntityType.KEYPAD,
+    "SMA0A": EntityType.MAILBOX,
+    "SMA51": EntityType.MAILBOX,
+    "SMS01": EntityType.MOTION,
+    "SMS0A": EntityType.MOTION,
+    "SPL51": EntityType.LIGHT,
+    "SSD01": EntityType.SMARTDROP,
+    "SSL51": EntityType.LIGHT,
+    "STH0A": EntityType.TEMPERATURE,
+    "STH0B": EntityType.TEMPERATURE,
+    "STH0C": EntityType.TEMPERATURE,
+    "STH51": EntityType.TEMPERATURE,
+    "SWL51": EntityType.LIGHT,
+    "SWS0A": EntityType.WATER,
+    "SWS0B": EntityType.WATER,
+    "SWS51": EntityType.WATER,
+    "CB0Z-3S": EntityType.COMBI,
+    "LP/N-SA-0B": EntityType.SMOKE,
+    "LP/N-SCA-0A": EntityType.COMBI,
+    "XC01-M": EntityType.CO,
+    "XC04-WX": EntityType.CO,
+    "XC0C-MR": EntityType.CO,
+    "XC0C-iA": EntityType.CO,
+    "XC0C-iR": EntityType.CO,
+    "XC0M-iR": EntityType.CO,
+    "XH02-M": EntityType.HEAT,
+    "XP02S-MR": EntityType.SMOKE,
+    "XP0A-MR": EntityType.COMBI,
+    "XP0A-iR": EntityType.COMBI,
+    "XP0H-MR": EntityType.COMBI,
+    "XP0H-iR": EntityType.COMBI,
+    "XP0J-iA": EntityType.COMBI,
+    "XP0P-MR": EntityType.COMBI,
+    "XP0S-iA": EntityType.COMBI,
+    "XP0T-iA": EntityType.COMBI,
+    "XP0V-iA": EntityType.COMBI,
+    "XP0W-iA": EntityType.COMBI,
+    "XR0A-iR": EntityType.RADON,
+    "XS01-M": EntityType.SMOKE,
+    "XS01-WX": EntityType.SMOKE,
+    "XS03-iWX": EntityType.SMOKE,
+    "XS03-WX": EntityType.SMOKE,
+    "XS0AA-iA": EntityType.SMOKE,
+    "XS0AB-iA": EntityType.SMOKE,
+    "XS0B-MR": EntityType.SMOKE,
+    "XS0B-iR": EntityType.SMOKE,
+    "XS0D-MR": EntityType.SMOKE,
+    "XS0E-iR": EntityType.SMOKE,
+    "XS0F-PMA": EntityType.SMOKE,
+    "XS0R-iA": EntityType.SMOKE,
+    "XS0X-MN": EntityType.SMOKE,
+}
+
+
+def test_apk_device_card_models_keep_explicit_entity_families():
+    """Keep every APK-routed product out of an unsupported generic fallback."""
+    assert {
+        model: entities[model]["type"] for model in APK_DEVICE_CARD_TYPES
+    } == APK_DEVICE_CARD_TYPES
+
+
 def station(identifier="old-id", serial="SERIAL", model="SC07-iA", house=None):
     item = Station(
         house, stationId=identifier, stationSn=serial, category=model, online=1
