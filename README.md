@@ -4,7 +4,7 @@
 ---
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/8e05446e-bc14-4a21-9f6d-8e9f9defd630" alt="Home Assistant">
+  <img src="assets/home-assistant-wordmark-color-on-dark.png" width="640" alt="Home Assistant">
 </p>
 
 
