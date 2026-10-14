@@ -1,5 +1,6 @@
-"""Async X-Sense cloud, MQTT, and camera client library."""
+"""X-Sense cloud, MQTT, and camera client library."""
 
+from .xsense import XSense
 from .device import Device
 from .async_xsense import (
     AsyncXSense,
@@ -18,6 +19,7 @@ __version__ = "0.1.0"
 
 __all__ = [
     "AsyncXSense",
+    "XSense",
     "camera_addx_serial",
     "camera_for_identifier",
     "camera_identifiers",

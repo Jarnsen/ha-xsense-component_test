@@ -60,6 +60,15 @@ def TestAction(shadow="appSelfTest", extra: Optional[Dict] = None, target=None):
     return data
 
 
+
+def SATestAction(shadow="appSelfTest"):
+    """Return the legacy standalone-device self-test descriptor."""
+    return {
+        "action": "test",
+        "topic": lambda entity: f"appselftest_{entity.sn}",
+        "shadow": shadow,
+    }
+
 def SBS50SecondGenTestAction():
     return TestAction("app2ndSelfTest", extra={"userParam": "source=1"})
 
