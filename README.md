@@ -9,7 +9,7 @@
 
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/fbe7e69b-9204-4de4-a245-e0e2bdbd7f73" alt="Image">
+  <img src="assets/xsense-logo.svg" width="426" alt="X-Sense">
 </p>
 
 
