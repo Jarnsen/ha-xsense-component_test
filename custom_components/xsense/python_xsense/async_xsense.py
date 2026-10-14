@@ -1119,26 +1119,66 @@ class AsyncXSense(XSenseBase):
 
     async def get_station_history(
         self,
-        station: Station,
-        day_time: str,
-        time_zone: str,
-        *,
+        station: Station | str | None = None,
+        day_time: str | None = None,
+        time_zone: str | None = None,
+        *legacy_args: str | None,
         device: Entity | str | None = None,
         next_token: str | None = None,
+        **legacy_kwargs: Any,
     ) -> dict:
-        """Return station or device daily history through the APK endpoint."""
-        payload: dict[str, Any] = {
-            "houseId": station.house.house_id,
-            "stationId": station.entity_id,
-            "dayTime": day_time,
-            "timeZone": time_zone,
-        }
-        if device is not None:
-            payload["deviceId"] = (
-                device.entity_id if hasattr(device, "entity_id") else str(device)
+        """Return station or device daily history through the APK endpoint.
+
+        The typed station form is preferred.  The 0.0.x positional and
+        camelCase-keyword forms remain supported for existing callers.
+        """
+        if hasattr(station, "house"):
+            if legacy_args or legacy_kwargs:
+                raise TypeError("typed get_station_history does not accept legacy arguments")
+            if day_time is None or time_zone is None:
+                raise TypeError("get_station_history requires day_time and time_zone")
+            payload: dict[str, Any] = {
+                "houseId": station.house.house_id,
+                "stationId": station.entity_id,
+                "dayTime": day_time,
+                "timeZone": time_zone,
+            }
+            if device is not None:
+                payload["deviceId"] = (
+                    device.entity_id if hasattr(device, "entity_id") else str(device)
+                )
+            if next_token:
+                payload["nextToken"] = next_token
+        else:
+            house_id = legacy_kwargs.pop("houseId", station)
+            station_id = legacy_kwargs.pop("stationId", day_time)
+            legacy_day_time = legacy_kwargs.pop("dayTime", time_zone)
+            legacy_time_zone = legacy_kwargs.pop(
+                "timeZone", legacy_args[0] if legacy_args else None
             )
-        if next_token:
-            payload["nextToken"] = next_token
+            legacy_device = legacy_kwargs.pop(
+                "deviceId", legacy_args[1] if len(legacy_args) > 1 else device
+            )
+            legacy_next_token = legacy_kwargs.pop(
+                "nextToken", legacy_args[2] if len(legacy_args) > 2 else next_token
+            )
+            if legacy_kwargs:
+                unexpected = next(iter(legacy_kwargs))
+                raise TypeError(f"unexpected get_station_history argument: {unexpected}")
+            if not all((house_id, station_id, legacy_day_time, legacy_time_zone)):
+                raise TypeError(
+                    "legacy get_station_history requires houseId, stationId, dayTime, and timeZone"
+                )
+            payload = {
+                "houseId": str(house_id),
+                "stationId": str(station_id),
+                "dayTime": str(legacy_day_time),
+                "timeZone": str(legacy_time_zone),
+            }
+            if legacy_device:
+                payload["deviceId"] = str(legacy_device)
+            if legacy_next_token:
+                payload["nextToken"] = str(legacy_next_token)
         data = await self.api_call("104007", **payload)
         return data if isinstance(data, dict) else {}
 
@@ -1237,6 +1277,44 @@ class AsyncXSense(XSenseBase):
         data = await self.api_call("505001", **payload)
         return data if isinstance(data, dict) else {}
 
+    # Legacy async history entry points retained for callers of python-xsense 0.0.x.
+    async def get_history(self, houseId, dayTime, timeZone, nextToken=None):
+        return await self.get_daily_history(houseId, dayTime, timeZone, nextToken)
+
+    async def get_history_month(self, houseId, hisMonth, timeZone):
+        return await self.get_monthly_history(houseId, hisMonth, timeZone)
+
+    async def get_security_history(self, serverId, nextToken=None):
+        return await self.get_dispatch_history(serverId, nextToken)
+
+    async def get_sth_history(self, houseId, stationId, lastTime="", nextToken=None):
+        payload = {"houseId": houseId, "stationId": stationId, "lastTime": lastTime}
+        if nextToken:
+            payload["nextToken"] = nextToken
+        data = await self.api_call("104020", **payload)
+        return data if isinstance(data, dict) else {}
+
+    async def get_co_ppm_history(self, stationId, timeZone, deviceId=None):
+        payload = {"stationId": stationId, "timeZone": timeZone}
+        code = "104014"
+        if deviceId:
+            code = "104009"
+            payload["deviceId"] = deviceId
+        data = await self.api_call(code, **payload)
+        return data if isinstance(data, dict) else {}
+
+    async def get_co_ppm_history_details(self, houseId, stationId, dayTime, timeZone, deviceId=None):
+        payload = {"houseId": houseId, "stationId": stationId, "dayTime": dayTime, "timeZone": timeZone}
+        code = "104015"
+        if deviceId:
+            code = "104010"
+            payload["deviceId"] = deviceId
+        data = await self.api_call(code, **payload)
+        return data if isinstance(data, dict) else {}
+
+    async def get_station_history_month(self, houseId, stationId, deviceId, hisMonth, timeZone):
+        data = await self.api_call("104008", houseId=houseId, stationId=stationId, deviceId=deviceId, hisMonth=hisMonth, timeZone=timeZone)
+        return data if isinstance(data, dict) else {}
     async def ipc_call(self, code: str, **kwargs):
         """Call the X-Sense IPC endpoint used by the Android app."""
         if self._access_token_expiring():
