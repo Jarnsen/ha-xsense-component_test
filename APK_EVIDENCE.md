@@ -10,9 +10,14 @@ The local checkout currently excludes `references/` because that folder can cont
 
 Before changing APK-sensitive behavior, recover or refresh the APK evidence and compare the implementation against it. APK-sensitive behavior includes camera events, recording playback, AI notifications, WebRTC signaling, and alarm-topic mappings.
 
-Current local APK evidence:
+Local APK evidence:
 
-- X-Sense APK `v1.40.0_20260612`, app code `1400`, package `com.xsense.security`, is stored locally as `references/xsense_apk/original/xsense-1400.apk`.
+- Latest audited X-Sense APK: `v1.42.0_20260814`, app code `1420`, package `com.xsense.security`, stored locally as `references/xsense_apk/original/xsense-1420.apk`.
+- Its arm64 XAPK is retained as `references/xsense_apk/original/xsense-1420-arm64.xapk`; SHA-256 is `f9a59fc5e05399d8459bea442206840a871ccb22241e0e79ef50411c20508888`.
+- The base APK verifies under APK Signature Schemes v2 and v3. Its signer SHA-1 is `b98fda8c560f56e5a802611a0a528eca60b8dbc8`.
+- Decompiled JADX output for app code `1420` is stored locally under `references/xsense_apk/decompiled/1420/`.
+
+- Earlier baseline: X-Sense APK `v1.40.0_20260612`, app code `1400`, package `com.xsense.security`, is stored locally as `references/xsense_apk/original/xsense-1400.apk`.
 - Decompiled JADX output for app code `1400` is stored locally under `references/xsense_apk/decompiled/1400/`.
 - `resources/AndroidManifest.xml` confirms `android:versionCode="1400"` and `android:versionName="v1.40.0_20260612"`.
 - `sources/j2/C3839E.java` confirms signed API payload metadata: `appCode=1400`, `appVersion=v1.40.0_20260612`, `clientType=2`.
@@ -22,6 +27,12 @@ Current local APK evidence:
 - `sources/com/claybox/iot/ams/thing/V.java` is the main APK shadow parser. The
   similarly named `T.java` is a query wrapper and must not be used as parser
   evidence.
+
+## APK 1420 model-routing audit (2026-10-14)
+
+- The APK's current `sources/V1/f.java` router is fully represented by `custom_components/xsense/python_xsense/entity_map.py`, except for the virtual light group `group-L`.
+- The audit added four regional combination-alarm aliases: `CB0T-3B` and `LP/R-SCA(VL)-0G` follow the `XP0A-MR` action path; `CB0T-4B` and `W/R-SCA(VL)-0G` follow `XP0A-iR`.
+- `sources/C3/C0281a.java`, `C3/E.java`, and `C3/F.java` group those aliases with the matching canonical model families. Map-completeness, entity-family, and action-matrix tests lock that parity.
 
 ## APK 1400 parity recheck (2026-07-19)
 

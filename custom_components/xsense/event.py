@@ -102,6 +102,7 @@ MOTION_DESCRIPTION = XSenseEventEntityDescription(
 MAILBOX_ALARM_DESCRIPTION = XSenseEventEntityDescription(
     key=MAILBOX_ALARM_EVENT_TYPE,
     translation_key="mailbox_alarm",
+    icon="mdi:mailbox-up",
     event_types=[MAILBOX_ALARM_EVENT_TYPE],
     exists_fn=lambda entity: getattr(entity, "entity_type", None)
     == EntityType.MAILBOX,
