@@ -8,7 +8,6 @@ from custom_components.xsense.python_xsense.async_xsense import (
     is_camera_entity,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 RELEASE_NOTES = ROOT / ".github" / "release-notes"
 MANIFEST = ROOT / "custom_components" / "xsense" / "manifest.json"

@@ -7,14 +7,14 @@ import pytest
 from homeassistant.exceptions import HomeAssistantError
 
 import custom_components.xsense as integration
-from custom_components.xsense import recordings_media as media
 from custom_components.xsense import frontend as panel_ui
+from custom_components.xsense import recordings_media as media
 from custom_components.xsense.const import (
     CONF_RECORDING_CACHE_MODE,
     CONF_RECORDING_MEDIA_SYNC_ENABLED,
     CONF_RECORDING_MEDIA_SYNC_HOURS,
-    DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
     DEFAULT_RECORDING_CACHE_MAX_SIZE_MB,
+    DEFAULT_RECORDING_CACHE_RETENTION_DAYS,
     DEFAULT_RECORDING_MEDIA_SYNC_HOURS,
     DOMAIN,
 )

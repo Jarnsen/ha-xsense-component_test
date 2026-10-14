@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
+from custom_components.xsense.const import DOMAIN
 from custom_components.xsense.diagnostics import (
     api_client_diagnostics,
     async_get_config_entry_diagnostics,
@@ -8,7 +9,6 @@ from custom_components.xsense.diagnostics import (
     entity_diagnostics,
     local_communication_diagnostics,
 )
-from custom_components.xsense.const import DOMAIN
 
 
 def test_entity_diagnostics_keeps_only_functional_state_data():
@@ -177,11 +177,11 @@ def test_api_client_diagnostics_keeps_session_state_without_tokens():
         signer=object(),
         access_token="secret-access-token",
         refresh_token="secret-refresh-token",
-        access_token_expiry=datetime.now(timezone.utc) + timedelta(seconds=120),
+        access_token_expiry=datetime.now(UTC) + timedelta(seconds=120),
         aws_access_key="secret-key",
         aws_secret_access_key="secret-secret",
         aws_session_token="secret-session",
-        aws_access_expiry=datetime.now(timezone.utc) - timedelta(seconds=5),
+        aws_access_expiry=datetime.now(UTC) - timedelta(seconds=5),
         _addx_session={"token": "secret-addx-token", "nodeType": "US"},
         houses={"house-id": object()},
     )
@@ -208,7 +208,7 @@ def test_api_client_diagnostics_handles_missing_client():
 
 
 def test_api_client_diagnostics_handles_naive_expiry_datetimes():
-    naive_utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
+    naive_utc_now = datetime.now(UTC).replace(tzinfo=None)
     xsense = SimpleNamespace(
         access_token_expiry=naive_utc_now + timedelta(seconds=120),
         aws_access_expiry=naive_utc_now - timedelta(seconds=5),

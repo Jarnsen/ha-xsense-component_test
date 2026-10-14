@@ -1,34 +1,40 @@
 from types import SimpleNamespace
 
 import pytest
+from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.xsense.alarm_control_panel import (
     XSenseAlarmControlPanel,
     pending_force_arm_mode,
     station_supports_alarm_panel,
 )
-from custom_components.xsense.python_xsense.base import XSenseBase
-from custom_components.xsense.python_xsense.station import Station
 from custom_components.xsense.binary_sensor import (
     CODED_MUTE_STATUS_DEVICE_TYPES,
     COMMAND_ONLY_MUTE_STATUS_DEVICE_TYPES,
     MUTE_STATUS_DEVICE_TYPES,
-    SENSORS as BINARY_SENSORS,
     ZERO_CODE_MUTE_STATUS_DEVICE_TYPES,
+    MQTTSensor,
     XSenseBinarySensorEntity,
     XSenseBinarySensorEntityDescription,
     XSenseMQTTConnectedEntity,
-    MQTTSensor,
+)
+from custom_components.xsense.binary_sensor import (
+    SENSORS as BINARY_SENSORS,
+)
+from custom_components.xsense.binary_sensor import (
     data_bool as binary_data_bool,
 )
 from custom_components.xsense.button import (
     XSenseButtonEntity,
     XSenseButtonEntityDescription,
 )
+from custom_components.xsense.entity import device_station_id
 from custom_components.xsense.number import (
     XSenseNumberEntity,
     XSenseNumberEntityDescription,
 )
+from custom_components.xsense.python_xsense.base import XSenseBase
+from custom_components.xsense.python_xsense.station import Station
 from custom_components.xsense.select import (
     XSenseSelectEntity,
     XSenseSelectEntityDescription,
@@ -40,10 +46,10 @@ from custom_components.xsense.sensor import (
 from custom_components.xsense.switch import (
     XSenseSwitchEntity,
     XSenseSwitchEntityDescription,
+)
+from custom_components.xsense.switch import (
     data_bool as switch_data_bool,
 )
-from custom_components.xsense.entity import device_station_id
-from homeassistant.exceptions import HomeAssistantError
 
 
 class Coordinator:
@@ -1041,7 +1047,7 @@ async def test_blocked_arm_prompt_survives_empty_acknowledgement_end_to_end(
     else:
         await panel.async_alarm_arm_away()
 
-    api = XSenseBase.__new__(XSenseBase)
+    XSenseBase.__new__(XSenseBase)
     _parse_confirmation(
         station,
         {"safeMode": "Disarmed", "forceReason": []},
@@ -1356,7 +1362,7 @@ async def test_repeated_normal_and_force_arm_cycles(target):
         _parse_mode(station, {"safeMode": target})
         panel._handle_coordinator_update()
         assert panel._safemode == target
-        with pytest.raises(Exception):
+        with pytest.raises(HomeAssistantError):
             await panel.async_force_arm(target)
 
     assert prompts == [target] * 3
@@ -1453,7 +1459,7 @@ def test_force_arm_prompt_is_parsed_and_cleared_from_sbs50_mode_result():
     station = _xs01_wx_from_real_shadow()
     station.type = "SBS50"
     station.set_alarm_data({"requestedSafeMode": "Home"})
-    api = XSenseBase.__new__(XSenseBase)
+    XSenseBase.__new__(XSenseBase)
 
     _parse_confirmation(
         station,
@@ -1479,7 +1485,7 @@ def test_force_arm_prompt_preserves_locally_requested_mode_from_apk_response():
     station = _xs01_wx_from_real_shadow()
     station.type = "SBS50"
     station.set_alarm_data({"requestedSafeMode": "Away"})
-    api = XSenseBase.__new__(XSenseBase)
+    XSenseBase.__new__(XSenseBase)
 
     _parse_confirmation(
         station,
@@ -1523,7 +1529,7 @@ async def test_alarm_panel_force_arm_requires_matching_pending_mode(monkeypatch)
         lambda hass, notification_id: dismissed.append(notification_id),
     )
 
-    with pytest.raises(Exception):
+    with pytest.raises(HomeAssistantError):
         await panel.async_force_arm("Home")
 
     assert coordinator.xsense.calls == []
@@ -1534,7 +1540,7 @@ async def test_alarm_panel_force_arm_requires_matching_pending_mode(monkeypatch)
     assert station.alarm_data["requestedSafeMode"] is None
     assert dismissed == [f"xsense_force_arm_{station.entity_id}"]
 
-    with pytest.raises(Exception):
+    with pytest.raises(HomeAssistantError):
         await panel.async_force_arm("Away")
     assert coordinator.xsense.calls == [(station.sn, "Away", "1")]
 
@@ -1708,7 +1714,7 @@ def test_mode_result_keeps_request_target_out_of_adapter_payload_state():
     station = _xs01_wx_from_real_shadow()
     station.type = "SBS50"
     station.set_alarm_data({"requestedSafeMode": "Home"})
-    api = XSenseBase.__new__(XSenseBase)
+    XSenseBase.__new__(XSenseBase)
 
     _parse_confirmation(
         station,
@@ -1726,7 +1732,7 @@ def test_mode_result_keeps_request_target_out_of_adapter_payload_state():
 def test_force_arm_result_is_retained_but_not_exposed_without_local_request():
     station = _xs01_wx_from_real_shadow()
     station.type = "SBS50"
-    api = XSenseBase.__new__(XSenseBase)
+    XSenseBase.__new__(XSenseBase)
 
     _parse_confirmation(
         station,
@@ -1826,7 +1832,7 @@ def test_empty_force_reason_ack_keeps_normal_arm_request_for_blocked_result():
     station = _xs01_wx_from_real_shadow()
     station.type = "SBS50"
     station.set_alarm_data({"requestedSafeMode": "Away"})
-    api = XSenseBase.__new__(XSenseBase)
+    XSenseBase.__new__(XSenseBase)
 
     _parse_confirmation(
         station,

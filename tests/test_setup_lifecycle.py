@@ -1,13 +1,13 @@
 """Regression coverage for failed setup and persistent-registry unload."""
 
 import asyncio
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-import custom_components.xsense as xsense
+from custom_components import xsense
 from custom_components.xsense import recordings_gate
 from custom_components.xsense.const import DOMAIN
 

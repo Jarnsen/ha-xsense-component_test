@@ -8,7 +8,7 @@ import os
 import shutil
 import subprocess
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from stat import S_ISDIR, S_ISREG
 from time import monotonic, time
@@ -17,6 +17,7 @@ from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse
 from weakref import WeakValueDictionary
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import voluptuous as vol
 from homeassistant.components.media_player import MediaClass
 from homeassistant.components.media_source import (
     BrowseMediaSource,
@@ -31,8 +32,6 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.storage import Store
-
-import voluptuous as vol
 
 from .cache_ownership import (
     CacheIdentityConflict,
@@ -66,6 +65,7 @@ from .const import (
     LOGGER,
     RECORDING_PLAYBACK_SESSION_TTL_SECONDS,
 )
+from .errors import xsense_error
 from .python_xsense.async_xsense import (
     camera_addx_serial,
     camera_for_identifier,
@@ -78,7 +78,6 @@ from .python_xsense.event_parser import (
     camera_library_records,
 )
 from .recordings_gate import has_any_camera_entities
-from .errors import xsense_error
 
 MIME_TYPE = "video/mp4"
 HLS_MIME_TYPE = "application/vnd.apple.mpegurl"
@@ -1297,7 +1296,7 @@ class XSenseRecordingsMediaSource(MediaSource):
         if _is_hls_playlist_uri(direct_url):
             try:
                 hls = await self._async_cache_hls_clip(direct_url, clip)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 LOGGER.debug(
                     "Could not cache X-Sense HLS recording: %s",
                     {**_clip_log_context(clip), "error": str(exc)},
@@ -1332,7 +1331,7 @@ class XSenseRecordingsMediaSource(MediaSource):
             download = await self._async_download_direct_clip(direct_url, output_path)
             if not isinstance(download, dict):
                 download = {}
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             LOGGER.debug(
                 "Could not cache X-Sense direct recording: %s",
                 {**_clip_log_context(clip), "error": str(exc)},
@@ -1357,7 +1356,7 @@ class XSenseRecordingsMediaSource(MediaSource):
         if _is_hls_content_type(download.get("content_type")):
             try:
                 hls = await self._async_cache_hls_clip(direct_url, clip)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 LOGGER.debug(
                     "Could not cache X-Sense HLS recording: %s",
                     {**_clip_log_context(clip), "error": str(exc)},
@@ -1745,7 +1744,7 @@ class XSenseRecordingsMediaSource(MediaSource):
                     await asyncio.shield(job)
                 except asyncio.CancelledError:
                     continue
-                except Exception:
+                except Exception:  # noqa: BLE001 - consume executor errors while cancellation drains.
                     break
             if not job.cancelled():
                 job.exception()
@@ -2010,7 +2009,7 @@ class XSenseRecordingIndex:
             await self._store.async_save(empty_index)
             return empty_index
 
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - timedelta(days=RECORDING_LOOKBACK_DAYS)
         history = await self.coordinator.xsense.get_camera_library_history_for_cameras(
             camera_entities,
@@ -2405,7 +2404,7 @@ def _clip_duration(clip: dict[str, Any]) -> int | None:
 
 def _recent_recording_cutoff() -> int:
     """Return the oldest clip start time for the fast recent sync lane."""
-    return int((datetime.now(timezone.utc) - RECORDING_MEDIA_RECENT_LOOKBACK).timestamp())
+    return int((datetime.now(UTC) - RECORDING_MEDIA_RECENT_LOOKBACK).timestamp())
 
 
 def _clip_is_recent(clip: dict[str, Any], cutoff: int) -> bool:
@@ -3207,13 +3206,7 @@ def _hls_cache_dir_needs_playback_profile_migration(
     ):
         return False
     profile = _read_hls_playback_profile(cache_dir)
-    if (
-        profile
-        and _hls_playback_profile_ready(cache_dir)
-        and version == str(HLS_CACHE_VERSION)
-    ):
-        return False
-    return True
+    return not (profile and _hls_playback_profile_ready(cache_dir) and version == str(HLS_CACHE_VERSION))
 
 
 def _migrate_hls_cache_dir(cache_dir: Path) -> str:
@@ -3533,7 +3526,7 @@ def _is_hls_content_type(value: Any) -> bool:
 
 def _is_hls_playlist_uri(value: Any) -> bool:
     path = urlparse(str(value or "")).path.lower()
-    return path.endswith(".m3u8") or path.endswith(".m3u")
+    return path.endswith((".m3u8", ".m3u"))
 
 
 def _hls_uri_suffix(value: str, default: str) -> str:
@@ -3608,7 +3601,7 @@ def _recording_cache_lock(
     hass_data = getattr(hass, "data", None)
     if not isinstance(hass_data, dict):
         hass_data = {}
-        setattr(hass, "data", hass_data)
+        hass.data = hass_data
     locks = hass_data.setdefault(DOMAIN, {}).setdefault(
         "_recording_capture_locks", {}
     )
@@ -4576,7 +4569,7 @@ def _short_serial(value: Any) -> str:
 
 
 def _clip_date(start: int) -> str:
-    return datetime.fromtimestamp(start, timezone.utc).strftime("%Y-%m-%d")
+    return datetime.fromtimestamp(start, UTC).strftime("%Y-%m-%d")
 
 
 def _clip_title(start: int, end: int) -> str:
@@ -4597,9 +4590,9 @@ def _cache_expired(generated_at: Any) -> bool:
     except ValueError:
         return True
     if generated.tzinfo is None:
-        generated = generated.replace(tzinfo=timezone.utc)
-    return datetime.now(timezone.utc) - generated > RECORDING_CACHE_TTL
+        generated = generated.replace(tzinfo=UTC)
+    return datetime.now(UTC) - generated > RECORDING_CACHE_TTL
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

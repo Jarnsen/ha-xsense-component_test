@@ -1,8 +1,14 @@
 import json
 from pathlib import Path
 
-from custom_components.xsense import binary_sensor, button, number, select, sensor, switch
-
+from custom_components.xsense import (
+    binary_sensor,
+    button,
+    number,
+    select,
+    sensor,
+    switch,
+)
 
 ROOT = Path(__file__).parents[1]
 

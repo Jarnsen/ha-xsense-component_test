@@ -1,11 +1,10 @@
 """Guard operational documentation against stale implementation details."""
 
 import json
-from pathlib import Path
 import re
+from pathlib import Path
 
 import yaml
-
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = ROOT / "custom_components" / "xsense"

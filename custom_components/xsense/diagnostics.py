@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from homeassistant.components.diagnostics import async_redact_data
@@ -222,7 +222,7 @@ def _expiry_diagnostics(value) -> dict[str, Any]:
     if not isinstance(value, datetime):
         return {"present": True, "expired": None, "seconds_remaining": None}
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
+        value = value.replace(tzinfo=UTC)
 
     now = datetime.now(value.tzinfo)
     seconds_remaining = int((value - now).total_seconds())

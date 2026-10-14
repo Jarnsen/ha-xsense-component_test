@@ -1,9 +1,9 @@
 """Panel data and browser-controller regressions using only isolated fixtures."""
 
 import importlib
-from pathlib import Path
 import shutil
 import subprocess
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -15,7 +15,7 @@ def test_panel_controller_contracts():
     assert node is not None
     result = subprocess.run(
         [node, "--test", str(Path(__file__).with_suffix(".mjs"))],
-        capture_output=True, text=True, timeout=30,
+        check=False, capture_output=True, text=True, timeout=30,
     )
     assert result.returncode == 0, result.stdout + result.stderr
 

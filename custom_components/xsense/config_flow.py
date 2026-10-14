@@ -8,20 +8,16 @@ from pathlib import Path, PurePosixPath
 from stat import S_ISDIR
 from typing import Any
 
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import AbortFlow, FlowResult
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers import selector
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import selector
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-import voluptuous as vol
-
-from .python_xsense import AsyncXSense
-from .python_xsense.async_xsense import is_camera_entity
-from .python_xsense.exceptions import APIFailure, AuthFailed
 from .const import (
     CONF_RECORDING_CACHE_MAX_SIZE_MB,
     CONF_RECORDING_CACHE_MODE,
@@ -46,6 +42,9 @@ from .const import (
     RECORDING_MEDIA_ORDER_OPTIONS,
     RECORDING_NOTIFICATION_QUALITY_OPTIONS,
 )
+from .python_xsense import AsyncXSense
+from .python_xsense.async_xsense import is_camera_entity
+from .python_xsense.exceptions import APIFailure, AuthFailed
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -338,7 +337,7 @@ async def validate_input(hass: HomeAssistant, email, password) -> dict[str, Any]
     try:
         await _async_init_and_login(session, email, password)
     except AuthFailed as ex:
-        raise InvalidAuth(f"Login failed: {str(ex)}") from ex
+        raise InvalidAuth(f"Login failed: {ex!s}") from ex
     except APIFailure as ex:
         raise CannotConnect from ex
     if not session.access_token:

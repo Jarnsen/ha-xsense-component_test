@@ -4,14 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-
-from .python_xsense.async_xsense import is_camera_entity
-from .python_xsense.device import Device
-from .python_xsense.entity import Entity
-from .python_xsense.entity_map import EntityType, entities
-from .python_xsense.mapping import bool_state
 
 from homeassistant import config_entries
 from homeassistant import const as ha_const
@@ -39,6 +33,11 @@ from .entity import (
     device_station_id,
     setup_dynamic_entities,
 )
+from .python_xsense.async_xsense import is_camera_entity
+from .python_xsense.device import Device
+from .python_xsense.entity import Entity
+from .python_xsense.entity_map import EntityType, entities
+from .python_xsense.mapping import bool_state
 
 UNIT_PARTS_PER_MILLION = getattr(
     getattr(ha_const, "UnitOfRatio", None), "PARTS_PER_MILLION", "ppm"
@@ -161,26 +160,26 @@ def timestamp_value(value) -> datetime | None:
         try:
             if len(text) == 14:
                 return datetime.strptime(text, "%Y%m%d%H%M%S").replace(
-                    tzinfo=timezone.utc
+                    tzinfo=UTC
                 )
             if len(text) == 13:
-                return datetime.fromtimestamp(int(text) / 1000, tz=timezone.utc)
+                return datetime.fromtimestamp(int(text) / 1000, tz=UTC)
             if len(text) == 10:
-                return datetime.fromtimestamp(int(text), tz=timezone.utc)
+                return datetime.fromtimestamp(int(text), tz=UTC)
         except (OSError, ValueError):
             return None
     if isinstance(value, (int, float)):
         try:
-            return datetime.fromtimestamp(value, tz=timezone.utc)
+            return datetime.fromtimestamp(value, tz=UTC)
         except (OSError, ValueError):
             return None
 
     try:
-        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(text)
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=timezone.utc)
+        return parsed.replace(tzinfo=UTC)
     return parsed
 
 

@@ -1,5 +1,4 @@
 """Wire sequence captured from #182's repeated-switching baseline, 65984b9."""
-import asyncio
 import base64
 import json
 from pathlib import Path

@@ -2,17 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import logging
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
-
-from .python_xsense.entity import Entity
-from .python_xsense.entity_map import EntityType
-from .python_xsense.async_xsense import (
-    camera_addx_serial,
-    camera_for_identifier,
-    is_camera_entity,
-)
 
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -24,6 +16,13 @@ from .identity_store import (
     IdentityStoreClosedError,
     validate_current_identities,
 )
+from .python_xsense.async_xsense import (
+    camera_addx_serial,
+    camera_for_identifier,
+    is_camera_entity,
+)
+from .python_xsense.entity import Entity
+from .python_xsense.entity_map import EntityType
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ if TYPE_CHECKING:
     from .coordinator import XSenseDataUpdateCoordinator
 
 
-OFFLINE_STATES = {False, 0, "0", "false", "False", "offline", "Offline"}
+OFFLINE_STATES = {False, "0", "false", "False", "offline", "Offline"}
 _APK_CAMERA_NON_OFFLINE_STATUSES = {11, 12}
 DEVICE_ENTITY_WITHOUT_STATION = ""
 
@@ -135,12 +134,11 @@ def _parent_device_info(
 
 def _apk_entity_is_available(entity: Entity) -> bool:
     """Return whether the APK treats this entity as not offline."""
-    if getattr(entity, "entity_type", None) == EntityType.CAMERA:
-        if (
-            entity.online is False
-            and entity.data.get("deviceStatus") in _APK_CAMERA_NON_OFFLINE_STATUSES
-        ):
-            return True
+    if getattr(entity, "entity_type", None) == EntityType.CAMERA and (
+        entity.online is False
+        and entity.data.get("deviceStatus") in _APK_CAMERA_NON_OFFLINE_STATUSES
+    ):
+        return True
     return entity.online is True
 
 
@@ -282,9 +280,8 @@ def _entity_by_id_or_serial(
     identity: tuple | None = None,
 ) -> Entity | None:
     """Return an entity by stable ID, falling back to its physical serial."""
-    if entity_id is not None and (entity := entities.get(entity_id)):
-        if identity is None or _serial_identity(entity) == identity:
-            return entity
+    if entity_id is not None and (entity := entities.get(entity_id)) and (identity is None or _serial_identity(entity) == identity):
+        return entity
     if serial is None:
         return None
     matches = [

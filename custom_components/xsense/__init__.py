@@ -8,9 +8,9 @@ from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.device_registry import (
     CONNECTION_BLUETOOTH,
     CONNECTION_NETWORK_MAC,
@@ -18,7 +18,6 @@ from homeassistant.helpers.device_registry import (
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.util import slugify
 
-from .python_xsense.async_xsense import is_camera_entity
 from .const import (
     CAMERA_AI_SERVICE_AVAILABLE,
     DOMAIN,
@@ -28,18 +27,21 @@ from .const import (
 )
 from .coordinator import XSenseDataUpdateCoordinator
 from .event import async_cancel_recording_cache_tasks
-from .identity_store import (
-    async_close_identity_store,
-    async_load_identity_store,
-    async_remove_identity_store,
-)
 from .frontend import (
     async_register_recordings_panel,
     async_register_recordings_static_paths,
     async_unregister_recordings_panel,
 )
 from .http import async_register_recordings_http_views
+from .identity_store import (
+    async_close_identity_store,
+    async_load_identity_store,
+    async_remove_identity_store,
+)
+from .python_xsense.async_xsense import is_camera_entity
+from .recordings_gate import has_camera_entities, has_loaded_camera_entities
 from .recordings_media import (
+    _looks_like_coordinator,
     async_clear_recording_event_clips,
     async_register_recording_services,
     async_register_recordings_media_source,
@@ -50,9 +52,7 @@ from .recordings_media import (
     async_stop_recording_media_sync,
     async_unregister_recording_services,
     async_unregister_recordings_media_source,
-    _looks_like_coordinator,
 )
-from .recordings_gate import has_camera_entities, has_loaded_camera_entities
 from .repairs import async_check_stale_camera_blueprints
 
 PLATFORMS: list[Platform] = [
@@ -925,7 +925,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     await coordinator.async_shutdown()
                 finally:
                     await async_close_identity_store(coordinator)
-            except Exception:
+            except Exception:  # noqa: BLE001 - setup rollback must preserve the original failure.
                 LOGGER.exception("Could not shut down X-Sense after failed setup")
         raise
 
@@ -961,7 +961,7 @@ async def _async_setup_entry_runtime(
             else:
                 _cleanup_recordings_runtime(hass, entry.entry_id)
                 recordings_registration_attempted = False
-        except Exception:
+        except Exception:  # noqa: BLE001 - defer recordings setup failures until a later update.
             if hass.data.get(DOMAIN, {}).get(entry.entry_id) is coordinator:
                 if _has_camera_entities(coordinator.data):
                     async_stop_recording_media_sync(hass, entry.entry_id)

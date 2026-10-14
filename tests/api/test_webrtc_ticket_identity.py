@@ -1,17 +1,17 @@
 """Keep history discovery from changing a previously accepted ticket identity."""
 
-from types import SimpleNamespace
-from unittest.mock import AsyncMock
 import base64
 import json
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
 from custom_components.xsense.python_xsense.async_xsense import AsyncXSense
 from custom_components.xsense.python_xsense.exceptions import APIFailure
 from custom_components.xsense.python_xsense.webrtc_signal import (
-    XSenseWebRTCTicket,
     XSenseWebRTCSignalSession,
+    XSenseWebRTCTicket,
 )
 
 

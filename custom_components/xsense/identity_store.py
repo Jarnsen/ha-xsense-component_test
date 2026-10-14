@@ -3,8 +3,8 @@
 import asyncio
 import logging
 
-from homeassistant.helpers.storage import Store
 from homeassistant.exceptions import ConfigEntryError
+from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
 
@@ -28,12 +28,12 @@ def _decode(data, entry_id):
         raise ValueError("Invalid identity store owner")
     records = data.get("identities")
     if not isinstance(records, list):
-        raise ValueError("Invalid identity records")
+        raise TypeError("Invalid identity records")
     identities = {}
     used_ids = set()
     for record in records:
         if not isinstance(record, dict):
-            raise ValueError("Invalid identity record")
+            raise TypeError("Invalid identity record")
         identity = record.get("identity")
         stable_id = record.get("stable_id")
         if (

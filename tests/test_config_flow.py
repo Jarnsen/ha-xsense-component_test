@@ -1,17 +1,15 @@
 import asyncio
-from pathlib import Path
 import threading
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import homeassistant.helpers.config_validation as cv
-from homeassistant.config_entries import OptionsFlowManager
-from homeassistant.helpers import entity_registry as er
 import pytest
 import voluptuous as vol
 import voluptuous_serialize
-
-from custom_components.xsense import config_flow
+from homeassistant.config_entries import OptionsFlowManager
+from homeassistant.helpers import entity_registry as er
 
 from custom_components.xsense.config_flow import (
     XSenseOptionsFlow,

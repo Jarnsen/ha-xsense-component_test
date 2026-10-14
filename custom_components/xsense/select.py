@@ -11,10 +11,6 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .python_xsense.async_xsense import is_camera_entity
-from .python_xsense.device import Device
-from .python_xsense.entity import Entity
-from .python_xsense.entity_map import EntityType
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
@@ -25,7 +21,10 @@ from .entity import (
     setup_dynamic_entities,
 )
 from .errors import xsense_error
-
+from .python_xsense.async_xsense import is_camera_entity
+from .python_xsense.device import Device
+from .python_xsense.entity import Entity
+from .python_xsense.entity_map import EntityType
 
 CAMERA_MOTION_SENSITIVITY_VALUES: dict[str, int] = {
     "high": 1,

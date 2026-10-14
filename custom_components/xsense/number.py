@@ -7,14 +7,10 @@ from dataclasses import dataclass
 
 from homeassistant import config_entries
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
-from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfTemperature
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .python_xsense.async_xsense import is_camera_entity
-from .python_xsense.device import Device
-from .python_xsense.entity import Entity
-from .python_xsense.entity_map import EntityType
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
@@ -25,6 +21,10 @@ from .entity import (
     setup_dynamic_entities,
 )
 from .errors import xsense_error
+from .python_xsense.async_xsense import is_camera_entity
+from .python_xsense.device import Device
+from .python_xsense.entity import Entity
+from .python_xsense.entity_map import EntityType
 
 
 def has_data(key: str) -> Callable[[Entity], bool]:
@@ -62,13 +62,7 @@ def has_shadow_volume(key: str) -> Callable[[Entity], bool]:
     """Return if a non-camera X-Sense shadow exposes a writable volume field."""
 
     def exists(entity: Entity) -> bool:
-        if (
-            is_camera_entity(entity)
-            or key not in entity.data
-            or not _has_shadow_write_route(entity)
-        ):
-            return False
-        return True
+        return not (is_camera_entity(entity) or key not in entity.data or not _has_shadow_write_route(entity))
 
     return exists
 
@@ -712,18 +706,14 @@ def _shadow_array_values(entity: Entity, description) -> list[float] | None:
     values = _number_pair(entity.data.get(description.shadow_array_key))
     if values is not None:
         return values
-    if description.data_key == "tempRangeMin" or description.data_key == "tempRangeMax":
-        if (
-            entity.data.get("tempRangeMin") is not None
-            and entity.data.get("tempRangeMax") is not None
-        ):
-            return [float(entity.data["tempRangeMin"]), float(entity.data["tempRangeMax"])]
-    if description.data_key == "humRangeMin" or description.data_key == "humRangeMax":
-        if (
-            entity.data.get("humRangeMin") is not None
-            and entity.data.get("humRangeMax") is not None
-        ):
-            return [float(entity.data["humRangeMin"]), float(entity.data["humRangeMax"])]
+    if description.data_key in {"tempRangeMin", "tempRangeMax"} and (
+        entity.data.get("tempRangeMin") is not None and entity.data.get("tempRangeMax") is not None
+    ):
+        return [float(entity.data["tempRangeMin"]), float(entity.data["tempRangeMax"])]
+    if description.data_key in {"humRangeMin", "humRangeMax"} and (
+        entity.data.get("humRangeMin") is not None and entity.data.get("humRangeMax") is not None
+    ):
+        return [float(entity.data["humRangeMin"]), float(entity.data["humRangeMax"])]
     if description.shadow_array_defaults is not None:
         return list(description.shadow_array_defaults)
     return None

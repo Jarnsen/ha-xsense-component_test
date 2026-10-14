@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import json
 import logging
+from datetime import UTC
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -17,6 +18,7 @@ from custom_components.xsense.coordinator import (
 
 def test_connect_path_does_not_reintroduce_integration_login_timeout():
     import inspect
+
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     source = inspect.getsource(XSenseDataUpdateCoordinator._connect)
@@ -374,9 +376,10 @@ async def test_coordinator_retries_one_transient_transport_failure(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_coordinator_marks_unavailable_after_transport_retry_fails(monkeypatch):
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+
     from custom_components.xsense import coordinator as coordinator_module
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
-    from homeassistant.helpers.update_coordinator import UpdateFailed
 
     instance = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
     instance.xsense = SimpleNamespace(houses={})
@@ -399,9 +402,10 @@ async def test_coordinator_marks_unavailable_after_transport_retry_fails(monkeyp
 
 @pytest.mark.asyncio
 async def test_coordinator_does_not_retry_non_transport_update_failure(monkeypatch):
+    from homeassistant.helpers.update_coordinator import UpdateFailed
+
     from custom_components.xsense import coordinator as coordinator_module
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
-    from homeassistant.helpers.update_coordinator import UpdateFailed
 
     instance = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
     instance.xsense = SimpleNamespace(houses={})
@@ -582,6 +586,7 @@ class PresenceHouse:
 
 def test_mqtt_reported_device_list_is_routed_to_apk_state_parser():
     from types import SimpleNamespace
+
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     class Station:
@@ -603,9 +608,9 @@ def test_mqtt_reported_device_list_is_routed_to_apk_state_parser():
     coordinator.async_event_received(
         "$aws/things/station-sn/shadow/name/mainpage/update",
         (
-            '{"state":{"reported":[{"deviceSn":"child-sn",'
-            '"deviceType":"XS03-iWX","onLine":"1"}]}}'
-        ).encode(),
+            b'{"state":{"reported":[{"deviceSn":"child-sn",'
+            b'"deviceType":"XS03-iWX","onLine":"1"}]}}'
+        ),
     )
 
     assert parsed == [
@@ -618,6 +623,7 @@ def test_mqtt_reported_device_list_is_routed_to_apk_state_parser():
 
 def test_mqtt_child_devs_payload_is_routed_to_apk_state_parser():
     from types import SimpleNamespace
+
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     class Station:
@@ -639,9 +645,9 @@ def test_mqtt_child_devs_payload_is_routed_to_apk_state_parser():
     coordinator.async_event_received(
         "$aws/things/station-sn/shadow/name/mainpage/update",
         (
-            '{"state":{"reported":{"stationSN":"station-sn",'
-            '"devs":{"shadow-key":{"_deviceSN":"child-sn","onLine":"1"}}}}}'
-        ).encode(),
+            b'{"state":{"reported":{"stationSN":"station-sn",'
+            b'"devs":{"shadow-key":{"_deviceSN":"child-sn","onLine":"1"}}}}}'
+        ),
     )
 
     assert parsed == [
@@ -658,6 +664,7 @@ def test_mqtt_child_devs_payload_is_routed_to_apk_state_parser():
 def test_mqtt_ssd01_notice_routes_apk_door_state_to_child():
     """Route the APK Device2PushShadowBean SSD01 notice to its device."""
     from types import SimpleNamespace
+
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     class Station:
@@ -680,11 +687,11 @@ def test_mqtt_ssd01_notice_routes_apk_door_state_to_child():
     coordinator.async_event_received(
         "$aws/things/station-sn/shadow/name/2nd_safenotice/update",
         (
-            '{"state":{"reported":{"stationSN":"station-sn",'
-            '"notices":[{"type":"SSD01","deviceSN":"smartdrop-sn",'
-            '"eventTime":"20261012134500",'
-            '"eventParam":{"isOpen":"1"}}]}}}'
-        ).encode(),
+            b'{"state":{"reported":{"stationSN":"station-sn",'
+            b'"notices":[{"type":"SSD01","deviceSN":"smartdrop-sn",'
+            b'"eventTime":"20261012134500",'
+            b'"eventParam":{"isOpen":"1"}}]}}}'
+        ),
     )
 
     assert parsed == [
@@ -716,6 +723,7 @@ def test_mqtt_ssd01_notice_routes_apk_door_state_to_child():
 
 def test_mqtt_target_device_payload_is_routed_to_apk_state_parser():
     from types import SimpleNamespace
+
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     class Station:
@@ -737,10 +745,10 @@ def test_mqtt_target_device_payload_is_routed_to_apk_state_parser():
     coordinator.async_event_received(
         "$aws/things/station-sn/shadow/name/2nd_alarm/update",
         (
-            '{"state":{"reported":{"stationSN":"station-sn",'
-            '"deviceSN":"child-sn","type":"XS03-iWX","isAlarm":"1",'
-            '"time":"20260701075100"}}}'
-        ).encode(),
+            b'{"state":{"reported":{"stationSN":"station-sn",'
+            b'"deviceSN":"child-sn","type":"XS03-iWX","isAlarm":"1",'
+            b'"time":"20260701075100"}}}'
+        ),
     )
 
     assert parsed == [
@@ -794,6 +802,7 @@ def test_mqtt_sma51_alarm_event_preserves_apk_mailbox_fields():
 
 def test_mqtt_sma51_alarm_event_routes_normalized_payload_to_child():
     from types import SimpleNamespace
+
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     class Station:
@@ -860,6 +869,7 @@ def test_mqtt_sma51_alarm_event_routes_normalized_payload_to_child():
 @pytest.mark.parametrize("serial_key", ["deviceSn", "devSerialNumber"])
 def test_mqtt_xs01m_alarm_event_routes_apk_serial_alias_to_child(serial_key):
     from types import SimpleNamespace
+
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     class Station:
@@ -945,14 +955,14 @@ def test_mqtt_skp0a_safenotice_fires_keypad_code_event(caplog):
     coordinator.async_event_received(
         "$aws/things/SBS50-15A9862E/shadow/name/2nd_safenotice/update",
         (
-            '{"state":{"reported":{"type":"SBS50","stationSN":"15A9862E",'
-            '"safeMode":"Home","time":"20260706163702",'
-            '"zoneName":"Europe/Berlin","notices":[{"type":"SKP0A",'
-            '"deviceSN":"C76494F1","eventId":"101",'
-            '"eventTime":"20260706163702","eventParam":{"alarmCancel":"0",'
-            '"safeModeAim":"Home","forceReason":[{}],"exitDelay":"0",'
-            '"pword":"1234"}}]}}}'
-        ).encode(),
+            b'{"state":{"reported":{"type":"SBS50","stationSN":"15A9862E",'
+            b'"safeMode":"Home","time":"20260706163702",'
+            b'"zoneName":"Europe/Berlin","notices":[{"type":"SKP0A",'
+            b'"deviceSN":"C76494F1","eventId":"101",'
+            b'"eventTime":"20260706163702","eventParam":{"alarmCancel":"0",'
+            b'"safeModeAim":"Home","forceReason":[{}],"exitDelay":"0",'
+            b'"pword":"1234"}}]}}}'
+        ),
     )
 
     assert bus.events == [
@@ -1098,11 +1108,11 @@ def test_mqtt_skp0a_safenotice_skips_keypad_notice_without_code(caplog):
     coordinator.async_event_received(
         "$aws/things/SBS50-15A9862E/shadow/name/2nd_safenotice/update",
         (
-            '{"state":{"reported":{"type":"SBS50","stationSN":"15A9862E",'
-            '"safeMode":"Home","notices":[{"type":"SKP0A",'
-            '"deviceSN":"C76494F1","eventId":"101",'
-            '"eventParam":{"safeModeAim":"Home"}}]}}}'
-        ).encode(),
+            b'{"state":{"reported":{"type":"SBS50","stationSN":"15A9862E",'
+            b'"safeMode":"Home","notices":[{"type":"SKP0A",'
+            b'"deviceSN":"C76494F1","eventId":"101",'
+            b'"eventParam":{"safeModeAim":"Home"}}]}}}'
+        ),
     )
 
     assert bus.events == []
@@ -1139,9 +1149,9 @@ def test_mqtt_safenotice_ignores_non_keypad_notices():
     coordinator.async_event_received(
         "$aws/things/station-sn/shadow/name/2nd_safenotice/update",
         (
-            '{"state":{"reported":{"stationSN":"station-sn",'
-            '"notices":[{"type":"XS03-iWX","eventParam":{"pword":"1234"}}]}}}'
-        ).encode(),
+            b'{"state":{"reported":{"stationSN":"station-sn",'
+            b'"notices":[{"type":"XS03-iWX","eventParam":{"pword":"1234"}}]}}}'
+        ),
     )
 
     assert bus.events == []
@@ -1149,6 +1159,7 @@ def test_mqtt_safenotice_ignores_non_keypad_notices():
 
 def test_presence_topic_updates_station_online_like_apk():
     from types import SimpleNamespace
+
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
 
     station = PresenceStation()
@@ -1161,13 +1172,13 @@ def test_presence_topic_updates_station_online_like_apk():
 
     coordinator.async_event_received(
         "/events/presence/connected/XS01-WXstation-sn",
-        "{\"clientId\":\"XS01-WXstation-sn\",\"eventType\":\"connected\",\"timestamp\":1}".encode(),
+        b"{\"clientId\":\"XS01-WXstation-sn\",\"eventType\":\"connected\",\"timestamp\":1}",
     )
     assert station.online is True
 
     coordinator.async_event_received(
         "/events/presence/disconnected/XS01-WXstation-sn",
-        "{\"clientId\":\"XS01-WXstation-sn\",\"eventType\":\"disconnected\",\"timestamp\":2}".encode(),
+        b"{\"clientId\":\"XS01-WXstation-sn\",\"eventType\":\"disconnected\",\"timestamp\":2}",
     )
     assert station.online is False
     assert len(updates) == 2
@@ -1198,10 +1209,10 @@ def test_standalone_wifi_smoke_physical_self_test_report_updates_station():
     coordinator.async_event_received(
         "$aws/things/XS01-WXstation-sn/shadow/name/2nd_selftestup/update",
         (
-            '{"state":{"reported":{"stationSN":"station-sn",'
-            '"deviceSN":"station-sn","selfTest":"successful",'
-            '"eventTime":"20260711120000"}}}'
-        ).encode(),
+            b'{"state":{"reported":{"stationSN":"station-sn",'
+            b'"deviceSN":"station-sn","selfTest":"successful",'
+            b'"eventTime":"20260711120000"}}}'
+        ),
     )
 
     assert parsed == [
@@ -1251,10 +1262,10 @@ def test_standalone_wifi_smoke_alarmtestup_report_updates_station():
     coordinator.async_event_received(
         "$aws/things/XS01-WXstation-sn/shadow/name/2nd_alarmtestup/update",
         (
-            '{"state":{"reported":{"stationSN":"station-sn",'
-            '"deviceSN":"station-sn","selfTest":"0",'
-            '"time":"20260711120500"}}}'
-        ).encode(),
+            b'{"state":{"reported":{"stationSN":"station-sn",'
+            b'"deviceSN":"station-sn","selfTest":"0",'
+            b'"time":"20260711120500"}}}'
+        ),
     )
 
     assert parsed == [
@@ -1305,12 +1316,12 @@ def test_sbs50_child_self_test_report_updates_child_payload():
     coordinator.async_event_received(
         "$aws/things/SBS50station-sn/shadow/name/2nd_selftestup/update",
         (
-            '{"state":{"reported":{"00000007":{'
-            '"stationSN":"station-sn",'
-            '"deviceSN":"child-sn",'
-            '"selfTest":"successful",'
-            '"time":"20260711121000"}}}}'
-        ).encode(),
+            b'{"state":{"reported":{"00000007":{'
+            b'"stationSN":"station-sn",'
+            b'"deviceSN":"child-sn",'
+            b'"selfTest":"successful",'
+            b'"time":"20260711121000"}}}}'
+        ),
     )
 
     assert parsed == [
@@ -1374,12 +1385,12 @@ def test_sbs50_child_self_test_event_is_not_smoke_specific(device_type):
     coordinator.async_event_received(
         "$aws/things/SBS50station-sn/shadow/name/2nd_listener_testup/update",
         (
-            '{"state":{"reported":{"00000007":{'
-            '"stationSN":"station-sn",'
-            '"deviceSN":"child-sn",'
-            '"selfTest":"failed",'
-            '"time":"20260711121500"}}}}'
-        ).encode(),
+            b'{"state":{"reported":{"00000007":{'
+            b'"stationSN":"station-sn",'
+            b'"deviceSN":"child-sn",'
+            b'"selfTest":"failed",'
+            b'"time":"20260711121500"}}}}'
+        ),
     )
 
     assert bus.events == [
@@ -1401,7 +1412,7 @@ def test_sbs50_child_self_test_event_is_not_smoke_specific(device_type):
 
 @pytest.mark.asyncio
 async def test_cached_addx_cameras_remain_in_coordinator_data_when_camera_refresh_is_skipped():
-    from datetime import datetime, timezone
+    from datetime import datetime
     from types import SimpleNamespace
 
     from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
@@ -1417,7 +1428,7 @@ async def test_cached_addx_cameras_remain_in_coordinator_data_when_camera_refres
     coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
     coordinator.xsense = SimpleNamespace(houses={"house-id": house})
     coordinator._camera_initialized = True
-    coordinator._last_camera_update_attempt = datetime.now(timezone.utc)
+    coordinator._last_camera_update_attempt = datetime.now(UTC)
     coordinator._camera_station_cache = {"camera-id": camera}
 
     assert await coordinator._update_cameras() is False
@@ -1931,10 +1942,10 @@ def test_mqtt_ai_plan_event_routes_by_nested_camera_identity():
     coordinator.async_event_received(
         "@xsense/events/aiplan/user-id-code",
         (
-            '{"eventTime":"20260614230400","eventData":{'
-            '"eventItems":[{"eventType":"person","serialNumber":"camera-sn",'
-            '"eventTime":"20260614230401"}]}}'
-        ).encode(),
+            b'{"eventTime":"20260614230400","eventData":{'
+            b'"eventItems":[{"eventType":"person","serialNumber":"camera-sn",'
+            b'"eventTime":"20260614230401"}]}}'
+        ),
     )
 
     assert parsed[0][0] is house.stations["camera-id"]

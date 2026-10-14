@@ -2969,7 +2969,7 @@ class FakePostSession:
 @pytest.mark.asyncio
 async def test_do_thing_signs_and_sends_same_serialized_body():
     client = async_xsense.AsyncXSense()
-    client.aws_access_expiry = async_xsense.datetime.now(async_xsense.timezone.utc)
+    client.aws_access_expiry = async_xsense.datetime.now(async_xsense.UTC)
     session = FakePostSession()
     signed_payloads = []
 
@@ -3184,7 +3184,7 @@ def test_apply_clock_skew_from_response_learns_offset():
     from email.utils import format_datetime
 
     client = async_xsense.AsyncXSense()
-    server_date = async_xsense.datetime.now(async_xsense.timezone.utc) - timedelta(
+    server_date = async_xsense.datetime.now(async_xsense.UTC) - timedelta(
         hours=2
     )
     response = FakeGetResponse(403, {"Date": format_datetime(server_date)}, {})
@@ -3203,7 +3203,7 @@ def test_apply_clock_skew_ignores_small_offset():
     from email.utils import format_datetime
 
     client = async_xsense.AsyncXSense()
-    server_date = async_xsense.datetime.now(async_xsense.timezone.utc)
+    server_date = async_xsense.datetime.now(async_xsense.UTC)
     response = FakeGetResponse(403, {"Date": format_datetime(server_date)}, {})
     try:
         aws_signer.set_global_time_offset(0)
@@ -3223,7 +3223,7 @@ async def test_get_thing_corrects_clock_skew_and_retries():
     client = async_xsense.AsyncXSense()
     client._aws_token_expiring = lambda: False
 
-    server_date = async_xsense.datetime.now(async_xsense.timezone.utc) - timedelta(
+    server_date = async_xsense.datetime.now(async_xsense.UTC) - timedelta(
         hours=2
     )
     session = FakeGetSession(
@@ -5418,7 +5418,7 @@ async def test_authenticated_app_call_uses_apk_1400_client_metadata():
     client = async_xsense.AsyncXSense(session)
     client.access_token = "access-token"
     client.access_token_expiry = async_xsense.datetime(
-        2099, 1, 1, tzinfo=async_xsense.timezone.utc
+        2099, 1, 1, tzinfo=async_xsense.UTC
     )
     client.clientsecret = b"secret"
 
@@ -5441,7 +5441,7 @@ async def test_ai_service_list_uses_apk_701001_user_id_code():
     client = async_xsense.AsyncXSense(session)
     client.access_token = "access-token"
     client.access_token_expiry = async_xsense.datetime(
-        2099, 1, 1, tzinfo=async_xsense.timezone.utc
+        2099, 1, 1, tzinfo=async_xsense.UTC
     )
     client.clientsecret = b"secret"
     client.userid = "cognito-user-id"
@@ -5475,7 +5475,7 @@ async def test_ai_service_history_uses_apk_701008_server_id():
     client = async_xsense.AsyncXSense(session)
     client.access_token = "access-token"
     client.access_token_expiry = async_xsense.datetime(
-        2099, 1, 1, tzinfo=async_xsense.timezone.utc
+        2099, 1, 1, tzinfo=async_xsense.UTC
     )
     client.clientsecret = b"secret"
 
@@ -6127,7 +6127,7 @@ async def test_ipc_call_uses_same_apk_1400_client_metadata():
     client = async_xsense.AsyncXSense(session)
     client.access_token = "access-token"
     client.access_token_expiry = async_xsense.datetime(
-        2099, 1, 1, tzinfo=async_xsense.timezone.utc
+        2099, 1, 1, tzinfo=async_xsense.UTC
     )
     client.clientsecret = b"secret"
 

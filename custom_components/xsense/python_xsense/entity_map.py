@@ -1,5 +1,5 @@
+from collections.abc import Callable
 from enum import Enum
-from typing import Callable, Dict, Optional, Union
 
 
 class EntityType(Enum):
@@ -25,10 +25,10 @@ class EntityType(Enum):
 
 
 def MuteAction(
-    shadow: Union[str, Callable] = "appMute",
-    topic: Union[str, Callable, None] = "2nd_appmute",
-    extra: Optional[Dict] = None,
-    mute_type: Optional[str] = None,
+    shadow: str | Callable = "appMute",
+    topic: str | Callable | None = "2nd_appmute",
+    extra: dict | None = None,
+    mute_type: str | None = None,
     target=None,
 ):
     data = {
@@ -46,7 +46,7 @@ def MuteAction(
     return data
 
 
-def TestAction(shadow="appSelfTest", extra: Optional[Dict] = None, target=None):
+def TestAction(shadow="appSelfTest", extra: dict | None = None, target=None):
     data = {
         "action": "test",
         "topic": lambda x: f"2nd_selftest_{x.sn}",
@@ -106,7 +106,7 @@ def _smoke_rf_test_time_format(entity) -> str | None:
     return None
 
 
-def _smoke_rf_test_extra(entity) -> Dict:
+def _smoke_rf_test_extra(entity) -> dict:
     station = getattr(entity, "station", entity)
     if _is_smoke_v9(entity) or getattr(station, "type", None) == "SBS50":
         return {"userParam": "source=1"}

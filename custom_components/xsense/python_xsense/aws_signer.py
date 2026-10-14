@@ -1,11 +1,9 @@
-import hashlib
 import datetime
+import hashlib
 import hmac
 import json
 import urllib
-from typing import Dict
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit
-
 
 # Seconds to subtract from the local clock when stamping AWS SigV4 requests.
 # Mirrors the AWS Android SDK's SDKGlobalConfiguration.getGlobalTimeOffset():
@@ -29,7 +27,7 @@ def set_global_time_offset(seconds: float) -> None:
 
 def signing_now() -> datetime.datetime:
     """Return the current UTC time corrected by the learned clock-skew offset."""
-    return datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+    return datetime.datetime.now(datetime.UTC) - datetime.timedelta(
         seconds=_GLOBAL_TIME_OFFSET_SECONDS
     )
 
@@ -52,7 +50,7 @@ class AWSSigner:
         return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
 
     def get_signing_key(self, date_stamp, region):
-        k_date = self._sign((f'AWS4{self.client_secret}').encode('utf-8'), date_stamp)
+        k_date = self._sign((f'AWS4{self.client_secret}').encode(), date_stamp)
         # print(f'date   : {string_to_hex(k_date)}')
         k_region = self._sign(key=k_date, msg=region)
         # print(f'region : {string_to_hex(k_region)}')
@@ -100,7 +98,7 @@ class AWSSigner:
             method: str,
             url: str,
             region: str,
-            headers: Dict,
+            headers: dict,
             content: str
     ):
         parsed_url = urlsplit(url)

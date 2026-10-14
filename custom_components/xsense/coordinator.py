@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-from contextlib import asynccontextmanager, suppress
-from datetime import datetime, timedelta, timezone
 import json
+from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import aiohttp
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant, callback
@@ -19,27 +18,6 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.logging import catch_log_exception
 
-from .python_xsense import (
-    AsyncXSense,
-    House,
-    camera_for_identifier,
-    cameras_share_identity,
-)
-from .python_xsense.async_xsense import camera_addx_serial, is_camera_entity
-from .python_xsense.event_parser import (
-    camera_ai_history_event_key as _camera_ai_history_event_key,
-    camera_event_record_event_key as _camera_event_record_event_key,
-    camera_event_record_station_data as _camera_event_record_station_data,
-    camera_event_records as _camera_event_records,
-    is_presence_topic as _is_presence_topic,
-    is_self_test_topic as _is_self_test_topic,
-    mqtt_identifier_candidates as _mqtt_identifier_candidates,
-    mqtt_reported_data as _mqtt_reported_data,
-    mqtt_topic_kind as _mqtt_topic_kind,
-    normalize_self_test_report as _normalize_self_test_report,
-    self_test_report_payload as _self_test_report_payload,
-)
-from .python_xsense.exceptions import APIFailure, AuthFailed, NotFoundError, SessionExpired
 from .const import (
     CAMERA_AI_HISTORY_SCAN_INTERVAL,
     CAMERA_AI_SERVICE_AVAILABLE,
@@ -50,6 +28,52 @@ from .const import (
     POLL_INTERVAL_MIN,
 )
 from .mqtt import DEFAULT_ENCODING, DEFAULT_SUBSCRIBE_QOS, XSenseMQTT
+from .python_xsense import (
+    AsyncXSense,
+    House,
+    camera_for_identifier,
+    cameras_share_identity,
+)
+from .python_xsense.async_xsense import camera_addx_serial, is_camera_entity
+from .python_xsense.event_parser import (
+    camera_ai_history_event_key as _camera_ai_history_event_key,
+)
+from .python_xsense.event_parser import (
+    camera_event_record_event_key as _camera_event_record_event_key,
+)
+from .python_xsense.event_parser import (
+    camera_event_record_station_data as _camera_event_record_station_data,
+)
+from .python_xsense.event_parser import (
+    camera_event_records as _camera_event_records,
+)
+from .python_xsense.event_parser import (
+    is_presence_topic as _is_presence_topic,
+)
+from .python_xsense.event_parser import (
+    is_self_test_topic as _is_self_test_topic,
+)
+from .python_xsense.event_parser import (
+    mqtt_identifier_candidates as _mqtt_identifier_candidates,
+)
+from .python_xsense.event_parser import (
+    mqtt_reported_data as _mqtt_reported_data,
+)
+from .python_xsense.event_parser import (
+    mqtt_topic_kind as _mqtt_topic_kind,
+)
+from .python_xsense.event_parser import (
+    normalize_self_test_report as _normalize_self_test_report,
+)
+from .python_xsense.event_parser import (
+    self_test_report_payload as _self_test_report_payload,
+)
+from .python_xsense.exceptions import (
+    APIFailure,
+    AuthFailed,
+    NotFoundError,
+    SessionExpired,
+)
 
 _IGNORED_TOPIC_SUFFIXES = ("/update/accepted", "/update/documents", "/update/rejected")
 
@@ -68,7 +92,7 @@ def _history_timestamp(value: Any) -> datetime | None:
     if len(value) != 14 or not value.isascii() or not value.isdigit():
         return None
     try:
-        return datetime.strptime(value, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+        return datetime.strptime(value, "%Y%m%d%H%M%S").replace(tzinfo=UTC)
     except ValueError:
         return None
 
@@ -88,7 +112,7 @@ class _HistoryDedupWindow:
 
     def advance(self, rows: list[tuple[tuple[str, ...], Any]]) -> None:
         """Establish all batch cutoffs before accepting any row in the batch."""
-        ceiling = datetime.now(timezone.utc) + _HISTORY_FUTURE_TOLERANCE
+        ceiling = datetime.now(UTC) + _HISTORY_FUTURE_TOLERANCE
         for source, value in rows:
             timestamp = _history_timestamp(value)
             if timestamp is None or timestamp > ceiling:
@@ -120,7 +144,7 @@ class _HistoryDedupWindow:
             pinned
             or timestamp is None
             or source not in self.watermarks
-            or timestamp > datetime.now(timezone.utc) + _HISTORY_FUTURE_TOLERANCE
+            or timestamp > datetime.now(UTC) + _HISTORY_FUTURE_TOLERANCE
         ):
             self.times.pop(key, None)
         else:
@@ -681,7 +705,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         camera stations still need to stay in coordinator data so Home Assistant
         does not mark their entities unavailable.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if (
             self._camera_initialized
             and self._last_camera_update_attempt is not None
@@ -858,7 +882,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _update_camera_event_history(self, cameras: list[Any]) -> bool:
         """Poll the APK event-filtered camera library for motion records."""
-        now = int(datetime.now(timezone.utc).timestamp())
+        now = int(datetime.now(UTC).timestamp())
         try:
             history = await self.xsense.get_camera_event_record_history_for_cameras(
                 cameras,
@@ -984,7 +1008,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         event_time = station_data.get("eventTime")
         timestamp = _history_timestamp(event_time)
-        ceiling = datetime.now(timezone.utc) + _HISTORY_FUTURE_TOLERANCE
+        ceiling = datetime.now(UTC) + _HISTORY_FUTURE_TOLERANCE
         # Keep bad history identities pinned, but never let their timestamps
         # reach camera state and block subsequent legitimate events.
         if event_time not in (None, "") and (
@@ -1397,7 +1421,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         "reportDst": "1",
                         "timeoutM": str(POLL_INTERVAL_MIN),
                         "userId": self.xsense.userid,
-                        "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
+                        "time": datetime.now(UTC).strftime("%Y%m%d%H%M%S"),
                         "stationSN": s.sn,
                     }
                 }
