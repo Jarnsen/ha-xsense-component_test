@@ -1,8 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from .entity_map import entities
 from .mapping import bool_state, map_values
-
 
 _ONLINE_TIME_EXCLUDED_TYPES = {
     "SC07-iA",
@@ -29,7 +28,7 @@ def _parse_xsense_time(value: str | None) -> datetime | None:
 
     try:
         return datetime.strptime(str(value), "%Y%m%d%H%M%S").replace(
-            tzinfo=timezone.utc
+            tzinfo=UTC
         )
     except ValueError:
         return None
@@ -44,7 +43,7 @@ def _online_from_report_time(data: dict, entity_type: str | None) -> bool | None
         return None
 
     reported = _parse_xsense_time(online_time)
-    utc_time = _parse_xsense_time(data.get("utcTime")) or datetime.now(timezone.utc)
+    utc_time = _parse_xsense_time(data.get("utcTime")) or datetime.now(UTC)
     if reported is None:
         return None
 
@@ -85,19 +84,16 @@ class Entity:
                 self._set_online(data.pop(key))
                 has_online_flag = True
                 break
-        if not has_online_flag:
-            online = _online_from_report_time(data, self.type)
-            if online is not None:
-                # The app treats online/onLine as the authoritative connection
-                # state. Report timestamps can confirm a device is awake, but
-                # should not turn an explicitly online device offline.
-                if (
-                    online
-                    or self.online is not True
-                    or not self._online_from_explicit_flag
-                ):
-                    self.online = online
-                    self._online_from_explicit_flag = False
+        # The app treats online/onLine as the authoritative connection state.
+        # Report timestamps can confirm a device is awake, but should not turn
+        # an explicitly online device offline.
+        if (
+            not has_online_flag
+            and (online := _online_from_report_time(data, self.type)) is not None
+            and (online or self.online is not True or not self._online_from_explicit_flag)
+        ):
+            self.online = online
+            self._online_from_explicit_flag = False
         status_data = data.get("status")
         if isinstance(status_data, dict):
             data.pop("status", None)

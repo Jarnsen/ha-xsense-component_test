@@ -1,18 +1,16 @@
 """XsenseMQTT is a MQTT client for the XSense server."""
 
 import asyncio
-from collections import defaultdict
-from collections.abc import AsyncGenerator, Callable, Coroutine, Iterable
 import contextlib
-from functools import partial
-from itertools import chain
 import inspect
 import logging
+from collections import defaultdict
+from collections.abc import AsyncGenerator, Callable, Coroutine, Iterable
+from functools import partial
+from itertools import chain
 from typing import Any
 
 import paho.mqtt.client as mqtt
-from .python_xsense.mqtt_helper import MQTTHelper
-
 from homeassistant.components.mqtt.client import Subscription, _matcher_for_topic
 from homeassistant.components.mqtt.models import ReceiveMessage
 from homeassistant.components.mqtt.util import EnsureJobAfterCooldown
@@ -28,6 +26,7 @@ from homeassistant.util.collection import chunked_or_all
 from homeassistant.util.logging import catch_log_exception
 
 from .errors import xsense_error
+from .python_xsense.mqtt_helper import MQTTHelper
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -471,9 +470,9 @@ class XSenseMQTT:
         """Return a string with the exception message."""
         # if msg_callback is a partial we return the name of the first argument
         if isinstance(msg_callback, partial):
-            call_back_name = getattr(msg_callback.args[0], "__name__")
+            call_back_name = msg_callback.args[0].__name__
         else:
-            call_back_name = getattr(msg_callback, "__name__")
+            call_back_name = msg_callback.__name__
         return (
             f"Exception in {call_back_name} when handling msg on "
             f"'{msg.topic}': '{msg.payload}'"  # type: ignore[str-bytes-safe]
@@ -575,7 +574,7 @@ class XSenseMQTT:
         for subscription in self.subscriptions:
             try:
                 await self._async_perform_subscription(subscription)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - MQTT client errors vary by transport.
                 self._async_untrack_subscription(subscription)
                 self._matching_subscriptions_cache.clear()
                 _LOGGER.warning(
@@ -673,9 +672,7 @@ class XSenseMQTT:
         topic = msg.topic
 
         if (
-            topic.endswith("/update/accepted")
-            or topic.endswith("/update/documents")
-            or topic.endswith("/update/rejected")
+            topic.endswith(("/update/accepted", "/update/documents", "/update/rejected"))
         ):
             return
 

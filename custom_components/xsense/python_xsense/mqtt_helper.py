@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
-import uuid
 import ssl
-from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional
+import uuid
+from collections.abc import Callable, Iterable
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
 from paho.mqtt import client as mqtt_client
 
@@ -45,7 +46,7 @@ def house_event_topic(house_id: str) -> str:
     return f"@xsense/events/+/{house_id}"
 
 
-def parse_message_payload(payload: Any) -> Dict:
+def parse_message_payload(payload: Any) -> dict:
     if isinstance(payload, bytes):
         payload = payload.decode()
     if isinstance(payload, str):
@@ -141,14 +142,14 @@ class MQTTHelper:
     def subscribe(self, topic: str, qos: int = DEFAULT_SUBSCRIBE_QOS):
         return self.client.subscribe(topic, qos=qos)
 
-    def subscribe_live_updates(self, qos: int = DEFAULT_SUBSCRIBE_QOS) -> List:
+    def subscribe_live_updates(self, qos: int = DEFAULT_SUBSCRIBE_QOS) -> list:
         results = []
         for topic in self.live_update_topics():
             results.append(self.subscribe(topic, qos=qos))
         return results
 
     def set_message_callback(
-        self, callback: Callable[[str, Dict], None], ignore_shadow_ack: bool = True
+        self, callback: Callable[[str, dict], None], ignore_shadow_ack: bool = True
     ):
         def on_message(_client, _userdata, msg):
             if ignore_shadow_ack and should_ignore_shadow_topic(msg.topic):
@@ -159,7 +160,7 @@ class MQTTHelper:
 
         self.client.on_message = on_message
 
-    def live_update_topics(self) -> List[str]:
+    def live_update_topics(self) -> list[str]:
         topics = [
             house_event_topic(self.house.house_id),
             shadow_wildcard_topic(self.house.house_id),
@@ -173,7 +174,7 @@ class MQTTHelper:
 
     def temp_data_devices(
         self, station: Station, device_types: Iterable[str] = TEMP_DATA_TYPES
-    ) -> List[str]:
+    ) -> list[str]:
         device_types = set(device_types)
         return [
             device.sn
@@ -184,10 +185,10 @@ class MQTTHelper:
     def build_temp_data_request(
         self,
         station: Station,
-        device_sns: Optional[Iterable[str]] = None,
+        device_sns: Iterable[str] | None = None,
         timeout_minutes: int = 5,
-        user_id: Optional[str] = None,
-    ) -> Dict:
+        user_id: str | None = None,
+    ) -> dict:
         if device_sns is None:
             device_sns = self.temp_data_devices(station)
         device_sns = list(device_sns)
@@ -206,7 +207,7 @@ class MQTTHelper:
                     "reportDst": "1",
                     "timeoutM": str(timeout_minutes),
                     "userId": user_id,
-                    "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
+                    "time": datetime.now(UTC).strftime("%Y%m%d%H%M%S"),
                     "stationSN": station.sn,
                 }
             }
@@ -218,9 +219,9 @@ class MQTTHelper:
     def request_temp_data(
         self,
         station: Station,
-        device_sns: Optional[Iterable[str]] = None,
+        device_sns: Iterable[str] | None = None,
         timeout_minutes: int = 5,
-        user_id: Optional[str] = None,
+        user_id: str | None = None,
     ):
         payload = self.build_temp_data_request(
             station, device_sns, timeout_minutes, user_id

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from urllib.parse import urlencode
 
+import voluptuous as vol
 from homeassistant.components import persistent_notification
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
@@ -13,13 +14,12 @@ from homeassistant.components.alarm_control_panel import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, entity_platform
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.translation import async_get_translations
-
-import voluptuous as vol
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import XSenseDataUpdateCoordinator
@@ -384,7 +384,7 @@ class XSenseAlarmControlPanel(
                         self.hass, self.hass.config.language, category, {DOMAIN}
                     )
                 )
-            except Exception:  # Translation loading must not block alarm entities.
+            except Exception:  # noqa: BLE001 - translation loading must not block alarm entities.
                 LOGGER.warning("Could not load X-Sense %s translations", category)
         await super().async_added_to_hass()
         self._handle_coordinator_update()
@@ -565,14 +565,13 @@ class XSenseAlarmControlPanel(
                 force_arm,
             )
 
-        except Exception as ex:  # noqa: BLE001
+        except Exception as ex:
             if force_arm == "0":
                 self._async_clear_arm_request(station)
             LOGGER.exception(
-                "Could not set safeMode %s forceArm=%s for station %s: %s",
+                "Could not set safeMode %s forceArm=%s for station %s",
                 safe_mode,
                 force_arm,
                 station.sn,
-                ex,
             )
             raise xsense_error("safe_mode_publish_failed") from ex

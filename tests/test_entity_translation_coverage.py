@@ -14,7 +14,6 @@ from custom_components.xsense import (
     switch,
 )
 
-
 ROOT = Path(__file__).parents[1]
 STRINGS = ROOT / "custom_components/xsense/strings.json"
 INTEGRATION = ROOT / "custom_components/xsense"

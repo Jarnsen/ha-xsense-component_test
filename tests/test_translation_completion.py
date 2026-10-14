@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).parents[1]
 TRANSLATIONS = ROOT / "custom_components/xsense/translations"
 ENGLISH = json.loads((TRANSLATIONS / "en.json").read_text(encoding="utf-8"))

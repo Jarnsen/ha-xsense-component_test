@@ -12,26 +12,26 @@ if not hasattr(sys.modules.get("custom_components"), "__path__"):
     sys.modules.pop("custom_components", None)
 
 from custom_components.xsense import (
+    LEGACY_OBSOLETE_BINARY_SENSOR_KEYS,
     OBSOLETE_ACTION_KEYS_BY_DEVICE_TYPE,
     OBSOLETE_BINARY_SENSOR_KEYS,
     OBSOLETE_BINARY_SENSOR_KEYS_BY_DEVICE_TYPE,
-    LEGACY_OBSOLETE_BINARY_SENSOR_KEYS,
     OBSOLETE_NUMBER_KEYS,
     OBSOLETE_SELECT_KEYS,
     OBSOLETE_SENSOR_KEYS,
     OBSOLETE_SWITCH_KEYS,
+    _camera_ai_detection_unique_ids_by_service_state,
+    _clear_visible_device_metadata,
     _is_obsolete_binary_sensor_entry,
     _is_obsolete_sensor_entry,
-    _camera_ai_detection_unique_ids_by_service_state,
     _migrate_legacy_none_entity_ids,
     _obsolete_action_unique_ids,
     _obsolete_binary_sensor_unique_ids,
     _obsolete_sensor_unique_ids,
-    _unsupported_led_light_switch_unique_ids,
-    _sensor_unique_id,
-    _clear_visible_device_metadata,
     _remove_obsolete_device_metadata,
     _remove_obsolete_sensor_entities,
+    _sensor_unique_id,
+    _unsupported_led_light_switch_unique_ids,
     _visible_identifier_connections_removed,
 )
 
@@ -629,7 +629,7 @@ def test_obsolete_device_metadata_cleanup_skips_clean_registry_entries(monkeypat
         def async_update_device(self, device_id, **kwargs):
             calls.append((device_id, kwargs))
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())
 
@@ -672,7 +672,7 @@ def test_obsolete_device_metadata_cleanup_handles_child_devices(monkeypatch):
         def async_update_device(self, device_id, **kwargs):
             calls.append((device_id, kwargs))
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())
 
@@ -714,12 +714,11 @@ def test_obsolete_device_metadata_cleanup_scans_config_entry_devices(monkeypatch
     class FakeDeviceRegistry:
         def async_get_device_by_identifier(self, identifier, *, config_entry_id):
             assert config_entry_id == "entry-id"
-            return None
 
         def async_update_device(self, device_id, **kwargs):
             calls.append((device_id, kwargs))
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())
     monkeypatch.setattr(
@@ -750,7 +749,7 @@ def test_obsolete_device_metadata_cleanup_avoids_deprecated_legacy_lookup(monkey
         def async_update_device(self, device_id, **kwargs):
             raise AssertionError("No device metadata should be updated")
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(
         xsense.dr,
@@ -1042,7 +1041,7 @@ def test_obsolete_sensor_cleanup_removes_stale_registry_entries(monkeypatch):
         ),
     ]
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(xsense.er, 'async_get', lambda hass: registry)
     monkeypatch.setattr(
@@ -1110,7 +1109,7 @@ def test_ai_detection_cleanup_disables_existing_entity_when_service_is_absent(
         )
     ]
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
     from custom_components.xsense.const import CAMERA_AI_SERVICE_AVAILABLE
 
     monkeypatch.setattr(xsense.er, "async_get", lambda hass: registry)
@@ -1160,7 +1159,7 @@ def test_ai_detection_cleanup_reenables_integration_disabled_entity_when_service
 
     registry = FakeEntityRegistry()
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
     from custom_components.xsense.const import CAMERA_AI_SERVICE_AVAILABLE
 
     entries = [
@@ -1317,7 +1316,7 @@ def test_obsolete_sensor_cleanup_keeps_current_device_entities(monkeypatch):
         ]
     )
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(xsense.er, 'async_get', lambda hass: FakeEntityRegistry())
     monkeypatch.setattr(
@@ -1383,7 +1382,7 @@ def test_obsolete_sensor_cleanup_scans_all_xsense_sensor_entries(monkeypatch):
         def async_remove(self, entity_id):
             removed.append(entity_id)
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(xsense.er, 'async_get', lambda hass: FakeEntityRegistry())
     monkeypatch.setattr(
@@ -1449,7 +1448,7 @@ def test_legacy_none_entity_id_migration_renames_safe_entries(monkeypatch):
             assert device_id == "device-id"
             return SimpleNamespace(name_by_user=None, name="Smoke Alarm")
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
     monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())
@@ -1518,7 +1517,7 @@ def test_legacy_none_entity_id_migration_applies_to_other_xsense_devices(monkeyp
             }
             return devices[device_id]
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
     monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())
@@ -1569,7 +1568,7 @@ def test_legacy_none_entity_id_migration_uses_entity_id_base_without_device(monk
         def async_get(self, device_id):
             return None
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
     monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())
@@ -1615,7 +1614,7 @@ def test_legacy_none_entity_id_migration_skips_existing_target(monkeypatch):
         def async_get(self, device_id):
             return SimpleNamespace(name_by_user=None, name="Smoke Alarm")
 
-    import custom_components.xsense as xsense
+    from custom_components import xsense
 
     monkeypatch.setattr(xsense.er, "async_get", lambda hass: FakeEntityRegistry())
     monkeypatch.setattr(xsense.dr, "async_get", lambda hass: FakeDeviceRegistry())

@@ -27,13 +27,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from webrtc_models import RTCIceCandidateInit
 
-from .python_xsense.async_xsense import (
-    camera_addx_serial,
-    camera_live_resolution,
-    cameras_share_identity,
-    is_camera_entity,
-)
-from .python_xsense.exceptions import APIFailure, SessionExpired
 from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
@@ -42,6 +35,13 @@ from .entity import (
     coordinator_devices,
     coordinator_stations,
 )
+from .python_xsense.async_xsense import (
+    camera_addx_serial,
+    camera_live_resolution,
+    cameras_share_identity,
+    is_camera_entity,
+)
+from .python_xsense.exceptions import APIFailure, SessionExpired
 
 
 def _webrtc_close_callers() -> list[dict[str, str | int]]:

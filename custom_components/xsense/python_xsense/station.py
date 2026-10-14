@@ -1,13 +1,12 @@
-from typing import List, Dict
 
 from .device import Device
 from .entity import Entity
 
 
 class Station(Entity):
-    devices: Dict[str, Device]
-    device_order: List[str]
-    device_by_sn: Dict[str, str]
+    devices: dict[str, Device]
+    device_order: list[str]
+    device_by_sn: dict[str, str]
 
     def __init__(self, parent, **kwargs):
         self.house = parent
@@ -154,8 +153,8 @@ class Station(Entity):
 
 
 def _light_group_device_data(
-    station: Station, station_data: Dict, group: Dict, source_devices: List[Dict]
-) -> Dict:
+    station: Station, station_data: dict, group: dict, source_devices: list[dict]
+) -> dict:
     group_id = group.get("groupId")
     group_name = group.get("groupName")
     create_time = group.get("createTime") or ""
@@ -180,7 +179,7 @@ def _light_group_device_data(
     }
 
 
-def _device_serial(data: Dict):
+def _device_serial(data: dict):
     return _first_value(
         data,
         (
@@ -195,11 +194,11 @@ def _device_serial(data: Dict):
     )
 
 
-def _has_light_on(devices: List[Dict]) -> bool:
+def _has_light_on(devices: list[dict]) -> bool:
     return any(_is_not_reported_offline(i) and i.get("on") == "1" for i in devices)
 
 
-def _is_not_reported_offline(device: Dict) -> bool:
+def _is_not_reported_offline(device: dict) -> bool:
     online = device.get("online", device.get("onLine"))
     return online not in (0, "0", False, "false", "False")
 
@@ -215,7 +214,7 @@ def _java_string(value) -> str:
     return "null" if value is None else str(value)
 
 
-def _first_value(data: Dict, *keys):
+def _first_value(data: dict, *keys):
     if len(keys) == 1 and isinstance(keys[0], (tuple, list)):
         keys = tuple(keys[0])
     for key in keys:

@@ -5,8 +5,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from homeassistant.components import frontend
-from homeassistant.components import panel_custom
+from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 

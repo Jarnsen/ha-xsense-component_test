@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from custom_components.xsense.const import DOMAIN
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.xsense import (
@@ -17,11 +16,11 @@ from custom_components.xsense import (
     sensor,
     switch,
 )
+from custom_components.xsense.const import DOMAIN
 from custom_components.xsense.python_xsense.async_xsense import AsyncXSense
 from custom_components.xsense.python_xsense.device import Device
 from custom_components.xsense.python_xsense.entity_map import EntityType, entities
 from custom_components.xsense.python_xsense.station import Station
-
 
 
 @pytest.mark.asyncio
@@ -82,7 +81,7 @@ async def test_apk_non_camera_product_models_create_real_platform_entities():
         for module in modules:
             created = []
             await module.async_setup_entry(
-                hass, entry, lambda values: created.extend(values)
+                hass, entry, lambda values, created=created: created.extend(values)
             )
             keys.update(
                 item.entity_description.key

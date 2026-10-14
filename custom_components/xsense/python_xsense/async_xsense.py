@@ -4,8 +4,8 @@ import json
 import logging
 import socket
 from contextlib import AsyncExitStack, asynccontextmanager
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
+from typing import Any
 
 import aiohttp
 
@@ -139,7 +139,7 @@ _SECOND_INFO_DEVICE_TYPES = {
 }
 
 
-def _shadow_update_body(data: Dict) -> str:
+def _shadow_update_body(data: dict) -> str:
     """Return compact AWS shadow JSON body kept for integration parity."""
     return shadow_update_body(data)
 
@@ -1486,7 +1486,7 @@ class AsyncXSense(XSenseBase):
             self._addx_session = None
         getattr(self, "_addx_sessions_by_node", {}).pop(node, None)
 
-    def _addx_body(self, addx_session: dict, data: Dict | None = None) -> Dict:
+    def _addx_body(self, addx_session: dict, data: dict | None = None) -> dict:
         """Return the ADDX request body shape used by the Android SDK."""
         result = dict(data or {})
         country = addx_session.get("countryNo")
@@ -1538,7 +1538,7 @@ class AsyncXSense(XSenseBase):
             return await response.json()
 
     async def do_thing(
-        self, station: Station, page: str, data: Dict, *, _retry: bool = True
+        self, station: Station, page: str, data: dict, *, _retry: bool = True
     ):
         if self._aws_token_expiring():
             await self.load_aws()
@@ -1805,7 +1805,7 @@ class AsyncXSense(XSenseBase):
                     if response.status >= 400:
                         continue
                     image = await response.read()
-            except (aiohttp.ClientError, asyncio.TimeoutError):
+            except (TimeoutError, aiohttp.ClientError):
                 continue
             if image:
                 return image
@@ -1842,7 +1842,7 @@ class AsyncXSense(XSenseBase):
                 camera.data.update(values)
             return
 
-    def _camera_from_addx_device(self, data: Dict) -> Station | None:
+    def _camera_from_addx_device(self, data: dict) -> Station | None:
         """Return the X-Sense camera entity backed by an ADDX DeviceBean."""
         serial = data.get("serialNumber")
         normalized_serial = _normalized_camera_serial(serial)
@@ -2326,7 +2326,7 @@ class AsyncXSense(XSenseBase):
                 )
 
     async def set_state(
-        self, entity: Entity, shadow: str, topic: str, definition: Dict
+        self, entity: Entity, shadow: str, topic: str, definition: dict
     ):
         station = getattr(entity, "station", entity)
         target = definition.get("target")
@@ -2386,13 +2386,13 @@ class AsyncXSense(XSenseBase):
         raise XSenseError("Value must be a boolean or 0/1")
 
     def _utc_timestamp(self) -> str:
-        return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        return datetime.now(UTC).strftime("%Y%m%d%H%M%S")
 
     def build_command_state(
         self,
         entity: Entity,
         shadow: str,
-        values: Dict,
+        values: dict,
         include_device: bool | None = None,
         include_time: bool = True,
         include_user: bool = True,
@@ -2415,13 +2415,13 @@ class AsyncXSense(XSenseBase):
         desired.update({key: value for key, value in values.items() if value is not None})
         return station, {"state": {"desired": desired}}
 
-    def build_config_state(self, entity: Entity, shadow: str, values: Dict):
+    def build_config_state(self, entity: Entity, shadow: str, values: dict):
         """Return an app-style config shadow payload without time/user fields."""
         return self.build_command_state(
             entity, shadow, values, include_time=False, include_user=False
         )
 
-    def build_desired_state(self, entity: Entity, shadow: str, definition: Dict):
+    def build_desired_state(self, entity: Entity, shadow: str, definition: dict):
         """Return an app-style action payload for a mapped action definition."""
         extra = definition.get("extra", {})
         if callable(extra):
@@ -2688,7 +2688,7 @@ class AsyncXSense(XSenseBase):
         station = getattr(entity, "station", entity)
         desired = {
             "isOn": "1" if enabled else "0",
-            "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
+            "time": datetime.now(UTC).strftime("%Y%m%d%H%M%S"),
             "userId": self.userid,
             "userParam": "source=1",
         }
@@ -2781,12 +2781,10 @@ class AsyncXSense(XSenseBase):
             else:
                 desired["deviceSN"] = entity.sn
 
-            if data_key == "alarmVol":
-                if alarm_tone := entity.data.get("alarmTone"):
-                    desired["alarmTone"] = str(alarm_tone)
-            if data_key == "alarmTone":
-                if alarm_vol := entity.data.get("alarmVol"):
-                    desired["alarmVol"] = str(alarm_vol)
+            if data_key == "alarmVol" and (alarm_tone := entity.data.get("alarmTone")):
+                desired["alarmTone"] = str(alarm_tone)
+            if data_key == "alarmTone" and (alarm_vol := entity.data.get("alarmVol")):
+                desired["alarmVol"] = str(alarm_vol)
         else:
             if entity is station:
                 desired["stationSN"] = station.sn
@@ -3131,7 +3129,7 @@ class AsyncXSense(XSenseBase):
             "shadow": "appWarnPerion",
             "deviceSN": entity.sn,
             "stationSN": station.sn,
-            "time": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
+            "time": datetime.now(UTC).strftime("%Y%m%d%H%M%S"),
             "userId": self.userid,
         }
         if enabled is not None:
@@ -3160,7 +3158,7 @@ class AsyncXSense(XSenseBase):
     async def update_shadow_settings(
         self,
         entity: Entity,
-        updates: Dict,
+        updates: dict,
         *,
         comfort_type: str | None = None,
     ):
@@ -3213,13 +3211,7 @@ def _volume_includes_station_sn(entity: Entity, data_key: str) -> bool:
         if entity is getattr(entity, "station", entity):
             return True
         data_key = "alarmVol"
-    if getattr(entity, "entity_type", None) in {
-        EntityType.CO,
-        EntityType.LIGHT,
-        EntityType.TEMPERATURE,
-    }:
-        return False
-    return True
+    return getattr(entity, "entity_type", None) not in {EntityType.CO, EntityType.LIGHT, EntityType.TEMPERATURE}
 
 
 def _shadow_setting_companion_key(data_key: str) -> str | None:
@@ -3242,15 +3234,15 @@ def _shadow_setting_includes_station_sn(entity: Entity, data_key: str) -> bool:
     )
 
 
-def _action_timestamp(definition: Dict, entity: Entity) -> str | None:
+def _action_timestamp(definition: dict, entity: Entity) -> str | None:
     time_format = definition.get("time_format", "datetime")
     if callable(time_format):
         time_format = time_format(entity)
     if time_format is None:
         return None
     if time_format == "epoch_ms":
-        return str(int(datetime.now(timezone.utc).timestamp() * 1000))
-    return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        return str(int(datetime.now(UTC).timestamp() * 1000))
+    return datetime.now(UTC).strftime("%Y%m%d%H%M%S")
 
 
 def _short_id(value):
@@ -3261,7 +3253,7 @@ def _short_id(value):
     return text if len(text) <= 6 else f"...{text[-6:]}"
 
 
-def _action_debug_context(entity: Entity, action: str, target, topic, desired: Dict):
+def _action_debug_context(entity: Entity, action: str, target, topic, desired: dict):
     """Return safe action metadata without full serials or payload values."""
     station = getattr(entity, "station", entity)
     context = {
@@ -3310,7 +3302,7 @@ def _action_xs01_wx_serial_v9(entity: Entity) -> bool:
     return "EN" in station_sn.upper() or "UL" in station_sn.upper()
 
 
-def _camera_write_debug_context(camera: Entity, endpoint: str, updates: Dict):
+def _camera_write_debug_context(camera: Entity, endpoint: str, updates: dict):
     """Return safe camera write metadata without full serials or payload values."""
     return {
         "endpoint": endpoint,
@@ -3338,7 +3330,7 @@ def _ipc_language(language: str | None) -> str:
     return normalized.split("-", 1)[0].lower()
 
 
-def _camera_type(data: Dict) -> str | None:
+def _camera_type(data: dict) -> str | None:
     device_model = data.get("deviceModel") or {}
     for value in (
         data.get("modelNo"),
@@ -3452,7 +3444,7 @@ def _camera_image_epoch_seconds(value: Any) -> int | None:
     return timestamp
 
 
-def _camera_data(data: Dict) -> Dict:
+def _camera_data(data: dict) -> dict:
     device_model = data.get("deviceModel") or {}
     device_support = data.get("deviceSupport") or {}
     sd_card = data.get("sdCard") or {}
@@ -3581,7 +3573,7 @@ _CAMERA_USER_CONFIG_KEYS = (
 _CAMERA_BOOLEAN_USER_CONFIG_KEYS = {"deviceCallToggleOn"}
 
 
-def _camera_user_config_payload(camera: Entity, updates: Dict) -> Dict:
+def _camera_user_config_payload(camera: Entity, updates: dict) -> dict:
     """Return the APK UserConfigBean-style camera config payload."""
     payload = {"serialNumber": _camera_addx_serial(camera)}
     payload.update(
@@ -3595,7 +3587,7 @@ def _camera_user_config_payload(camera: Entity, updates: Dict) -> Dict:
     return payload
 
 
-def _add_camera_config_companions(camera: Entity, payload: Dict) -> None:
+def _add_camera_config_companions(camera: Entity, payload: dict) -> None:
     """Add companion config fields the APK sends with selected toggles."""
     if "needMotion" in payload and camera.data.get("motionSensitivity") is not None:
         payload["motionSensitivity"] = camera.data["motionSensitivity"]
@@ -3684,14 +3676,14 @@ def _option_debug_values(options: Any) -> list[dict[str, Any]]:
     return values
 
 
-def _camera_settings_options_data(data: Dict) -> Dict:
+def _camera_settings_options_data(data: dict) -> dict:
     """Return APK camera form options from /user/getFormOptions."""
     form_options = data.get("deviceFormOptions") or {} if isinstance(data, dict) else {}
     video_seconds_options = form_options.get("videoSeconds")
     cooldown_options = form_options.get("cooldown_in_s")
     video_seconds = _enabled_option_values(video_seconds_options)
     cooldown = _enabled_option_values(cooldown_options)
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     video_seconds_debug = _option_debug_values(video_seconds_options)
     cooldown_debug = _option_debug_values(cooldown_options)
     if video_seconds_debug:
@@ -3705,7 +3697,7 @@ def _camera_settings_options_data(data: Dict) -> Dict:
     return result
 
 
-def _camera_options_debug_context(camera: Entity) -> Dict:
+def _camera_options_debug_context(camera: Entity) -> dict:
     """Return safe camera option-list diagnostics."""
     return {
         "camera": _short_id(getattr(camera, "sn", None)),
@@ -3721,7 +3713,7 @@ def _camera_options_debug_context(camera: Entity) -> Dict:
     }
 
 
-def _camera_config_data(data: Dict) -> Dict:
+def _camera_config_data(data: dict) -> dict:
     cooldown = data.get("cooldown") or {}
     return {
         "alarmSeconds": data.get("alarmSeconds"),
@@ -3779,7 +3771,7 @@ def _camera_video_seconds_value(value):
     return -1 if value in (None, 0) else value
 
 
-def _camera_audio_data(data: Dict) -> Dict:
+def _camera_audio_data(data: dict) -> dict:
     audio = data.get("deviceAudio") or data
     ring_keys = audio.get("supportDoorBellRingKey") or []
     return {
@@ -3795,7 +3787,7 @@ def _camera_audio_data(data: Dict) -> Dict:
     }
 
 
-def _camera_doorbell_data(data: Dict) -> Dict:
+def _camera_doorbell_data(data: dict) -> dict:
     doorbell_config = data.get("doorbellConfig") or data
     return {
         "alarmWhenRemoveToggleOn": _addx_bool(
@@ -3804,7 +3796,7 @@ def _camera_doorbell_data(data: Dict) -> Dict:
     }
 
 
-def _camera_ai_notification_data(data: Dict) -> Dict:
+def _camera_ai_notification_data(data: dict) -> dict:
     """Return AI notification category settings from the APK response."""
     raw_items = data.get("list")
     if isinstance(data.get("data"), dict):
@@ -3847,7 +3839,7 @@ def _camera_ai_notification_data(data: Dict) -> Dict:
     return result
 
 
-def _camera_ai_notification_enabled(data: Dict) -> set[str]:
+def _camera_ai_notification_enabled(data: dict) -> set[str]:
     """Return currently enabled AI notification categories from entity data."""
     return {
         event_type
@@ -3856,7 +3848,7 @@ def _camera_ai_notification_enabled(data: Dict) -> set[str]:
     }
 
 
-def _camera_ai_notification_payload(enabled: set[str]) -> Dict:
+def _camera_ai_notification_payload(enabled: set[str]) -> dict:
     """Return the APK updateMessageNotification eventObjectType payload."""
     payload: dict[str, list[str]] = {"vehicle": [], "package": []}
     for group, group_types in _CAMERA_AI_NOTIFICATION_GROUPS.items():
@@ -3869,7 +3861,7 @@ def _camera_ai_notification_payload(enabled: set[str]) -> Dict:
     return payload
 
 
-def _camera_ai_notification_state_data(enabled: set[str]) -> Dict:
+def _camera_ai_notification_state_data(enabled: set[str]) -> dict:
     """Return flat entity data for AI notification category settings."""
     return {
         _camera_ai_notification_key(event_type): event_type in enabled
@@ -3882,7 +3874,7 @@ def _camera_ai_notification_key(event_type: str) -> str:
     return f"aiNotification{_camel_suffix(event_type)}"
 
 
-def _camera_ai_assistant_data(data: Dict, serial_number: str | None = None) -> Dict:
+def _camera_ai_assistant_data(data: dict, serial_number: str | None = None) -> dict:
     """Return AI assistant object switches from the APK response."""
     raw_items = data.get("data", data)
     if isinstance(raw_items, dict):
@@ -3904,7 +3896,7 @@ def _camera_ai_assistant_data(data: Dict, serial_number: str | None = None) -> D
     if not isinstance(object_list, list):
         return {}
 
-    result: Dict[str, bool] = {}
+    result: dict[str, bool] = {}
     supported: list[str] = []
     for item in object_list:
         if not isinstance(item, dict):

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from contextlib import suppress
-from datetime import datetime, timezone
 import json
+from contextlib import suppress
+from datetime import UTC, datetime
 from typing import Any
-
 
 APK_AI_DETECTION_OBJECTS = {
     "person",
@@ -107,27 +106,29 @@ __all__ = [
     "APK_MAILBOX_DEVICE_TYPES",
     "APK_SMARTDROP_DEVICE_TYPES",
     "MQTT_IDENTIFIER_KEYS",
+    "SELF_TEST_RESULT_KEYS",
+    "SELF_TEST_TIME_KEYS",
     "apk_ai_detection_name_times",
     "apk_ai_detection_names",
     "apk_ai_detection_object_times",
     "apply_apk_ai_detection_aliases",
+    "apply_apk_dispatch_aliases",
+    "apply_apk_event_aliases",
     "apply_apk_event_safe_alarm_aliases",
     "apply_apk_mailbox_alarm_aliases",
     "apply_apk_smartdrop_notice_aliases",
-    "apply_apk_dispatch_aliases",
-    "apply_apk_event_aliases",
     "camera_ai_history_event_key",
+    "camera_event_history_playback_data",
+    "camera_event_history_playback_source",
+    "camera_event_history_time",
     "camera_event_record_event_key",
     "camera_event_record_station_data",
     "camera_event_records",
-    "camera_event_history_playback_data",
-    "camera_event_history_playback_source",
     "camera_library_records",
-    "camera_event_history_time",
     "camera_playback_epoch_seconds",
-    "latest_apk_detection_time",
-    "is_self_test_topic",
     "is_presence_topic",
+    "is_self_test_topic",
+    "latest_apk_detection_time",
     "mqtt_identifier_candidates",
     "mqtt_identifier_key_name",
     "mqtt_reported_data",
@@ -135,8 +136,6 @@ __all__ = [
     "normalize_self_test_report",
     "normalize_self_test_result",
     "self_test_report_payload",
-    "SELF_TEST_RESULT_KEYS",
-    "SELF_TEST_TIME_KEYS",
 ]
 
 
@@ -478,7 +477,7 @@ def camera_event_history_time(value: Any) -> str | None:
         return str(value)
     if timestamp > 10_000_000_000:
         timestamp //= 1000
-    return datetime.fromtimestamp(timestamp, timezone.utc).strftime("%Y%m%d%H%M%S")
+    return datetime.fromtimestamp(timestamp, UTC).strftime("%Y%m%d%H%M%S")
 
 
 def apply_apk_dispatch_aliases(data: dict[str, Any]) -> None:

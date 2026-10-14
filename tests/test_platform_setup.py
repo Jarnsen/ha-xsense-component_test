@@ -1,15 +1,14 @@
-from types import SimpleNamespace
-from pathlib import Path
-
 import asyncio
 import inspect
 import json
 import logging
+from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
 import yaml
 from jinja2 import Environment
 from markupsafe import Markup
-import pytest
 from yaml.loader import SafeLoader
 
 import custom_components.xsense as xsense_module
@@ -20,12 +19,14 @@ from custom_components.xsense import (
     camera,
     config_flow,
     event,
-    recordings_media as media_source,
     number,
     repairs,
     select,
     sensor,
     switch,
+)
+from custom_components.xsense import (
+    recordings_media as media_source,
 )
 from custom_components.xsense.const import (
     CONF_RECORDING_CACHE_MODE,
@@ -1010,13 +1011,13 @@ def test_keypad_code_router_blueprint_maps_multiple_codes_to_actions():
 
 def test_ai_notification_blueprint_docs_use_github_file_import_url():
     expected_urls = (
-        "blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2F"
+        ("blueprint_url=https%3A%2F%2Fgithub.com%2FJarnsen%2F"
         "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
-        "automation%2Fxsense%2Fcamera_ai_notification.yaml",
-        "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
-        "automation%2Fxsense%2Fkeypad_code_action.yaml",
-        "ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
-        "automation%2Fxsense%2Fkeypad_code_router.yaml",
+        "automation%2Fxsense%2Fcamera_ai_notification.yaml"),
+        ("ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
+        "automation%2Fxsense%2Fkeypad_code_action.yaml"),
+        ("ha-xsense-component_test%2Fblob%2Fmain%2Fblueprints%2F"
+        "automation%2Fxsense%2Fkeypad_code_router.yaml"),
     )
 
     for path in Path("readme").glob("README_*.md"):
@@ -3483,7 +3484,8 @@ def test_recordings_panel_playback_serves_hls_before_legacy_mp4(
 ):
     from aiohttp import web
 
-    from custom_components.xsense import http, recordings_media as media_source
+    from custom_components.xsense import http
+    from custom_components.xsense import recordings_media as media_source
     from custom_components.xsense.recordings_media import XSenseRecordingsMediaSource
 
     clip_path = tmp_path / "clip.mp4"
@@ -3673,11 +3675,11 @@ def test_recordings_panel_playback_only_proxies_hls_on_demand(monkeypatch):
         if url == root_url:
             return (
                 (
-                    "#EXTM3U\n#EXT-X-TARGETDURATION:4\n"
-                    "#EXTINF:2,\nsegment-1.ts\n"
-                    "#EXTINF:2,\nsegment-2.ts\n"
-                    "#EXTINF:2,\nsegment-3.ts\n#EXT-X-ENDLIST\n"
-                ).encode(),
+                    b"#EXTM3U\n#EXT-X-TARGETDURATION:4\n"
+                    b"#EXTINF:2,\nsegment-1.ts\n"
+                    b"#EXTINF:2,\nsegment-2.ts\n"
+                    b"#EXTINF:2,\nsegment-3.ts\n#EXT-X-ENDLIST\n"
+                ),
                 http.HLS_MIME_TYPE,
                 root_url,
             )
@@ -3874,11 +3876,11 @@ def test_recordings_hls_proxy_classifies_suffixless_audio_playlist(monkeypatch):
         assert url == root_url
         return (
             (
-                '#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
-                'URI="audio/playlist?signature=audio"\n'
-                '#EXT-X-STREAM-INF:BANDWIDTH=1000,AUDIO="audio"\n'
-                "video/index.m3u8\n"
-            ).encode(),
+                b'#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
+                b'URI="audio/playlist?signature=audio"\n'
+                b'#EXT-X-STREAM-INF:BANDWIDTH=1000,AUDIO="audio"\n'
+                b"video/index.m3u8\n"
+            ),
             http.HLS_MIME_TYPE,
             url,
         )

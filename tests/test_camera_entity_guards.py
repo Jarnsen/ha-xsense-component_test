@@ -18,6 +18,8 @@ for module_name in list(sys.modules):
 if not hasattr(sys.modules.get("custom_components"), "__path__"):
     sys.modules.pop("custom_components", None)
 
+from homeassistant.const import EntityCategory, Platform
+
 from custom_components.xsense import (
     PLATFORMS,
     binary_sensor,
@@ -31,7 +33,6 @@ from custom_components.xsense import (
 )
 from custom_components.xsense.python_xsense import mapping
 from custom_components.xsense.python_xsense.entity_map import EntityType
-from homeassistant.const import EntityCategory, Platform
 
 
 def entity(device_type, data):
@@ -777,11 +778,11 @@ def test_camera_entities_keep_storage_health_without_raw_apk_metadata():
     }
     assert raw_metadata_keys.isdisjoint(descriptions)
 
-    for key in {
+    for key in (
         "camera_sd_card_status",
         "camera_sd_card_total",
         "camera_sd_card_used",
-    }:
+    ):
         assert descriptions[key].exists_fn(camera)
 
 
@@ -1789,8 +1790,8 @@ def test_motion_event_entity_caches_recording_before_trigger(monkeypatch, caplog
         (
             "trigger",
             "motion",
-            "/xsense-recordings#entry_id=entry-id&serial=camera-id"
-            "&start=1782049304&end=1782049334",
+            ("/xsense-recordings#entry_id=entry-id&serial=camera-id"
+            "&start=1782049304&end=1782049334"),
             "/media/local/xsense_recordings/videos/CAMERA-SN_1782049304_1782049334.mp4",
             "cached_media",
             False,
@@ -5653,8 +5654,8 @@ def test_ai_detection_event_entity_does_not_write_before_added():
 
 
 def test_camera_availability_follows_apk_non_offline_statuses():
-    from custom_components.xsense.python_xsense.entity_map import EntityType
     from custom_components.xsense.entity import _apk_entity_is_available
+    from custom_components.xsense.python_xsense.entity_map import EntityType
 
     camera = SimpleNamespace(
         entity_type=EntityType.CAMERA,
@@ -5690,7 +5691,6 @@ async def test_webrtc_offer_uses_ticket_without_direct_stream_keepalive():
     class XSense:
         async def get_camera_webrtc_ticket(self, entity, *, force_refresh=False):
             calls.append(("ticket", entity.sn, force_refresh))
-            return None
 
     class Coordinator:
         def __init__(self):
@@ -5715,11 +5715,11 @@ async def test_webrtc_offer_uses_ticket_without_direct_stream_keepalive():
 
 
 async def test_webrtc_offer_reports_ticket_api_failure_without_raising(caplog):
-    from custom_components.xsense.python_xsense.exceptions import APIFailure
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseWebRTCCameraEntity,
     )
+    from custom_components.xsense.python_xsense.exceptions import APIFailure
 
     camera_entity = entity("SSC0A", {"streamProtocol": "webrtc"})
     camera_entity.entity_id = "camera-test"
@@ -6036,7 +6036,9 @@ def test_webrtc_candidate_debug_context_hides_raw_candidate():
 
 
 def test_camera_live_resolution_defaults_to_apk_live_view_default():
-    from custom_components.xsense.python_xsense.async_xsense import camera_live_resolution
+    from custom_components.xsense.python_xsense.async_xsense import (
+        camera_live_resolution,
+    )
 
     camera_entity = entity(
         "SSC0A",
@@ -6223,7 +6225,6 @@ async def test_camera_image_uses_adapter_and_keeps_last_good_image():
 
         def camera_event_snapshot(self, current):
             assert current is camera_entity
-            return None
 
         def async_add_listener(self, *args, **kwargs):
             return lambda: None
@@ -6460,12 +6461,13 @@ async def test_failed_webrtc_signal_start_is_removed_from_sessions(monkeypatch):
 async def test_webrtc_offer_uses_accepted_ticket_serial_for_signal_recipient(
     monkeypatch,
 ):
+    from homeassistant.components.camera.webrtc import WebRTCAnswer
+
     from custom_components.xsense import camera as camera_module
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
         XSenseWebRTCCameraEntity,
     )
-    from homeassistant.components.camera.webrtc import WebRTCAnswer
 
     camera_entity = entity(
         "SSC0A",
@@ -6594,6 +6596,7 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
 ):
     caplog.set_level("DEBUG", logger="custom_components.xsense")
     from homeassistant.components.camera.webrtc import WebRTCAnswer
+
     from custom_components.xsense import camera as camera_module
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,
@@ -6699,6 +6702,7 @@ async def test_early_webrtc_candidate_is_queued_until_signal_session_exists(
 
 async def test_new_webrtc_offer_closes_previous_signal_session(monkeypatch):
     from homeassistant.components.camera.webrtc import WebRTCAnswer
+
     from custom_components.xsense import camera as camera_module
     from custom_components.xsense.camera import (
         CAMERA_DESCRIPTION,

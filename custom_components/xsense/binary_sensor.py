@@ -5,12 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .python_xsense.async_xsense import is_camera_entity
-from .python_xsense.device import Device
-from .python_xsense.entity import Entity
-from .python_xsense.entity_map import EntityType, entities
-from .python_xsense.station import Station
-
 from homeassistant import config_entries
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -30,6 +24,11 @@ from .entity import (
     device_station_id,
     setup_dynamic_entities,
 )
+from .python_xsense.async_xsense import is_camera_entity
+from .python_xsense.device import Device
+from .python_xsense.entity import Entity
+from .python_xsense.entity_map import EntityType, entities
+from .python_xsense.station import Station
 
 
 @dataclass(kw_only=True, frozen=True)

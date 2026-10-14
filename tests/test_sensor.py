@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -136,7 +136,7 @@ def test_radon_peak_entities_use_apk_values():
 
     assert _sensor_description("radon_peak").value_fn(entity) == 148.5
     assert _sensor_description("radon_peak_time").value_fn(entity) == datetime(
-        2026, 7, 19, 10, 10, 11, tzinfo=timezone.utc
+        2026, 7, 19, 10, 10, 11, tzinfo=UTC
     )
 
 

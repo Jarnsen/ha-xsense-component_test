@@ -2,16 +2,14 @@
 
 import asyncio
 from copy import deepcopy
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace as NS
 from unittest.mock import AsyncMock
 
 import pytest
-
 from test_audit_repairs import event_entity, make_coordinator, make_station, module
 
-
-BASE = datetime(2026, 9, 1, 12, tzinfo=timezone.utc)
+BASE = datetime(2026, 9, 1, 12, tzinfo=UTC)
 
 
 def compact(value):
@@ -23,7 +21,7 @@ def trusted_clock(monkeypatch):
     class Clock(datetime):
         @classmethod
         def now(cls, tz=None):
-            return datetime(2030, 1, 1, tzinfo=timezone.utc).astimezone(tz)
+            return datetime(2030, 1, 1, tzinfo=UTC).astimezone(tz)
 
     monkeypatch.setattr(module, "datetime", Clock)
 
@@ -162,7 +160,7 @@ def test_window_boundary_out_of_order_clock_rollback_and_future_poison(monkeypat
     class EarlierClock(datetime):
         @classmethod
         def now(cls, tz=None):
-            return datetime(2020, 1, 1, tzinfo=timezone.utc).astimezone(tz)
+            return datetime(2020, 1, 1, tzinfo=UTC).astimezone(tz)
 
     monkeypatch.setattr(module, "datetime", EarlierClock)
     window.advance([(source, compact(BASE))])
@@ -282,7 +280,7 @@ async def test_latest_same_time_ai_identity_retries_enrichment_not_earlier_ident
     c.hass = NS(
         data={}, async_create_task=lambda coro: tasks.append(asyncio.create_task(coro))
     )
-    e, fired = event_entity(c, camera, ai=True)
+    _e, fired = event_entity(c, camera, ai=True)
     cache = AsyncMock(side_effect=["", "/media/local/ready.mp4"])
     monkeypatch.setattr(recordings_media, "async_cache_recording_playback", cache)
     monkeypatch.setattr(

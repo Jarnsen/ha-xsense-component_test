@@ -9,8 +9,12 @@ from unittest.mock import AsyncMock
 import pytest
 
 from custom_components.xsense import identity_store as storage
-from custom_components.xsense.entity import _serial_identity, _stable_device_id
-from custom_components.xsense.entity import _entity_by_id_or_serial, setup_dynamic_entities
+from custom_components.xsense.entity import (
+    _entity_by_id_or_serial,
+    _serial_identity,
+    _stable_device_id,
+    setup_dynamic_entities,
+)
 
 
 def device(identifier="old", *, serial="SERIAL", model="MODEL", house="house", parent=None):

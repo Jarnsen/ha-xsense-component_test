@@ -50,7 +50,7 @@ class XSenseWebRTCTicket:
     ice_servers: list[dict[str, Any]] | None = None
 
     @classmethod
-    def from_api(cls, serial_number: str, data: dict[str, Any]) -> "XSenseWebRTCTicket":
+    def from_api(cls, serial_number: str, data: dict[str, Any]) -> XSenseWebRTCTicket:
         """Build a ticket from the Android app getWebrtcTicket response."""
         return cls(
             serial_number=serial_number,
@@ -326,7 +326,7 @@ class XSenseWebRTCSignalSession:
         except asyncio.CancelledError:
             reader_exit = "reader_cancelled"
             raise
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - websocket reads can raise transport-specific errors.
             reader_exit = "reader_error"
             if not self._answer.done():
                 self._answer.set_exception(err)
@@ -377,7 +377,7 @@ class XSenseWebRTCSignalSession:
         )
         try:
             await self._connect_signal()
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001 - websocket reconnect errors are transport-specific.
             LOGGER.debug(
                 "X-Sense WebRTC signal relay reconnect failed: %s",
                 self._debug_context(error=_exception_debug(err)),
@@ -1276,7 +1276,7 @@ def _signal_envelope_debug(payload: str) -> dict[str, Any]:
         data = json.loads(payload)
         if isinstance(data, dict):
             return {
-                "keys": sorted(str(key) for key in data.keys()),
+                "keys": sorted(str(key) for key in data),
                 "message_type": data.get("messageType"),
                 "sender": _short_id(data.get("senderClientId")),
                 "recipient": _short_id(data.get("recipientClientId")),
@@ -1325,7 +1325,7 @@ def _exception_debug(err: BaseException) -> dict[str, Any]:
 
 def _payload_debug(payload: Any) -> str:
     if isinstance(payload, dict):
-        keys = sorted(str(key) for key in payload.keys())
+        keys = sorted(str(key) for key in payload)
         return f"dict_keys={keys}"
     if isinstance(payload, str):
         return f"str:{_short_id(payload)}"

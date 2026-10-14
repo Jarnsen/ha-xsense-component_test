@@ -1,17 +1,16 @@
-from typing import List, Dict
 
 from .aws_signer import AWSSigner
-from .station import Station
-from .mqtt_helper import MQTTHelper
 from .entity_map import EntityType
+from .mqtt_helper import MQTTHelper
+from .station import Station
 
 
 class House:
-    rooms: Dict[str, Dict[str, str]] = None
-    room_order: List[str] = None
+    rooms: dict[str, dict[str, str]] = None
+    room_order: list[str] = None
 
-    stations: Dict[str, Station] = None
-    station_order: List[str] = None
+    stations: dict[str, Station] = None
+    station_order: list[str] = None
 
     def __init__(
         self,
@@ -121,7 +120,6 @@ class House:
             if shadow_name is not None and str(shadow_name) == key:
                 return station
             station_type = getattr(station, "type", None)
-            if station_type and serial not in (None, ""):
-                if key in {f"{station_type}-{serial}", f"{station_type}{serial}"}:
-                    return station
+            if station_type and serial not in (None, "") and key in {f"{station_type}-{serial}", f"{station_type}{serial}"}:
+                return station
         return None

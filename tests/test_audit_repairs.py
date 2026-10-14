@@ -177,7 +177,7 @@ def event_entity(c, camera, *, ai=False):
 async def test_empty_ai_baseline_is_initialized_per_service():
     s = make_station("camera", "SSC0A")
     c = make_coordinator(s)
-    e, fired = event_entity(c, s, ai=True)
+    _e, fired = event_entity(c, s, ai=True)
     c.xsense.get_ai_service_history = AsyncMock(return_value={"alarmItems": []})
     assert not await c._update_camera_ai_service_history(["service"])
     c.xsense.get_ai_service_history.return_value = {
@@ -259,8 +259,8 @@ def test_history_delivery_does_not_match_another_cameras_secondary_alias(ai):
     a, b = (make_station(name, "SSC0A") for name in ("A", "B"))
     b.sn = "A"
     c = make_coordinator(a, b)
-    ea, fired_a = event_entity(c, a, ai=ai)
-    eb, fired_b = event_entity(c, b, ai=ai)
+    _ea, fired_a = event_entity(c, a, ai=ai)
+    _eb, fired_b = event_entity(c, b, ai=ai)
     b.set_data(
         {
             "eventTime": "20260908120000",
@@ -277,7 +277,7 @@ def test_history_delivery_does_not_match_another_cameras_secondary_alias(ai):
 def test_mqtt_mode_result_reaches_panel_during_discovery_replacement(
     monkeypatch, shadow
 ):
-    c, old, p, notices = make_panel(monkeypatch)
+    c, _old, p, notices = make_panel(monkeypatch)
     new = make_station()
     c.xsense.houses["house"].stations[new.entity_id] = new
     receive(c, new, shadow, safeMode="Home", forceReason=[{"door": "1"}])
@@ -412,7 +412,7 @@ async def test_history_poller_retries_current_failed_preparation_without_replayi
     c.hass = NS(
         data={}, async_create_task=lambda coro: tasks.append(asyncio.create_task(coro))
     )
-    e, fired = event_entity(c, s, ai=ai)
+    _e, fired = event_entity(c, s, ai=ai)
     cache = AsyncMock(side_effect=["", "/media/local/ready.mp4"])
     monkeypatch.setattr(recordings_media, "async_cache_recording_playback", cache)
     monkeypatch.setattr(

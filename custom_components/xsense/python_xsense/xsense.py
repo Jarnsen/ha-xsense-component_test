@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta
-from typing import Dict, Optional
+from datetime import datetime
 
 import requests
 
@@ -7,7 +6,7 @@ from .aws_signer import AWSSigner
 from .base import XSenseBase
 from .entity import Entity
 from .entity_map import entities
-from .exceptions import APIFailure, SessionExpired, NotFoundError, XSenseError
+from .exceptions import APIFailure, SessionExpired, XSenseError
 from .house import House
 from .station import Station
 
@@ -90,7 +89,7 @@ class XSense(XSenseBase):
         self._lastres = res
         return res.json()
 
-    def do_thing(self, station: Station, page: str, data: Dict):
+    def do_thing(self, station: Station, page: str, data: dict):
         if self._aws_token_expiring():
             self.load_aws()
 
@@ -183,7 +182,7 @@ class XSense(XSenseBase):
         }
         return self.api_call("103007", **params)
 
-    def get_history(self, houseId: str, dayTime: str, timeZone: str, nextToken: Optional[str] = None):
+    def get_history(self, houseId: str, dayTime: str, timeZone: str, nextToken: str | None = None):
         params = {
             'houseId': houseId,
             'dayTime': dayTime,
@@ -207,8 +206,8 @@ class XSense(XSenseBase):
         stationId: str,
         dayTime: str,
         timeZone: str,
-        deviceId: Optional[str] = None,
-        nextToken: Optional[str] = None,
+        deviceId: str | None = None,
+        nextToken: str | None = None,
     ):
         params = {
             'houseId': houseId,
@@ -239,7 +238,7 @@ class XSense(XSenseBase):
         }
         return self.api_call("104008", **params)
 
-    def get_security_history(self, serverId: str, nextToken: Optional[str] = None):
+    def get_security_history(self, serverId: str, nextToken: str | None = None):
         params = {
             'serverId': serverId,
         }
@@ -252,7 +251,7 @@ class XSense(XSenseBase):
         houseId: str,
         stationId: str,
         lastTime: str = "",
-        nextToken: Optional[str] = None,
+        nextToken: str | None = None,
     ):
         params = {
             'houseId': houseId,
@@ -263,7 +262,7 @@ class XSense(XSenseBase):
             params['nextToken'] = nextToken
         return self.api_call("104020", **params)
 
-    def get_co_ppm_history(self, stationId: str, timeZone: str, deviceId: Optional[str] = None):
+    def get_co_ppm_history(self, stationId: str, timeZone: str, deviceId: str | None = None):
         params = {
             'stationId': stationId,
             'timeZone': timeZone,
@@ -279,7 +278,7 @@ class XSense(XSenseBase):
         stationId: str,
         dayTime: str,
         timeZone: str,
-        deviceId: Optional[str] = None,
+        deviceId: str | None = None,
     ):
         params = {
             'houseId': houseId,
@@ -338,14 +337,14 @@ class XSense(XSenseBase):
             res = self.get_thing(station, '2nd_mainpage')
 
         if res is None or self._lastres.status_code == 404:
-            res = self.get_thing(station, f'mainpage')
+            res = self.get_thing(station, 'mainpage')
 
         if 'reported' in res.get('state', {}):
             self.parse_get_state(station, res['state']['reported'])
         else:
             raise APIFailure(f'Unable to retrieve station data: {self._lastres.status_code}/{self._lastres.text}')
 
-    def set_state(self, entity: Entity, shadow: str, topic: str, definition: Dict):
+    def set_state(self, entity: Entity, shadow: str, topic: str, definition: dict):
         station = entity.station
         t = datetime.now()
         timestamp = t.strftime('%Y%m%d%H%M%S')
@@ -361,7 +360,7 @@ class XSense(XSenseBase):
 
         data = {"state": {"desired": desired}}
 
-        res = self.do_thing(station, topic, data)
+        self.do_thing(station, topic, data)
 
     def action(self, entity: Entity, action: str):
         entity_def = entities.get(entity.type)

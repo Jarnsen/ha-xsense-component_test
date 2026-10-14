@@ -1,5 +1,5 @@
-from collections.abc import Callable
 import typing
+from collections.abc import Callable
 
 property_mapper = {
     "*": {"wifiRssi": "wifiRSSI"},
@@ -311,7 +311,7 @@ def map_type(k: str, value: typing.Any):
     return type_mapping[k](value) if k in type_mapping else value
 
 
-def map_values(device_type: str, data: typing.Dict):
+def map_values(device_type: str, data: dict):
     mapping = property_mapper.get("*", {}) | property_mapper.get(device_type, {})
     if device_type in {"STH51", "STH0A", "STH0B", "XC0M-iR"}:
         mapping |= {

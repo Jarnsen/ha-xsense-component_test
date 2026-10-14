@@ -4,7 +4,11 @@ import json
 
 import pytest
 
-from custom_components.xsense.python_xsense.webrtc_trace import frame_context, trace_host, trace_id
+from custom_components.xsense.python_xsense.webrtc_trace import (
+    frame_context,
+    trace_host,
+    trace_id,
+)
 
 
 @pytest.mark.parametrize("encoded", [False, True])

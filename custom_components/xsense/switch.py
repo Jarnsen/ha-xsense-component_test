@@ -5,25 +5,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from .python_xsense.device import Device
-from .python_xsense.entity import Entity
-from .python_xsense.entity_map import EntityType
-from .python_xsense.async_xsense import (
-    CAMERA_AI_ASSISTANT_TYPES,
-    CAMERA_AI_NOTIFICATION_TYPES,
-    _camera_config_write_value,
-    is_camera_entity,
-)
-
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_platform
-
-import voluptuous as vol
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
@@ -35,7 +24,15 @@ from .entity import (
     setup_dynamic_entities,
 )
 from .errors import xsense_error
-
+from .python_xsense.async_xsense import (
+    CAMERA_AI_ASSISTANT_TYPES,
+    CAMERA_AI_NOTIFICATION_TYPES,
+    _camera_config_write_value,
+    is_camera_entity,
+)
+from .python_xsense.device import Device
+from .python_xsense.entity import Entity
+from .python_xsense.entity_map import EntityType
 
 ATTR_ENABLED = "enabled"
 ATTR_END_TIME = "end_time"

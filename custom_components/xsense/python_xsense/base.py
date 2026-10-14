@@ -4,9 +4,9 @@ import hashlib
 import hmac
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
-from typing import Dict
+from typing import ClassVar
 
 import boto3
 from botocore.config import Config
@@ -17,8 +17,8 @@ from .aws_signer import get_global_time_offset, set_global_time_offset
 from .entity import Entity
 from .entity_map import entities
 from .exceptions import APIFailure, AuthFailed
-from .station import Station
 from .house import House
+from .station import Station
 
 LOGGER = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ def _jwt_claim(token: str | None, claim: str):
     return str(value) if value is not None else None
 
 
-def shadow_update_body(data: Dict) -> str:
+def shadow_update_body(data: dict) -> str:
     return json.dumps(data, ensure_ascii=False, separators=(',', ':'))
 
 
@@ -87,7 +87,7 @@ class XSenseBase:
     APPCODE = "1400"
     CLIENTYPE = "2"
     IPC_API = 'https://ipc.x-sense-iot.com'
-    ADDX_API_BY_NODE = {
+    ADDX_API_BY_NODE: ClassVar[dict[str, str]] = {
         'CN': 'https://api.addx.live',
         'EU': 'https://api-eu.vicohome.io',
         'US': 'https://api-us.vicohome.io',
@@ -127,7 +127,7 @@ class XSenseBase:
     _lastres = None
 
     def __init__(self):
-        self.houses: Dict[str, House] = {}
+        self.houses: dict[str, House] = {}
         self._addx_session = None
         self._addx_sessions_by_node: dict[str, dict] = {}
 
@@ -184,7 +184,7 @@ class XSenseBase:
             self.id_token = auth_result['IdToken']
             self.refresh_token = auth_result['RefreshToken']
             self._set_user_id_code_from_tokens()
-            self.access_token_expiry = datetime.now(timezone.utc) + timedelta(seconds=auth_result['ExpiresIn'])
+            self.access_token_expiry = datetime.now(UTC) + timedelta(seconds=auth_result['ExpiresIn'])
 
         except ClientError as e:
             self._raise_cognito_error(e)
@@ -206,8 +206,8 @@ class XSenseBase:
         self.refresh_token = refresh_token
         self.id_token = id_token
         self._set_user_id_code_from_tokens()
-        self.access_token_expiry = datetime.now(timezone.utc)
-        self.aws_access_expiry = datetime.now(timezone.utc)
+        self.access_token_expiry = datetime.now(UTC)
+        self.aws_access_expiry = datetime.now(UTC)
 
     def _set_user_id_code_from_tokens(self):
         self.user_id_code = None
@@ -217,10 +217,10 @@ class XSenseBase:
                 return
 
     def _access_token_expiring(self):
-        return datetime.now(timezone.utc) > self.access_token_expiry - timedelta(seconds=60)
+        return datetime.now(UTC) > self.access_token_expiry - timedelta(seconds=60)
 
     def _aws_token_expiring(self):
-        return datetime.now(timezone.utc) > self.aws_access_expiry - timedelta(seconds=60)
+        return datetime.now(UTC) > self.aws_access_expiry - timedelta(seconds=60)
 
     def _apply_clock_skew_from_response(self, response) -> bool:
         """Learn the host clock-skew offset from an AWS response Date header.
@@ -245,8 +245,8 @@ class XSenseBase:
         if server_date is None:
             return False
         if server_date.tzinfo is None:
-            server_date = server_date.replace(tzinfo=timezone.utc)
-        offset = (datetime.now(timezone.utc) - server_date).total_seconds()
+            server_date = server_date.replace(tzinfo=UTC)
+        offset = (datetime.now(UTC) - server_date).total_seconds()
         if abs(offset) < _CLOCK_SKEW_THRESHOLD_SECONDS:
             return False
         if abs(offset - get_global_time_offset()) < 1:
@@ -287,7 +287,7 @@ class XSenseBase:
         # codeql[py/weak-sensitive-data-hashing]
         return hashlib.new("md5", mac_data, usedforsecurity=False).hexdigest()
 
-    def _signed_body(self, data: Dict | None, code: str, *, ipc: bool = False) -> Dict:
+    def _signed_body(self, data: dict | None, code: str, *, ipc: bool = False) -> dict:
         data = dict(data or {})
         data['mac'] = self._calculate_mac(data)
         data['bizCode'] = code
@@ -316,7 +316,7 @@ class XSenseBase:
             "ClientId": self.clientid,
             "UserContextData": {}
         }
-        t = datetime.now(timezone.utc)
+        t = datetime.now(UTC)
         amz_date = t.strftime('%Y%m%dT%H%M%SZ')
         headers = {
             'x-amz-date': amz_date,
@@ -362,7 +362,7 @@ class XSenseBase:
 
         return url, headers
 
-    def _parse_refresh_result(self, data: Dict):
+    def _parse_refresh_result(self, data: dict):
         if 'RefreshToken' in data:
             self.refresh_token = data['RefreshToken']
         if 'AccessToken' in data:
@@ -371,9 +371,9 @@ class XSenseBase:
             self.id_token = data['IdToken']
         self._set_user_id_code_from_tokens()
         if 'ExpiresIn' in data:
-            self.access_token_expiry = datetime.now(timezone.utc) + timedelta(seconds=data['ExpiresIn'])
+            self.access_token_expiry = datetime.now(UTC) + timedelta(seconds=data['ExpiresIn'])
 
-    def parse_get_state(self, station: Station, data: Dict, *, mode_result: str | None = None):
+    def parse_get_state(self, station: Station, data: dict, *, mode_result: str | None = None):
         if isinstance(data, list):
             station_data = {}
             children = data
@@ -411,7 +411,7 @@ class XSenseBase:
                 _normalize_apk_alarm_status(child_state)
                 dev.set_data(child_state)
 
-    def _parse_get_house_state(self, house: House, data: Dict):
+    def _parse_get_house_state(self, house: House, data: dict):
         for sn, i in data.items():
             if station := house.get_station_by_sn(sn):
                 self.parse_get_state(station, i)
@@ -450,7 +450,7 @@ class XSenseBase:
         station.safe_mode = safe_mode
         station.set_data({"safeMode": safe_mode})
 
-    def action_definition(self, entity: Entity, action: str) -> Dict | None:
+    def action_definition(self, entity: Entity, action: str) -> dict | None:
         """Return the supported action definition for an entity, if resolvable."""
         entity_def = entities.get(entity.type)
         if not entity_def:
@@ -467,7 +467,7 @@ class XSenseBase:
         return self.action_definition(entity, action) is not None
 
 
-def _action_route_resolves(entity: Entity, action_def: Dict) -> bool:
+def _action_route_resolves(entity: Entity, action_def: dict) -> bool:
     """Return whether an app shadow action can resolve for this entity context."""
     if not getattr(entity, 'sn', None):
         return False
@@ -500,15 +500,14 @@ def _state_child_device(station: Station, child_key, child_state):
     """Return the child device targeted by an app shadow payload."""
     for value in _child_state_identifiers(child_key, child_state):
         getter = getattr(station, "get_device_by_identifier", None)
-        if getter is not None:
-            if dev := getter(value):
-                return dev
+        if getter is not None and (dev := getter(value)):
+            return dev
         if dev := station.get_device_by_sn(value):
             return dev
     return None
 
 
-def _merge_top_level_child_state(station: Station, station_data: Dict, children):
+def _merge_top_level_child_state(station: Station, station_data: dict, children):
     """Move APK child-id keyed shadow records into the child update collection."""
     if isinstance(children, dict):
         child_updates = children.copy()
@@ -576,7 +575,7 @@ def _child_state_identifiers(child_key, child_state) -> tuple[str, ...]:
     return tuple(result)
 
 
-def _apply_sbs50_mode_result(station: Station, station_data: Dict) -> None:
+def _apply_sbs50_mode_result(station: Station, station_data: dict) -> None:
     """Retain the SBS50 mode result for the active alarm-panel request."""
     if "forceReason" not in station_data:
         if "safeMode" in station_data:
@@ -591,7 +590,7 @@ def _apply_sbs50_mode_result(station: Station, station_data: Dict) -> None:
     )
 
 
-def _apply_group_light_state(station: Station, station_data: Dict, children) -> bool:
+def _apply_group_light_state(station: Station, station_data: dict, children) -> bool:
     group_id = station_data.get('groupId')
     if group_id is None:
         return False
@@ -619,7 +618,7 @@ def _is_active_state(value) -> bool:
     return False
 
 
-def _normalize_apk_alarm_status(data: Dict) -> None:
+def _normalize_apk_alarm_status(data: dict) -> None:
     """Mirror APK alarm topic state into the canonical alarmStatus key."""
     if "alarmStatus" in data or "a" in data:
         return
@@ -627,7 +626,7 @@ def _normalize_apk_alarm_status(data: Dict) -> None:
         data["alarmStatus"] = data["isAlarm"]
 
 
-def _apply_apk_child_context(station_data: Dict, child: Entity, child_state: Dict) -> None:
+def _apply_apk_child_context(station_data: dict, child: Entity, child_state: dict) -> None:
     """Apply APK parent shadow fields that belong to specific child devices."""
     if "coLevel" not in station_data or "coLevel" in child_state:
         return

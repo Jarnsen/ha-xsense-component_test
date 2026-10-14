@@ -2,22 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import asyncio
+from collections.abc import Callable
 from copy import copy, deepcopy
 from dataclasses import dataclass
 from time import monotonic
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
-
-from .python_xsense.async_xsense import (
-    camera_addx_serial,
-    cameras_share_identity,
-    is_camera_entity,
-)
-from .python_xsense.device import Device
-from .python_xsense.entity import Entity
-from .python_xsense.entity_map import EntityType
 
 from homeassistant import config_entries
 from homeassistant.components.event import (
@@ -27,8 +18,8 @@ from homeassistant.components.event import (
 )
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CAMERA_AI_SERVICE_AVAILABLE, DOMAIN, LOGGER
 from .entity import (
@@ -37,6 +28,14 @@ from .entity import (
     setup_dynamic_entities,
 )
 from .frontend import recordings_panel_url
+from .python_xsense.async_xsense import (
+    camera_addx_serial,
+    cameras_share_identity,
+    is_camera_entity,
+)
+from .python_xsense.device import Device
+from .python_xsense.entity import Entity
+from .python_xsense.entity_map import EntityType
 
 if TYPE_CHECKING:
     from .coordinator import XSenseDataUpdateCoordinator
