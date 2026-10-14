@@ -124,6 +124,20 @@ def test_mute_button_is_a_visible_device_control():
     assert description.entity_category is None
 
 
+def test_entity_icons_match_their_reported_semantics():
+    """Keep static icons neutral when an entity has multiple possible states."""
+    sensor_icons = {description.key: description.icon for description in sensor.SENSORS}
+    number_icons = {description.key: description.icon for description in number.NUMBERS}
+    button_icons = {description.key: description.icon for description in button.BUTTONS}
+
+    assert sensor_icons["device_status"] == "mdi:shield-outline"
+    assert sensor_icons["wifi_rssi_level"] == "mdi:wifi"
+    assert sensor_icons["zone_name"] == "mdi:map-clock-outline"
+    assert number_icons["radon_minimum_threshold"] == "mdi:radioactive"
+    assert button_icons["test"] == "mdi:check-circle-outline"
+    assert event.MAILBOX_ALARM_DESCRIPTION.icon == "mdi:mailbox-up"
+
+
 def test_precreated_sensor_values_are_safe_before_first_payload():
     station = SimpleNamespace(
         type="SBS50",

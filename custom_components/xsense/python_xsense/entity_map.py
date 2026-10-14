@@ -604,6 +604,23 @@ entities = {
             FireDrillAction(),
         ],
     },
+    # APK isDeviceXP0AMR regional aliases.
+    "CB0T-3B": {
+        "type": EntityType.COMBI,
+        "actions": [
+            SBS50SecondGenTestAction(),
+            SBS50SecondGenAlarmMuteAction("appXp0amrMute"),
+            FireDrillAction(),
+        ],
+    },
+    "LP/R-SCA(VL)-0G": {
+        "type": EntityType.COMBI,
+        "actions": [
+            SBS50SecondGenTestAction(),
+            SBS50SecondGenAlarmMuteAction("appXp0amrMute"),
+            FireDrillAction(),
+        ],
+    },
     "XR0A-iR": {
         "type": EntityType.RADON,
         "actions": [WifiExtendedMuteAction()],
@@ -664,6 +681,15 @@ entities = {
         ],
     },
     "XP0A-iR": {
+        "type": EntityType.COMBI,
+        "actions": [WifiAlarmMuteAction()],
+    },
+    # APK isDeviceWifiXp0aIrSeries regional aliases.
+    "CB0T-4B": {
+        "type": EntityType.COMBI,
+        "actions": [WifiAlarmMuteAction()],
+    },
+    "W/R-SCA(VL)-0G": {
         "type": EntityType.COMBI,
         "actions": [WifiAlarmMuteAction()],
     },
