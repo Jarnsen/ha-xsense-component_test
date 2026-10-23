@@ -27,12 +27,17 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Run OpenSSF Scorecard
-        uses: ossf/scorecard-action@ff5dd8929f96a8a4dc67d13f32b8c75057829621 # v2.4.0
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          results_file: results.sarif
-          results_format: sarif
-          publish_results: true
+          go-version: "1.26.5"
+
+      - name: Run OpenSSF Scorecard
+        env:
+          SCORECARD_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          go install github.com/ossf/scorecard/v5@v5.6.0
+          "${HOME}/go/bin/scorecard" --repo="${{ github.server_url }}/${{ github.repository }}" --format=sarif --output=results.sarif
 
       - name: Upload Scorecard SARIF
         uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
