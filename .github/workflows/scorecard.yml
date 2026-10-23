@@ -34,9 +34,10 @@ jobs:
 
       - name: Run OpenSSF Scorecard
         env:
+          ENABLE_SARIF: "1"
           SCORECARD_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          go install github.com/ossf/scorecard/v5@v5.6.0
+          go install github.com/ossf/scorecard/v4@v4.13.1
           "${HOME}/go/bin/scorecard" --repo="${{ github.server_url }}/${{ github.repository }}" --format=sarif --output=results.sarif
 
       - name: Upload Scorecard SARIF
