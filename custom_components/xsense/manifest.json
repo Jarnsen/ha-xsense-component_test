@@ -4,6 +4,7 @@
   "codeowners": [
     "@theosnel"
   ],
+  "categories": ["security"],
   "config_flow": true,
   "dependencies": [
     "ffmpeg",

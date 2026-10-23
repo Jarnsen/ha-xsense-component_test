@@ -58,11 +58,11 @@ jobs:
         run: python -m pytest -p pytest_asyncio.plugin -q
 
       - name: Install browser test dependencies
-        if: github.repository_owner == 'Wheemer' && matrix.python-version == '3.14'
+        if: matrix.python-version == '3.14'
         run: |
           python -m pip install -r requirements-ui-test.txt
           python -m playwright install --with-deps chromium
 
       - name: Test recordings panel in all supported languages
-        if: github.repository_owner == 'Wheemer' && matrix.python-version == '3.14'
+        if: matrix.python-version == '3.14'
         run: python scripts/test-recordings-panel-browser.py
