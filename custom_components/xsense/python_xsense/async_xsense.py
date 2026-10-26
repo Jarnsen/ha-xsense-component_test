@@ -387,7 +387,7 @@ def _camera_webrtc_ticket_valid(ticket: dict) -> bool:
     if expiration in (None, ""):
         return False
     try:
-        return int(expiration) > int(datetime.now().timestamp() * 1000)
+        return int(expiration) > int(datetime.now(UTC).timestamp() * 1000)
     except (TypeError, ValueError):
         return False
 
