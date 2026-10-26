@@ -67,7 +67,16 @@ HA_ALIAS_LOCALES = {
 
 
 def _version_key(version: str) -> tuple[int, ...]:
-    return tuple(int(part) for part in version.split("."))
+    match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)(?:[-.](\d+))?", version)
+    assert match is not None
+    major, minor, patch, prerelease = match.groups()
+    return (
+        int(major),
+        int(minor),
+        int(patch),
+        1 if prerelease is None else 0,
+        int(prerelease or 0),
+    )
 
 
 def _release_note_version(path: Path) -> str:
