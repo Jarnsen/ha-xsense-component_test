@@ -27,7 +27,7 @@ class XSense(XSenseBase):
     def __exit__(self, exc_type, exc, traceback):
         self.close()
 
-    def api_call(self, code, unauth=False, **kwargs):
+    def api_call(self, code, unauth=False, return_envelope=False, **kwargs):
         data = {
             **kwargs
         }
@@ -69,7 +69,7 @@ class XSense(XSenseBase):
                 raise SessionExpired(data.get('reMsg'))
             raise APIFailure(f"Request for code {code} failed with error {errCode}/{data['reCode']} {data.get('reMsg')}")
 
-        return data['reData']
+        return data if return_envelope else data['reData']
 
     def get_house(self, house: House, page: str):
         if self._aws_token_expiring():
@@ -122,7 +122,13 @@ class XSense(XSenseBase):
         self.get_client_info()
 
     def load_aws(self):
-        self.get_aws_tokens()
+        if self.identity_enabled is None:
+            self.get_identity_mode()
+        if self.identity_enabled:
+            self.get_identity_auth_info()
+            self.get_identity_aws_tokens()
+        else:
+            self.get_aws_tokens()
         if self.signer:
             self.signer.update(self.aws_access_key, self.aws_secret_access_key, self.aws_session_token)
         else:
@@ -161,6 +167,27 @@ class XSense(XSenseBase):
         self.aws_secret_access_key = data['secretAccessKey']
         self.aws_session_token = data['sessionToken']
         self.aws_access_expiry = datetime.strptime(data['expiration'], "%Y-%m-%d %H:%M:%S%z")
+
+    def get_identity_mode(self):
+        if not self.user_id_code:
+            self.identity_enabled = False
+            return
+        response = self.api_call(
+            '501001', userId=self.user_id_code, return_envelope=True
+        )
+        config = response.get('cfgVersion') or {}
+        self.identity_enabled = config.get('identityEnable') == '1'
+
+    def get_identity_auth_info(self):
+        if self.identity_id:
+            return
+        data = self.api_call('101010', userName=self.username, idToken=self.id_token)
+        try:
+            self.identity_id = data['identityId']
+            self.identity_pool_id = data['identityPoolId']
+            self.identity_provider_name = data['idProviderName']
+        except (KeyError, TypeError) as ex:
+            raise APIFailure('Cannot understand X-Sense Cognito Identity response') from ex
 
     def get_houses(self):
         params = {

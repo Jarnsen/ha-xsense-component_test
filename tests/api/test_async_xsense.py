@@ -5452,6 +5452,134 @@ async def test_authenticated_app_call_uses_apk_1400_client_metadata():
 
 
 @pytest.mark.asyncio
+async def test_identity_mode_uses_apk_security_service_flag():
+    client = async_xsense.AsyncXSense()
+    client.user_id_code = "user-id-code"
+    calls = []
+
+    async def api_call(code, **kwargs):
+        calls.append((code, kwargs))
+        return {"cfgVersion": {"identityEnable": "1"}}
+
+    client.api_call = api_call
+
+    await client.get_identity_mode()
+
+    assert client.identity_enabled is True
+    assert calls == [("501001", {"userId": "user-id-code", "return_envelope": True})]
+
+
+@pytest.mark.asyncio
+async def test_identity_mode_keeps_control_flag_out_of_app_request_body():
+    session = CapturePostSession(
+        {
+            "reCode": 200,
+            "reData": [],
+            "cfgVersion": {"identityEnable": "1"},
+        }
+    )
+    client = async_xsense.AsyncXSense(session)
+    client.access_token = "access-token"
+    client.access_token_expiry = async_xsense.datetime(
+        2099, 1, 1, tzinfo=async_xsense.UTC
+    )
+    client.clientsecret = b"secret"
+    client.user_id_code = "user-id-code"
+
+    await client.get_identity_mode()
+
+    body = session.posts[0][1]["json"]
+    assert body["bizCode"] == "501001"
+    assert body["userId"] == "user-id-code"
+    assert "return_envelope" not in body
+
+
+@pytest.mark.asyncio
+async def test_identity_credentials_replace_legacy_sts_only_when_enabled():
+    client = async_xsense.AsyncXSense()
+    client.identity_enabled = True
+    client.get_identity_auth_info = AsyncMock()
+    client.get_aws_tokens = AsyncMock()
+
+    def identity_credentials():
+        client.aws_access_key = "identity-key"
+        client.aws_secret_access_key = "identity-secret"
+        client.aws_session_token = "identity-token"
+        client.aws_access_expiry = async_xsense.datetime.now(async_xsense.UTC)
+
+    client.get_identity_aws_tokens = identity_credentials
+
+    await client.load_aws()
+
+    client.get_identity_auth_info.assert_awaited_once_with()
+    client.get_aws_tokens.assert_not_awaited()
+    assert client.signer.client_id == "identity-key"
+
+
+@pytest.mark.asyncio
+async def test_legacy_sts_remains_for_accounts_without_identity_flag():
+    client = async_xsense.AsyncXSense()
+    client.identity_enabled = False
+    client.get_aws_tokens = AsyncMock()
+
+    await client.load_aws()
+
+    client.get_aws_tokens.assert_awaited_once_with()
+
+
+def test_identity_credentials_use_apk_cognito_identity_exchange(monkeypatch):
+    calls = []
+
+    class FakeIdentityClient:
+        def get_credentials_for_identity(self, **kwargs):
+            calls.append(kwargs)
+            return {
+                "Credentials": {
+                    "AccessKeyId": "identity-key",
+                    "SecretKey": "identity-secret",
+                    "SessionToken": "identity-token",
+                    "Expiration": async_xsense.datetime(2099, 1, 1, tzinfo=async_xsense.UTC),
+                }
+            }
+
+    class FakeIdentitySession:
+        def client(self, service_name, **kwargs):
+            assert service_name == "cognito-identity"
+            assert kwargs["region_name"] == "us-east-1"
+            return FakeIdentityClient()
+
+    monkeypatch.setattr(base.boto3, "Session", lambda: FakeIdentitySession())
+    client = base.XSenseBase()
+    client.identity_id = "identity-id"
+    client.identity_provider_name = "provider-name"
+    client.id_token = "id-token"
+
+    client.get_identity_aws_tokens()
+
+    assert calls == [
+        {
+            "IdentityId": "identity-id",
+            "Logins": {"provider-name": "id-token"},
+        }
+    ]
+    assert client.aws_access_key == "identity-key"
+
+
+def test_refreshing_id_token_discards_identity_bundle():
+    client = base.XSenseBase()
+    client.id_token = "old-id-token"
+    client.identity_id = "identity-id"
+    client.identity_pool_id = "pool-id"
+    client.identity_provider_name = "provider-name"
+
+    client._parse_refresh_result({"IdToken": "new-id-token"})
+
+    assert client.identity_id is None
+    assert client.identity_pool_id is None
+    assert client.identity_provider_name is None
+
+
+@pytest.mark.asyncio
 async def test_ai_service_list_uses_apk_701001_user_id_code():
     session = CapturePostSession(
         {"reCode": "200", "reData": [{"serverId": "service-id"}]}
