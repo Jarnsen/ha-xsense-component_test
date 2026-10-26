@@ -122,6 +122,11 @@ class XSenseBase:
     aws_session_token = None
     aws_access_expiry = None
 
+    identity_enabled = None
+    identity_id = None
+    identity_pool_id = None
+    identity_provider_name = None
+
     signer = None
 
     _lastres = None
@@ -130,6 +135,10 @@ class XSenseBase:
         self.houses: dict[str, House] = {}
         self._addx_session = None
         self._addx_sessions_by_node: dict[str, dict] = {}
+        self.identity_enabled: bool | None = None
+        self.identity_id: str | None = None
+        self.identity_pool_id: str | None = None
+        self.identity_provider_name: str | None = None
 
     def _parse_client_error(self, e: ClientError):
         return e.response.get('Error', {}).get('Message') or str(e)
@@ -215,6 +224,43 @@ class XSenseBase:
             if user_id_code := _jwt_claim(token, 'user_id_code'):
                 self.user_id_code = user_id_code
                 return
+
+    def _clear_identity_credentials(self) -> None:
+        """Discard identity data tied to a superseded Cognito ID token."""
+        self.identity_id = None
+        self.identity_pool_id = None
+        self.identity_provider_name = None
+
+    def get_identity_aws_tokens(self) -> None:
+        """Exchange the APK's Cognito Identity bundle for AWS credentials."""
+        if not all(
+            (
+                self.identity_id,
+                self.identity_provider_name,
+                self.id_token,
+            )
+        ):
+            raise APIFailure("Missing X-Sense Cognito Identity credentials")
+
+        try:
+            client = boto3.Session().client(
+                "cognito-identity",
+                region_name="us-east-1",
+                config=_COGNITO_CLIENT_CONFIG,
+            )
+            response = client.get_credentials_for_identity(
+                IdentityId=self.identity_id,
+                Logins={self.identity_provider_name: self.id_token},
+            )
+            credentials = response["Credentials"]
+            self.aws_access_key = credentials["AccessKeyId"]
+            self.aws_secret_access_key = credentials["SecretKey"]
+            self.aws_session_token = credentials["SessionToken"]
+            self.aws_access_expiry = credentials["Expiration"]
+        except (KeyError, TypeError) as ex:
+            raise APIFailure("Cannot understand X-Sense Cognito Identity credentials") from ex
+        except (BotoCoreError, ClientError) as ex:
+            raise APIFailure(f"X-Sense Cognito Identity connection failed: {ex}") from ex
 
     def _access_token_expiring(self):
         return datetime.now(UTC) > self.access_token_expiry - timedelta(seconds=60)
@@ -368,6 +414,8 @@ class XSenseBase:
         if 'AccessToken' in data:
             self.access_token = data['AccessToken']
         if 'IdToken' in data:
+            if data['IdToken'] != self.id_token:
+                self._clear_identity_credentials()
             self.id_token = data['IdToken']
         self._set_user_id_code_from_tokens()
         if 'ExpiresIn' in data:

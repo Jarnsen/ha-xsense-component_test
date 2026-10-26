@@ -569,7 +569,7 @@ class AsyncXSense(XSenseBase):
     async def __aexit__(self, exc_type, exc, traceback):
         await self.close()
 
-    async def api_call(self, code, unauth=False, **kwargs):
+    async def api_call(self, code, unauth=False, return_envelope=False, **kwargs):
         data = {**kwargs}
 
         if unauth:
@@ -631,7 +631,7 @@ class AsyncXSense(XSenseBase):
                 raise APIFailure(
                     f"Request for code {code} failed with error {errCode}/{data['reCode']} {data.get('reMsg')}"
                 )
-            return data["reData"]
+            return data if return_envelope else data["reData"]
 
     async def ai_service_call(self, code: str, **kwargs):
         """Call the APK AI-notification service endpoint."""
@@ -1589,7 +1589,15 @@ class AsyncXSense(XSenseBase):
         await self.get_client_info()
 
     async def load_aws(self):
-        await self.get_aws_tokens()
+        if self.identity_enabled is None:
+            await self.get_identity_mode()
+        if self.identity_enabled:
+            await self.get_identity_auth_info()
+            await asyncio.get_running_loop().run_in_executor(
+                None, self.get_identity_aws_tokens
+            )
+        else:
+            await self.get_aws_tokens()
         if self.signer:
             self.signer.update(
                 self.aws_access_key, self.aws_secret_access_key, self.aws_session_token
@@ -2206,6 +2214,31 @@ class AsyncXSense(XSenseBase):
         self.aws_access_expiry = datetime.strptime(
             data["expiration"], "%Y-%m-%d %H:%M:%S%z"
         )
+
+    async def get_identity_mode(self) -> None:
+        """Read the server flag that selects the APK's identity credential path."""
+        if not self.user_id_code:
+            self.identity_enabled = False
+            return
+        response = await self.api_call(
+            "501001", userId=self.user_id_code, return_envelope=True
+        )
+        config = response.get("cfgVersion") or {}
+        self.identity_enabled = config.get("identityEnable") == "1"
+
+    async def get_identity_auth_info(self) -> None:
+        """Retrieve the identity bundle used by the Android client for AWS IoT."""
+        if self.identity_id:
+            return
+        data = await self.api_call(
+            "101010", userName=self.username, idToken=self.id_token
+        )
+        try:
+            self.identity_id = data["identityId"]
+            self.identity_pool_id = data["identityPoolId"]
+            self.identity_provider_name = data["idProviderName"]
+        except (KeyError, TypeError) as ex:
+            raise APIFailure("Cannot understand X-Sense Cognito Identity response") from ex
 
     async def get_houses(self):
         params = {"utctimestamp": "0"}
