@@ -2228,7 +2228,13 @@ class AsyncXSense(XSenseBase):
 
     async def get_identity_auth_info(self) -> None:
         """Retrieve the identity bundle used by the Android client for AWS IoT."""
-        if self.identity_id:
+        if all(
+            (
+                self.identity_id,
+                self.identity_pool_id,
+                self.identity_provider_name,
+            )
+        ):
             return
         data = await self.api_call(
             "101010", userName=self.username, idToken=self.id_token
@@ -2239,6 +2245,14 @@ class AsyncXSense(XSenseBase):
             self.identity_provider_name = data["idProviderName"]
         except (KeyError, TypeError) as ex:
             raise APIFailure("Cannot understand X-Sense Cognito Identity response") from ex
+        if not all(
+            (
+                self.identity_id,
+                self.identity_pool_id,
+                self.identity_provider_name,
+            )
+        ):
+            raise APIFailure("Cannot understand X-Sense Cognito Identity response")
 
     async def get_houses(self):
         params = {"utctimestamp": "0"}

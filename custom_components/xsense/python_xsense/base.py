@@ -189,6 +189,9 @@ class XSenseBase:
             )
 
             auth_result = response['AuthenticationResult']
+            # The app clears its Cognito Identity cache whenever its user
+            # session is replaced, before using the new ID token.
+            self._clear_identity_credentials()
             self.access_token = auth_result['AccessToken']
             self.id_token = auth_result['IdToken']
             self.refresh_token = auth_result['RefreshToken']
@@ -236,6 +239,7 @@ class XSenseBase:
         if not all(
             (
                 self.identity_id,
+                self.identity_pool_id,
                 self.identity_provider_name,
                 self.id_token,
             )
@@ -409,13 +413,14 @@ class XSenseBase:
         return url, headers
 
     def _parse_refresh_result(self, data: dict):
+        # Android clears the complete identity bundle on every Cognito session
+        # refresh, even when an ID token is unchanged in the response.
+        self._clear_identity_credentials()
         if 'RefreshToken' in data:
             self.refresh_token = data['RefreshToken']
         if 'AccessToken' in data:
             self.access_token = data['AccessToken']
         if 'IdToken' in data:
-            if data['IdToken'] != self.id_token:
-                self._clear_identity_credentials()
             self.id_token = data['IdToken']
         self._set_user_id_code_from_tokens()
         if 'ExpiresIn' in data:

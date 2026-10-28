@@ -22,6 +22,7 @@ def load_api_module(module_name: str):
 
 
 async_xsense = load_api_module("async_xsense")
+sync_xsense = load_api_module("xsense")
 base = importlib.import_module("custom_components.xsense.python_xsense.base")
 aws_signer = load_api_module("aws_signer")
 entity = load_api_module("entity")
@@ -5517,6 +5518,79 @@ async def test_identity_credentials_replace_legacy_sts_only_when_enabled():
 
 
 @pytest.mark.asyncio
+async def test_identity_auth_info_uses_apk_101010_request_shape():
+    session = CapturePostSession(
+        {
+            "reCode": 200,
+            "reData": {
+                "identityId": "identity-id",
+                "identityPoolId": "pool-id",
+                "idProviderName": "provider-name",
+            },
+        }
+    )
+    client = async_xsense.AsyncXSense(session)
+    client.access_token = "access-token"
+    client.access_token_expiry = async_xsense.datetime(2099, 1, 1, tzinfo=async_xsense.UTC)
+    client.clientsecret = b"secret"
+    client.username = "user@example.com"
+    client.id_token = "id-token"
+
+    await client.get_identity_auth_info()
+
+    body = session.posts[0][1]["json"]
+    assert body["bizCode"] == "101010"
+    assert body["userName"] == "user@example.com"
+    assert body["idToken"] == "id-token"
+    assert client.identity_id == "identity-id"
+    assert client.identity_pool_id == "pool-id"
+    assert client.identity_provider_name == "provider-name"
+
+
+def test_sync_identity_auth_info_matches_async_apk_request_shape():
+    class Response:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {
+                "reCode": 200,
+                "reData": {
+                    "identityId": "identity-id",
+                    "identityPoolId": "pool-id",
+                    "idProviderName": "provider-name",
+                },
+            }
+
+    class Session:
+        def __init__(self):
+            self.posts = []
+
+        def post(self, url, **kwargs):
+            self.posts.append((url, kwargs))
+            return Response()
+
+    session = Session()
+    client = sync_xsense.XSense()
+    client.session = session
+    client.access_token = "access-token"
+    client.access_token_expiry = async_xsense.datetime(2099, 1, 1, tzinfo=async_xsense.UTC)
+    client.clientsecret = b"secret"
+    client.username = "user@example.com"
+    client.id_token = "id-token"
+
+    client.get_identity_auth_info()
+
+    body = session.posts[0][1]["json"]
+    assert body["bizCode"] == "101010"
+    assert body["userName"] == "user@example.com"
+    assert body["idToken"] == "id-token"
+    assert client.identity_id == "identity-id"
+    assert client.identity_pool_id == "pool-id"
+    assert client.identity_provider_name == "provider-name"
+
+
+@pytest.mark.asyncio
 async def test_legacy_sts_remains_for_accounts_without_identity_flag():
     client = async_xsense.AsyncXSense()
     client.identity_enabled = False
@@ -5551,6 +5625,7 @@ def test_identity_credentials_use_apk_cognito_identity_exchange(monkeypatch):
     monkeypatch.setattr(base.boto3, "Session", lambda: FakeIdentitySession())
     client = base.XSenseBase()
     client.identity_id = "identity-id"
+    client.identity_pool_id = "pool-id"
     client.identity_provider_name = "provider-name"
     client.id_token = "id-token"
 
@@ -5573,6 +5648,20 @@ def test_refreshing_id_token_discards_identity_bundle():
     client.identity_provider_name = "provider-name"
 
     client._parse_refresh_result({"IdToken": "new-id-token"})
+
+    assert client.identity_id is None
+    assert client.identity_pool_id is None
+    assert client.identity_provider_name is None
+
+
+def test_refresh_discards_identity_bundle_even_when_id_token_is_unchanged():
+    client = base.XSenseBase()
+    client.id_token = "unchanged-id-token"
+    client.identity_id = "identity-id"
+    client.identity_pool_id = "pool-id"
+    client.identity_provider_name = "provider-name"
+
+    client._parse_refresh_result({"IdToken": "unchanged-id-token"})
 
     assert client.identity_id is None
     assert client.identity_pool_id is None
