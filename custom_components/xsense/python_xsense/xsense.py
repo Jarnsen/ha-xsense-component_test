@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import requests
 
@@ -387,7 +387,7 @@ class XSense(XSenseBase):
 
     def set_state(self, entity: Entity, shadow: str, topic: str, definition: dict):
         station = entity.station
-        t = datetime.now()
+        t = datetime.now(UTC)
         timestamp = t.strftime('%Y%m%d%H%M%S')
 
         desired = {
