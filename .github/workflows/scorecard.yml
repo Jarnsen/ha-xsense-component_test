@@ -18,8 +18,6 @@ jobs:
     permissions:
       actions: read
       contents: read
-      id-token: write
-      security-events: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -27,28 +25,21 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.21.13"
-
       - name: Run OpenSSF Scorecard
         env:
-          ENABLE_SARIF: "1"
-          SCORECARD_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for attempt in 1 2 3; do
-            if go install github.com/ossf/scorecard/v4@v4.13.1; then
-              break
-            fi
-            if [ "$attempt" -eq 3 ]; then
-              exit 1
-            fi
-            sleep "$((attempt * 10))"
-          done
-          "${HOME}/go/bin/scorecard" --repo="${{ github.server_url }}/${{ github.repository }}" --format=sarif --output=results.sarif
+          scorecard_archive="scorecard_4.13.1_linux_amd64.tar.gz"
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output "$scorecard_archive" \
+            "https://github.com/ossf/scorecard/releases/download/v4.13.1/$scorecard_archive"
+          echo "53aa07786f2d985d0755ff9caad4e38c0a22596708de0728c5274f84ae48f785  $scorecard_archive" | sha256sum --check
+          tar --extract --gzip --file "$scorecard_archive" scorecard-linux-amd64
+          ./scorecard-linux-amd64 --repo="${{ github.server_url }}/${{ github.repository }}" --format=json --output=scorecard-results.json
 
-      - name: Upload Scorecard SARIF
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      - name: Upload Scorecard report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          sarif_file: results.sarif
+          name: scorecard-results
+          path: scorecard-results.json
+          if-no-files-found: error
