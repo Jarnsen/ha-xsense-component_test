@@ -8,7 +8,7 @@ import logging
 import sys
 import types
 from collections import defaultdict
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -22,6 +22,7 @@ def load_api_module(module_name: str):
 
 
 async_xsense = load_api_module("async_xsense")
+sync_xsense = load_api_module("xsense")
 base = importlib.import_module("custom_components.xsense.python_xsense.base")
 aws_signer = load_api_module("aws_signer")
 entity = load_api_module("entity")
@@ -119,6 +120,33 @@ def test_mqtt_helper_subscribe_uses_apk_qos1_by_default():
 
     assert helper.subscribe("topic/name") == "subscribed"
     assert subscribed == [("topic/name", 1)]
+
+
+def test_mqtt_signing_age_uses_utc_across_a_local_dst_transition(monkeypatch):
+    clock = datetime(2026, 11, 1, 5, 55, tzinfo=UTC)
+    calls = []
+
+    class Clock:
+        @staticmethod
+        def now(tz=None):
+            assert tz is UTC
+            return clock
+
+    helper = object.__new__(mqtt_helper.MQTTHelper)
+    helper._mqtt_path = None
+    helper._sig_age = None
+    helper.signer = types.SimpleNamespace(
+        presign_url=lambda *args: calls.append(args) or "wss://mqtt.example/mqtt?sig=abc"
+    )
+    helper.house = types.SimpleNamespace(
+        mqtt_server="mqtt.example", mqtt_region="us-east-1"
+    )
+    monkeypatch.setattr(mqtt_helper, "datetime", Clock)
+
+    assert helper._get_path() == "/mqtt?sig=abc"
+    helper._sig_age = clock - timedelta(minutes=mqtt_helper.URL_MAX_AGE + 1)
+    assert helper._get_path() == "/mqtt?sig=abc"
+    assert len(calls) == 2
 
 
 def test_mqtt_helper_publish_uses_compact_utf8_json():
@@ -5517,6 +5545,111 @@ async def test_identity_credentials_replace_legacy_sts_only_when_enabled():
 
 
 @pytest.mark.asyncio
+async def test_identity_auth_info_uses_apk_101010_request_shape():
+    session = CapturePostSession(
+        {
+            "reCode": 200,
+            "reData": {
+                "identityId": "identity-id",
+                "identityPoolId": "pool-id",
+                "idProviderName": "provider-name",
+            },
+        }
+    )
+    client = async_xsense.AsyncXSense(session)
+    client.access_token = "access-token"
+    client.access_token_expiry = async_xsense.datetime(2099, 1, 1, tzinfo=async_xsense.UTC)
+    client.clientsecret = b"secret"
+    client.username = "user@example.com"
+    client.id_token = "id-token"
+
+    await client.get_identity_auth_info()
+
+    body = session.posts[0][1]["json"]
+    assert body["bizCode"] == "101010"
+    assert body["userName"] == "user@example.com"
+    assert body["idToken"] == "id-token"
+    assert client.identity_id == "identity-id"
+    assert client.identity_pool_id == "pool-id"
+    assert client.identity_provider_name == "provider-name"
+
+
+def test_sync_identity_auth_info_matches_async_apk_request_shape():
+    class Response:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {
+                "reCode": 200,
+                "reData": {
+                    "identityId": "identity-id",
+                    "identityPoolId": "pool-id",
+                    "idProviderName": "provider-name",
+                },
+            }
+
+    class Session:
+        def __init__(self):
+            self.posts = []
+
+        def post(self, url, **kwargs):
+            self.posts.append((url, kwargs))
+            return Response()
+
+    session = Session()
+    client = sync_xsense.XSense()
+    client.session = session
+    client.access_token = "access-token"
+    client.access_token_expiry = async_xsense.datetime(2099, 1, 1, tzinfo=async_xsense.UTC)
+    client.clientsecret = b"secret"
+    client.username = "user@example.com"
+    client.id_token = "id-token"
+
+    client.get_identity_auth_info()
+
+    body = session.posts[0][1]["json"]
+    assert body["bizCode"] == "101010"
+    assert body["userName"] == "user@example.com"
+    assert body["idToken"] == "id-token"
+    assert client.identity_id == "identity-id"
+    assert client.identity_pool_id == "pool-id"
+    assert client.identity_provider_name == "provider-name"
+
+
+def test_sync_actions_use_apk_utc_timestamps(monkeypatch):
+    class Clock:
+        @staticmethod
+        def now(tz=None):
+            assert tz is UTC
+            return datetime(2026, 11, 1, 5, 30, tzinfo=UTC)
+
+    client = sync_xsense.XSense()
+    client.userid = "user-id"
+    client.do_thing = Mock()
+    monkeypatch.setattr(sync_xsense, "datetime", Clock)
+    station_obj = SimpleNamespace(sn="station-id")
+    entity_obj = SimpleNamespace(sn="device-id", station=station_obj)
+
+    client.set_state(entity_obj, "shadow", "topic", {})
+
+    payload = client.do_thing.call_args.args[2]
+    assert payload["state"]["desired"]["time"] == "20261101053000"
+
+
+def test_async_actions_use_apk_utc_timestamps(monkeypatch):
+    class Clock:
+        @staticmethod
+        def now(tz=None):
+            assert tz is UTC
+            return datetime(2026, 11, 1, 5, 30, tzinfo=UTC)
+
+    monkeypatch.setattr(async_xsense, "datetime", Clock)
+
+    assert async_xsense.AsyncXSense()._utc_timestamp() == "20261101053000"
+
+
+@pytest.mark.asyncio
 async def test_legacy_sts_remains_for_accounts_without_identity_flag():
     client = async_xsense.AsyncXSense()
     client.identity_enabled = False
@@ -5551,6 +5684,7 @@ def test_identity_credentials_use_apk_cognito_identity_exchange(monkeypatch):
     monkeypatch.setattr(base.boto3, "Session", lambda: FakeIdentitySession())
     client = base.XSenseBase()
     client.identity_id = "identity-id"
+    client.identity_pool_id = "pool-id"
     client.identity_provider_name = "provider-name"
     client.id_token = "id-token"
 
@@ -5573,6 +5707,20 @@ def test_refreshing_id_token_discards_identity_bundle():
     client.identity_provider_name = "provider-name"
 
     client._parse_refresh_result({"IdToken": "new-id-token"})
+
+    assert client.identity_id is None
+    assert client.identity_pool_id is None
+    assert client.identity_provider_name is None
+
+
+def test_refresh_discards_identity_bundle_even_when_id_token_is_unchanged():
+    client = base.XSenseBase()
+    client.id_token = "unchanged-id-token"
+    client.identity_id = "identity-id"
+    client.identity_pool_id = "pool-id"
+    client.identity_provider_name = "provider-name"
+
+    client._parse_refresh_result({"IdToken": "unchanged-id-token"})
 
     assert client.identity_id is None
     assert client.identity_pool_id is None

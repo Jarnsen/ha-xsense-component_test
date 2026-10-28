@@ -66,14 +66,14 @@ class MQTTHelper:
         if (
             not self._mqtt_path
             or not self._sig_age
-            or datetime.now() - self._sig_age > timedelta(minutes=URL_MAX_AGE)
+            or datetime.now(UTC) - self._sig_age > timedelta(minutes=URL_MAX_AGE)
         ):
             signed = self.signer.presign_url(
                 f"wss://{self.house.mqtt_server}/mqtt", self.house.mqtt_region
             )
             url_parts = signed.split("/")
             self._mqtt_path = "/" + "/".join(url_parts[3:])
-            self._sig_age = datetime.now()
+            self._sig_age = datetime.now(UTC)
 
         return self._mqtt_path
 

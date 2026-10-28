@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import requests
 
@@ -179,7 +179,13 @@ class XSense(XSenseBase):
         self.identity_enabled = config.get('identityEnable') == '1'
 
     def get_identity_auth_info(self):
-        if self.identity_id:
+        if all(
+            (
+                self.identity_id,
+                self.identity_pool_id,
+                self.identity_provider_name,
+            )
+        ):
             return
         data = self.api_call('101010', userName=self.username, idToken=self.id_token)
         try:
@@ -188,6 +194,14 @@ class XSense(XSenseBase):
             self.identity_provider_name = data['idProviderName']
         except (KeyError, TypeError) as ex:
             raise APIFailure('Cannot understand X-Sense Cognito Identity response') from ex
+        if not all(
+            (
+                self.identity_id,
+                self.identity_pool_id,
+                self.identity_provider_name,
+            )
+        ):
+            raise APIFailure('Cannot understand X-Sense Cognito Identity response')
 
     def get_houses(self):
         params = {
@@ -373,7 +387,7 @@ class XSense(XSenseBase):
 
     def set_state(self, entity: Entity, shadow: str, topic: str, definition: dict):
         station = entity.station
-        t = datetime.now()
+        t = datetime.now(UTC)
         timestamp = t.strftime('%Y%m%d%H%M%S')
 
         desired = {
