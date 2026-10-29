@@ -258,6 +258,29 @@ def test_static_identifiers_are_not_exposed_in_device_info():
     assert "connections" not in device_info
 
 
+def test_device_info_does_not_depend_on_legacy_copy_method():
+    from custom_components.xsense.entity import XSenseEntity
+
+    class ProbeEntity(XSenseEntity):
+        entity_description = SimpleNamespace(key="probe")
+
+    class DeviceInfoWithoutCopy(dict):
+        def copy(self):
+            raise AssertionError("DeviceInfo.copy() is not available")
+
+    source = SimpleNamespace(
+        entity_id="station_1",
+        data={},
+        sn="serial-number",
+        type="SBS50",
+        name="Base Station",
+    )
+    entity = ProbeEntity(SimpleNamespace(), source)
+    entity._attr_device_info = DeviceInfoWithoutCopy(entity._attr_device_info)
+
+    assert entity.device_info["identifiers"] == {("xsense", "station_1")}
+
+
 def test_device_info_fields_are_strings_before_home_assistant_registry_validation():
     from custom_components.xsense.entity import XSenseEntity
 

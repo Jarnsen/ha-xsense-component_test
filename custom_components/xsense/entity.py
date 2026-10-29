@@ -198,7 +198,10 @@ class XSenseEntity(CoordinatorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device metadata with a late-bound registered parent link."""
-        info = self._attr_device_info.copy()
+        # DeviceInfo stopped exposing dict.copy() in newer Home Assistant
+        # releases. Reconstruct a mutable mapping so this remains compatible
+        # with both its old TypedDict and newer runtime representation.
+        info = dict(self._attr_device_info)
         if self._parent_device_stable_id:
             parent_info = _parent_device_info(
                 self.coordinator,
