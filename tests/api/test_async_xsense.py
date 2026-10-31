@@ -5705,12 +5705,23 @@ def test_refreshing_id_token_discards_identity_bundle():
     client.identity_id = "identity-id"
     client.identity_pool_id = "pool-id"
     client.identity_provider_name = "provider-name"
+    client.aws_access_key = "old-key"
+    client.aws_secret_access_key = "old-secret"
+    client.aws_session_token = "old-session"
+    client.aws_access_expiry = async_xsense.datetime(2099, 1, 1, tzinfo=async_xsense.UTC)
+    client.signer = object()
 
     client._parse_refresh_result({"IdToken": "new-id-token"})
 
     assert client.identity_id is None
     assert client.identity_pool_id is None
     assert client.identity_provider_name is None
+    assert client.aws_access_key is None
+    assert client.aws_secret_access_key is None
+    assert client.aws_session_token is None
+    assert client.aws_access_expiry is None
+    assert client.signer is None
+    assert client._aws_token_expiring()
 
 
 def test_refresh_discards_identity_bundle_even_when_id_token_is_unchanged():
@@ -5725,6 +5736,27 @@ def test_refresh_discards_identity_bundle_even_when_id_token_is_unchanged():
     assert client.identity_id is None
     assert client.identity_pool_id is None
     assert client.identity_provider_name is None
+
+
+@pytest.mark.asyncio
+async def test_refreshed_cognito_session_loads_new_aws_credentials_before_shadow_read():
+    client = async_xsense.AsyncXSense()
+    client.aws_access_expiry = async_xsense.datetime(
+        2099, 1, 1, tzinfo=async_xsense.UTC
+    )
+    client._parse_refresh_result({"IdToken": "new-id-token"})
+    client.load_aws = AsyncMock()
+    client._thing_request = lambda station, page: ("https://example.invalid", {})
+    session = FakeGetSession([FakeGetResponse(200, {}, {"state": {"reported": {}}})])
+
+    async def get_session():
+        return session
+
+    client._get_session = get_session
+
+    await client.get_thing(SimpleNamespace(), "mainpage")
+
+    client.load_aws.assert_awaited_once_with()
 
 
 @pytest.mark.asyncio

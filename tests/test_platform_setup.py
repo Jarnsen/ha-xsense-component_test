@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import json
 import logging
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -124,6 +125,23 @@ def _translation_name(domain: str, key: str) -> str:
         (ROOT / "custom_components/xsense/strings.json").read_text(encoding="utf-8")
     )
     return strings["entity"][domain][key]["name"]
+
+
+def test_recording_clip_title_uses_utc(monkeypatch):
+    """Keep backend clip metadata independent of the server timezone."""
+    from custom_components.xsense import http
+
+    class LocalTime(datetime):
+        @classmethod
+        def fromtimestamp(cls, timestamp, tz=None):
+            assert tz is UTC
+            return datetime(2026, 10, 30, 0, 0, 0, tzinfo=tz) + timedelta(
+                seconds=timestamp
+            )
+
+    monkeypatch.setattr(http, "datetime", LocalTime)
+
+    assert http._clip_title(3600, 3661) == "01:00:00 - 01:01:01"
 
 
 async def test_entity_platform_setup_handles_empty_coordinator_data():
@@ -491,6 +509,7 @@ def test_supported_co_late_values_use_safe_defaults_until_reported():
 async def test_water_does_not_create_device_status_before_payload_key():
     water = SimpleNamespace(
         data={},
+        entity_type=sensor.EntityType.WATER,
         entity_id="water",
         name="Water Sensor",
         online=True,
@@ -517,6 +536,11 @@ async def test_water_does_not_create_device_status_before_payload_key():
     assert "water_mute_status" not in binary_keys
     assert "temperature_alarm_status" not in binary_keys
     assert "temperature_mute_status" not in binary_keys
+
+    sensor_calls = await _setup_platform(sensor, Coordinator())
+    sensor_keys = {entity.entity_description.key for entity in sensor_calls[0]}
+
+    assert {"last_self_test", "last_self_test_time"} <= sensor_keys
 
 
 async def test_detector_lifecycle_fields_remain_entities():

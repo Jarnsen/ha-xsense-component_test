@@ -48,6 +48,10 @@ if TYPE_CHECKING:
     from .coordinator import XSenseDataUpdateCoordinator
 
 
+# These models report physical self-tests but have no remote self-test command.
+SELF_TEST_REPORT_ONLY_MODELS = {"SC06-WX", "XS01-WX", "XS0B-iR"}
+
+
 @dataclass(kw_only=True, frozen=True)
 class XSenseSensorEntityDescription(SensorEntityDescription):
     """Describes XSense sensor entity."""
@@ -219,8 +223,16 @@ def has_report_time(entity: Entity) -> bool:
 
 
 def has_self_test_report(entity: Entity) -> bool:
-    """Return whether an actual self-test result report is present."""
-    return "lastSelfTest" in entity.data or "lastSelfTestTime" in entity.data
+    """Return whether the entity can report an app-style self-test result."""
+    entity_def = entities.get(entity.type, {})
+    return (
+        entity.type in SELF_TEST_REPORT_ONLY_MODELS
+        or "lastSelfTest" in entity.data
+        or any(
+            action.get("action") == "test"
+            for action in entity_def.get("actions", [])
+        )
+    )
 
 
 _ALL_SENSORS: tuple[XSenseSensorEntityDescription, ...] = (

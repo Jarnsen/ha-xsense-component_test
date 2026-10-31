@@ -229,10 +229,21 @@ class XSenseBase:
                 return
 
     def _clear_identity_credentials(self) -> None:
-        """Discard identity data tied to a superseded Cognito ID token."""
+        """Discard the complete identity-backed AWS credential bundle.
+
+        The Android client clears its ``CognitoCachingCredentialsProvider`` when
+        a Cognito user session changes. Keeping its AWS credentials or signer
+        would allow a shadow request to use a credential tied to the old ID
+        token.
+        """
         self.identity_id = None
         self.identity_pool_id = None
         self.identity_provider_name = None
+        self.aws_access_key = None
+        self.aws_secret_access_key = None
+        self.aws_session_token = None
+        self.aws_access_expiry = None
+        self.signer = None
 
     def get_identity_aws_tokens(self) -> None:
         """Exchange the APK's Cognito Identity bundle for AWS credentials."""
@@ -270,7 +281,7 @@ class XSenseBase:
         return datetime.now(UTC) > self.access_token_expiry - timedelta(seconds=60)
 
     def _aws_token_expiring(self):
-        return datetime.now(UTC) > self.aws_access_expiry - timedelta(seconds=60)
+        return self.aws_access_expiry is None or datetime.now(UTC) > self.aws_access_expiry - timedelta(seconds=60)
 
     def _apply_clock_skew_from_response(self, response) -> bool:
         """Learn the host clock-skew offset from an AWS response Date header.
