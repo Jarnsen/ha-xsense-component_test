@@ -6,7 +6,7 @@ import asyncio
 import mimetypes
 import re
 import secrets
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from time import monotonic
 from typing import Any
@@ -1462,4 +1462,7 @@ def _url_kind(value: Any) -> str:
 
 
 def _clip_title(start: int, end: int) -> str:
-    return f"{datetime.fromtimestamp(start):%H:%M:%S} - {datetime.fromtimestamp(end):%H:%M:%S}"
+    return (
+        f"{datetime.fromtimestamp(start, tz=UTC):%H:%M:%S}"
+        f" - {datetime.fromtimestamp(end, tz=UTC):%H:%M:%S}"
+    )

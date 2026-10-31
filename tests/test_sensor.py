@@ -87,16 +87,20 @@ def test_self_test_result_preserves_failure_code():
     assert self_test_result(entity) == "failed"
 
 
-@pytest.mark.parametrize("device_type", ["XS01-M", "XS01-WX", "SC06-WX", "XS0B-iR"])
-def test_self_test_report_sensor_waits_for_actual_report(device_type):
+@pytest.mark.parametrize(
+    "device_type", ["XS01-M", "XS01-WX", "SC06-WX", "XS0B-iR", "SWS51"]
+)
+def test_self_test_report_sensor_exists_for_report_capable_device_before_first_report(
+    device_type,
+):
     entity = SimpleNamespace(data={}, type=device_type)
 
-    assert not has_self_test_report(entity)
+    assert has_self_test_report(entity)
 
 
 @pytest.mark.parametrize("device_type", ["XS01-WX", "SC06-WX", "XS0B-iR"])
-def test_self_test_report_does_not_require_remote_test_action_after_report(device_type):
-    entity = SimpleNamespace(data={"lastSelfTest": "0"}, type=device_type)
+def test_self_test_report_does_not_require_remote_test_action(device_type):
+    entity = SimpleNamespace(data={}, type=device_type)
 
     assert has_self_test_report(entity)
 
@@ -171,4 +175,3 @@ def test_radon_card_entities_use_apk_mainpage_values():
     assert _sensor_description("radon_7_day").value_fn(entity) == 40.0
     assert _sensor_description("radon_30_day").value_fn(entity) == 82.5
     assert _sensor_description("radon_90_day").value_fn(entity) == 90.0
-
