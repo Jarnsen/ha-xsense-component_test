@@ -4,12 +4,18 @@
 ---
 
 <p align="center">
-  <img src="assets/home-assistant-wordmark-color-on-dark.png" width="640" alt="Home Assistant">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/home-assistant-wordmark-color-on-dark.png">
+    <img src="assets/home-assistant-wordmark-color-on-light.png" width="640" alt="Home Assistant">
+  </picture>
 </p>
 
 
 <p align="center">
-  <img src="assets/xsense-logo.svg" width="426" alt="X-Sense">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="custom_components/xsense/brand/dark_logo@2x.png">
+    <img src="custom_components/xsense/brand/logo@2x.png" width="426" alt="X-Sense">
+  </picture>
 </p>
 
 
