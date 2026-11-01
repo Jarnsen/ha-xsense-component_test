@@ -4,14 +4,14 @@
 ---
 
 <p align="center">
-  <img class="gh-dark-mode-only" src="assets/home-assistant-wordmark-color-on-dark.png" width="640" alt="Home Assistant">
-  <img class="gh-light-mode-only" src="assets/home-assistant-wordmark-color-on-light.png" width="640" alt="Home Assistant">
+  <img src="assets/home-assistant-wordmark-color-on-dark.png#gh-dark-mode-only" width="640" alt="Home Assistant">
+  <img src="assets/home-assistant-wordmark-color-on-light.png#gh-light-mode-only" width="640" alt="Home Assistant">
 </p>
 
 
 <p align="center">
-  <img class="gh-dark-mode-only" src="custom_components/xsense/brand/dark_logo@2x.png" width="426" alt="X-Sense">
-  <img class="gh-light-mode-only" src="custom_components/xsense/brand/logo@2x.png" width="426" alt="X-Sense">
+  <img src="custom_components/xsense/brand/dark_logo@2x.png#gh-dark-mode-only" width="426" alt="X-Sense">
+  <img src="custom_components/xsense/brand/logo@2x.png#gh-light-mode-only" width="426" alt="X-Sense">
 </p>
 
 
