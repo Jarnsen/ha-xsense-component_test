@@ -4,7 +4,10 @@
 ---
 
 <p align="center">
-  <img src="assets/home-assistant-wordmark-color-on-dark.png" width="640" alt="Home Assistant">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/home-assistant-wordmark-color-on-dark.png">
+    <img src="assets/home-assistant-wordmark-color-on-light.png" width="640" alt="Home Assistant">
+  </picture>
 </p>
 
 
