@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "ลบการบันทึกแคชในเครื่องหลังจากผ่านไปหลายวัน การบันทึกบนคลาวด์ X-Sense และการ์ด SD จะไม่เปลี่ยนแปลง",
           "recording_cache_max_size_mb": "ขนาดแคชในเครื่องสูงสุดเป็น MB เมื่อถึงขีดจำกัด บันทึกที่ดูน้อยที่สุดจะถูกลบออกก่อน",
           "recording_cache_mode": "โหมดเล่นอย่างเดียวส่งสื่อ HLS ผ่าน Home Assistant เมื่อต้องการโดยไม่เก็บคลิปฉบับเต็ม โหมดเก็บรักษาจะเก็บสำเนาในเครื่องตามขีดจำกัดด้านล่าง"
+        },
+        "menu_options": {
+          "recordings": "การบันทึก",
+          "local_mqtt": "MQTT ภายในเครือข่าย (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "โฟลเดอร์แคชการบันทึกจะเปลี่ยนจาก `{old_path}` เป็น `{new_path}` วิดีโอและภาพขนาดย่อที่แคชไว้จะไม่ถูกย้ายโดยอัตโนมัติ ย้ายโฟลเดอร์ `hls`, `videos` และ `thumbs` ที่มีอยู่ก่อน หากคุณต้องการให้การบันทึกแคชเก่ายังคงอยู่"
+      },
+      "local_mqtt": {
+        "title": "MQTT ภายในเครือข่าย (SBS50)",
+        "description": "MQTT ภายในเครือข่าย: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "สถานีฐาน",
+          "enabled": "เปิดใช้ MQTT ภายในเครือข่าย",
+          "host": "ที่อยู่ IPv4 ของโบรกเกอร์",
+          "port": "พอร์ตโบรกเกอร์",
+          "username": "ชื่อผู้ใช้",
+          "password": "รหัสผ่าน"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "MQTT ภายในเครือข่าย",
+        "description": "ส่งการตั้งค่าแล้ว โปรดตรวจสอบการเชื่อมต่อในแอป X-Sense"
       }
     },
     "error": {
-      "invalid_recording_media_path": "ใช้โฟลเดอร์ภายใต้ /media"
+      "invalid_recording_media_path": "ใช้โฟลเดอร์ภายใต้ /media",
+      "local_mqtt_failed": "ไม่สามารถตั้งค่า MQTT ภายในเครือข่ายได้"
     },
     "abort": {
-      "no_options": "ไม่มีตัวเลือกที่กำหนดค่าได้สำหรับบัญชี X-Sense นี้"
+      "no_options": "ไม่มีตัวเลือกที่กำหนดค่าได้สำหรับบัญชี X-Sense นี้",
+      "local_mqtt_configured": "ส่งการตั้งค่าแล้ว โปรดตรวจสอบการเชื่อมต่อในแอป X-Sense"
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "ปลุก"
+      },
+      "reset_co_peak": {
+        "name": "รีเซ็ตค่าสูงสุดของคาร์บอนมอนอกไซด์"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "ระยะเวลากริ่งแบบกลไก"
+      },
+      "radon_alarm_threshold": {
+        "name": "เกณฑ์เตือนเรดอน"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "ระดับแบตเตอรี่สำหรับเปิดเครื่องอัตโนมัติ"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "จำนวนวันตรวจวัดเรดอน"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "ผู้ช่วย AI: พัสดุ"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "การแจ้งเตือนอุณหภูมิต่ำ"
+      },
+      "radon_alarm_enabled": {
+        "name": "โหมดเตือนเรดอน"
+      },
+      "motion_walk_test": {
+        "name": "ทดสอบการตรวจจับการเคลื่อนไหวด้วยการเดิน"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "ลบตารางเวลาไฟ โดยเลือกสวิตช์เปิดปิดไฟของ SBS50 เป็นเป้าหมาย"
     },
     "query_mailbox_schedules": {
-        "name": "การแจ้งเตือนจดหมาย (SMA0A): Query mailbox schedules",
-        "description": "การแจ้งเตือนจดหมาย (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "การแจ้งเตือนจดหมาย (SMA0A): Query mailbox schedules",
+      "description": "การแจ้งเตือนจดหมาย (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "การแจ้งเตือนจดหมาย (SMA0A): Create mailbox schedule",
-        "description": "การแจ้งเตือนจดหมาย (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "ชื่อที่แสดง"
-            },
-            "start_time": {
-                "name": "เวลาเริ่มต้น (HH:MM หรือ HHMM)"
-            },
-            "end_time": {
-                "name": "เวลาสิ้นสุด (HH:MM หรือ HHMM)"
-            },
-            "week_days": {
-                "name": "วันในสัปดาห์ (1 = วันอาทิตย์, 7 = วันเสาร์)"
-            },
-            "enabled": {
-                "name": "สถานะการเปิดใช้งาน"
-            },
-            "time_zone": {
-                "name": "เขตเวลา"
-            }
+      "name": "การแจ้งเตือนจดหมาย (SMA0A): Create mailbox schedule",
+      "description": "การแจ้งเตือนจดหมาย (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "ชื่อที่แสดง"
+        },
+        "start_time": {
+          "name": "เวลาเริ่มต้น (HH:MM หรือ HHMM)"
+        },
+        "end_time": {
+          "name": "เวลาสิ้นสุด (HH:MM หรือ HHMM)"
+        },
+        "week_days": {
+          "name": "วันในสัปดาห์ (1 = วันอาทิตย์, 7 = วันเสาร์)"
+        },
+        "enabled": {
+          "name": "สถานะการเปิดใช้งาน"
+        },
+        "time_zone": {
+          "name": "เขตเวลา"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "การแจ้งเตือนจดหมาย (SMA0A): Update mailbox schedule",
-        "description": "การแจ้งเตือนจดหมาย (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "ตัวระบุตารางเวลา"
-            },
-            "start_time": {
-                "name": "เวลาเริ่มต้น (HH:MM หรือ HHMM)"
-            },
-            "end_time": {
-                "name": "เวลาสิ้นสุด (HH:MM หรือ HHMM)"
-            },
-            "week_days": {
-                "name": "วันในสัปดาห์ (1 = วันอาทิตย์, 7 = วันเสาร์)"
-            },
-            "enabled": {
-                "name": "สถานะการเปิดใช้งาน"
-            },
-            "time_zone": {
-                "name": "เขตเวลา"
-            }
+      "name": "การแจ้งเตือนจดหมาย (SMA0A): Update mailbox schedule",
+      "description": "การแจ้งเตือนจดหมาย (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "ตัวระบุตารางเวลา"
+        },
+        "start_time": {
+          "name": "เวลาเริ่มต้น (HH:MM หรือ HHMM)"
+        },
+        "end_time": {
+          "name": "เวลาสิ้นสุด (HH:MM หรือ HHMM)"
+        },
+        "week_days": {
+          "name": "วันในสัปดาห์ (1 = วันอาทิตย์, 7 = วันเสาร์)"
+        },
+        "enabled": {
+          "name": "สถานะการเปิดใช้งาน"
+        },
+        "time_zone": {
+          "name": "เขตเวลา"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "การแจ้งเตือนจดหมาย (SMA0A): Rename mailbox schedule",
-        "description": "การแจ้งเตือนจดหมาย (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "ตัวระบุตารางเวลา"
-            },
-            "name": {
-                "name": "ชื่อที่แสดง"
-            }
+      "name": "การแจ้งเตือนจดหมาย (SMA0A): Rename mailbox schedule",
+      "description": "การแจ้งเตือนจดหมาย (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "ตัวระบุตารางเวลา"
+        },
+        "name": {
+          "name": "ชื่อที่แสดง"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "การแจ้งเตือนจดหมาย (SMA0A): Delete mailbox schedule",
-        "description": "การแจ้งเตือนจดหมาย (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "ตัวระบุตารางเวลา"
-            }
+      "name": "การแจ้งเตือนจดหมาย (SMA0A): Delete mailbox schedule",
+      "description": "การแจ้งเตือนจดหมาย (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "ตัวระบุตารางเวลา"
         }
+      }
     },
     "query_light_groups": {
       "name": "เรียกดูกลุ่มไฟ",

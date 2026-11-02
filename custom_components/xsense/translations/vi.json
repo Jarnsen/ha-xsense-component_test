@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Xóa các bản ghi được lưu trong bộ nhớ đệm cục bộ sau nhiều ngày. Bản ghi trên đám mây X-Sense và thẻ SD không bị thay đổi.",
           "recording_cache_max_size_mb": "Kích thước bộ đệm cục bộ tối đa tính bằng MB. Khi đạt đến giới hạn, bản ghi ít được xem gần đây nhất sẽ bị xóa trước tiên.",
           "recording_cache_mode": "Chế độ chỉ phát lại chuyển tiếp nội dung HLS qua Home Assistant theo yêu cầu mà không lưu toàn bộ clip. Chế độ lưu giữ giữ bản sao cục bộ theo các giới hạn bên dưới."
+        },
+        "menu_options": {
+          "recordings": "Bản ghi",
+          "local_mqtt": "MQTT cục bộ (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Thư mục bộ đệm ghi âm sẽ thay đổi từ `{old_path}` thành `{new_path}`. Các video và hình thu nhỏ hiện có trong bộ nhớ đệm không được di chuyển tự động. Trước tiên, hãy di chuyển các thư mục `hls`, `videos` và `thumbs` hiện có nếu bạn muốn các bản ghi cũ được lưu trong bộ nhớ đệm vẫn khả dụng."
+      },
+      "local_mqtt": {
+        "title": "MQTT cục bộ (SBS50)",
+        "description": "MQTT cục bộ: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Trạm gốc",
+          "enabled": "Bật MQTT cục bộ",
+          "host": "Địa chỉ IPv4 của broker",
+          "port": "Cổng broker",
+          "username": "Tên người dùng",
+          "password": "Mật khẩu"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "MQTT cục bộ",
+        "description": "Đã gửi cài đặt; kiểm tra kết nối trong ứng dụng X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Sử dụng thư mục trong /media."
+      "invalid_recording_media_path": "Sử dụng thư mục trong /media.",
+      "local_mqtt_failed": "Không thể cấu hình MQTT cục bộ."
     },
     "abort": {
-      "no_options": "Không có tùy chọn có thể định cấu hình nào cho tài khoản X-Sense này."
+      "no_options": "Không có tùy chọn có thể định cấu hình nào cho tài khoản X-Sense này.",
+      "local_mqtt_configured": "Đã gửi cài đặt; kiểm tra kết nối trong ứng dụng X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Đánh thức"
+      },
+      "reset_co_peak": {
+        "name": "Đặt lại đỉnh CO"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Thời lượng chuông cơ"
+      },
+      "radon_alarm_threshold": {
+        "name": "Ngưỡng cảnh báo radon"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Mức pin để tự động bật nguồn"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Số ngày giám sát radon"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Trợ lý AI: bưu kiện"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Báo động nhiệt độ thấp"
+      },
+      "radon_alarm_enabled": {
+        "name": "Chế độ cảnh báo radon"
+      },
+      "motion_walk_test": {
+        "name": "Kiểm tra chuyển động bằng cách đi bộ"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Xóa lịch đèn. Chọn công tắc nguồn đèn SBS50 làm đối tượng."
     },
     "query_mailbox_schedules": {
-        "name": "Nhắc nhở thư (SMA0A): Query mailbox schedules",
-        "description": "Nhắc nhở thư (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Nhắc nhở thư (SMA0A): Query mailbox schedules",
+      "description": "Nhắc nhở thư (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Nhắc nhở thư (SMA0A): Create mailbox schedule",
-        "description": "Nhắc nhở thư (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Tên hiển thị"
-            },
-            "start_time": {
-                "name": "Giờ bắt đầu (HH:MM hoặc HHMM)"
-            },
-            "end_time": {
-                "name": "Giờ kết thúc (HH:MM hoặc HHMM)"
-            },
-            "week_days": {
-                "name": "Ngày trong tuần (1 = Chủ nhật, 7 = Thứ bảy)"
-            },
-            "enabled": {
-                "name": "Trạng thái bật"
-            },
-            "time_zone": {
-                "name": "Múi giờ"
-            }
+      "name": "Nhắc nhở thư (SMA0A): Create mailbox schedule",
+      "description": "Nhắc nhở thư (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Tên hiển thị"
+        },
+        "start_time": {
+          "name": "Giờ bắt đầu (HH:MM hoặc HHMM)"
+        },
+        "end_time": {
+          "name": "Giờ kết thúc (HH:MM hoặc HHMM)"
+        },
+        "week_days": {
+          "name": "Ngày trong tuần (1 = Chủ nhật, 7 = Thứ bảy)"
+        },
+        "enabled": {
+          "name": "Trạng thái bật"
+        },
+        "time_zone": {
+          "name": "Múi giờ"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Nhắc nhở thư (SMA0A): Update mailbox schedule",
-        "description": "Nhắc nhở thư (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Mã định danh lịch"
-            },
-            "start_time": {
-                "name": "Giờ bắt đầu (HH:MM hoặc HHMM)"
-            },
-            "end_time": {
-                "name": "Giờ kết thúc (HH:MM hoặc HHMM)"
-            },
-            "week_days": {
-                "name": "Ngày trong tuần (1 = Chủ nhật, 7 = Thứ bảy)"
-            },
-            "enabled": {
-                "name": "Trạng thái bật"
-            },
-            "time_zone": {
-                "name": "Múi giờ"
-            }
+      "name": "Nhắc nhở thư (SMA0A): Update mailbox schedule",
+      "description": "Nhắc nhở thư (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Mã định danh lịch"
+        },
+        "start_time": {
+          "name": "Giờ bắt đầu (HH:MM hoặc HHMM)"
+        },
+        "end_time": {
+          "name": "Giờ kết thúc (HH:MM hoặc HHMM)"
+        },
+        "week_days": {
+          "name": "Ngày trong tuần (1 = Chủ nhật, 7 = Thứ bảy)"
+        },
+        "enabled": {
+          "name": "Trạng thái bật"
+        },
+        "time_zone": {
+          "name": "Múi giờ"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Nhắc nhở thư (SMA0A): Rename mailbox schedule",
-        "description": "Nhắc nhở thư (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Mã định danh lịch"
-            },
-            "name": {
-                "name": "Tên hiển thị"
-            }
+      "name": "Nhắc nhở thư (SMA0A): Rename mailbox schedule",
+      "description": "Nhắc nhở thư (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Mã định danh lịch"
+        },
+        "name": {
+          "name": "Tên hiển thị"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Nhắc nhở thư (SMA0A): Delete mailbox schedule",
-        "description": "Nhắc nhở thư (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Mã định danh lịch"
-            }
+      "name": "Nhắc nhở thư (SMA0A): Delete mailbox schedule",
+      "description": "Nhắc nhở thư (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Mã định danh lịch"
         }
+      }
     },
     "query_light_groups": {
       "name": "Truy vấn nhóm đèn",

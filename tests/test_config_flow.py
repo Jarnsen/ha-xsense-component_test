@@ -253,7 +253,7 @@ def test_options_flow_rejects_storage_path_outside_media_without_schema_crash():
     }
 
 
-def test_options_flow_aborts_without_cameras():
+def test_options_flow_offers_local_mqtt_without_cameras():
     flow = XSenseOptionsFlow(
         SimpleNamespace(
             entry_id="entry-no-camera",
@@ -277,8 +277,8 @@ def test_options_flow_aborts_without_cameras():
 
     result = asyncio.run(flow.async_step_init())
 
-    assert result["type"] == "abort"
-    assert result["reason"] == "no_options"
+    assert result["type"] == "menu"
+    assert result["menu_options"] == ["local_mqtt"]
 
 
 def test_options_flow_keeps_recording_options_with_cameras():

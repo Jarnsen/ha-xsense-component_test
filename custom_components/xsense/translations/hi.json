@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "इतने दिनों के बाद स्थानीय कैश्ड रिकॉर्डिंग हटा दें। एक्स-सेंस क्लाउड और एसडी कार्ड रिकॉर्डिंग नहीं बदली गई हैं।",
           "recording_cache_max_size_mb": "एमबी में अधिकतम स्थानीय कैश आकार। जब सीमा पूरी हो जाती है, तो सबसे पहले सबसे कम देखी गई रिकॉर्डिंग हटा दी जाती है।",
           "recording_cache_mode": "केवल प्लेबैक पूरे क्लिप सहेजे बिना मांग पर HLS मीडिया को Home Assistant के माध्यम से प्रॉक्सी करता है। रिकॉर्डिंग रखने वाला मोड नीचे की सीमाओं के अनुसार स्थानीय प्रतियां रखता है।"
+        },
+        "menu_options": {
+          "recordings": "रिकॉर्डिंग",
+          "local_mqtt": "स्थानीय MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "रिकॉर्डिंग कैश फ़ोल्डर `{old_path}` से `{new_path}` में बदल जाएगा। मौजूदा कैश्ड वीडियो और थंबनेल स्वचालित रूप से स्थानांतरित नहीं होते हैं। यदि आप चाहते हैं कि पुरानी कैश्ड रिकॉर्डिंग उपलब्ध रहे तो पहले मौजूदा `hls`, `videos` और `thumbs` फ़ोल्डर्स को स्थानांतरित करें।"
+      },
+      "local_mqtt": {
+        "title": "स्थानीय MQTT (SBS50)",
+        "description": "स्थानीय MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "बेस स्टेशन",
+          "enabled": "स्थानीय MQTT सक्षम करें",
+          "host": "ब्रोकर का IPv4 पता",
+          "port": "ब्रोकर पोर्ट",
+          "username": "उपयोगकर्ता नाम",
+          "password": "पासवर्ड"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "स्थानीय MQTT",
+        "description": "सेटिंग भेज दी गई; X-Sense ऐप में कनेक्शन जाँचें।"
       }
     },
     "error": {
-      "invalid_recording_media_path": "/media के अंतर्गत एक फ़ोल्डर का उपयोग करें।"
+      "invalid_recording_media_path": "/media के अंतर्गत एक फ़ोल्डर का उपयोग करें।",
+      "local_mqtt_failed": "स्थानीय MQTT सेट नहीं हो सका।"
     },
     "abort": {
-      "no_options": "इस X-Sense खाते के लिए कोई कॉन्फ़िगर करने योग्य विकल्प नहीं हैं।"
+      "no_options": "इस X-Sense खाते के लिए कोई कॉन्फ़िगर करने योग्य विकल्प नहीं हैं।",
+      "local_mqtt_configured": "सेटिंग भेज दी गई; X-Sense ऐप में कनेक्शन जाँचें।"
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "जगाएँ"
+      },
+      "reset_co_peak": {
+        "name": "कार्बन मोनोऑक्साइड का अधिकतम मान रीसेट करें"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "यांत्रिक घंटी की अवधि"
+      },
+      "radon_alarm_threshold": {
+        "name": "रेडॉन चेतावनी सीमा"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "अपने आप चालू होने का बैटरी स्तर"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "रेडॉन निगरानी के दिन"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI सहायक: पैकेट"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "कम तापमान अलार्म"
+      },
+      "radon_alarm_enabled": {
+        "name": "रेडॉन चेतावनी मोड"
+      },
+      "motion_walk_test": {
+        "name": "चलकर गति परीक्षण"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "ईमेल अनुस्मारक (SMA0A): Query mailbox schedules",
-        "description": "ईमेल अनुस्मारक (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "ईमेल अनुस्मारक (SMA0A): Query mailbox schedules",
+      "description": "ईमेल अनुस्मारक (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "ईमेल अनुस्मारक (SMA0A): Create mailbox schedule",
-        "description": "ईमेल अनुस्मारक (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "प्रदर्शित नाम"
-            },
-            "start_time": {
-                "name": "आरंभ समय (HH:MM या HHMM)"
-            },
-            "end_time": {
-                "name": "समाप्ति समय (HH:MM या HHMM)"
-            },
-            "week_days": {
-                "name": "सप्ताह के दिन (1 = रविवार, 7 = शनिवार)"
-            },
-            "enabled": {
-                "name": "सक्षम स्थिति"
-            },
-            "time_zone": {
-                "name": "समय क्षेत्र"
-            }
+      "name": "ईमेल अनुस्मारक (SMA0A): Create mailbox schedule",
+      "description": "ईमेल अनुस्मारक (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "प्रदर्शित नाम"
+        },
+        "start_time": {
+          "name": "आरंभ समय (HH:MM या HHMM)"
+        },
+        "end_time": {
+          "name": "समाप्ति समय (HH:MM या HHMM)"
+        },
+        "week_days": {
+          "name": "सप्ताह के दिन (1 = रविवार, 7 = शनिवार)"
+        },
+        "enabled": {
+          "name": "सक्षम स्थिति"
+        },
+        "time_zone": {
+          "name": "समय क्षेत्र"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "ईमेल अनुस्मारक (SMA0A): Update mailbox schedule",
-        "description": "ईमेल अनुस्मारक (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "समय-सारिणी पहचानकर्ता"
-            },
-            "start_time": {
-                "name": "आरंभ समय (HH:MM या HHMM)"
-            },
-            "end_time": {
-                "name": "समाप्ति समय (HH:MM या HHMM)"
-            },
-            "week_days": {
-                "name": "सप्ताह के दिन (1 = रविवार, 7 = शनिवार)"
-            },
-            "enabled": {
-                "name": "सक्षम स्थिति"
-            },
-            "time_zone": {
-                "name": "समय क्षेत्र"
-            }
+      "name": "ईमेल अनुस्मारक (SMA0A): Update mailbox schedule",
+      "description": "ईमेल अनुस्मारक (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "समय-सारिणी पहचानकर्ता"
+        },
+        "start_time": {
+          "name": "आरंभ समय (HH:MM या HHMM)"
+        },
+        "end_time": {
+          "name": "समाप्ति समय (HH:MM या HHMM)"
+        },
+        "week_days": {
+          "name": "सप्ताह के दिन (1 = रविवार, 7 = शनिवार)"
+        },
+        "enabled": {
+          "name": "सक्षम स्थिति"
+        },
+        "time_zone": {
+          "name": "समय क्षेत्र"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "ईमेल अनुस्मारक (SMA0A): Rename mailbox schedule",
-        "description": "ईमेल अनुस्मारक (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "समय-सारिणी पहचानकर्ता"
-            },
-            "name": {
-                "name": "प्रदर्शित नाम"
-            }
+      "name": "ईमेल अनुस्मारक (SMA0A): Rename mailbox schedule",
+      "description": "ईमेल अनुस्मारक (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "समय-सारिणी पहचानकर्ता"
+        },
+        "name": {
+          "name": "प्रदर्शित नाम"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "ईमेल अनुस्मारक (SMA0A): Delete mailbox schedule",
-        "description": "ईमेल अनुस्मारक (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "समय-सारिणी पहचानकर्ता"
-            }
+      "name": "ईमेल अनुस्मारक (SMA0A): Delete mailbox schedule",
+      "description": "ईमेल अनुस्मारक (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "समय-सारिणी पहचानकर्ता"
         }
+      }
     },
     "query_light_groups": {
       "name": "लाइट समूह प्राप्त करें",

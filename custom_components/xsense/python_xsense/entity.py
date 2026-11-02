@@ -149,6 +149,8 @@ class Entity:
 
 
 _DASHED_THING_TYPES = {
+    "CB0T-4B",
+    "W/R-SCA(VL)-0G",
     # Mirrors com.claybox.iot.ams.thing.c0.getThingName() plus per-device
     # XsDeviceAlarm.getWiFiThingName() handlers in the Android app.
     "SC06-WX",

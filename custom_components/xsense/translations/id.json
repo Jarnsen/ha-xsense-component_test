@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Hapus rekaman cache lokal setelah beberapa hari ini. Rekaman cloud X-Sense dan kartu SD tidak diubah.",
           "recording_cache_max_size_mb": "Ukuran cache lokal maksimum dalam MB. Bila batasnya tercapai, rekaman yang terakhir dilihat akan dihapus terlebih dahulu.",
           "recording_cache_mode": "Hanya pemutaran meneruskan media HLS melalui Home Assistant sesuai permintaan tanpa menyimpan klip lengkap. Mode penyimpanan menyimpan salinan lokal dengan batas di bawah ini."
+        },
+        "menu_options": {
+          "recordings": "Rekaman",
+          "local_mqtt": "MQTT lokal (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Folder cache rekaman akan berubah dari `{old_path}` menjadi `{new_path}`. Video dan thumbnail yang ada dalam cache tidak dipindahkan secara otomatis. Pindahkan folder `hls`, `videos` dan `thumbs` yang ada terlebih dahulu jika Anda ingin rekaman cache lama tetap tersedia."
+      },
+      "local_mqtt": {
+        "title": "MQTT lokal (SBS50)",
+        "description": "MQTT lokal: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Stasiun basis",
+          "enabled": "Aktifkan MQTT lokal",
+          "host": "Alamat IPv4 broker",
+          "port": "Port broker lokal",
+          "username": "Nama pengguna",
+          "password": "Kata sandi"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "MQTT lokal",
+        "description": "Pengaturan dikirim; periksa koneksi di aplikasi X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Gunakan folder di bawah /media."
+      "invalid_recording_media_path": "Gunakan folder di bawah /media.",
+      "local_mqtt_failed": "Tidak dapat mengonfigurasi MQTT lokal."
     },
     "abort": {
-      "no_options": "Tidak ada opsi yang dapat dikonfigurasi untuk akun X-Sense ini."
+      "no_options": "Tidak ada opsi yang dapat dikonfigurasi untuk akun X-Sense ini.",
+      "local_mqtt_configured": "Pengaturan dikirim; periksa koneksi di aplikasi X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Bangunkan"
+      },
+      "reset_co_peak": {
+        "name": "Atur ulang puncak CO"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Durasi bel mekanis"
+      },
+      "radon_alarm_threshold": {
+        "name": "Ambang peringatan radon"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Tingkat baterai untuk menyala otomatis"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Hari pemantauan radon"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Asisten AI: paket"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Alarm suhu rendah"
+      },
+      "radon_alarm_enabled": {
+        "name": "Mode peringatan radon"
+      },
+      "motion_walk_test": {
+        "name": "Uji gerakan dengan berjalan"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "Pengingat email (SMA0A): Query mailbox schedules",
-        "description": "Pengingat email (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Pengingat email (SMA0A): Query mailbox schedules",
+      "description": "Pengingat email (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Pengingat email (SMA0A): Create mailbox schedule",
-        "description": "Pengingat email (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Nama tampilan"
-            },
-            "start_time": {
-                "name": "Waktu mulai (HH:MM atau HHMM)"
-            },
-            "end_time": {
-                "name": "Waktu selesai (HH:MM atau HHMM)"
-            },
-            "week_days": {
-                "name": "Hari dalam seminggu (1 = Minggu, 7 = Sabtu)"
-            },
-            "enabled": {
-                "name": "Status diaktifkan"
-            },
-            "time_zone": {
-                "name": "Zona waktu"
-            }
+      "name": "Pengingat email (SMA0A): Create mailbox schedule",
+      "description": "Pengingat email (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Nama tampilan"
+        },
+        "start_time": {
+          "name": "Waktu mulai (HH:MM atau HHMM)"
+        },
+        "end_time": {
+          "name": "Waktu selesai (HH:MM atau HHMM)"
+        },
+        "week_days": {
+          "name": "Hari dalam seminggu (1 = Minggu, 7 = Sabtu)"
+        },
+        "enabled": {
+          "name": "Status diaktifkan"
+        },
+        "time_zone": {
+          "name": "Zona waktu"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Pengingat email (SMA0A): Update mailbox schedule",
-        "description": "Pengingat email (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Pengenal jadwal"
-            },
-            "start_time": {
-                "name": "Waktu mulai (HH:MM atau HHMM)"
-            },
-            "end_time": {
-                "name": "Waktu selesai (HH:MM atau HHMM)"
-            },
-            "week_days": {
-                "name": "Hari dalam seminggu (1 = Minggu, 7 = Sabtu)"
-            },
-            "enabled": {
-                "name": "Status diaktifkan"
-            },
-            "time_zone": {
-                "name": "Zona waktu"
-            }
+      "name": "Pengingat email (SMA0A): Update mailbox schedule",
+      "description": "Pengingat email (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Pengenal jadwal"
+        },
+        "start_time": {
+          "name": "Waktu mulai (HH:MM atau HHMM)"
+        },
+        "end_time": {
+          "name": "Waktu selesai (HH:MM atau HHMM)"
+        },
+        "week_days": {
+          "name": "Hari dalam seminggu (1 = Minggu, 7 = Sabtu)"
+        },
+        "enabled": {
+          "name": "Status diaktifkan"
+        },
+        "time_zone": {
+          "name": "Zona waktu"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Pengingat email (SMA0A): Rename mailbox schedule",
-        "description": "Pengingat email (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Pengenal jadwal"
-            },
-            "name": {
-                "name": "Nama tampilan"
-            }
+      "name": "Pengingat email (SMA0A): Rename mailbox schedule",
+      "description": "Pengingat email (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Pengenal jadwal"
+        },
+        "name": {
+          "name": "Nama tampilan"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Pengingat email (SMA0A): Delete mailbox schedule",
-        "description": "Pengingat email (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Pengenal jadwal"
-            }
+      "name": "Pengingat email (SMA0A): Delete mailbox schedule",
+      "description": "Pengingat email (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Pengenal jadwal"
         }
+      }
     },
     "query_light_groups": {
       "name": "Ambil grup lampu",

@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Verwijder lokale opnamen in de cache na dit aantal dagen. X-Sense cloud- en SD-kaartopnamen worden niet gewijzigd.",
           "recording_cache_max_size_mb": "Maximale lokale cachegrootte in MB. Wanneer de limiet is bereikt, worden de minst recent bekeken opnames als eerste verwijderd.",
           "recording_cache_mode": "Alleen afspelen stuurt HLS-media op aanvraag via Home Assistant door zonder volledige clips te bewaren. De bewaarmodus houdt lokale kopieën bij volgens de onderstaande limieten."
+        },
+        "menu_options": {
+          "recordings": "Opnamen",
+          "local_mqtt": "Lokale MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "De map voor de opnamecache verandert van `{old_path}` in `{new_path}`. Bestaande video's en thumbnails in de cache worden niet automatisch verplaatst. Verplaats eerst de bestaande mappen `hls`, `videos` en `thumbs` als u wilt dat oude opnamen in de cache beschikbaar blijven."
+      },
+      "local_mqtt": {
+        "title": "Lokale MQTT (SBS50)",
+        "description": "Lokale MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Basisstation",
+          "enabled": "Lokale MQTT inschakelen",
+          "host": "IPv4-adres van de broker",
+          "port": "Brokerpoort",
+          "username": "Gebruikersnaam",
+          "password": "Wachtwoord"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Lokale MQTT",
+        "description": "Instellingen verzonden; controleer de verbinding in de X-Sense-app."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Gebruik een map onder /media."
+      "invalid_recording_media_path": "Gebruik een map onder /media.",
+      "local_mqtt_failed": "Lokale MQTT kon niet worden ingesteld."
     },
     "abort": {
-      "no_options": "Er zijn geen configureerbare opties voor dit X-Sense-account."
+      "no_options": "Er zijn geen configureerbare opties voor dit X-Sense-account.",
+      "local_mqtt_configured": "Instellingen verzonden; controleer de verbinding in de X-Sense-app."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Activeren"
+      },
+      "reset_co_peak": {
+        "name": "CO-piekwaarde resetten"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Duur mechanische bel"
+      },
+      "radon_alarm_threshold": {
+        "name": "Radonwaarschuwingsdrempel"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Batterijniveau voor automatisch inschakelen"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Radonbewakingsdagen"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI-assistent: pakket"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Lagetemperatuuralarm"
+      },
+      "radon_alarm_enabled": {
+        "name": "Radonwaarschuwingsmodus"
+      },
+      "motion_walk_test": {
+        "name": "Looptest voor beweging"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Verwijder een lichtschema. Selecteer de lichtschakelaar van de SBS50 als doel."
     },
     "query_mailbox_schedules": {
-        "name": "E-mailherinnering (SMA0A): Query mailbox schedules",
-        "description": "E-mailherinnering (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "E-mailherinnering (SMA0A): Query mailbox schedules",
+      "description": "E-mailherinnering (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "E-mailherinnering (SMA0A): Create mailbox schedule",
-        "description": "E-mailherinnering (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Weergavenaam"
-            },
-            "start_time": {
-                "name": "Begintijd (HH:MM of HHMM)"
-            },
-            "end_time": {
-                "name": "Eindtijd (HH:MM of HHMM)"
-            },
-            "week_days": {
-                "name": "Weekdagen (1 = zondag, 7 = zaterdag)"
-            },
-            "enabled": {
-                "name": "Ingeschakelde status"
-            },
-            "time_zone": {
-                "name": "Tijdzone"
-            }
+      "name": "E-mailherinnering (SMA0A): Create mailbox schedule",
+      "description": "E-mailherinnering (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Weergavenaam"
+        },
+        "start_time": {
+          "name": "Begintijd (HH:MM of HHMM)"
+        },
+        "end_time": {
+          "name": "Eindtijd (HH:MM of HHMM)"
+        },
+        "week_days": {
+          "name": "Weekdagen (1 = zondag, 7 = zaterdag)"
+        },
+        "enabled": {
+          "name": "Ingeschakelde status"
+        },
+        "time_zone": {
+          "name": "Tijdzone"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "E-mailherinnering (SMA0A): Update mailbox schedule",
-        "description": "E-mailherinnering (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Schema-ID"
-            },
-            "start_time": {
-                "name": "Begintijd (HH:MM of HHMM)"
-            },
-            "end_time": {
-                "name": "Eindtijd (HH:MM of HHMM)"
-            },
-            "week_days": {
-                "name": "Weekdagen (1 = zondag, 7 = zaterdag)"
-            },
-            "enabled": {
-                "name": "Ingeschakelde status"
-            },
-            "time_zone": {
-                "name": "Tijdzone"
-            }
+      "name": "E-mailherinnering (SMA0A): Update mailbox schedule",
+      "description": "E-mailherinnering (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Schema-ID"
+        },
+        "start_time": {
+          "name": "Begintijd (HH:MM of HHMM)"
+        },
+        "end_time": {
+          "name": "Eindtijd (HH:MM of HHMM)"
+        },
+        "week_days": {
+          "name": "Weekdagen (1 = zondag, 7 = zaterdag)"
+        },
+        "enabled": {
+          "name": "Ingeschakelde status"
+        },
+        "time_zone": {
+          "name": "Tijdzone"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "E-mailherinnering (SMA0A): Rename mailbox schedule",
-        "description": "E-mailherinnering (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Schema-ID"
-            },
-            "name": {
-                "name": "Weergavenaam"
-            }
+      "name": "E-mailherinnering (SMA0A): Rename mailbox schedule",
+      "description": "E-mailherinnering (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Schema-ID"
+        },
+        "name": {
+          "name": "Weergavenaam"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "E-mailherinnering (SMA0A): Delete mailbox schedule",
-        "description": "E-mailherinnering (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Schema-ID"
-            }
+      "name": "E-mailherinnering (SMA0A): Delete mailbox schedule",
+      "description": "E-mailherinnering (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Schema-ID"
         }
+      }
     },
     "query_light_groups": {
       "name": "Lichtgroepen opvragen",

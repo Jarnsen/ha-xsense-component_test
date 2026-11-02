@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Elimina le registrazioni memorizzate nella cache locale dopo questo numero di giorni. Le registrazioni su cloud X-Sense e su scheda SD non vengono modificate.",
           "recording_cache_max_size_mb": "Dimensione massima della cache locale in MB. Quando viene raggiunto il limite, le registrazioni visualizzate meno di recente vengono rimosse per prime.",
           "recording_cache_mode": "Solo riproduzione inoltra i contenuti HLS tramite Home Assistant su richiesta senza conservare i clip completi. La modalità conservazione mantiene copie locali usando i limiti indicati sotto."
+        },
+        "menu_options": {
+          "recordings": "Registrazioni",
+          "local_mqtt": "MQTT locale (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "La cartella della cache di registrazione cambierà da `{old_path}` a `{new_path}`. I video e le miniature esistenti memorizzati nella cache non vengono spostati automaticamente. Se desideri che le vecchie registrazioni memorizzate nella cache rimangano disponibili, sposta prima le cartelle `hls`, `videos` e `thumbs` esistenti."
+      },
+      "local_mqtt": {
+        "title": "MQTT locale (SBS50)",
+        "description": "MQTT locale: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Stazione base",
+          "enabled": "Abilita MQTT locale",
+          "host": "Indirizzo IPv4 del broker",
+          "port": "Porta del broker",
+          "username": "Nome utente",
+          "password": "Password del broker"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "MQTT locale",
+        "description": "Impostazioni inviate; verifica la connessione nell’app X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Utilizza una cartella in /media."
+      "invalid_recording_media_path": "Utilizza una cartella in /media.",
+      "local_mqtt_failed": "Impossibile configurare MQTT locale."
     },
     "abort": {
-      "no_options": "Non sono presenti opzioni configurabili per questo account X-Sense."
+      "no_options": "Non sono presenti opzioni configurabili per questo account X-Sense.",
+      "local_mqtt_configured": "Impostazioni inviate; verifica la connessione nell’app X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Riattiva"
+      },
+      "reset_co_peak": {
+        "name": "Azzera il picco di CO"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Durata suoneria meccanica"
+      },
+      "radon_alarm_threshold": {
+        "name": "Soglia di avviso radon"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Livello batteria per accensione automatica"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Giorni di monitoraggio del radon"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Assistente AI: pacco"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Allarme bassa temperatura"
+      },
+      "radon_alarm_enabled": {
+        "name": "Modalità avviso radon"
+      },
+      "motion_walk_test": {
+        "name": "Test di movimento camminando"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "Promemoria via e-mail (SMA0A): Query mailbox schedules",
-        "description": "Promemoria via e-mail (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Promemoria via e-mail (SMA0A): Query mailbox schedules",
+      "description": "Promemoria via e-mail (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Promemoria via e-mail (SMA0A): Create mailbox schedule",
-        "description": "Promemoria via e-mail (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Nome visualizzato"
-            },
-            "start_time": {
-                "name": "Ora di inizio (HH:MM o HHMM)"
-            },
-            "end_time": {
-                "name": "Ora di fine (HH:MM o HHMM)"
-            },
-            "week_days": {
-                "name": "Giorni della settimana (1 = domenica, 7 = sabato)"
-            },
-            "enabled": {
-                "name": "Stato di abilitazione"
-            },
-            "time_zone": {
-                "name": "Fuso orario"
-            }
+      "name": "Promemoria via e-mail (SMA0A): Create mailbox schedule",
+      "description": "Promemoria via e-mail (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Nome visualizzato"
+        },
+        "start_time": {
+          "name": "Ora di inizio (HH:MM o HHMM)"
+        },
+        "end_time": {
+          "name": "Ora di fine (HH:MM o HHMM)"
+        },
+        "week_days": {
+          "name": "Giorni della settimana (1 = domenica, 7 = sabato)"
+        },
+        "enabled": {
+          "name": "Stato di abilitazione"
+        },
+        "time_zone": {
+          "name": "Fuso orario"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Promemoria via e-mail (SMA0A): Update mailbox schedule",
-        "description": "Promemoria via e-mail (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identificatore della programmazione"
-            },
-            "start_time": {
-                "name": "Ora di inizio (HH:MM o HHMM)"
-            },
-            "end_time": {
-                "name": "Ora di fine (HH:MM o HHMM)"
-            },
-            "week_days": {
-                "name": "Giorni della settimana (1 = domenica, 7 = sabato)"
-            },
-            "enabled": {
-                "name": "Stato di abilitazione"
-            },
-            "time_zone": {
-                "name": "Fuso orario"
-            }
+      "name": "Promemoria via e-mail (SMA0A): Update mailbox schedule",
+      "description": "Promemoria via e-mail (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identificatore della programmazione"
+        },
+        "start_time": {
+          "name": "Ora di inizio (HH:MM o HHMM)"
+        },
+        "end_time": {
+          "name": "Ora di fine (HH:MM o HHMM)"
+        },
+        "week_days": {
+          "name": "Giorni della settimana (1 = domenica, 7 = sabato)"
+        },
+        "enabled": {
+          "name": "Stato di abilitazione"
+        },
+        "time_zone": {
+          "name": "Fuso orario"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Promemoria via e-mail (SMA0A): Rename mailbox schedule",
-        "description": "Promemoria via e-mail (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identificatore della programmazione"
-            },
-            "name": {
-                "name": "Nome visualizzato"
-            }
+      "name": "Promemoria via e-mail (SMA0A): Rename mailbox schedule",
+      "description": "Promemoria via e-mail (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identificatore della programmazione"
+        },
+        "name": {
+          "name": "Nome visualizzato"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Promemoria via e-mail (SMA0A): Delete mailbox schedule",
-        "description": "Promemoria via e-mail (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identificatore della programmazione"
-            }
+      "name": "Promemoria via e-mail (SMA0A): Delete mailbox schedule",
+      "description": "Promemoria via e-mail (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identificatore della programmazione"
         }
+      }
     },
     "query_light_groups": {
       "name": "Consulta gruppi di luci",

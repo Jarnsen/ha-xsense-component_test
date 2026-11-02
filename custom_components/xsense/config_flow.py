@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 from stat import S_ISDIR
 from typing import Any
 
+import aiohttp
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
@@ -44,7 +45,7 @@ from .const import (
 )
 from .python_xsense import AsyncXSense
 from .python_xsense.async_xsense import is_camera_entity
-from .python_xsense.exceptions import APIFailure, AuthFailed
+from .python_xsense.exceptions import APIFailure, AuthFailed, XSenseError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -529,6 +530,76 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage X-Sense options."""
+        if user_input is None and self._local_mqtt_stations():
+            choices = ["local_mqtt"]
+            if _entry_has_cameras(getattr(self, "hass", None), self._entry_id):
+                choices.insert(0, "recordings")
+            return self.async_show_menu(step_id="init", menu_options=choices)
+        return await self.async_step_recordings(user_input)
+
+    def _local_mqtt_stations(self):
+        coordinator = getattr(self, "hass", None)
+        coordinator = getattr(coordinator, "data", {}).get(DOMAIN, {}).get(self._entry_id)
+        data = getattr(coordinator, "data", None) or {}
+        return {
+            str(key): station for key, station in data.get("stations", {}).items()
+            if getattr(station, "type", None) == "SBS50"
+        }
+
+    async def async_step_local_mqtt(self, user_input=None):
+        """Provision native SBS50 MQTT without changing cloud transport."""
+        stations = self._local_mqtt_stations()
+        if not stations:
+            return self.async_abort(reason="no_options")
+        errors = {}
+        if user_input is not None:
+            station = stations.get(user_input["station"])
+            if station is None:
+                errors["station"] = "local_mqtt_failed"
+            else:
+                coordinator = self.hass.data[DOMAIN][self._entry_id]
+                try:
+                    client = getattr(coordinator, "xsense", None)
+                    if client is None:
+                        raise XSenseError("X-Sense session is not ready")
+                    result = await client.configure_local_mqtt(
+                        station, enabled=user_input["enabled"],
+                        host=user_input["host"], port=user_input["port"],
+                        username=user_input["username"], password=user_input["password"],
+                    )
+                    if isinstance(result, dict) and result.get("code"):
+                        raise XSenseError("Broker configuration rejected")
+                except (XSenseError, ValueError, OSError, aiohttp.ClientError):
+                    errors["base"] = "local_mqtt_failed"
+                else:
+                    return self.async_show_form(
+                        step_id="local_mqtt_done", data_schema=vol.Schema({})
+                    )
+        return self.async_show_form(
+            step_id="local_mqtt", errors=errors,
+            data_schema=vol.Schema({
+                vol.Required("station"): vol.In({
+                    key: getattr(station, "name", None) or key
+                    for key, station in stations.items()
+                }),
+                vol.Required("enabled", default=True): bool,
+                vol.Required("host"): str,
+                vol.Required("port", default=1883): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
+                vol.Required("username"): str,
+                vol.Required("password"): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                ),
+            }),
+        )
+
+    async def async_step_local_mqtt_done(self, user_input=None):
+        """Finish without persisting broker credentials or reloading entries."""
+        return self.async_abort(reason="local_mqtt_configured")
+
+    async def async_step_recordings(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Manage the existing recording options."""
         include_recording_options = _entry_has_cameras(
             getattr(self, "hass", None), self._entry_id
         )

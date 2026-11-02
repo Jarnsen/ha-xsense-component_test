@@ -295,13 +295,18 @@ def SmokeRFAppMuteAction():
     return MuteAction("appMute", "appmute", target=_station_serial_target, mute_type="0")
 
 
-def SBS50SecondGenAlarmMuteAction(shadow: str = "app2ndMute"):
+def SBS50SecondGenAlarmMuteAction(shadow: str | Callable = "app2ndMute"):
     return MuteAction(
         shadow,
         "2nd_appmute",
         mute_type=_co_sensitive_alarm_mute_type,
         extra={"userParam": "source=1"},
     )
+
+
+def _xp0a_mute_shadow(entity) -> str:
+    """Mirror the APK direct-device mute caller, including its V9 route."""
+    return "app2ndMute" if _is_smoke_v9(entity) else "appXp0amrMute"
 
 
 def _co_sensitive_alarm_mute_type(entity) -> str:
@@ -355,7 +360,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            SBS50SecondGenAlarmMuteAction("appSc07mrMute"),
+            SBS50SecondGenAlarmMuteAction(),
             FireDrillAction(),
         ],
     },
@@ -600,7 +605,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            SBS50SecondGenAlarmMuteAction("appXp0amrMute"),
+            SBS50SecondGenAlarmMuteAction(_xp0a_mute_shadow),
             FireDrillAction(),
         ],
     },
@@ -609,7 +614,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            SBS50SecondGenAlarmMuteAction("appXp0amrMute"),
+            SBS50SecondGenAlarmMuteAction(_xp0a_mute_shadow),
             FireDrillAction(),
         ],
     },
@@ -617,7 +622,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            SBS50SecondGenAlarmMuteAction("appXp0amrMute"),
+            SBS50SecondGenAlarmMuteAction(_xp0a_mute_shadow),
             FireDrillAction(),
         ],
     },
@@ -697,7 +702,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            SBS50SecondGenAlarmMuteAction("appSc07mrMute"),
+            SBS50SecondGenAlarmMuteAction(),
             FireDrillAction(),
         ],
     },
@@ -749,7 +754,7 @@ entities = {
         "type": EntityType.COMBI,
         "actions": [
             SBS50SecondGenTestAction(),
-            SBS50SecondGenAlarmMuteAction("appSc07mrMute"),
+            SBS50SecondGenAlarmMuteAction(),
             FireDrillAction(),
         ],
     },

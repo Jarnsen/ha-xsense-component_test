@@ -143,77 +143,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "Posterinnerung (SMA0A): Query mailbox schedules",
-        "description": "Posterinnerung (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Posterinnerung (SMA0A): Query mailbox schedules",
+      "description": "Posterinnerung (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Posterinnerung (SMA0A): Create mailbox schedule",
-        "description": "Posterinnerung (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Anzeigename"
-            },
-            "start_time": {
-                "name": "Startzeit (HH:MM oder HHMM)"
-            },
-            "end_time": {
-                "name": "Endzeit (HH:MM oder HHMM)"
-            },
-            "week_days": {
-                "name": "Wochentage (1 = Sonntag, 7 = Samstag)"
-            },
-            "enabled": {
-                "name": "Aktivierungszustand"
-            },
-            "time_zone": {
-                "name": "Zeitzone"
-            }
+      "name": "Posterinnerung (SMA0A): Create mailbox schedule",
+      "description": "Posterinnerung (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Anzeigename"
+        },
+        "start_time": {
+          "name": "Startzeit (HH:MM oder HHMM)"
+        },
+        "end_time": {
+          "name": "Endzeit (HH:MM oder HHMM)"
+        },
+        "week_days": {
+          "name": "Wochentage (1 = Sonntag, 7 = Samstag)"
+        },
+        "enabled": {
+          "name": "Aktivierungszustand"
+        },
+        "time_zone": {
+          "name": "Zeitzone"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Posterinnerung (SMA0A): Update mailbox schedule",
-        "description": "Posterinnerung (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Zeitplankennung"
-            },
-            "start_time": {
-                "name": "Startzeit (HH:MM oder HHMM)"
-            },
-            "end_time": {
-                "name": "Endzeit (HH:MM oder HHMM)"
-            },
-            "week_days": {
-                "name": "Wochentage (1 = Sonntag, 7 = Samstag)"
-            },
-            "enabled": {
-                "name": "Aktivierungszustand"
-            },
-            "time_zone": {
-                "name": "Zeitzone"
-            }
+      "name": "Posterinnerung (SMA0A): Update mailbox schedule",
+      "description": "Posterinnerung (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Zeitplankennung"
+        },
+        "start_time": {
+          "name": "Startzeit (HH:MM oder HHMM)"
+        },
+        "end_time": {
+          "name": "Endzeit (HH:MM oder HHMM)"
+        },
+        "week_days": {
+          "name": "Wochentage (1 = Sonntag, 7 = Samstag)"
+        },
+        "enabled": {
+          "name": "Aktivierungszustand"
+        },
+        "time_zone": {
+          "name": "Zeitzone"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Posterinnerung (SMA0A): Rename mailbox schedule",
-        "description": "Posterinnerung (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Zeitplankennung"
-            },
-            "name": {
-                "name": "Anzeigename"
-            }
+      "name": "Posterinnerung (SMA0A): Rename mailbox schedule",
+      "description": "Posterinnerung (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Zeitplankennung"
+        },
+        "name": {
+          "name": "Anzeigename"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Posterinnerung (SMA0A): Delete mailbox schedule",
-        "description": "Posterinnerung (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Zeitplankennung"
-            }
+      "name": "Posterinnerung (SMA0A): Delete mailbox schedule",
+      "description": "Posterinnerung (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Zeitplankennung"
         }
+      }
     },
     "query_light_groups": {
       "name": "Lichtgruppen abfragen",
@@ -362,17 +362,39 @@
           "recording_cache_retention_days": "Löschen Sie lokal zwischengespeicherte Aufzeichnungen nach dieser Anzahl von Tagen. X-Sense-Cloud- und SD-Kartenaufzeichnungen werden nicht verändert.",
           "recording_cache_max_size_mb": "Maximale lokale Cachegröße in MB. Wenn das Limit erreicht ist, werden zuerst die Aufnahmen entfernt, deren letzter Aufruf am längsten zurückliegt.",
           "recording_cache_mode": "Nur Wiedergabe leitet HLS-Medien bei Bedarf über Home Assistant weiter, ohne vollständige Clips zu speichern. Der Beibehalten-Modus speichert lokale Kopien mit den unten festgelegten Limits."
+        },
+        "menu_options": {
+          "recordings": "Aufnahmen",
+          "local_mqtt": "Lokales MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Der Aufnahme-Cache-Ordner ändert sich von `{old_path}` zu `{new_path}`. Vorhandene zwischengespeicherte Videos und Miniaturansichten werden nicht automatisch verschoben. Verschieben Sie zuerst die vorhandenen Ordner `hls`, `videos` und `thumbs`, wenn alte zwischengespeicherte Aufnahmen weiterhin verfügbar bleiben sollen."
+      },
+      "local_mqtt": {
+        "title": "Lokales MQTT (SBS50)",
+        "description": "Lokales MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Basisstation",
+          "enabled": "Lokales MQTT aktivieren",
+          "host": "IPv4-Adresse des Brokers",
+          "port": "Broker-Port",
+          "username": "Benutzername",
+          "password": "Passwort"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Lokales MQTT",
+        "description": "Einstellungen gesendet; Verbindung in der X-Sense-App prüfen."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Verwenden Sie einen Ordner unter /media."
+      "invalid_recording_media_path": "Verwenden Sie einen Ordner unter /media.",
+      "local_mqtt_failed": "Lokales MQTT konnte nicht eingerichtet werden."
     },
     "abort": {
-      "no_options": "Für dieses X-Sense-Konto gibt es keine konfigurierbaren Optionen."
+      "no_options": "Für dieses X-Sense-Konto gibt es keine konfigurierbaren Optionen.",
+      "local_mqtt_configured": "Einstellungen gesendet; Verbindung in der X-Sense-App prüfen."
     }
   },
   "entity": {
@@ -480,6 +502,9 @@
       },
       "camera_wake": {
         "name": "Aufwecken"
+      },
+      "reset_co_peak": {
+        "name": "CO-Spitzenwert zurücksetzen"
       }
     },
     "event": {
@@ -803,6 +828,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Dauer des mechanischen Gongs"
+      },
+      "radon_alarm_threshold": {
+        "name": "Radonwarnschwelle"
       }
     },
     "select": {
@@ -883,6 +911,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Akkustand zum automatischen Einschalten"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Radonüberwachungstage"
       }
     },
     "switch": {
@@ -1023,6 +1054,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "KI-Assistent für Pakete"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Niedrigtemperaturalarm"
+      },
+      "radon_alarm_enabled": {
+        "name": "Radonwarnmodus"
+      },
+      "motion_walk_test": {
+        "name": "Bewegungsmelder-Gehtest"
       }
     },
     "alarm_control_panel": {

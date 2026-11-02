@@ -141,7 +141,12 @@ __all__ = [
 
 def mqtt_reported_data(data: dict[str, Any]) -> dict[str, Any] | list[Any]:
     """Return device data from either shadow reports or X-Sense event payloads."""
-    reported = data.get("state", {}).get("reported")
+    if not isinstance(data, dict):
+        return {}
+    state = data.get("state", {})
+    if not isinstance(state, dict):
+        return {}
+    reported = state.get("reported")
     if isinstance(reported, dict):
         result = reported.copy()
         apply_apk_smartdrop_notice_aliases(result)

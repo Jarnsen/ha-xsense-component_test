@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Kustutage kohalikud vahemällu salvestatud salvestised pärast seda mitut päeva. X-Sense pilve ja SD-kaardi salvestusi ei muudeta.",
           "recording_cache_max_size_mb": "Kohaliku vahemälu maksimaalne maht MB. Kui limiit on täis, eemaldatakse kõigepealt viimati vaadatud salvestised.",
           "recording_cache_mode": "Ainult taasesitus edastab HLS-meedia nõudmisel Home Assistanti kaudu ilma terveid klippe säilitamata. Säilitamisrežiim hoiab kohalikke koopiaid allolevate piirangute järgi."
+        },
+        "menu_options": {
+          "recordings": "Salvestised",
+          "local_mqtt": "Kohalik MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Salvestamise vahemälu kaust muudetakse kaustast `{old_path}` kaustaks `{new_path}`. Olemasolevaid vahemällu salvestatud videoid ja pisipilte ei teisaldata automaatselt. Kui soovite, et vanad vahemällu salvestatud salvestised jääksid kättesaadavaks, teisaldage esmalt olemasolevad kaustad `hls`, `videos` ja `thumbs`."
+      },
+      "local_mqtt": {
+        "title": "Kohalik MQTT (SBS50)",
+        "description": "Kohalik MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Tugijaam",
+          "enabled": "Luba kohalik MQTT",
+          "host": "Maakleri IPv4-aadress",
+          "port": "Maakleri port",
+          "username": "Kasutajanimi",
+          "password": "Parool"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Kohalik MQTT",
+        "description": "Seaded saadetud; kontrollige ühendust X-Sense’i rakenduses."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Kasutage /media all olevat kausta."
+      "invalid_recording_media_path": "Kasutage /media all olevat kausta.",
+      "local_mqtt_failed": "Kohaliku MQTT seadistamine ebaõnnestus."
     },
     "abort": {
-      "no_options": "Selle X-Sense konto jaoks pole konfigureeritavaid valikuid."
+      "no_options": "Selle X-Sense konto jaoks pole konfigureeritavaid valikuid.",
+      "local_mqtt_configured": "Seaded saadetud; kontrollige ühendust X-Sense’i rakenduses."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Ärata"
+      },
+      "reset_co_peak": {
+        "name": "Lähtesta CO tippväärtus"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Mehaanilise uksekella kestus"
+      },
+      "radon_alarm_threshold": {
+        "name": "Radooni hoiatuslävi"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Aku tase automaatseks sisselülituseks"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Radooni jälgimispäevad"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI-assistent: pakid"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Madala temperatuuri häire"
+      },
+      "radon_alarm_enabled": {
+        "name": "Radooni hoiatusrežiim"
+      },
+      "motion_walk_test": {
+        "name": "Liikumise kõnnitest"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Kustuta valgustuse ajakava. Vali sihtmärgiks SBS50 valgustuse toitelüliti."
     },
     "query_mailbox_schedules": {
-        "name": "Posti meeldetuletus (SMA0A): Query mailbox schedules",
-        "description": "Posti meeldetuletus (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Posti meeldetuletus (SMA0A): Query mailbox schedules",
+      "description": "Posti meeldetuletus (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Posti meeldetuletus (SMA0A): Create mailbox schedule",
-        "description": "Posti meeldetuletus (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Kuvatav nimi"
-            },
-            "start_time": {
-                "name": "Algusaeg (HH:MM või HHMM)"
-            },
-            "end_time": {
-                "name": "Lõpuaeg (HH:MM või HHMM)"
-            },
-            "week_days": {
-                "name": "Nädalapäevad (1 = pühapäev, 7 = laupäev)"
-            },
-            "enabled": {
-                "name": "Lubatud olek"
-            },
-            "time_zone": {
-                "name": "Ajavöönd"
-            }
+      "name": "Posti meeldetuletus (SMA0A): Create mailbox schedule",
+      "description": "Posti meeldetuletus (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Kuvatav nimi"
+        },
+        "start_time": {
+          "name": "Algusaeg (HH:MM või HHMM)"
+        },
+        "end_time": {
+          "name": "Lõpuaeg (HH:MM või HHMM)"
+        },
+        "week_days": {
+          "name": "Nädalapäevad (1 = pühapäev, 7 = laupäev)"
+        },
+        "enabled": {
+          "name": "Lubatud olek"
+        },
+        "time_zone": {
+          "name": "Ajavöönd"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Posti meeldetuletus (SMA0A): Update mailbox schedule",
-        "description": "Posti meeldetuletus (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Ajakava tunnus"
-            },
-            "start_time": {
-                "name": "Algusaeg (HH:MM või HHMM)"
-            },
-            "end_time": {
-                "name": "Lõpuaeg (HH:MM või HHMM)"
-            },
-            "week_days": {
-                "name": "Nädalapäevad (1 = pühapäev, 7 = laupäev)"
-            },
-            "enabled": {
-                "name": "Lubatud olek"
-            },
-            "time_zone": {
-                "name": "Ajavöönd"
-            }
+      "name": "Posti meeldetuletus (SMA0A): Update mailbox schedule",
+      "description": "Posti meeldetuletus (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Ajakava tunnus"
+        },
+        "start_time": {
+          "name": "Algusaeg (HH:MM või HHMM)"
+        },
+        "end_time": {
+          "name": "Lõpuaeg (HH:MM või HHMM)"
+        },
+        "week_days": {
+          "name": "Nädalapäevad (1 = pühapäev, 7 = laupäev)"
+        },
+        "enabled": {
+          "name": "Lubatud olek"
+        },
+        "time_zone": {
+          "name": "Ajavöönd"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Posti meeldetuletus (SMA0A): Rename mailbox schedule",
-        "description": "Posti meeldetuletus (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Ajakava tunnus"
-            },
-            "name": {
-                "name": "Kuvatav nimi"
-            }
+      "name": "Posti meeldetuletus (SMA0A): Rename mailbox schedule",
+      "description": "Posti meeldetuletus (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Ajakava tunnus"
+        },
+        "name": {
+          "name": "Kuvatav nimi"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Posti meeldetuletus (SMA0A): Delete mailbox schedule",
-        "description": "Posti meeldetuletus (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Ajakava tunnus"
-            }
+      "name": "Posti meeldetuletus (SMA0A): Delete mailbox schedule",
+      "description": "Posti meeldetuletus (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Ajakava tunnus"
         }
+      }
     },
     "query_light_groups": {
       "name": "Päri valgustite rühmi",

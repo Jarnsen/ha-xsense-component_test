@@ -53,6 +53,7 @@ ALARM_DEVICE_CLASS_BY_TYPE = {
 
 LIFE_END_STATUS_DEVICE_TYPES = frozenset(
     {
+        "CB0T-3B", "CB0T-4B", "LP/R-SCA(VL)-0G", "W/R-SCA(VL)-0G",
         # CO, combo, and smoke detector models from the APK device map.
         "CB0Z-3S",
         "LP/N-SA-0B",
@@ -102,6 +103,7 @@ LIFE_END_STATUS_DEVICE_TYPES = frozenset(
 
 ALARM_STATUS_DEVICE_TYPES = frozenset(
     {
+        "CB0T-3B", "CB0T-4B", "LP/R-SCA(VL)-0G", "W/R-SCA(VL)-0G",
         "CB0Z-3S",
         "LP/N-SA-0B",
         "LP/N-SCA-0A",
@@ -165,6 +167,7 @@ ALARM_STATUS_DEVICE_TYPES = frozenset(
 
 MUTE_STATUS_DEVICE_TYPES = frozenset(
     {
+        "CB0T-3B", "CB0T-4B", "LP/R-SCA(VL)-0G", "W/R-SCA(VL)-0G",
         "CB0Z-3S",
         "LP/N-SA-0B",
         "LP/N-SCA-0A",
@@ -219,6 +222,7 @@ MUTE_STATUS_DEVICE_TYPES = frozenset(
 # silenced alarms and 4+ for alarms that are still sounding.
 CODED_MUTE_STATUS_DEVICE_TYPES = frozenset(
     {
+        "CB0T-3B", "CB0T-4B", "LP/R-SCA(VL)-0G", "W/R-SCA(VL)-0G",
         "CB0Z-3S",
         "LP/N-SCA-0A",
         "SC01-MN",

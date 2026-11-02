@@ -21,10 +21,11 @@ from .entity import (
     setup_dynamic_entities,
 )
 from .errors import xsense_error
-from .python_xsense.async_xsense import is_camera_entity
+from .python_xsense.async_xsense import STH0C_SERVER_SETTING_KEYS, is_camera_entity
 from .python_xsense.device import Device
 from .python_xsense.entity import Entity
 from .python_xsense.entity_map import EntityType
+from .python_xsense.mapping import safe_float
 
 
 def has_data(key: str) -> Callable[[Entity], bool]:
@@ -129,6 +130,17 @@ class XSenseNumberEntityDescription(NumberEntityDescription):
 
 
 NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
+    XSenseNumberEntityDescription(
+        key="radon_alarm_threshold",
+        data_key="radonAlarmThreshold",
+        translation_key="radon_alarm_threshold",
+        icon="mdi:radioactive",
+        native_unit_of_measurement="Bq/m³",
+        native_min_value=1,
+        native_max_value=9999,
+        native_step=1,
+        exists_fn=lambda entity: entity.type == "XR0A-iR" and "radonAlarmThreshold" in entity.data,
+    ),
     XSenseNumberEntityDescription(
         key="radon_minimum_threshold",
         data_key="minRadon",
@@ -556,6 +568,12 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         self.entity_description = entity_description
         self._attr_available = False
         super().__init__(coordinator, entity, station_id)
+        if entity.type == "STH0C":
+            if entity_description.data_key == "tAdjust":
+                self._attr_native_min_value = -3
+                self._attr_native_max_value = 3
+            elif entity_description.data_key == "hAdjust":
+                self._attr_native_step = 0.1
 
     @property
     def available(self) -> bool:
@@ -576,12 +594,19 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         value = entity.data.get(self.entity_description.data_key)
         if self.entity_description.shadow_array_key:
             value = _shadow_array_value(entity, self.entity_description)
-        if value is None:
+        return safe_float(value)
+
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        entity = self._current_entity()
+        if entity is None:
             return None
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return None
+        if entity.type == "STH0C":
+            key = self.entity_description.shadow_array_key or self.entity_description.data_key
+            return {"update_state": entity.data.get(f"{key}UpdateState")}
+        if self.entity_description.data_key == "radonAlarmThreshold":
+            return {"update_state": entity.data.get("radonAlarmUpdateState")}
+        return None
 
     async def async_set_native_value(self, value: float) -> None:
         """Write the X-Sense numeric setting."""
@@ -589,7 +614,15 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         if entity is None or not self.entity_description.exists_fn(entity):
             raise xsense_error("entity_unavailable")
 
-        if self.entity_description.data_key in {"minRadon", "maxRadon"}:
+        parsed_value = safe_float(value)
+        if parsed_value is None:
+            raise xsense_error("unsupported_option", option=value)
+        value = parsed_value
+
+        if self.entity_description.data_key == "radonAlarmThreshold":
+            await self.coordinator.xsense.update_alarm_settings(entity, alarmThreshold=round(value))
+            await self.coordinator.xsense.refresh_alarm_settings(entity)
+        elif self.entity_description.data_key in {"minRadon", "maxRadon"}:
             data_key = self.entity_description.data_key
             int_value = round(value)
             min_radon = (
@@ -623,7 +656,8 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
                 values,
                 comfort_type=self.entity_description.shadow_array_comfort_type,
             )
-            _store_shadow_array_values(entity, self.entity_description, values)
+            if entity.type != "STH0C" or self.entity_description.shadow_array_key not in STH0C_SERVER_SETTING_KEYS:
+                _store_shadow_array_values(entity, self.entity_description, values)
         elif self.entity_description.light_on_event is not None:
             int_value = round(value)
             await self.coordinator.xsense.update_light_setting(
@@ -639,7 +673,8 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
             await self.coordinator.xsense.update_shadow_setting(
                 entity, self.entity_description.data_key, value
             )
-            entity.data[self.entity_description.data_key] = value
+            if entity.type != "STH0C" or self.entity_description.data_key not in STH0C_SERVER_SETTING_KEYS:
+                entity.data[self.entity_description.data_key] = value
         elif self.entity_description.addx_key is None:
             int_value = round(value)
             await self.coordinator.xsense.update_shadow_volume(
@@ -695,10 +730,8 @@ def _number_pair(value) -> list[float] | None:
     """Return a two-number list from an APK range payload."""
     if not isinstance(value, (list, tuple)) or len(value) < 2:
         return None
-    try:
-        return [float(value[0]), float(value[1])]
-    except (TypeError, ValueError):
-        return None
+    values = [safe_float(value[0]), safe_float(value[1])]
+    return values if all(item is not None for item in values) else None
 
 
 def _shadow_array_values(entity: Entity, description) -> list[float] | None:
@@ -709,11 +742,11 @@ def _shadow_array_values(entity: Entity, description) -> list[float] | None:
     if description.data_key in {"tempRangeMin", "tempRangeMax"} and (
         entity.data.get("tempRangeMin") is not None and entity.data.get("tempRangeMax") is not None
     ):
-        return [float(entity.data["tempRangeMin"]), float(entity.data["tempRangeMax"])]
+        return _number_pair([entity.data["tempRangeMin"], entity.data["tempRangeMax"]])
     if description.data_key in {"humRangeMin", "humRangeMax"} and (
         entity.data.get("humRangeMin") is not None and entity.data.get("humRangeMax") is not None
     ):
-        return [float(entity.data["humRangeMin"]), float(entity.data["humRangeMax"])]
+        return _number_pair([entity.data["humRangeMin"], entity.data["humRangeMax"]])
     if description.shadow_array_defaults is not None:
         return list(description.shadow_array_defaults)
     return None

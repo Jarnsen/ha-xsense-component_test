@@ -2811,9 +2811,9 @@ async def test_mailbox_mute_uses_apk_payload_shape(device_type):
         ("LP/R-SCA(VL)-0G", "appXp0amrMute"),
         ("XS0D-MR", "appMute"),
         ("XC0C-MR", "app2ndMute"),
-        ("SC01-MR", "appSc07mrMute"),
-        ("XP0H-MR", "appSc07mrMute"),
-        ("XP0P-MR", "appSc07mrMute"),
+        ("SC01-MR", "app2ndMute"),
+        ("XP0H-MR", "app2ndMute"),
+        ("XP0P-MR", "app2ndMute"),
     ],
 )
 async def test_sbs50_child_mute_uses_apk_payload_shape(device_type, expected_shadow):

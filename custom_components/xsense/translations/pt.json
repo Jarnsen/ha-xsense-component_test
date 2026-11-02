@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Exclua as gravações em cache locais após tantos dias. As gravações na nuvem X-Sense e no cartão SD não são alteradas.",
           "recording_cache_max_size_mb": "Tamanho máximo do cache local em MB. Quando o limite é atingido, as gravações visualizadas menos recentemente são removidas primeiro.",
           "recording_cache_mode": "Apenas reprodução encaminha conteúdos HLS pelo Home Assistant a pedido sem guardar clipes completos. O modo de retenção mantém cópias locais segundo os limites abaixo."
+        },
+        "menu_options": {
+          "recordings": "Gravações",
+          "local_mqtt": "MQTT local (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "A pasta de cache de gravação mudará de `{old_path}` para `{new_path}`. Os vídeos e miniaturas existentes em cache não são movidos automaticamente. Mova primeiro as pastas `hls`, `videos` e `thumbs` existentes se desejar que as gravações antigas em cache permaneçam disponíveis."
+      },
+      "local_mqtt": {
+        "title": "MQTT local (SBS50)",
+        "description": "MQTT local: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Estação base",
+          "enabled": "Ativar MQTT local",
+          "host": "Endereço IPv4 do broker",
+          "port": "Porta do broker",
+          "username": "Nome de utilizador",
+          "password": "Palavra-passe"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "MQTT local",
+        "description": "Configuração enviada; verifique a ligação na aplicação X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Use uma pasta em /media."
+      "invalid_recording_media_path": "Use uma pasta em /media.",
+      "local_mqtt_failed": "Não foi possível configurar MQTT local."
     },
     "abort": {
-      "no_options": "Não há opções configuráveis ​​para esta conta X-Sense."
+      "no_options": "Não há opções configuráveis ​​para esta conta X-Sense.",
+      "local_mqtt_configured": "Configuração enviada; verifique a ligação na aplicação X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Despertar"
+      },
+      "reset_co_peak": {
+        "name": "Repor o pico de CO"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Duração da campainha mecânica"
+      },
+      "radon_alarm_threshold": {
+        "name": "Limiar de aviso de rádon"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Nível de bateria para ligação automática"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Dias de monitorização de rádon"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Assistente de IA: encomenda"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Alarme de temperatura baixa"
+      },
+      "radon_alarm_enabled": {
+        "name": "Modo de aviso de rádon"
+      },
+      "motion_walk_test": {
+        "name": "Teste de movimento ao caminhar"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Elimine um horário de iluminação. Selecione o interruptor de alimentação da iluminação do SBS50 como destino."
     },
     "query_mailbox_schedules": {
-        "name": "Lembrete de correio (SMA0A): Query mailbox schedules",
-        "description": "Lembrete de correio (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Lembrete de correio (SMA0A): Query mailbox schedules",
+      "description": "Lembrete de correio (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Lembrete de correio (SMA0A): Create mailbox schedule",
-        "description": "Lembrete de correio (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Nome de apresentação"
-            },
-            "start_time": {
-                "name": "Hora de início (HH:MM ou HHMM)"
-            },
-            "end_time": {
-                "name": "Hora de fim (HH:MM ou HHMM)"
-            },
-            "week_days": {
-                "name": "Dias da semana (1 = domingo, 7 = sábado)"
-            },
-            "enabled": {
-                "name": "Estado de ativação"
-            },
-            "time_zone": {
-                "name": "Fuso horário"
-            }
+      "name": "Lembrete de correio (SMA0A): Create mailbox schedule",
+      "description": "Lembrete de correio (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Nome de apresentação"
+        },
+        "start_time": {
+          "name": "Hora de início (HH:MM ou HHMM)"
+        },
+        "end_time": {
+          "name": "Hora de fim (HH:MM ou HHMM)"
+        },
+        "week_days": {
+          "name": "Dias da semana (1 = domingo, 7 = sábado)"
+        },
+        "enabled": {
+          "name": "Estado de ativação"
+        },
+        "time_zone": {
+          "name": "Fuso horário"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Lembrete de correio (SMA0A): Update mailbox schedule",
-        "description": "Lembrete de correio (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identificador do horário"
-            },
-            "start_time": {
-                "name": "Hora de início (HH:MM ou HHMM)"
-            },
-            "end_time": {
-                "name": "Hora de fim (HH:MM ou HHMM)"
-            },
-            "week_days": {
-                "name": "Dias da semana (1 = domingo, 7 = sábado)"
-            },
-            "enabled": {
-                "name": "Estado de ativação"
-            },
-            "time_zone": {
-                "name": "Fuso horário"
-            }
+      "name": "Lembrete de correio (SMA0A): Update mailbox schedule",
+      "description": "Lembrete de correio (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identificador do horário"
+        },
+        "start_time": {
+          "name": "Hora de início (HH:MM ou HHMM)"
+        },
+        "end_time": {
+          "name": "Hora de fim (HH:MM ou HHMM)"
+        },
+        "week_days": {
+          "name": "Dias da semana (1 = domingo, 7 = sábado)"
+        },
+        "enabled": {
+          "name": "Estado de ativação"
+        },
+        "time_zone": {
+          "name": "Fuso horário"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Lembrete de correio (SMA0A): Rename mailbox schedule",
-        "description": "Lembrete de correio (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identificador do horário"
-            },
-            "name": {
-                "name": "Nome de apresentação"
-            }
+      "name": "Lembrete de correio (SMA0A): Rename mailbox schedule",
+      "description": "Lembrete de correio (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identificador do horário"
+        },
+        "name": {
+          "name": "Nome de apresentação"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Lembrete de correio (SMA0A): Delete mailbox schedule",
-        "description": "Lembrete de correio (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identificador do horário"
-            }
+      "name": "Lembrete de correio (SMA0A): Delete mailbox schedule",
+      "description": "Lembrete de correio (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identificador do horário"
         }
+      }
     },
     "query_light_groups": {
       "name": "Consultar grupos de iluminação",

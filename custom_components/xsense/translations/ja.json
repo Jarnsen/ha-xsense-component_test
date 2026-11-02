@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "この日数が経過したら、ローカルにキャッシュされた録画を削除します。 X-Sense クラウドと SD カードの記録は変更されません。",
           "recording_cache_max_size_mb": "最大ローカル キャッシュ サイズ (MB 単位)。制限に達すると、最も最近に視聴されていない録画が最初に削除されます。",
           "recording_cache_mode": "再生のみでは、完全なクリップを保存せず、必要に応じて HLS メディアを Home Assistant 経由でプロキシします。保持モードでは、以下の制限に従ってローカルコピーを保存します。"
+        },
+        "menu_options": {
+          "recordings": "録画",
+          "local_mqtt": "ローカルMQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "記録キャッシュ フォルダーが `{old_path}` から `{new_path}` に変更されます。キャッシュされた既存のビデオとサムネイルは自動的に移動されません。キャッシュされた古い録画を引き続き使用できるようにするには、まず既存の `hls`, `videos` フォルダーと `thumbs` フォルダーを移動します。"
+      },
+      "local_mqtt": {
+        "title": "ローカルMQTT (SBS50)",
+        "description": "ローカルMQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "ベースステーション",
+          "enabled": "ローカルMQTTを有効にする",
+          "host": "ブローカーのIPv4アドレス",
+          "port": "ブローカーのポート",
+          "username": "ユーザー名",
+          "password": "パスワード"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "ローカルMQTT",
+        "description": "設定を送信しました。X-Senseアプリで接続を確認してください。"
       }
     },
     "error": {
-      "invalid_recording_media_path": "/media の下のフォルダーを使用します。"
+      "invalid_recording_media_path": "/media の下のフォルダーを使用します。",
+      "local_mqtt_failed": "ローカルMQTTを設定できませんでした。"
     },
     "abort": {
-      "no_options": "この X-Sense アカウントには構成可能なオプションはありません。"
+      "no_options": "この X-Sense アカウントには構成可能なオプションはありません。",
+      "local_mqtt_configured": "設定を送信しました。X-Senseアプリで接続を確認してください。"
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "スリープ解除"
+      },
+      "reset_co_peak": {
+        "name": "COピーク値をリセット"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "機械式チャイムの継続時間"
+      },
+      "radon_alarm_threshold": {
+        "name": "ラドン警告しきい値"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "自動電源オンの電池残量"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "ラドン監視日数"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AIアシスタント：荷物"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "低温アラーム"
+      },
+      "radon_alarm_enabled": {
+        "name": "ラドン警告モード"
+      },
+      "motion_walk_test": {
+        "name": "歩行による動作検知テスト"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "メールリマインダー (SMA0A): Query mailbox schedules",
-        "description": "メールリマインダー (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "メールリマインダー (SMA0A): Query mailbox schedules",
+      "description": "メールリマインダー (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "メールリマインダー (SMA0A): Create mailbox schedule",
-        "description": "メールリマインダー (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "表示名"
-            },
-            "start_time": {
-                "name": "開始時刻 (HH:MM または HHMM)"
-            },
-            "end_time": {
-                "name": "終了時刻 (HH:MM または HHMM)"
-            },
-            "week_days": {
-                "name": "曜日 (1 = 日曜日、7 = 土曜日)"
-            },
-            "enabled": {
-                "name": "有効状態"
-            },
-            "time_zone": {
-                "name": "タイムゾーン"
-            }
+      "name": "メールリマインダー (SMA0A): Create mailbox schedule",
+      "description": "メールリマインダー (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "表示名"
+        },
+        "start_time": {
+          "name": "開始時刻 (HH:MM または HHMM)"
+        },
+        "end_time": {
+          "name": "終了時刻 (HH:MM または HHMM)"
+        },
+        "week_days": {
+          "name": "曜日 (1 = 日曜日、7 = 土曜日)"
+        },
+        "enabled": {
+          "name": "有効状態"
+        },
+        "time_zone": {
+          "name": "タイムゾーン"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "メールリマインダー (SMA0A): Update mailbox schedule",
-        "description": "メールリマインダー (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "スケジュール識別子"
-            },
-            "start_time": {
-                "name": "開始時刻 (HH:MM または HHMM)"
-            },
-            "end_time": {
-                "name": "終了時刻 (HH:MM または HHMM)"
-            },
-            "week_days": {
-                "name": "曜日 (1 = 日曜日、7 = 土曜日)"
-            },
-            "enabled": {
-                "name": "有効状態"
-            },
-            "time_zone": {
-                "name": "タイムゾーン"
-            }
+      "name": "メールリマインダー (SMA0A): Update mailbox schedule",
+      "description": "メールリマインダー (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "スケジュール識別子"
+        },
+        "start_time": {
+          "name": "開始時刻 (HH:MM または HHMM)"
+        },
+        "end_time": {
+          "name": "終了時刻 (HH:MM または HHMM)"
+        },
+        "week_days": {
+          "name": "曜日 (1 = 日曜日、7 = 土曜日)"
+        },
+        "enabled": {
+          "name": "有効状態"
+        },
+        "time_zone": {
+          "name": "タイムゾーン"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "メールリマインダー (SMA0A): Rename mailbox schedule",
-        "description": "メールリマインダー (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "スケジュール識別子"
-            },
-            "name": {
-                "name": "表示名"
-            }
+      "name": "メールリマインダー (SMA0A): Rename mailbox schedule",
+      "description": "メールリマインダー (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "スケジュール識別子"
+        },
+        "name": {
+          "name": "表示名"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "メールリマインダー (SMA0A): Delete mailbox schedule",
-        "description": "メールリマインダー (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "スケジュール識別子"
-            }
+      "name": "メールリマインダー (SMA0A): Delete mailbox schedule",
+      "description": "メールリマインダー (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "スケジュール識別子"
         }
+      }
     },
     "query_light_groups": {
       "name": "ライトグループを取得",

@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Διαγράψτε τοπικές αποθηκευμένες εγγραφές μετά από τόσες μέρες. Οι εγγραφές X-Sense cloud και κάρτας SD δεν αλλάζουν.",
           "recording_cache_max_size_mb": "Μέγιστο μέγεθος τοπικής κρυφής μνήμης σε MB. Όταν συμπληρωθεί το όριο, αφαιρούνται πρώτα οι εγγραφές που προβλήθηκαν λιγότερο πρόσφατα.",
           "recording_cache_mode": "Η λειτουργία μόνο αναπαραγωγής προωθεί πολυμέσα HLS μέσω του Home Assistant κατ’ απαίτηση χωρίς να διατηρεί ολόκληρα κλιπ. Η λειτουργία διατήρησης κρατά τοπικά αντίγραφα με τα παρακάτω όρια."
+        },
+        "menu_options": {
+          "recordings": "Εγγραφές",
+          "local_mqtt": "Τοπικό MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Ο φάκελος της προσωρινής μνήμης εγγραφής θα αλλάξει από `{old_path}` σε `{new_path}`. Τα υπάρχοντα αποθηκευμένα βίντεο και μικρογραφίες δεν μετακινούνται αυτόματα. Μετακινήστε πρώτα τους υπάρχοντες φακέλους `hls`, `videos` και `thumbs` εάν θέλετε να παραμείνουν διαθέσιμες παλιές αποθηκευμένες εγγραφές."
+      },
+      "local_mqtt": {
+        "title": "Τοπικό MQTT (SBS50)",
+        "description": "Τοπικό MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Σταθμός βάσης",
+          "enabled": "Ενεργοποίηση τοπικού MQTT",
+          "host": "Διεύθυνση IPv4 του broker",
+          "port": "Θύρα broker",
+          "username": "Όνομα χρήστη",
+          "password": "Κωδικός πρόσβασης"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Τοπικό MQTT",
+        "description": "Οι ρυθμίσεις στάλθηκαν· ελέγξτε τη σύνδεση στην εφαρμογή X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Χρησιμοποιήστε έναν φάκελο στην περιοχή /media."
+      "invalid_recording_media_path": "Χρησιμοποιήστε έναν φάκελο στην περιοχή /media.",
+      "local_mqtt_failed": "Αποτυχία ρύθμισης τοπικού MQTT."
     },
     "abort": {
-      "no_options": "Δεν υπάρχουν επιλογές με δυνατότητα διαμόρφωσης για αυτόν τον λογαριασμό X-Sense."
+      "no_options": "Δεν υπάρχουν επιλογές με δυνατότητα διαμόρφωσης για αυτόν τον λογαριασμό X-Sense.",
+      "local_mqtt_configured": "Οι ρυθμίσεις στάλθηκαν· ελέγξτε τη σύνδεση στην εφαρμογή X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Αφύπνιση"
+      },
+      "reset_co_peak": {
+        "name": "Επαναφορά μέγιστης τιμής CO"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Διάρκεια μηχανικού κουδουνιού"
+      },
+      "radon_alarm_threshold": {
+        "name": "Όριο προειδοποίησης ραδονίου"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Στάθμη μπαταρίας για αυτόματη ενεργοποίηση"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Ημέρες παρακολούθησης ραδονίου"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Βοηθός AI: δέματα"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Συναγερμός χαμηλής θερμοκρασίας"
+      },
+      "radon_alarm_enabled": {
+        "name": "Λειτουργία προειδοποίησης ραδονίου"
+      },
+      "motion_walk_test": {
+        "name": "Δοκιμή κίνησης με βάδισμα"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Διαγραφή προγράμματος φωτισμού. Επιλέξτε ως στόχο τον διακόπτη τροφοδοσίας φωτισμού του SBS50."
     },
     "query_mailbox_schedules": {
-        "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Query mailbox schedules",
-        "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Query mailbox schedules",
+      "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Create mailbox schedule",
-        "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Εμφανιζόμενο όνομα"
-            },
-            "start_time": {
-                "name": "Ώρα έναρξης (HH:MM ή HHMM)"
-            },
-            "end_time": {
-                "name": "Ώρα λήξης (HH:MM ή HHMM)"
-            },
-            "week_days": {
-                "name": "Ημέρες εβδομάδας (1 = Κυριακή, 7 = Σάββατο)"
-            },
-            "enabled": {
-                "name": "Κατάσταση ενεργοποίησης"
-            },
-            "time_zone": {
-                "name": "Ζώνη ώρας"
-            }
+      "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Create mailbox schedule",
+      "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Εμφανιζόμενο όνομα"
+        },
+        "start_time": {
+          "name": "Ώρα έναρξης (HH:MM ή HHMM)"
+        },
+        "end_time": {
+          "name": "Ώρα λήξης (HH:MM ή HHMM)"
+        },
+        "week_days": {
+          "name": "Ημέρες εβδομάδας (1 = Κυριακή, 7 = Σάββατο)"
+        },
+        "enabled": {
+          "name": "Κατάσταση ενεργοποίησης"
+        },
+        "time_zone": {
+          "name": "Ζώνη ώρας"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Update mailbox schedule",
-        "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Αναγνωριστικό προγράμματος"
-            },
-            "start_time": {
-                "name": "Ώρα έναρξης (HH:MM ή HHMM)"
-            },
-            "end_time": {
-                "name": "Ώρα λήξης (HH:MM ή HHMM)"
-            },
-            "week_days": {
-                "name": "Ημέρες εβδομάδας (1 = Κυριακή, 7 = Σάββατο)"
-            },
-            "enabled": {
-                "name": "Κατάσταση ενεργοποίησης"
-            },
-            "time_zone": {
-                "name": "Ζώνη ώρας"
-            }
+      "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Update mailbox schedule",
+      "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Αναγνωριστικό προγράμματος"
+        },
+        "start_time": {
+          "name": "Ώρα έναρξης (HH:MM ή HHMM)"
+        },
+        "end_time": {
+          "name": "Ώρα λήξης (HH:MM ή HHMM)"
+        },
+        "week_days": {
+          "name": "Ημέρες εβδομάδας (1 = Κυριακή, 7 = Σάββατο)"
+        },
+        "enabled": {
+          "name": "Κατάσταση ενεργοποίησης"
+        },
+        "time_zone": {
+          "name": "Ζώνη ώρας"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Rename mailbox schedule",
-        "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Αναγνωριστικό προγράμματος"
-            },
-            "name": {
-                "name": "Εμφανιζόμενο όνομα"
-            }
+      "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Rename mailbox schedule",
+      "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Αναγνωριστικό προγράμματος"
+        },
+        "name": {
+          "name": "Εμφανιζόμενο όνομα"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Delete mailbox schedule",
-        "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Αναγνωριστικό προγράμματος"
-            }
+      "name": "Υπενθύμιση αλληλογραφίας (SMA0A): Delete mailbox schedule",
+      "description": "Υπενθύμιση αλληλογραφίας (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Αναγνωριστικό προγράμματος"
         }
+      }
     },
     "query_light_groups": {
       "name": "Ανάκτηση ομάδων φωτισμού",

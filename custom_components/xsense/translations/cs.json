@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Po tomto mnoha dnech smažte místní nahrávky uložené v mezipaměti. Cloud X-Sense a záznamy na SD kartě se nezmění.",
           "recording_cache_max_size_mb": "Maximální velikost místní mezipaměti v MB. Po dosažení limitu jsou nejdříve odstraněny nahrávky, které byly naposledy zobrazeny.",
           "recording_cache_mode": "Pouze přehrávání předává média HLS na vyžádání přes Home Assistant bez uchovávání celých klipů. Režim uchovávání ukládá místní kopie podle níže uvedených limitů."
+        },
+        "menu_options": {
+          "recordings": "Nahrávky",
+          "local_mqtt": "Místní MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Složka mezipaměti záznamů se změní z `{old_path}` na `{new_path}`. Stávající videa a miniatury uložené v mezipaměti se nepřesouvají automaticky. Pokud chcete, aby staré nahrávky uložené v mezipaměti zůstaly dostupné, přesuňte nejprve existující složky `hls`, `videos` a `thumbs`."
+      },
+      "local_mqtt": {
+        "title": "Místní MQTT (SBS50)",
+        "description": "Místní MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Základnová stanice",
+          "enabled": "Povolit místní MQTT",
+          "host": "IPv4 adresa brokeru",
+          "port": "Port brokeru",
+          "username": "Uživatelské jméno",
+          "password": "Heslo"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Místní MQTT",
+        "description": "Nastavení odesláno; ověřte připojení v aplikaci X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Použijte složku pod /media."
+      "invalid_recording_media_path": "Použijte složku pod /media.",
+      "local_mqtt_failed": "Místní MQTT nelze nastavit."
     },
     "abort": {
-      "no_options": "Pro tento účet X-Sense neexistují žádné konfigurovatelné možnosti."
+      "no_options": "Pro tento účet X-Sense neexistují žádné konfigurovatelné možnosti.",
+      "local_mqtt_configured": "Nastavení odesláno; ověřte připojení v aplikaci X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Probudit"
+      },
+      "reset_co_peak": {
+        "name": "Resetovat maximum CO"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Délka mechanického zvonění"
+      },
+      "radon_alarm_threshold": {
+        "name": "Práh varování před radonem"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Úroveň baterie pro automatické zapnutí"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Dny sledování radonu"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Asistent AI: balíky"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Alarm nízké teploty"
+      },
+      "radon_alarm_enabled": {
+        "name": "Režim varování před radonem"
+      },
+      "motion_walk_test": {
+        "name": "Pochůzkový test pohybu"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Smazat rozvrh osvětlení. Jako cíl vyberte vypínač osvětlení SBS50."
     },
     "query_mailbox_schedules": {
-        "name": "Připomenutí pošty (SMA0A): Query mailbox schedules",
-        "description": "Připomenutí pošty (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Připomenutí pošty (SMA0A): Query mailbox schedules",
+      "description": "Připomenutí pošty (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Připomenutí pošty (SMA0A): Create mailbox schedule",
-        "description": "Připomenutí pošty (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Zobrazovaný název"
-            },
-            "start_time": {
-                "name": "Čas začátku (HH:MM nebo HHMM)"
-            },
-            "end_time": {
-                "name": "Čas konce (HH:MM nebo HHMM)"
-            },
-            "week_days": {
-                "name": "Dny v týdnu (1 = neděle, 7 = sobota)"
-            },
-            "enabled": {
-                "name": "Stav povolení"
-            },
-            "time_zone": {
-                "name": "Časové pásmo"
-            }
+      "name": "Připomenutí pošty (SMA0A): Create mailbox schedule",
+      "description": "Připomenutí pošty (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Zobrazovaný název"
+        },
+        "start_time": {
+          "name": "Čas začátku (HH:MM nebo HHMM)"
+        },
+        "end_time": {
+          "name": "Čas konce (HH:MM nebo HHMM)"
+        },
+        "week_days": {
+          "name": "Dny v týdnu (1 = neděle, 7 = sobota)"
+        },
+        "enabled": {
+          "name": "Stav povolení"
+        },
+        "time_zone": {
+          "name": "Časové pásmo"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Připomenutí pošty (SMA0A): Update mailbox schedule",
-        "description": "Připomenutí pošty (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identifikátor rozvrhu"
-            },
-            "start_time": {
-                "name": "Čas začátku (HH:MM nebo HHMM)"
-            },
-            "end_time": {
-                "name": "Čas konce (HH:MM nebo HHMM)"
-            },
-            "week_days": {
-                "name": "Dny v týdnu (1 = neděle, 7 = sobota)"
-            },
-            "enabled": {
-                "name": "Stav povolení"
-            },
-            "time_zone": {
-                "name": "Časové pásmo"
-            }
+      "name": "Připomenutí pošty (SMA0A): Update mailbox schedule",
+      "description": "Připomenutí pošty (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identifikátor rozvrhu"
+        },
+        "start_time": {
+          "name": "Čas začátku (HH:MM nebo HHMM)"
+        },
+        "end_time": {
+          "name": "Čas konce (HH:MM nebo HHMM)"
+        },
+        "week_days": {
+          "name": "Dny v týdnu (1 = neděle, 7 = sobota)"
+        },
+        "enabled": {
+          "name": "Stav povolení"
+        },
+        "time_zone": {
+          "name": "Časové pásmo"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Připomenutí pošty (SMA0A): Rename mailbox schedule",
-        "description": "Připomenutí pošty (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identifikátor rozvrhu"
-            },
-            "name": {
-                "name": "Zobrazovaný název"
-            }
+      "name": "Připomenutí pošty (SMA0A): Rename mailbox schedule",
+      "description": "Připomenutí pošty (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identifikátor rozvrhu"
+        },
+        "name": {
+          "name": "Zobrazovaný název"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Připomenutí pošty (SMA0A): Delete mailbox schedule",
-        "description": "Připomenutí pošty (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identifikátor rozvrhu"
-            }
+      "name": "Připomenutí pošty (SMA0A): Delete mailbox schedule",
+      "description": "Připomenutí pošty (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identifikátor rozvrhu"
         }
+      }
     },
     "query_light_groups": {
       "name": "Načíst skupiny světel",

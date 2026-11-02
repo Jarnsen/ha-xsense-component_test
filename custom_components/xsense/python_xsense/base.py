@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import logging
+import math
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from typing import ClassVar
@@ -16,7 +17,7 @@ from pycognito import AWSSRP
 from .aws_signer import get_global_time_offset, set_global_time_offset
 from .entity import Entity
 from .entity_map import entities
-from .exceptions import APIFailure, AuthFailed
+from .exceptions import APIFailure, AuthFailed, SessionExpired
 from .house import House
 from .station import Station
 
@@ -422,6 +423,41 @@ class XSenseBase:
         headers |= signed
 
         return url, headers
+
+    @property
+    def _command_user_id(self):
+        """Use the APK account code, retaining legacy sessions without that claim."""
+        return self.user_id_code or self.userid
+
+    def _accept_refresh_response(self, status: int, data):
+        """Validate a complete Cognito response before replacing valid state."""
+        if not isinstance(data, dict):
+            raise APIFailure('Cannot understand Cognito refresh response')
+        if status >= 400:
+            error = str(data.get('__type', '')).rsplit('#', 1)[-1].split(':', 1)[0]
+            if status in (400, 401) and error in {'NotAuthorizedException', 'UserNotFoundException'}:
+                raise SessionExpired('Cognito session was rejected')
+            raise APIFailure(f'Cognito refresh failed: HTTP {status}')
+        result = data.get('AuthenticationResult')
+        if not isinstance(result, dict) or any(
+            not isinstance(result.get(key), str) or not result[key].strip()
+            for key in ('AccessToken', 'IdToken')
+        ):
+            raise APIFailure('Incomplete Cognito refresh response')
+        if 'RefreshToken' in result and (
+            not isinstance(result['RefreshToken'], str) or not result['RefreshToken'].strip()
+        ):
+            raise APIFailure('Invalid Cognito refresh token')
+        expires = result.get('ExpiresIn')
+        if isinstance(expires, bool) or not isinstance(expires, (int, float)):
+            raise APIFailure('Invalid Cognito refresh expiry')
+        try:
+            if not math.isfinite(expires) or expires <= 0:
+                raise ValueError('Expiry must be positive and finite')
+            datetime.now(UTC) + timedelta(seconds=expires)
+        except (OverflowError, ValueError) as ex:
+            raise APIFailure('Invalid Cognito refresh expiry') from ex
+        self._parse_refresh_result(result)
 
     def _parse_refresh_result(self, data: dict):
         # Android clears the complete identity bundle on every Cognito session

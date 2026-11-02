@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Törölje a helyi gyorsítótárazott felvételeket ennyi nap elteltével. Az X-Sense felhő és az SD-kártya felvételei nem változnak.",
           "recording_cache_max_size_mb": "A helyi gyorsítótár maximális mérete MB-ban. A korlát elérésekor először a legutóbb megtekintett felvételek törlődnek.",
           "recording_cache_mode": "A csak lejátszás mód igény szerint továbbítja a HLS-médiát a Home Assistanton keresztül, teljes klipek megőrzése nélkül. A megőrzési mód helyi másolatokat tart az alábbi korlátok szerint."
+        },
+        "menu_options": {
+          "recordings": "Felvételek",
+          "local_mqtt": "Helyi MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "A rögzítési gyorsítótár mappa `{old_path}`-ről `{new_path}`-re változik. A meglévő gyorsítótárazott videók és miniatűrök nem kerülnek át automatikusan. Először helyezze át a meglévő `hls`, `videos` és `thumbs` mappákat, ha azt szeretné, hogy a régi gyorsítótárazott felvételek elérhetők maradjanak."
+      },
+      "local_mqtt": {
+        "title": "Helyi MQTT (SBS50)",
+        "description": "Helyi MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Bázisállomás",
+          "enabled": "Helyi MQTT engedélyezése",
+          "host": "Közvetítő IPv4-címe",
+          "port": "Közvetítő portja",
+          "username": "Felhasználónév",
+          "password": "Jelszó"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Helyi MQTT",
+        "description": "Beállítások elküldve; ellenőrizze a kapcsolatot az X-Sense alkalmazásban."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Használjon egy mappát a /media alatt."
+      "invalid_recording_media_path": "Használjon egy mappát a /media alatt.",
+      "local_mqtt_failed": "A helyi MQTT beállítása sikertelen."
     },
     "abort": {
-      "no_options": "Ehhez az X-Sense-fiókhoz nincsenek konfigurálható beállítások."
+      "no_options": "Ehhez az X-Sense-fiókhoz nincsenek konfigurálható beállítások.",
+      "local_mqtt_configured": "Beállítások elküldve; ellenőrizze a kapcsolatot az X-Sense alkalmazásban."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Felébresztés"
+      },
+      "reset_co_peak": {
+        "name": "CO-csúcsérték visszaállítása"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Mechanikus csengő időtartama"
+      },
+      "radon_alarm_threshold": {
+        "name": "Radonfigyelmeztetési küszöb"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Automatikus bekapcsolás töltöttségi szintje"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Radonmegfigyelési napok"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI-asszisztens: csomag"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Alacsony hőmérsékleti riasztás"
+      },
+      "radon_alarm_enabled": {
+        "name": "Radonfigyelmeztetési mód"
+      },
+      "motion_walk_test": {
+        "name": "Mozgásérzékelő sétatesztje"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "E-mailes emlékeztető (SMA0A): Query mailbox schedules",
-        "description": "E-mailes emlékeztető (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "E-mailes emlékeztető (SMA0A): Query mailbox schedules",
+      "description": "E-mailes emlékeztető (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "E-mailes emlékeztető (SMA0A): Create mailbox schedule",
-        "description": "E-mailes emlékeztető (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Megjelenített név"
-            },
-            "start_time": {
-                "name": "Kezdési idő (HH:MM vagy HHMM)"
-            },
-            "end_time": {
-                "name": "Befejezési idő (HH:MM vagy HHMM)"
-            },
-            "week_days": {
-                "name": "A hét napjai (1 = vasárnap, 7 = szombat)"
-            },
-            "enabled": {
-                "name": "Engedélyezett állapot"
-            },
-            "time_zone": {
-                "name": "Időzóna"
-            }
+      "name": "E-mailes emlékeztető (SMA0A): Create mailbox schedule",
+      "description": "E-mailes emlékeztető (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Megjelenített név"
+        },
+        "start_time": {
+          "name": "Kezdési idő (HH:MM vagy HHMM)"
+        },
+        "end_time": {
+          "name": "Befejezési idő (HH:MM vagy HHMM)"
+        },
+        "week_days": {
+          "name": "A hét napjai (1 = vasárnap, 7 = szombat)"
+        },
+        "enabled": {
+          "name": "Engedélyezett állapot"
+        },
+        "time_zone": {
+          "name": "Időzóna"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "E-mailes emlékeztető (SMA0A): Update mailbox schedule",
-        "description": "E-mailes emlékeztető (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Ütemezés azonosítója"
-            },
-            "start_time": {
-                "name": "Kezdési idő (HH:MM vagy HHMM)"
-            },
-            "end_time": {
-                "name": "Befejezési idő (HH:MM vagy HHMM)"
-            },
-            "week_days": {
-                "name": "A hét napjai (1 = vasárnap, 7 = szombat)"
-            },
-            "enabled": {
-                "name": "Engedélyezett állapot"
-            },
-            "time_zone": {
-                "name": "Időzóna"
-            }
+      "name": "E-mailes emlékeztető (SMA0A): Update mailbox schedule",
+      "description": "E-mailes emlékeztető (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Ütemezés azonosítója"
+        },
+        "start_time": {
+          "name": "Kezdési idő (HH:MM vagy HHMM)"
+        },
+        "end_time": {
+          "name": "Befejezési idő (HH:MM vagy HHMM)"
+        },
+        "week_days": {
+          "name": "A hét napjai (1 = vasárnap, 7 = szombat)"
+        },
+        "enabled": {
+          "name": "Engedélyezett állapot"
+        },
+        "time_zone": {
+          "name": "Időzóna"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "E-mailes emlékeztető (SMA0A): Rename mailbox schedule",
-        "description": "E-mailes emlékeztető (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Ütemezés azonosítója"
-            },
-            "name": {
-                "name": "Megjelenített név"
-            }
+      "name": "E-mailes emlékeztető (SMA0A): Rename mailbox schedule",
+      "description": "E-mailes emlékeztető (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Ütemezés azonosítója"
+        },
+        "name": {
+          "name": "Megjelenített név"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "E-mailes emlékeztető (SMA0A): Delete mailbox schedule",
-        "description": "E-mailes emlékeztető (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Ütemezés azonosítója"
-            }
+      "name": "E-mailes emlékeztető (SMA0A): Delete mailbox schedule",
+      "description": "E-mailes emlékeztető (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Ütemezés azonosítója"
         }
+      }
     },
     "query_light_groups": {
       "name": "Világítási csoportok lekérdezése",

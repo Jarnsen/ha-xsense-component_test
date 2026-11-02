@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Bu kadar gün geçtikten sonra yerel önbelleğe alınmış kayıtları silin. X-Sense bulut ve SD kart kayıtları değiştirilmez.",
           "recording_cache_max_size_mb": "MB cinsinden maksimum yerel önbellek boyutu. Sınıra ulaşıldığında, en son görüntülenen kayıtlar ilk önce kaldırılır.",
           "recording_cache_mode": "Yalnızca oynatma modu, tam klipleri saklamadan HLS medyasını istek üzerine Home Assistant üzerinden aktarır. Saklama modu aşağıdaki sınırlara göre yerel kopyaları tutar."
+        },
+        "menu_options": {
+          "recordings": "Kayıtlar",
+          "local_mqtt": "Yerel MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Kayıt önbelleği klasörü `{old_path}` yerine `{new_path}` olarak değişecektir. Önbelleğe alınmış mevcut videolar ve küçük resimler otomatik olarak taşınmaz. Önbelleğe alınmış eski kayıtların kullanılabilir kalmasını istiyorsanız önce mevcut `hls`, `videos` ve `thumbs` klasörlerini taşıyın."
+      },
+      "local_mqtt": {
+        "title": "Yerel MQTT (SBS50)",
+        "description": "Yerel MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Baz istasyonu",
+          "enabled": "Yerel MQTT etkinleştir",
+          "host": "Aracının IPv4 adresi",
+          "port": "Aracı bağlantı noktası",
+          "username": "Kullanıcı adı",
+          "password": "Parola"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Yerel MQTT",
+        "description": "Ayarlar gönderildi; bağlantıyı X-Sense uygulamasında kontrol edin."
       }
     },
     "error": {
-      "invalid_recording_media_path": "/media altında bir klasör kullanın."
+      "invalid_recording_media_path": "/media altında bir klasör kullanın.",
+      "local_mqtt_failed": "Yerel MQTT yapılandırılamadı."
     },
     "abort": {
-      "no_options": "Bu X-Sense hesabı için yapılandırılabilir seçenek yok."
+      "no_options": "Bu X-Sense hesabı için yapılandırılabilir seçenek yok.",
+      "local_mqtt_configured": "Ayarlar gönderildi; bağlantıyı X-Sense uygulamasında kontrol edin."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Uyandır"
+      },
+      "reset_co_peak": {
+        "name": "CO tepe değerini sıfırla"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Mekanik zil süresi"
+      },
+      "radon_alarm_threshold": {
+        "name": "Radon uyarı eşiği"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Otomatik açılma pil seviyesi"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Radon izleme günleri"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Yapay zekâ asistanı: paket"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Düşük sıcaklık alarmı"
+      },
+      "radon_alarm_enabled": {
+        "name": "Radon uyarı modu"
+      },
+      "motion_walk_test": {
+        "name": "Yürüyerek hareket testi"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Işık zamanlamasını silin. Hedef olarak SBS50 ışık güç anahtarını seçin."
     },
     "query_mailbox_schedules": {
-        "name": "Posta hatırlatıcısı (SMA0A): Query mailbox schedules",
-        "description": "Posta hatırlatıcısı (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Posta hatırlatıcısı (SMA0A): Query mailbox schedules",
+      "description": "Posta hatırlatıcısı (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Posta hatırlatıcısı (SMA0A): Create mailbox schedule",
-        "description": "Posta hatırlatıcısı (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Görünen ad"
-            },
-            "start_time": {
-                "name": "Başlangıç saati (HH:MM veya HHMM)"
-            },
-            "end_time": {
-                "name": "Bitiş saati (HH:MM veya HHMM)"
-            },
-            "week_days": {
-                "name": "Haftanın günleri (1 = Pazar, 7 = Cumartesi)"
-            },
-            "enabled": {
-                "name": "Etkinlik durumu"
-            },
-            "time_zone": {
-                "name": "Saat dilimi"
-            }
+      "name": "Posta hatırlatıcısı (SMA0A): Create mailbox schedule",
+      "description": "Posta hatırlatıcısı (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Görünen ad"
+        },
+        "start_time": {
+          "name": "Başlangıç saati (HH:MM veya HHMM)"
+        },
+        "end_time": {
+          "name": "Bitiş saati (HH:MM veya HHMM)"
+        },
+        "week_days": {
+          "name": "Haftanın günleri (1 = Pazar, 7 = Cumartesi)"
+        },
+        "enabled": {
+          "name": "Etkinlik durumu"
+        },
+        "time_zone": {
+          "name": "Saat dilimi"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Posta hatırlatıcısı (SMA0A): Update mailbox schedule",
-        "description": "Posta hatırlatıcısı (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Zamanlama kimliği"
-            },
-            "start_time": {
-                "name": "Başlangıç saati (HH:MM veya HHMM)"
-            },
-            "end_time": {
-                "name": "Bitiş saati (HH:MM veya HHMM)"
-            },
-            "week_days": {
-                "name": "Haftanın günleri (1 = Pazar, 7 = Cumartesi)"
-            },
-            "enabled": {
-                "name": "Etkinlik durumu"
-            },
-            "time_zone": {
-                "name": "Saat dilimi"
-            }
+      "name": "Posta hatırlatıcısı (SMA0A): Update mailbox schedule",
+      "description": "Posta hatırlatıcısı (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Zamanlama kimliği"
+        },
+        "start_time": {
+          "name": "Başlangıç saati (HH:MM veya HHMM)"
+        },
+        "end_time": {
+          "name": "Bitiş saati (HH:MM veya HHMM)"
+        },
+        "week_days": {
+          "name": "Haftanın günleri (1 = Pazar, 7 = Cumartesi)"
+        },
+        "enabled": {
+          "name": "Etkinlik durumu"
+        },
+        "time_zone": {
+          "name": "Saat dilimi"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Posta hatırlatıcısı (SMA0A): Rename mailbox schedule",
-        "description": "Posta hatırlatıcısı (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Zamanlama kimliği"
-            },
-            "name": {
-                "name": "Görünen ad"
-            }
+      "name": "Posta hatırlatıcısı (SMA0A): Rename mailbox schedule",
+      "description": "Posta hatırlatıcısı (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Zamanlama kimliği"
+        },
+        "name": {
+          "name": "Görünen ad"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Posta hatırlatıcısı (SMA0A): Delete mailbox schedule",
-        "description": "Posta hatırlatıcısı (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Zamanlama kimliği"
-            }
+      "name": "Posta hatırlatıcısı (SMA0A): Delete mailbox schedule",
+      "description": "Posta hatırlatıcısı (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Zamanlama kimliği"
         }
+      }
     },
     "query_light_groups": {
       "name": "Işık gruplarını sorgula",

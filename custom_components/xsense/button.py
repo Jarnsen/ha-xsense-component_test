@@ -22,7 +22,11 @@ from .entity import (
     setup_dynamic_entities,
 )
 from .errors import xsense_error
-from .python_xsense.async_xsense import AsyncXSense, is_camera_entity
+from .python_xsense.async_xsense import (
+    AsyncXSense,
+    is_camera_entity,
+    supports_co_peak_reset,
+)
 from .python_xsense.device import Device
 from .python_xsense.entity import Entity
 
@@ -35,6 +39,11 @@ async def run_action(entity: Entity, xsense: AsyncXSense, action: str) -> None:
 async def wake_camera(entity: Entity, xsense: AsyncXSense) -> None:
     """Wake a sleeping camera through the Android app endpoint."""
     await xsense.wake_camera(entity)
+
+
+async def reset_co_peak(entity: Entity, xsense: AsyncXSense) -> None:
+    """Request peak reset; subsequent cloud state confirms the result."""
+    await xsense.reset_co_peak(entity)
 
 
 def can_wake_camera(entity: Entity, xsense: AsyncXSense) -> bool:
@@ -61,6 +70,14 @@ class XSenseButtonEntityDescription(ButtonEntityDescription):
 
 
 BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
+    XSenseButtonEntityDescription(
+        key="reset_co_peak",
+        translation_key="reset_co_peak",
+        icon="mdi:chart-bell-curve-cumulative",
+        entity_category=EntityCategory.CONFIG,
+        exists_fn=lambda entity, xsense: supports_co_peak_reset(entity),
+        press_fn=reset_co_peak,
+    ),
     XSenseButtonEntityDescription(
         key="test",
         translation_key="test",
