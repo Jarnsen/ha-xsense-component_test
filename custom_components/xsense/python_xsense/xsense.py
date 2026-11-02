@@ -10,6 +10,22 @@ from .exceptions import APIFailure, SessionExpired, XSenseError
 from .house import House
 from .station import Station
 
+REQUEST_TIMEOUT = 30
+
+
+def _shadow_result(response, *, allow_missing=False):
+    if allow_missing and response.status_code == 404:
+        return {}
+    if response.status_code >= 400:
+        raise APIFailure(f'Shadow request failed: HTTP {response.status_code}')
+    try:
+        data = response.json()
+    except ValueError as ex:
+        raise APIFailure('Cannot understand shadow response') from ex
+    if not isinstance(data, dict):
+        raise APIFailure('Cannot understand shadow response')
+    return data
+
 
 class XSense(XSenseBase):
     def __init__(self, session=None):
@@ -51,11 +67,17 @@ class XSense(XSenseBase):
                 "bizCode": code,
                 "appCode": self.APPCODE,
             },
-            headers=headers
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
         )
         self._lastres = res
 
-        data = res.json()
+        try:
+            data = res.json()
+        except ValueError as ex:
+            raise APIFailure(f'Cannot understand API response: HTTP {res.status_code}') from ex
+        if not isinstance(data, dict):
+            raise APIFailure('Cannot understand API response envelope')
         if res.status_code >= 400:
             message = data.get('message') or 'unknown error'
             raise APIFailure(f'API failure: {res.status_code}/{message}')
@@ -69,6 +91,8 @@ class XSense(XSenseBase):
                 raise SessionExpired(data.get('reMsg'))
             raise APIFailure(f"Request for code {code} failed with error {errCode}/{data['reCode']} {data.get('reMsg')}")
 
+        if not return_envelope and 'reData' not in data:
+            raise APIFailure('API response is missing reData')
         return data if return_envelope else data['reData']
 
     def get_house(self, house: House, page: str):
@@ -76,27 +100,27 @@ class XSense(XSenseBase):
             self.load_aws()
 
         url, headers = self._house_request(house, page)
-        res = self.session.get(url, headers=headers)
+        res = self.session.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         self._lastres = res
-        return res.json()
+        return _shadow_result(res, allow_missing=True)
 
     def get_thing(self, station: Station, page: str):
         if self._aws_token_expiring():
             self.load_aws()
 
         url, headers = self._thing_request(station, page)
-        res = self.session.get(url, headers=headers)
+        res = self.session.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         self._lastres = res
-        return res.json()
+        return _shadow_result(res, allow_missing=True)
 
     def do_thing(self, station: Station, page: str, data: dict):
         if self._aws_token_expiring():
             self.load_aws()
 
         url, headers = self._thing_request(station, page, data)
-        res = self.session.post(url, headers=headers, json=data)
+        res = self.session.post(url, headers=headers, json=data, timeout=REQUEST_TIMEOUT)
         self._lastres = res
-        return res.json()
+        return _shadow_result(res)
 
     def login(self, username, password):
         self.sync_login(username, password)
@@ -108,15 +132,15 @@ class XSense(XSenseBase):
         res = self.session.post(
             url,
             json=data,
-            headers=headers
+            headers=headers,
+            timeout=REQUEST_TIMEOUT,
         )
         self._lastres = res
-        data = res.json()
-
-        if res.status_code == 400:
-            raise SessionExpired(data.get('message', 'token refresh failed'))
-
-        self._parse_refresh_result(data.get('AuthenticationResult', {}))
+        try:
+            data = res.json()
+        except ValueError as ex:
+            raise APIFailure('Cannot understand Cognito refresh response') from ex
+        self._accept_refresh_response(res.status_code, data)
 
     def init(self):
         self.get_client_info()
@@ -395,7 +419,7 @@ class XSense(XSenseBase):
             "shadow": shadow,
             "stationSN": station.sn,
             "time": timestamp,
-            "userId": self.userid
+            "userId": self._command_user_id
         }
         desired.update(definition.get('extra', {}))
 

@@ -62,6 +62,9 @@ from .recordings_media import (
 )
 
 HLS_SEGMENT_TOKEN_TTL = RECORDING_PLAYBACK_SESSION_TTL_SECONDS
+PROXY_RESOURCE_MAX_BYTES = 64 * 1024 * 1024
+PROXY_RESOURCE_TIMEOUT_SECONDS = 60
+PROXY_RESOURCE_CONCURRENCY = 4
 
 
 async def async_register_recordings_http_views(hass: HomeAssistant) -> None:
@@ -1303,10 +1306,25 @@ async def _async_fetch_proxy_resource(
 ) -> tuple[bytes, str, str]:
     """Fetch one signed X-Sense media resource without exposing its URL."""
     session = async_get_clientsession(hass)
-    async with session.get(url) as response:
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    limiter = domain_data.setdefault(
+        "_recording_proxy_limiter", asyncio.Semaphore(PROXY_RESOURCE_CONCURRENCY)
+    )
+    async with (
+        asyncio.timeout(PROXY_RESOURCE_TIMEOUT_SECONDS),
+        limiter,
+        session.get(url) as response,
+    ):
         response.raise_for_status()
+        if (response.content_length or 0) > PROXY_RESOURCE_MAX_BYTES:
+            raise RuntimeError("X-Sense media resource exceeds proxy size limit")
+        payload = bytearray()
+        async for chunk in response.content.iter_chunked(64 * 1024):
+            if len(payload) + len(chunk) > PROXY_RESOURCE_MAX_BYTES:
+                raise RuntimeError("X-Sense media resource exceeds proxy size limit")
+            payload.extend(chunk)
         return (
-            await response.read(),
+            bytes(payload),
             response.headers.get("content-type", ""),
             str(response.url),
         )

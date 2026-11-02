@@ -143,77 +143,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "Recordatorio de correo (SMA0A): Query mailbox schedules",
-        "description": "Recordatorio de correo (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Recordatorio de correo (SMA0A): Query mailbox schedules",
+      "description": "Recordatorio de correo (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Recordatorio de correo (SMA0A): Create mailbox schedule",
-        "description": "Recordatorio de correo (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Nombre visible"
-            },
-            "start_time": {
-                "name": "Hora de inicio (HH:MM o HHMM)"
-            },
-            "end_time": {
-                "name": "Hora de fin (HH:MM o HHMM)"
-            },
-            "week_days": {
-                "name": "Días (1 = domingo, 7 = sábado)"
-            },
-            "enabled": {
-                "name": "Estado de activación"
-            },
-            "time_zone": {
-                "name": "Zona horaria"
-            }
+      "name": "Recordatorio de correo (SMA0A): Create mailbox schedule",
+      "description": "Recordatorio de correo (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Nombre visible"
+        },
+        "start_time": {
+          "name": "Hora de inicio (HH:MM o HHMM)"
+        },
+        "end_time": {
+          "name": "Hora de fin (HH:MM o HHMM)"
+        },
+        "week_days": {
+          "name": "Días (1 = domingo, 7 = sábado)"
+        },
+        "enabled": {
+          "name": "Estado de activación"
+        },
+        "time_zone": {
+          "name": "Zona horaria"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Recordatorio de correo (SMA0A): Update mailbox schedule",
-        "description": "Recordatorio de correo (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identificador del horario"
-            },
-            "start_time": {
-                "name": "Hora de inicio (HH:MM o HHMM)"
-            },
-            "end_time": {
-                "name": "Hora de fin (HH:MM o HHMM)"
-            },
-            "week_days": {
-                "name": "Días (1 = domingo, 7 = sábado)"
-            },
-            "enabled": {
-                "name": "Estado de activación"
-            },
-            "time_zone": {
-                "name": "Zona horaria"
-            }
+      "name": "Recordatorio de correo (SMA0A): Update mailbox schedule",
+      "description": "Recordatorio de correo (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identificador del horario"
+        },
+        "start_time": {
+          "name": "Hora de inicio (HH:MM o HHMM)"
+        },
+        "end_time": {
+          "name": "Hora de fin (HH:MM o HHMM)"
+        },
+        "week_days": {
+          "name": "Días (1 = domingo, 7 = sábado)"
+        },
+        "enabled": {
+          "name": "Estado de activación"
+        },
+        "time_zone": {
+          "name": "Zona horaria"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Recordatorio de correo (SMA0A): Rename mailbox schedule",
-        "description": "Recordatorio de correo (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identificador del horario"
-            },
-            "name": {
-                "name": "Nombre visible"
-            }
+      "name": "Recordatorio de correo (SMA0A): Rename mailbox schedule",
+      "description": "Recordatorio de correo (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identificador del horario"
+        },
+        "name": {
+          "name": "Nombre visible"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Recordatorio de correo (SMA0A): Delete mailbox schedule",
-        "description": "Recordatorio de correo (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identificador del horario"
-            }
+      "name": "Recordatorio de correo (SMA0A): Delete mailbox schedule",
+      "description": "Recordatorio de correo (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identificador del horario"
         }
+      }
     },
     "query_light_groups": {
       "name": "Consultar grupos de luces",
@@ -362,17 +362,39 @@
           "recording_cache_retention_days": "Elimine las grabaciones almacenadas en caché local después de tantos días. Las grabaciones en la nube de X-Sense y en la tarjeta SD no se modifican.",
           "recording_cache_max_size_mb": "Tamaño máximo de caché local en MB. Cuando se alcanza el límite, las grabaciones vistas menos recientemente se eliminan primero.",
           "recording_cache_mode": "Solo reproducción transmite medios HLS a través de Home Assistant bajo demanda sin conservar clips completos. El modo de conservación mantiene copias locales con los límites indicados abajo."
+        },
+        "menu_options": {
+          "recordings": "Grabaciones",
+          "local_mqtt": "MQTT local (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "La carpeta de caché de grabación cambiará de `{old_path}`a `{new_path}`. Los vídeos y miniaturas almacenados en caché existentes no se mueven automáticamente. Mueva primero las carpetas `hls`, `videos`y `thumbs`existentes si desea que las grabaciones antiguas en caché sigan estando disponibles."
+      },
+      "local_mqtt": {
+        "title": "MQTT local (SBS50)",
+        "description": "MQTT local: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Estación base",
+          "enabled": "Activar MQTT local",
+          "host": "Dirección IPv4 del bróker",
+          "port": "Puerto del bróker",
+          "username": "Usuario",
+          "password": "Contraseña"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "MQTT local",
+        "description": "Configuración enviada; comprueba la conexión en la aplicación X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Utilice una carpeta en /media."
+      "invalid_recording_media_path": "Utilice una carpeta en /media.",
+      "local_mqtt_failed": "No se pudo configurar MQTT local."
     },
     "abort": {
-      "no_options": "No hay opciones configurables para esta cuenta X-Sense."
+      "no_options": "No hay opciones configurables para esta cuenta X-Sense.",
+      "local_mqtt_configured": "Configuración enviada; comprueba la conexión en la aplicación X-Sense."
     }
   },
   "entity": {
@@ -480,6 +502,9 @@
       },
       "camera_wake": {
         "name": "Despertar"
+      },
+      "reset_co_peak": {
+        "name": "Restablecer máximo de CO"
       }
     },
     "event": {
@@ -803,6 +828,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Duración del timbre mecánico"
+      },
+      "radon_alarm_threshold": {
+        "name": "Umbral de aviso de radón"
       }
     },
     "select": {
@@ -883,6 +911,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Nivel de batería para el encendido automático"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Días de supervisión de radón"
       }
     },
     "switch": {
@@ -1023,6 +1054,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Asistente de IA: paquetes"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Alarma de temperatura baja"
+      },
+      "radon_alarm_enabled": {
+        "name": "Modo de aviso de radón"
+      },
+      "motion_walk_test": {
+        "name": "Prueba de movimiento al caminar"
       }
     },
     "alarm_control_panel": {

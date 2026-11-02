@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Po toliko dneh izbrišite lokalne predpomnjene posnetke. Posnetki v oblaku X-Sense in na kartici SD se ne spremenijo.",
           "recording_cache_max_size_mb": "Največja velikost lokalnega predpomnilnika v MB. Ko je omejitev dosežena, se najprej odstranijo najmanj gledani posnetki.",
           "recording_cache_mode": "Samo predvajanje na zahtevo posreduje medije HLS prek Home Assistanta brez shranjevanja celotnih posnetkov. Način hranjenja ohrani lokalne kopije glede na spodnje omejitve."
+        },
+        "menu_options": {
+          "recordings": "Posnetki",
+          "local_mqtt": "Lokalni MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Mapa predpomnilnika snemanja se bo spremenila iz `{old_path}` v `{new_path}`. Obstoječi predpomnjeni videoposnetki in sličice se ne premaknejo samodejno. Če želite, da stari predpomnjeni posnetki ostanejo na voljo, najprej premaknite obstoječe mape `hls`, `videos` in `thumbs`."
+      },
+      "local_mqtt": {
+        "title": "Lokalni MQTT (SBS50)",
+        "description": "Lokalni MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Bazna postaja",
+          "enabled": "Omogoči lokalni MQTT",
+          "host": "Naslov IPv4 posrednika",
+          "port": "Vrata posrednika",
+          "username": "Uporabniško ime",
+          "password": "Geslo"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Lokalni MQTT",
+        "description": "Nastavitve poslane; preverite povezavo v aplikaciji X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Uporabite mapo pod /media."
+      "invalid_recording_media_path": "Uporabite mapo pod /media.",
+      "local_mqtt_failed": "Lokalnega MQTT ni bilo mogoče nastaviti."
     },
     "abort": {
-      "no_options": "Za ta račun X-Sense ni nastavljivih možnosti."
+      "no_options": "Za ta račun X-Sense ni nastavljivih možnosti.",
+      "local_mqtt_configured": "Nastavitve poslane; preverite povezavo v aplikaciji X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Prebudi"
+      },
+      "reset_co_peak": {
+        "name": "Ponastavi najvišjo vrednost CO"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Trajanje mehanskega zvonca"
+      },
+      "radon_alarm_threshold": {
+        "name": "Prag opozorila za radon"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Raven baterije za samodejni vklop"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Dnevi spremljanja radona"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Pomočnik UI: paket"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Alarm nizke temperature"
+      },
+      "radon_alarm_enabled": {
+        "name": "Način opozarjanja na radon"
+      },
+      "motion_walk_test": {
+        "name": "Preizkus gibanja s hojo"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Izbrišite urnik luči. Za cilj izberite stikalo za napajanje luči SBS50."
     },
     "query_mailbox_schedules": {
-        "name": "Opomnik za pošto (SMA0A): Query mailbox schedules",
-        "description": "Opomnik za pošto (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Opomnik za pošto (SMA0A): Query mailbox schedules",
+      "description": "Opomnik za pošto (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Opomnik za pošto (SMA0A): Create mailbox schedule",
-        "description": "Opomnik za pošto (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Prikazno ime"
-            },
-            "start_time": {
-                "name": "Začetni čas (HH:MM ali HHMM)"
-            },
-            "end_time": {
-                "name": "Končni čas (HH:MM ali HHMM)"
-            },
-            "week_days": {
-                "name": "Dnevi v tednu (1 = nedelja, 7 = sobota)"
-            },
-            "enabled": {
-                "name": "Stanje omogočenosti"
-            },
-            "time_zone": {
-                "name": "Časovni pas"
-            }
+      "name": "Opomnik za pošto (SMA0A): Create mailbox schedule",
+      "description": "Opomnik za pošto (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Prikazno ime"
+        },
+        "start_time": {
+          "name": "Začetni čas (HH:MM ali HHMM)"
+        },
+        "end_time": {
+          "name": "Končni čas (HH:MM ali HHMM)"
+        },
+        "week_days": {
+          "name": "Dnevi v tednu (1 = nedelja, 7 = sobota)"
+        },
+        "enabled": {
+          "name": "Stanje omogočenosti"
+        },
+        "time_zone": {
+          "name": "Časovni pas"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Opomnik za pošto (SMA0A): Update mailbox schedule",
-        "description": "Opomnik za pošto (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identifikator urnika"
-            },
-            "start_time": {
-                "name": "Začetni čas (HH:MM ali HHMM)"
-            },
-            "end_time": {
-                "name": "Končni čas (HH:MM ali HHMM)"
-            },
-            "week_days": {
-                "name": "Dnevi v tednu (1 = nedelja, 7 = sobota)"
-            },
-            "enabled": {
-                "name": "Stanje omogočenosti"
-            },
-            "time_zone": {
-                "name": "Časovni pas"
-            }
+      "name": "Opomnik za pošto (SMA0A): Update mailbox schedule",
+      "description": "Opomnik za pošto (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identifikator urnika"
+        },
+        "start_time": {
+          "name": "Začetni čas (HH:MM ali HHMM)"
+        },
+        "end_time": {
+          "name": "Končni čas (HH:MM ali HHMM)"
+        },
+        "week_days": {
+          "name": "Dnevi v tednu (1 = nedelja, 7 = sobota)"
+        },
+        "enabled": {
+          "name": "Stanje omogočenosti"
+        },
+        "time_zone": {
+          "name": "Časovni pas"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Opomnik za pošto (SMA0A): Rename mailbox schedule",
-        "description": "Opomnik za pošto (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identifikator urnika"
-            },
-            "name": {
-                "name": "Prikazno ime"
-            }
+      "name": "Opomnik za pošto (SMA0A): Rename mailbox schedule",
+      "description": "Opomnik za pošto (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identifikator urnika"
+        },
+        "name": {
+          "name": "Prikazno ime"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Opomnik za pošto (SMA0A): Delete mailbox schedule",
-        "description": "Opomnik za pošto (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identifikator urnika"
-            }
+      "name": "Opomnik za pošto (SMA0A): Delete mailbox schedule",
+      "description": "Opomnik za pošto (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identifikator urnika"
         }
+      }
     },
     "query_light_groups": {
       "name": "Pridobi skupine luči",

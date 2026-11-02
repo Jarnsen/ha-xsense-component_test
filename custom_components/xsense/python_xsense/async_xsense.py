@@ -2,6 +2,7 @@ import asyncio
 import errno
 import json
 import logging
+import math
 import socket
 from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import UTC, datetime
@@ -15,7 +16,7 @@ from .entity import Entity
 from .entity_map import EntityType
 from .exceptions import APIFailure, SessionExpired, XSenseError
 from .house import House
-from .mapping import bool_state
+from .mapping import bool_state, safe_float, safe_float_list, safe_int
 from .station import Station
 from .webrtc_trace import trace_host, trace_id
 
@@ -115,10 +116,18 @@ _HOUSE_STATE_DEVICE_TYPES = {
     "XS0R-iA",
 }
 
+PAIRED_ALARM_VOLUME_DEVICE_TYPES = frozenset({"STH51", "STH0A", "STH0B"})
+STH0C_SERVER_SETTING_KEYS = frozenset({
+    "dataIntervalM", "tempUnit", "tRange", "hRange", "tAdjust", "hAdjust",
+    "tAlarmTimeS", "hAlarmTimeS",
+})
+
 # The APK uses 2nd_info directly for the newer standalone Wi-Fi CO,
 # combined, temperature/humidity, water, and radon families. Wi-Fi smoke
 # families still use the legacy info shadow in their settings screens.
 _SECOND_INFO_DEVICE_TYPES = {
+    "CB0T-4B",
+    "W/R-SCA(VL)-0G",
     "SC06-WX",
     "SC07-WX",
     "SC07-iA",
@@ -513,6 +522,7 @@ class AsyncXSense(XSenseBase):
         self._ipv4_session: aiohttp.ClientSession | None = None
         self.language = _ipc_language(language)
         self._sbs50_child_info_loaded: set[tuple[str, str]] = set()
+        self._settings_locks: dict[tuple[str, str], asyncio.Lock] = {}
 
     async def _get_session(self):
         if self.session is None or self.session.closed:
@@ -596,7 +606,12 @@ class AsyncXSense(XSenseBase):
         ) as response:
             self._lastres = response
 
-            data = await response.json()
+            try:
+                data = await response.json()
+            except (ValueError, aiohttp.ContentTypeError) as ex:
+                raise APIFailure("Cannot understand X-Sense API response") from ex
+            if not isinstance(data, dict):
+                raise APIFailure("Cannot understand X-Sense API response")
 
             if response.status >= 400:
                 LOGGER.debug(
@@ -631,7 +646,11 @@ class AsyncXSense(XSenseBase):
                 raise APIFailure(
                     f"Request for code {code} failed with error {errCode}/{data['reCode']} {data.get('reMsg')}"
                 )
-            return data if return_envelope else data["reData"]
+            if return_envelope:
+                return data
+            if "reData" not in data:
+                raise APIFailure("Cannot understand X-Sense API response data")
+            return data["reData"]
 
     async def ai_service_call(self, code: str, **kwargs):
         """Call the APK AI-notification service endpoint."""
@@ -1578,12 +1597,11 @@ class AsyncXSense(XSenseBase):
         async with session.post(url, json=data, headers=headers) as response:
             self._lastres = response
             text = await response.text()
-            data = json.loads(text)
-
-            if response.status == 400:
-                raise SessionExpired(data.get("message", "token refresh failed"))
-
-            self._parse_refresh_result(data.get("AuthenticationResult", {}))
+            try:
+                data = json.loads(text)
+            except (ValueError, TypeError) as ex:
+                raise APIFailure("Cannot understand Cognito refresh response") from ex
+            self._accept_refresh_response(response.status, data)
 
     async def init(self):
         await self.get_client_info()
@@ -2273,18 +2291,29 @@ class AsyncXSense(XSenseBase):
             if self._lastres.status == 404:
                 continue
 
-            if "reported" in res.get("state", {}):
-                self._parse_get_house_state(house, res["state"]["reported"])
-            # else:
-            #     text = await self._lastres.text()
-            #     raise APIFailure(f'Unable to retrieve house data: {self._lastres.status}/{text}')
+            if self._lastres.status >= 400:
+                raise APIFailure(f"Unable to retrieve house data: HTTP {self._lastres.status}")
+            if not isinstance(res, dict) or not isinstance(res.get("state"), dict):
+                raise APIFailure("Cannot understand house shadow response")
+            reported = res["state"].get("reported")
+            if reported is not None:
+                if not isinstance(reported, dict):
+                    raise APIFailure("Cannot understand reported house shadow")
+                self._parse_get_house_state(house, reported)
 
     async def get_alarm_state(self, station: Station):
         res = await self.get_thing(station, "2nd_safemode")
         if self._lastres.status == 404:
             return
 
-        if "reported" in res.get("state", {}):
+        if self._lastres.status >= 400:
+            raise APIFailure(f"Unable to retrieve alarm data: HTTP {self._lastres.status}")
+        if not isinstance(res, dict) or not isinstance(res.get("state"), dict):
+            raise APIFailure("Cannot understand alarm shadow response")
+        reported = res["state"].get("reported")
+        if reported is not None and not isinstance(reported, dict):
+            raise APIFailure("Cannot understand reported alarm shadow")
+        if reported is not None:
             reported = res["state"]["reported"].copy()
             station.set_alarm_data(
                 {
@@ -2305,6 +2334,16 @@ class AsyncXSense(XSenseBase):
 
             if "reported" in res.get("state", {}):
                 station.set_data(res["state"]["reported"])
+                if station.type == "STH0C":
+                    try:
+                        station.set_data(await self.get_sth0c_settings(station))
+                    except APIFailure:
+                        LOGGER.debug("STH0C optional server settings unavailable")
+                elif station.type == "XR0A-iR" or supports_low_temperature_alarm(station):
+                    try:
+                        await self.refresh_alarm_settings(station)
+                    except APIFailure:
+                        LOGGER.debug("Optional server alarm settings unavailable")
                 return
 
             text = await self._lastres.text()
@@ -2386,7 +2425,7 @@ class AsyncXSense(XSenseBase):
             "deviceSN": entity.sn,
             "shadow": shadow,
             "stationSN": station.sn,
-            "userId": self.userid,
+            "userId": self._command_user_id,
         }
         if timestamp := _action_timestamp(definition, entity):
             desired["time"] = timestamp
@@ -2458,7 +2497,7 @@ class AsyncXSense(XSenseBase):
         if include_time:
             desired["time"] = self._utc_timestamp()
         if include_user:
-            desired["userId"] = self.userid
+            desired["userId"] = self._command_user_id
         desired.update({key: value for key, value in values.items() if value is not None})
         return station, {"state": {"desired": desired}}
 
@@ -2478,6 +2517,61 @@ class AsyncXSense(XSenseBase):
             data = data(entity)
         values = {**extra, **data}
         return self.build_command_state(entity, shadow, values)
+
+    async def get_local_mqtt_settings(self, station: Station):
+        """Read APK broker settings; response contains secrets, never log it."""
+        if station.type != "SBS50":
+            raise XSenseError("Local MQTT provisioning requires SBS50")
+        return await self.get_thing(station, "2nd_haparamup")
+
+    async def get_local_mqtt_status(self, station: Station):
+        """Read the APK's separate local MQTT connection status."""
+        if station.type != "SBS50":
+            raise XSenseError("Local MQTT provisioning requires SBS50")
+        return await self.get_thing(station, "2nd_halinkup")
+
+    async def configure_local_mqtt(
+        self, station: Station, *, enabled: bool, host: str, port: int,
+        username: str, password: str,
+    ):
+        """Provision an SBS50 broker with the APK appHaParam command."""
+        from ipaddress import IPv4Address
+
+        if station.type != "SBS50":
+            raise XSenseError("Local MQTT provisioning requires SBS50")
+        # APK Q2.d gates the native broker feature at firmware 1.7.0.
+        firmware = (getattr(station, "data", None) or {}).get("sw")
+        if firmware is not None:
+            import re
+
+            match = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)", str(firmware).strip())
+            if match and tuple(map(int, match.groups())) < (1, 7, 0):
+                raise XSenseError("Local MQTT requires SBS50 firmware 1.7.0 or newer")
+        if not isinstance(enabled, bool):
+            raise XSenseError("Enabled must be a boolean")
+        if not isinstance(host, str):
+            raise XSenseError("Broker requires an IPv4 address")
+        try:
+            IPv4Address(host)
+        except (ValueError, TypeError) as error:
+            raise XSenseError("Broker requires an IPv4 address") from error
+        if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+            raise XSenseError("Broker port must be between 1 and 65535")
+        if not isinstance(username, str) or not isinstance(password, str):
+            raise XSenseError("Broker credentials must be strings")
+        if not self.user_id_code:
+            raise XSenseError("Missing account user ID code")
+        desired = {
+            "shadow": "appHaParam", "stationSN": station.sn,
+            "deviceSN": station.sn, "userId": self.user_id_code,
+            "userParam": "source=1", "haEnable": "1" if enabled else "0",
+            "haIp": host, "haMqttPort": str(port),
+            "haUserName": username, "haPassword": password,
+            "time": self._utc_timestamp(),
+        }
+        return await self.do_thing(
+            station, "2nd_haparam", {"state": {"desired": desired}}
+        )
 
     async def set_device_config(self, entity: Entity, **values):
         """Write raw device config values through the APK config shadow."""
@@ -2661,6 +2755,22 @@ class AsyncXSense(XSenseBase):
         )
         return await self.do_thing(station, "testir", data)
 
+    async def reset_co_peak(self, entity: Entity):
+        """Reset CO peak using the APK CoSmokePeakActivity target and payload."""
+        if not supports_co_peak_reset(entity):
+            raise ValueError("CO peak reset is unsupported for this model")
+        station, data = self.build_command_state(
+            entity, "appCoReset", {}, include_device=True
+        )
+        data["state"]["desired"]["time"] = str(int(datetime.now(UTC).timestamp() * 1000))
+        target_name = (
+            f"XC04-WX-{entity.sn}" if entity.type == "XC04-WX"
+            else f"SBS50{station.sn}"
+        )
+        return await self.do_thing(
+            _ThingShadowTarget(station, target_name), "2nd_appco_reset", data
+        )
+
     async def set_light_power(self, entity: Entity, on: bool | str):
         """Compatibility wrapper for the APK light power command."""
         return await self.update_light_power(entity, self._bool_value(on) == "1")
@@ -2736,7 +2846,7 @@ class AsyncXSense(XSenseBase):
         desired = {
             "isOn": "1" if enabled else "0",
             "time": datetime.now(UTC).strftime("%Y%m%d%H%M%S"),
-            "userId": self.userid,
+            "userId": self._command_user_id,
             "userParam": "source=1",
         }
         if entity.type == "group-L":
@@ -2792,7 +2902,13 @@ class AsyncXSense(XSenseBase):
         station = getattr(entity, "station", entity)
         if not getattr(station, "entity_id", None) or not getattr(station, "sn", None):
             raise APIFailure("X-Sense radon threshold update requires station identity")
-        if min_radon < 1 or max_radon > 9999 or min_radon >= max_radon:
+        if (
+            safe_float(min_radon) is None
+            or safe_float(max_radon) is None
+            or min_radon < 1
+            or max_radon > 9999
+            or min_radon >= max_radon
+        ):
             raise ValueError(
                 "X-Sense radon thresholds require "
                 "1 <= minimum < maximum <= 9999"
@@ -2807,11 +2923,17 @@ class AsyncXSense(XSenseBase):
 
     async def update_shadow_setting(self, entity: Entity, data_key: str, value):
         """Write a non-camera setting through the same settings shadow as the app."""
+        _validate_setting_numbers(value)
+        if entity.type == "STH0C" and data_key in STH0C_SERVER_SETTING_KEYS:
+            return await self.update_sth0c_settings(entity, {data_key: value})
         station = getattr(entity, "station", entity)
         desired = {
             "shadow": "infoBase" if entity is station else "infoDev",
             data_key: str(value),
         }
+        if entity.type in PAIRED_ALARM_VOLUME_DEVICE_TYPES and data_key == "alarmEnable":
+            desired[data_key] = self._bool_value(value)
+            desired["alarmVol"] = "50" if desired[data_key] == "1" else "0"
 
         if data_key in {"alarmVol", "voiceVol", "alarmTone"}:
             if _volume_includes_station_sn(entity, data_key):
@@ -3177,7 +3299,7 @@ class AsyncXSense(XSenseBase):
             "deviceSN": entity.sn,
             "stationSN": station.sn,
             "time": datetime.now(UTC).strftime("%Y%m%d%H%M%S"),
-            "userId": self.userid,
+            "userId": self._command_user_id,
         }
         if enabled is not None:
             desired["warnIsOpen"] = "1" if enabled else "0"
@@ -3197,7 +3319,10 @@ class AsyncXSense(XSenseBase):
         comfort_type: str | None = None,
     ):
         """Write paired range settings through the same array payload as the app."""
-        updates = {data_key: values}
+        parsed = safe_float_list(values)
+        if parsed is None or len(parsed) != 2 or parsed[0] > parsed[1]:
+            raise ValueError("Range requires two finite, ordered bounds")
+        updates = {data_key: parsed}
         return await self.update_shadow_settings(
             entity, updates, comfort_type=comfort_type
         )
@@ -3210,6 +3335,9 @@ class AsyncXSense(XSenseBase):
         comfort_type: str | None = None,
     ):
         """Write multiple non-camera settings in one APK-style shadow payload."""
+        _validate_setting_numbers(updates)
+        if entity.type == "STH0C" and set(updates) & STH0C_SERVER_SETTING_KEYS:
+            return await self.update_sth0c_settings(entity, updates)
         station = getattr(entity, "station", entity)
         desired = {
             "shadow": "infoDev",
@@ -3222,6 +3350,140 @@ class AsyncXSense(XSenseBase):
 
         return await self.do_thing(
             station, _shadow_config_topic(entity), {"state": {"desired": desired}}
+        )
+
+    async def get_sth0c_settings(self, entity: Entity) -> dict:
+        """Read the server-owned settings used by the APK STH0C settings page."""
+        station = getattr(entity, "station", entity)
+        house_id = getattr(getattr(station, "house", None), "house_id", None)
+        if not house_id or not station.entity_id:
+            raise APIFailure("STH0C settings require house and station identity")
+        result = await self.api_call(
+            "104111", houseId=house_id, stationId=station.entity_id, category="STH0C"
+        )
+        if not isinstance(result, dict):
+            raise APIFailure("Cannot understand STH0C settings response")
+        return result
+
+    async def query_alarm_settings(self, entity: Entity) -> dict:
+        """Read the distinct low-temperature/radon warning configuration."""
+        station = getattr(entity, "station", entity)
+        if not station.entity_id:
+            raise APIFailure("Alarm settings require station identity")
+        if entity.type == "SWS0B":
+            result = await self.api_call("406015", stationId=station.entity_id)
+        elif entity.type == "XR0A-iR":
+            result = await self.api_call(
+                "104119", stationId=station.entity_id, stationSn=station.sn
+            )
+        else:
+            raise ValueError("Unsupported alarm settings model")
+        if not isinstance(result, dict):
+            raise APIFailure("Cannot understand server alarm settings")
+        return result
+
+    async def refresh_alarm_settings(self, entity: Entity):
+        """Keep reported and pending settings separate, as in the APK UI."""
+        result = await self.query_alarm_settings(entity)
+        if entity.type == "SWS0B":
+            current = result.get("currentMode")
+            pending = result.get("updateMode")
+            if not isinstance(current, dict):
+                raise APIFailure("Missing current low-temperature alarm mode")
+            if bool_state(current.get("isEnable")) is None:
+                raise APIFailure("Invalid current low-temperature alarm mode")
+            entity.data["lowTempAlarmEnabled"] = current.get("isEnable")
+            entity.data["lowTempAlarmPending"] = (
+                pending.get("isEnable") if isinstance(pending, dict) else None
+            )
+            entity.data["lowTempAlarmUpdateState"] = result.get("updateState")
+        else:
+            if (
+                bool_state(result.get("isEnable")) is None
+                or str(result.get("monitorDay")) not in {"1", "7", "30", "90"}
+                or safe_float(result.get("alarmThreshold")) is None
+            ):
+                raise APIFailure("Incomplete radon warning settings")
+            entity.data["radonAlarmEnabled"] = result.get("isEnable")
+            entity.data["radonAlarmMonitorDay"] = result.get("monitorDay")
+            entity.data["radonAlarmThreshold"] = result.get("alarmThreshold")
+            entity.data["radonAlarmUpdateState"] = result.get("updateState")
+
+    async def update_alarm_settings(self, entity: Entity, **updates):
+        """Write the APK alarm configuration, preserving companion fields."""
+        station = getattr(entity, "station", entity)
+        key = (str(getattr(station.house, "house_id", "")), str(station.entity_id))
+        async with self._settings_locks.setdefault(key, asyncio.Lock()):
+            return await self._update_alarm_settings(entity, **updates)
+
+    async def _update_alarm_settings(self, entity: Entity, **updates):
+        """Serialize read/modify/write bundles independently for each station."""
+        station = getattr(entity, "station", entity)
+        if entity.type == "SWS0B":
+            if not supports_low_temperature_alarm(entity):
+                raise ValueError("Low-temperature detection requires SWS0B firmware 1.4.0")
+            if set(updates) != {"isEnable"} or str(updates["isEnable"]) not in {"0", "1"}:
+                raise ValueError("Invalid low-temperature alarm setting")
+            return await self.api_call(
+                "406013", stationId=station.entity_id, isEnable=str(updates["isEnable"]),
+                return_envelope=True,
+            )
+        if entity.type != "XR0A-iR" or not updates or set(updates) - {
+            "isEnable", "monitorDay", "alarmThreshold"
+        }:
+            raise ValueError("Invalid radon alarm settings")
+        current = await self.query_alarm_settings(entity)
+        current.update(updates)
+        if str(current.get("isEnable")) not in {"0", "1"}:
+            raise ValueError("Invalid radon alarm enable value")
+        for key in ("monitorDay", "alarmThreshold"):
+            value = safe_float(current.get(key))
+            if value is None or value < 1:
+                raise ValueError("Invalid radon alarm configuration")
+        if str(current["monitorDay"]) not in {"1", "7", "30", "90"}:
+            raise ValueError("Invalid radon monitoring period")
+        if float(current["alarmThreshold"]) > 9999:
+            raise ValueError("Invalid radon alarm threshold")
+        return await self.api_call(
+            "104120", stationId=station.entity_id, stationSn=station.sn,
+            return_envelope=True,
+            **{key: str(current[key]) for key in ("isEnable", "monitorDay", "alarmThreshold")}
+        )
+
+    async def update_sth0c_settings(self, entity: Entity, updates: dict):
+        """Preserve the full APK REST settings bundle, without asserting device apply."""
+        station = getattr(entity, "station", entity)
+        key = (str(getattr(station.house, "house_id", "")), str(station.entity_id))
+        async with self._settings_locks.setdefault(key, asyncio.Lock()):
+            return await self._update_sth0c_settings(entity, updates)
+
+    async def _update_sth0c_settings(self, entity: Entity, updates: dict):
+        """Serialize companion settings so two controls cannot race their reads."""
+        fields = STH0C_SERVER_SETTING_KEYS
+        if not updates or set(updates) - fields:
+            raise ValueError("Unsupported STH0C settings")
+        for key, limit in (("tAdjust", 3), ("hAdjust", 20)):
+            if key in updates:
+                value = safe_float(updates[key])
+                if value is None or not -limit <= value <= limit:
+                    raise ValueError("Invalid STH0C calibration")
+        current = await self.get_sth0c_settings(entity)
+        if any(current.get(key) is None for key in fields):
+            raise APIFailure("Incomplete STH0C companion settings")
+        payload = {key: current[key] for key in fields}
+        payload.update(updates)
+        for key in fields:
+            if key in {"tRange", "hRange"}:
+                pair = safe_float_list(payload[key])
+                if pair is None or len(pair) != 2 or pair[0] > pair[1]:
+                    raise ValueError("Invalid STH0C range")
+                payload[key] = [str(value) for value in pair]
+            else:
+                payload[key] = str(payload[key])
+        station = getattr(entity, "station", entity)
+        return await self.api_call(
+            "104110", houseId=station.house.house_id,
+            stationId=station.entity_id, category="STH0C", return_envelope=True, **payload
         )
 
     async def action(self, entity: Entity, action: str):
@@ -3248,6 +3510,36 @@ def _shadow_config_topic(entity: Entity) -> str:
     if station and station.type == "SBS50":
         return f"2nd_cfg_{entity.sn}"
     return f"info_{entity.sn}"
+
+
+def _validate_setting_numbers(value) -> None:
+    """Reject nonfinite scalar/array settings without constraining text settings."""
+    if isinstance(value, dict):
+        for item in value.values():
+            _validate_setting_numbers(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _validate_setting_numbers(item)
+    elif isinstance(value, float) and not math.isfinite(value) or isinstance(value, str) and value.strip().lower().lstrip("+-") in {
+        "nan", "inf", "infinity"
+    }:
+        raise ValueError("Settings must be finite")
+
+
+def supports_low_temperature_alarm(entity: Entity) -> bool:
+    """Mirror APK w0.getStationVersion and the SWS0B >=140 settings gate."""
+    if entity.type != "SWS0B":
+        return False
+    version = str(entity.data.get("sw") or "0").replace("v", "").replace("V", "").replace(".", "")
+    return (safe_int(version) or 0) >= 140
+
+
+def supports_co_peak_reset(entity: Entity) -> bool:
+    """Limit the peak-reset button to the APK's two verified target topologies."""
+    station = getattr(entity, "station", entity)
+    return (entity.type == "XC04-WX" and station is entity) or (
+        entity.type == "XC01-M" and getattr(station, "type", None) == "SBS50"
+    )
 
 
 def _volume_includes_station_sn(entity: Entity, data_key: str) -> bool:

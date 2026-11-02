@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Izbrišite lokalno predmemorirane snimke nakon toliko dana. X-Sense cloud i snimke SD kartice se ne mijenjaju.",
           "recording_cache_max_size_mb": "Maksimalna veličina lokalne predmemorije u MB. Kada se dosegne ograničenje, najprije se uklanjaju posljednje gledane snimke.",
           "recording_cache_mode": "Samo reprodukcija prosljeđuje HLS medije kroz Home Assistant na zahtjev bez čuvanja cijelih isječaka. Način čuvanja zadržava lokalne kopije prema ograničenjima u nastavku."
+        },
+        "menu_options": {
+          "recordings": "Snimke",
+          "local_mqtt": "Lokalni MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Mapa predmemorije snimanja promijenit će se iz `{old_path}` u `{new_path}`. Postojeći predmemorirani videozapisi i minijature ne premještaju se automatski. Najprije premjestite postojeće mape `hls`, `videos` i `thumbs` ako želite da stare predmemorirane snimke ostanu dostupne."
+      },
+      "local_mqtt": {
+        "title": "Lokalni MQTT (SBS50)",
+        "description": "Lokalni MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Bazna stanica",
+          "enabled": "Omogući lokalni MQTT",
+          "host": "IPv4 adresa posrednika",
+          "port": "Port posrednika",
+          "username": "Korisničko ime",
+          "password": "Lozinka"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Lokalni MQTT",
+        "description": "Postavke su poslane; provjerite vezu u aplikaciji X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Koristite mapu ispod /media."
+      "invalid_recording_media_path": "Koristite mapu ispod /media.",
+      "local_mqtt_failed": "Lokalni MQTT nije moguće postaviti."
     },
     "abort": {
-      "no_options": "Nema konfigurabilnih opcija za ovaj X-Sense račun."
+      "no_options": "Nema konfigurabilnih opcija za ovaj X-Sense račun.",
+      "local_mqtt_configured": "Postavke su poslane; provjerite vezu u aplikaciji X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Probudi"
+      },
+      "reset_co_peak": {
+        "name": "Poništi vršnu vrijednost CO"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Trajanje mehaničkog zvona"
+      },
+      "radon_alarm_threshold": {
+        "name": "Prag upozorenja na radon"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Razina baterije za automatsko uključivanje"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Dani praćenja radona"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI pomoćnik: paket"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Alarm niske temperature"
+      },
+      "radon_alarm_enabled": {
+        "name": "Način upozorenja na radon"
+      },
+      "motion_walk_test": {
+        "name": "Test kretanja hodanjem"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "Podsjetnik e-poštom (SMA0A): Query mailbox schedules",
-        "description": "Podsjetnik e-poštom (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Podsjetnik e-poštom (SMA0A): Query mailbox schedules",
+      "description": "Podsjetnik e-poštom (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Podsjetnik e-poštom (SMA0A): Create mailbox schedule",
-        "description": "Podsjetnik e-poštom (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Prikazni naziv"
-            },
-            "start_time": {
-                "name": "Vrijeme početka (HH:MM ili HHMM)"
-            },
-            "end_time": {
-                "name": "Vrijeme završetka (HH:MM ili HHMM)"
-            },
-            "week_days": {
-                "name": "Dani u tjednu (1 = nedjelja, 7 = subota)"
-            },
-            "enabled": {
-                "name": "Omogućeno stanje"
-            },
-            "time_zone": {
-                "name": "Vremenska zona"
-            }
+      "name": "Podsjetnik e-poštom (SMA0A): Create mailbox schedule",
+      "description": "Podsjetnik e-poštom (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Prikazni naziv"
+        },
+        "start_time": {
+          "name": "Vrijeme početka (HH:MM ili HHMM)"
+        },
+        "end_time": {
+          "name": "Vrijeme završetka (HH:MM ili HHMM)"
+        },
+        "week_days": {
+          "name": "Dani u tjednu (1 = nedjelja, 7 = subota)"
+        },
+        "enabled": {
+          "name": "Omogućeno stanje"
+        },
+        "time_zone": {
+          "name": "Vremenska zona"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Podsjetnik e-poštom (SMA0A): Update mailbox schedule",
-        "description": "Podsjetnik e-poštom (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identifikator rasporeda"
-            },
-            "start_time": {
-                "name": "Vrijeme početka (HH:MM ili HHMM)"
-            },
-            "end_time": {
-                "name": "Vrijeme završetka (HH:MM ili HHMM)"
-            },
-            "week_days": {
-                "name": "Dani u tjednu (1 = nedjelja, 7 = subota)"
-            },
-            "enabled": {
-                "name": "Omogućeno stanje"
-            },
-            "time_zone": {
-                "name": "Vremenska zona"
-            }
+      "name": "Podsjetnik e-poštom (SMA0A): Update mailbox schedule",
+      "description": "Podsjetnik e-poštom (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identifikator rasporeda"
+        },
+        "start_time": {
+          "name": "Vrijeme početka (HH:MM ili HHMM)"
+        },
+        "end_time": {
+          "name": "Vrijeme završetka (HH:MM ili HHMM)"
+        },
+        "week_days": {
+          "name": "Dani u tjednu (1 = nedjelja, 7 = subota)"
+        },
+        "enabled": {
+          "name": "Omogućeno stanje"
+        },
+        "time_zone": {
+          "name": "Vremenska zona"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Podsjetnik e-poštom (SMA0A): Rename mailbox schedule",
-        "description": "Podsjetnik e-poštom (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identifikator rasporeda"
-            },
-            "name": {
-                "name": "Prikazni naziv"
-            }
+      "name": "Podsjetnik e-poštom (SMA0A): Rename mailbox schedule",
+      "description": "Podsjetnik e-poštom (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identifikator rasporeda"
+        },
+        "name": {
+          "name": "Prikazni naziv"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Podsjetnik e-poštom (SMA0A): Delete mailbox schedule",
-        "description": "Podsjetnik e-poštom (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Identifikator rasporeda"
-            }
+      "name": "Podsjetnik e-poštom (SMA0A): Delete mailbox schedule",
+      "description": "Podsjetnik e-poštom (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Identifikator rasporeda"
         }
+      }
     },
     "query_light_groups": {
       "name": "Dohvati grupe svjetala",

@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "احذف التسجيلات المحلية المخزنة مؤقتًا بعد هذه الأيام العديدة. لا يتم تغيير تسجيلات X-Sense السحابية وبطاقة SD.",
           "recording_cache_max_size_mb": "الحد الأقصى لحجم ذاكرة التخزين المؤقت المحلية بالميجابايت. عند الوصول إلى الحد الأقصى، تتم إزالة التسجيلات الأقل مشاهدة مؤخرًا أولاً.",
           "recording_cache_mode": "يمرر وضع التشغيل فقط وسائط HLS عبر Home Assistant عند الطلب دون الاحتفاظ بالمقاطع كاملة. يحتفظ وضع الاحتفاظ بنسخ محلية وفق الحدود أدناه."
+        },
+        "menu_options": {
+          "recordings": "التسجيلات",
+          "local_mqtt": "MQTT المحلي (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "سيتم تغيير مجلد ذاكرة التخزين المؤقت للتسجيل من `{old_path}` إلى `{new_path}`. لا يتم نقل مقاطع الفيديو والصور المصغرة الموجودة المخزنة مؤقتًا تلقائيًا. انقل مجلدات `hls`, `videos` و`thumbs` الموجودين أولاً إذا كنت تريد أن تظل التسجيلات القديمة المخزنة مؤقتًا متاحة."
+      },
+      "local_mqtt": {
+        "title": "MQTT المحلي (SBS50)",
+        "description": "MQTT المحلي: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "المحطة الأساسية",
+          "enabled": "تمكين MQTT المحلي",
+          "host": "عنوان IPv4 للوسيط",
+          "port": "منفذ الوسيط",
+          "username": "اسم المستخدم",
+          "password": "كلمة المرور"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "MQTT المحلي",
+        "description": "تم إرسال الإعدادات؛ تحقق من الاتصال في تطبيق X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "استخدم مجلدًا ضمن /media."
+      "invalid_recording_media_path": "استخدم مجلدًا ضمن /media.",
+      "local_mqtt_failed": "تعذر إعداد MQTT المحلي."
     },
     "abort": {
-      "no_options": "لا توجد خيارات قابلة للتكوين لحساب X-Sense هذا."
+      "no_options": "لا توجد خيارات قابلة للتكوين لحساب X-Sense هذا.",
+      "local_mqtt_configured": "تم إرسال الإعدادات؛ تحقق من الاتصال في تطبيق X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "إيقاظ"
+      },
+      "reset_co_peak": {
+        "name": "إعادة تعيين ذروة أول أكسيد الكربون"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "مدة الجرس الميكانيكي"
+      },
+      "radon_alarm_threshold": {
+        "name": "حد تحذير الرادون"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "مستوى البطارية للتشغيل التلقائي"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "أيام مراقبة الرادون"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "المساعد الذكي للطرود"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "إنذار انخفاض الحرارة"
+      },
+      "radon_alarm_enabled": {
+        "name": "وضع تحذير الرادون"
+      },
+      "motion_walk_test": {
+        "name": "اختبار الحركة بالمشي"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "حذف جدول إضاءة. استهدف مفتاح تشغيل الإضاءة في SBS50."
     },
     "query_mailbox_schedules": {
-        "name": "تذكير بالبريد (SMA0A): Query mailbox schedules",
-        "description": "تذكير بالبريد (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "تذكير بالبريد (SMA0A): Query mailbox schedules",
+      "description": "تذكير بالبريد (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "تذكير بالبريد (SMA0A): Create mailbox schedule",
-        "description": "تذكير بالبريد (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "اسم العرض"
-            },
-            "start_time": {
-                "name": "وقت البدء (HH:MM أو HHMM)"
-            },
-            "end_time": {
-                "name": "وقت الانتهاء (HH:MM أو HHMM)"
-            },
-            "week_days": {
-                "name": "أيام الأسبوع (1 = الأحد، 7 = السبت)"
-            },
-            "enabled": {
-                "name": "حالة التفعيل"
-            },
-            "time_zone": {
-                "name": "المنطقة الزمنية"
-            }
+      "name": "تذكير بالبريد (SMA0A): Create mailbox schedule",
+      "description": "تذكير بالبريد (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "اسم العرض"
+        },
+        "start_time": {
+          "name": "وقت البدء (HH:MM أو HHMM)"
+        },
+        "end_time": {
+          "name": "وقت الانتهاء (HH:MM أو HHMM)"
+        },
+        "week_days": {
+          "name": "أيام الأسبوع (1 = الأحد، 7 = السبت)"
+        },
+        "enabled": {
+          "name": "حالة التفعيل"
+        },
+        "time_zone": {
+          "name": "المنطقة الزمنية"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "تذكير بالبريد (SMA0A): Update mailbox schedule",
-        "description": "تذكير بالبريد (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "معرّف الجدول"
-            },
-            "start_time": {
-                "name": "وقت البدء (HH:MM أو HHMM)"
-            },
-            "end_time": {
-                "name": "وقت الانتهاء (HH:MM أو HHMM)"
-            },
-            "week_days": {
-                "name": "أيام الأسبوع (1 = الأحد، 7 = السبت)"
-            },
-            "enabled": {
-                "name": "حالة التفعيل"
-            },
-            "time_zone": {
-                "name": "المنطقة الزمنية"
-            }
+      "name": "تذكير بالبريد (SMA0A): Update mailbox schedule",
+      "description": "تذكير بالبريد (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "معرّف الجدول"
+        },
+        "start_time": {
+          "name": "وقت البدء (HH:MM أو HHMM)"
+        },
+        "end_time": {
+          "name": "وقت الانتهاء (HH:MM أو HHMM)"
+        },
+        "week_days": {
+          "name": "أيام الأسبوع (1 = الأحد، 7 = السبت)"
+        },
+        "enabled": {
+          "name": "حالة التفعيل"
+        },
+        "time_zone": {
+          "name": "المنطقة الزمنية"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "تذكير بالبريد (SMA0A): Rename mailbox schedule",
-        "description": "تذكير بالبريد (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "معرّف الجدول"
-            },
-            "name": {
-                "name": "اسم العرض"
-            }
+      "name": "تذكير بالبريد (SMA0A): Rename mailbox schedule",
+      "description": "تذكير بالبريد (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "معرّف الجدول"
+        },
+        "name": {
+          "name": "اسم العرض"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "تذكير بالبريد (SMA0A): Delete mailbox schedule",
-        "description": "تذكير بالبريد (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "معرّف الجدول"
-            }
+      "name": "تذكير بالبريد (SMA0A): Delete mailbox schedule",
+      "description": "تذكير بالبريد (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "معرّف الجدول"
         }
+      }
     },
     "query_light_groups": {
       "name": "الاستعلام عن مجموعات الإضاءة",

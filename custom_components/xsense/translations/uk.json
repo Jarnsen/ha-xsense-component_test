@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Видаліть локальні кешовані записи через стільки днів. Записи хмари X-Sense і SD-карти не змінюються.",
           "recording_cache_max_size_mb": "Максимальний розмір локального кешу в МБ. Коли ліміт буде досягнуто, спочатку видаляються записи, які нещодавно переглядалися.",
           "recording_cache_mode": "Режим лише відтворення передає HLS-медіа через Home Assistant на вимогу без збереження повних кліпів. Режим збереження тримає локальні копії за наведеними нижче обмеженнями."
+        },
+        "menu_options": {
+          "recordings": "Записи",
+          "local_mqtt": "Локальний MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Папка кешу записів зміниться з `{old_path}` на `{new_path}`. Існуючі кешовані відео та мініатюри не переміщуються автоматично. Спочатку перемістіть існуючі папки `hls`, `videos` і `thumbs`, якщо ви хочете, щоб старі кешовані записи залишалися доступними."
+      },
+      "local_mqtt": {
+        "title": "Локальний MQTT (SBS50)",
+        "description": "Локальний MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Базова станція",
+          "enabled": "Увімкнути локальний MQTT",
+          "host": "IPv4-адреса брокера",
+          "port": "Порт брокера",
+          "username": "Ім’я користувача",
+          "password": "Пароль"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Локальний MQTT",
+        "description": "Налаштування надіслано; перевірте з’єднання в застосунку X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Використовуйте папку під /media."
+      "invalid_recording_media_path": "Використовуйте папку під /media.",
+      "local_mqtt_failed": "Не вдалося налаштувати локальний MQTT."
     },
     "abort": {
-      "no_options": "Для цього облікового запису X-Sense немає параметрів, які можна налаштувати."
+      "no_options": "Для цього облікового запису X-Sense немає параметрів, які можна налаштувати.",
+      "local_mqtt_configured": "Налаштування надіслано; перевірте з’єднання в застосунку X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Пробудити"
+      },
+      "reset_co_peak": {
+        "name": "Скинути пікове значення CO"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Тривалість механічного дзвінка"
+      },
+      "radon_alarm_threshold": {
+        "name": "Поріг попередження про радон"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Рівень заряду для автоматичного ввімкнення"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Дні моніторингу радону"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Помічник ШІ: посилка"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Сигналізація низької температури"
+      },
+      "radon_alarm_enabled": {
+        "name": "Режим попередження про радон"
+      },
+      "motion_walk_test": {
+        "name": "Перевірка руху ходьбою"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Видаліть розклад освітлення. Виберіть ціллю вимикач живлення освітлення SBS50."
     },
     "query_mailbox_schedules": {
-        "name": "Нагадування про пошту (SMA0A): Query mailbox schedules",
-        "description": "Нагадування про пошту (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Нагадування про пошту (SMA0A): Query mailbox schedules",
+      "description": "Нагадування про пошту (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Нагадування про пошту (SMA0A): Create mailbox schedule",
-        "description": "Нагадування про пошту (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Відображувана назва"
-            },
-            "start_time": {
-                "name": "Час початку (HH:MM або HHMM)"
-            },
-            "end_time": {
-                "name": "Час завершення (HH:MM або HHMM)"
-            },
-            "week_days": {
-                "name": "Дні тижня (1 = неділя, 7 = субота)"
-            },
-            "enabled": {
-                "name": "Стан увімкнення"
-            },
-            "time_zone": {
-                "name": "Часовий пояс"
-            }
+      "name": "Нагадування про пошту (SMA0A): Create mailbox schedule",
+      "description": "Нагадування про пошту (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Відображувана назва"
+        },
+        "start_time": {
+          "name": "Час початку (HH:MM або HHMM)"
+        },
+        "end_time": {
+          "name": "Час завершення (HH:MM або HHMM)"
+        },
+        "week_days": {
+          "name": "Дні тижня (1 = неділя, 7 = субота)"
+        },
+        "enabled": {
+          "name": "Стан увімкнення"
+        },
+        "time_zone": {
+          "name": "Часовий пояс"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Нагадування про пошту (SMA0A): Update mailbox schedule",
-        "description": "Нагадування про пошту (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Ідентифікатор розкладу"
-            },
-            "start_time": {
-                "name": "Час початку (HH:MM або HHMM)"
-            },
-            "end_time": {
-                "name": "Час завершення (HH:MM або HHMM)"
-            },
-            "week_days": {
-                "name": "Дні тижня (1 = неділя, 7 = субота)"
-            },
-            "enabled": {
-                "name": "Стан увімкнення"
-            },
-            "time_zone": {
-                "name": "Часовий пояс"
-            }
+      "name": "Нагадування про пошту (SMA0A): Update mailbox schedule",
+      "description": "Нагадування про пошту (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Ідентифікатор розкладу"
+        },
+        "start_time": {
+          "name": "Час початку (HH:MM або HHMM)"
+        },
+        "end_time": {
+          "name": "Час завершення (HH:MM або HHMM)"
+        },
+        "week_days": {
+          "name": "Дні тижня (1 = неділя, 7 = субота)"
+        },
+        "enabled": {
+          "name": "Стан увімкнення"
+        },
+        "time_zone": {
+          "name": "Часовий пояс"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Нагадування про пошту (SMA0A): Rename mailbox schedule",
-        "description": "Нагадування про пошту (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Ідентифікатор розкладу"
-            },
-            "name": {
-                "name": "Відображувана назва"
-            }
+      "name": "Нагадування про пошту (SMA0A): Rename mailbox schedule",
+      "description": "Нагадування про пошту (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Ідентифікатор розкладу"
+        },
+        "name": {
+          "name": "Відображувана назва"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Нагадування про пошту (SMA0A): Delete mailbox schedule",
-        "description": "Нагадування про пошту (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Ідентифікатор розкладу"
-            }
+      "name": "Нагадування про пошту (SMA0A): Delete mailbox schedule",
+      "description": "Нагадування про пошту (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Ідентифікатор розкладу"
         }
+      }
     },
     "query_light_groups": {
       "name": "Отримати групи освітлення",

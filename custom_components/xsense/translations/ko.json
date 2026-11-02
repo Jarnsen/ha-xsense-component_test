@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "며칠이 지나면 로컬에 캐시된 녹음을 삭제하세요. X-Sense 클라우드 및 SD 카드 녹화는 변경되지 않습니다.",
           "recording_cache_max_size_mb": "로컬 캐시의 최대 크기(MB)입니다. 한도에 도달하면 마지막으로 본 시점이 가장 오래된 녹화부터 삭제됩니다.",
           "recording_cache_mode": "재생 전용 모드는 전체 클립을 보관하지 않고 필요할 때 HLS 미디어를 Home Assistant를 통해 프록시합니다. 보관 모드는 아래 제한에 따라 로컬 사본을 유지합니다."
+        },
+        "menu_options": {
+          "recordings": "녹화",
+          "local_mqtt": "로컬 MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "녹화 캐시 폴더가 `{old_path}`에서 `{new_path}`로 변경됩니다. 기존에 캐시된 비디오와 썸네일은 자동으로 이동되지 않습니다. 오래되고 캐시된 녹화물을 계속 사용하려면 기존 `hls`, `videos` 및 `thumbs` 폴더를 먼저 이동하세요."
+      },
+      "local_mqtt": {
+        "title": "로컬 MQTT (SBS50)",
+        "description": "로컬 MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "베이스 스테이션",
+          "enabled": "로컬 MQTT 사용",
+          "host": "브로커 IPv4 주소",
+          "port": "브로커 포트",
+          "username": "사용자 이름",
+          "password": "비밀번호"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "로컬 MQTT",
+        "description": "설정을 전송했습니다. X-Sense 앱에서 연결을 확인하세요."
       }
     },
     "error": {
-      "invalid_recording_media_path": "/media 아래의 폴더를 사용하세요."
+      "invalid_recording_media_path": "/media 아래의 폴더를 사용하세요.",
+      "local_mqtt_failed": "로컬 MQTT를 설정할 수 없습니다."
     },
     "abort": {
-      "no_options": "이 X-Sense 계정에 대해 구성 가능한 옵션이 없습니다."
+      "no_options": "이 X-Sense 계정에 대해 구성 가능한 옵션이 없습니다.",
+      "local_mqtt_configured": "설정을 전송했습니다. X-Sense 앱에서 연결을 확인하세요."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "절전 해제"
+      },
+      "reset_co_peak": {
+        "name": "일산화탄소 최고값 초기화"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "기계식 차임 지속 시간"
+      },
+      "radon_alarm_threshold": {
+        "name": "라돈 경고 임계값"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "자동 전원 켜짐 배터리 수준"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "라돈 모니터링 일수"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI 도우미: 택배"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "저온 경보"
+      },
+      "radon_alarm_enabled": {
+        "name": "라돈 경고 모드"
+      },
+      "motion_walk_test": {
+        "name": "보행 동작 감지 테스트"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "이메일 알림 (SMA0A): Query mailbox schedules",
-        "description": "이메일 알림 (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "이메일 알림 (SMA0A): Query mailbox schedules",
+      "description": "이메일 알림 (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "이메일 알림 (SMA0A): Create mailbox schedule",
-        "description": "이메일 알림 (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "표시 이름"
-            },
-            "start_time": {
-                "name": "시작 시간 (HH:MM 또는 HHMM)"
-            },
-            "end_time": {
-                "name": "종료 시간 (HH:MM 또는 HHMM)"
-            },
-            "week_days": {
-                "name": "요일 (1 = 일요일, 7 = 토요일)"
-            },
-            "enabled": {
-                "name": "활성화 상태"
-            },
-            "time_zone": {
-                "name": "시간대"
-            }
+      "name": "이메일 알림 (SMA0A): Create mailbox schedule",
+      "description": "이메일 알림 (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "표시 이름"
+        },
+        "start_time": {
+          "name": "시작 시간 (HH:MM 또는 HHMM)"
+        },
+        "end_time": {
+          "name": "종료 시간 (HH:MM 또는 HHMM)"
+        },
+        "week_days": {
+          "name": "요일 (1 = 일요일, 7 = 토요일)"
+        },
+        "enabled": {
+          "name": "활성화 상태"
+        },
+        "time_zone": {
+          "name": "시간대"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "이메일 알림 (SMA0A): Update mailbox schedule",
-        "description": "이메일 알림 (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "일정 식별자"
-            },
-            "start_time": {
-                "name": "시작 시간 (HH:MM 또는 HHMM)"
-            },
-            "end_time": {
-                "name": "종료 시간 (HH:MM 또는 HHMM)"
-            },
-            "week_days": {
-                "name": "요일 (1 = 일요일, 7 = 토요일)"
-            },
-            "enabled": {
-                "name": "활성화 상태"
-            },
-            "time_zone": {
-                "name": "시간대"
-            }
+      "name": "이메일 알림 (SMA0A): Update mailbox schedule",
+      "description": "이메일 알림 (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "일정 식별자"
+        },
+        "start_time": {
+          "name": "시작 시간 (HH:MM 또는 HHMM)"
+        },
+        "end_time": {
+          "name": "종료 시간 (HH:MM 또는 HHMM)"
+        },
+        "week_days": {
+          "name": "요일 (1 = 일요일, 7 = 토요일)"
+        },
+        "enabled": {
+          "name": "활성화 상태"
+        },
+        "time_zone": {
+          "name": "시간대"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "이메일 알림 (SMA0A): Rename mailbox schedule",
-        "description": "이메일 알림 (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "일정 식별자"
-            },
-            "name": {
-                "name": "표시 이름"
-            }
+      "name": "이메일 알림 (SMA0A): Rename mailbox schedule",
+      "description": "이메일 알림 (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "일정 식별자"
+        },
+        "name": {
+          "name": "표시 이름"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "이메일 알림 (SMA0A): Delete mailbox schedule",
-        "description": "이메일 알림 (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "일정 식별자"
-            }
+      "name": "이메일 알림 (SMA0A): Delete mailbox schedule",
+      "description": "이메일 알림 (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "일정 식별자"
         }
+      }
     },
     "query_light_groups": {
       "name": "조명 그룹 조회",

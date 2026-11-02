@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -9,12 +10,12 @@ import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.const import EntityCategory
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
     XSenseEntity,
@@ -27,8 +28,10 @@ from .errors import xsense_error
 from .python_xsense.async_xsense import (
     CAMERA_AI_ASSISTANT_TYPES,
     CAMERA_AI_NOTIFICATION_TYPES,
+    PAIRED_ALARM_VOLUME_DEVICE_TYPES,
     _camera_config_write_value,
     is_camera_entity,
+    supports_low_temperature_alarm,
 )
 from .python_xsense.device import Device
 from .python_xsense.entity import Entity
@@ -280,6 +283,30 @@ class XSenseSwitchEntityDescription(SwitchEntityDescription):
 
 
 SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
+    XSenseSwitchEntityDescription(
+        key="motion_walk_test",
+        data_key="motionWalkTest",
+        translation_key="motion_walk_test",
+        icon="mdi:walk",
+        exists_fn=lambda entity: entity.type == "SMS01",
+        value_fn=lambda entity: None,
+    ),
+    XSenseSwitchEntityDescription(
+        key="low_temperature_alarm_enabled",
+        data_key="lowTempAlarmEnabled",
+        translation_key="low_temperature_alarm_enabled",
+        icon="mdi:thermometer-alert",
+        exists_fn=lambda entity: supports_low_temperature_alarm(entity) and "lowTempAlarmEnabled" in entity.data,
+        value_fn=optional_data_bool("lowTempAlarmEnabled"),
+    ),
+    XSenseSwitchEntityDescription(
+        key="radon_alarm_enabled",
+        data_key="radonAlarmEnabled",
+        translation_key="radon_alarm_enabled",
+        icon="mdi:radioactive",
+        exists_fn=lambda entity: entity.type == "XR0A-iR" and "radonAlarmEnabled" in entity.data,
+        value_fn=optional_data_bool("radonAlarmEnabled"),
+    ),
     XSenseSwitchEntityDescription(
         key="led_light",
         data_key="ledLight",
@@ -777,6 +804,9 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         self._station_id = station_id
         self.entity_description = entity_description
         self._attr_available = False
+        self._motion_test_task: asyncio.Task | None = None
+        self._motion_test_entity: Entity | None = None
+        self._motion_test_lock = asyncio.Lock()
 
         super().__init__(coordinator, entity, station_id)
 
@@ -793,6 +823,8 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
     @property
     def is_on(self) -> bool | None:
         """Return the state of the switch."""
+        if self.entity_description.data_key == "motionWalkTest":
+            return self._motion_test_entity is not None
         entity = self._current_entity()
         if entity is None:
             return None
@@ -806,6 +838,11 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         if entity is None:
             return None
         attrs = {}
+        if self.entity_description.data_key == "lowTempAlarmEnabled":
+            attrs["update_state"] = entity.data.get("lowTempAlarmUpdateState")
+            attrs["pending_enabled"] = boolean_state(entity.data.get("lowTempAlarmPending"))
+        elif self.entity_description.data_key == "radonAlarmEnabled":
+            attrs["update_state"] = entity.data.get("radonAlarmUpdateState")
         if self.entity_description.data_key == "on" and "lightSchedules" in entity.data:
             attrs["light_schedules"] = entity.data["lightSchedules"]
         if self.entity_description.data_key == "on" and "lightGroups" in entity.data:
@@ -824,6 +861,51 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs) -> None:
         """Turn off the X-Sense setting."""
         await self._async_set_state(False)
+
+    async def _async_motion_test(self, entity: Entity, enabled: bool) -> None:
+        """Bound the APK walk-test mode to ten minutes and this entity lifetime."""
+        async with self._motion_test_lock:
+            await self.coordinator.xsense.set_motion_test(entity, enabled)
+            self._motion_test_entity = entity if enabled else None
+            if self._motion_test_task and self._motion_test_task is not asyncio.current_task():
+                self._motion_test_task.cancel()
+            self._motion_test_task = None
+            if enabled:
+                self._motion_test_task = self.hass.async_create_background_task(
+                    self._async_expire_motion_test(), "X-Sense motion walk-test timeout"
+                )
+            self.async_write_ha_state()
+
+    async def _async_expire_motion_test(self) -> None:
+        await asyncio.sleep(600)
+        # A temporary cloud failure must not silently abandon a running test.
+        while self._motion_test_entity is not None:
+            try:
+                await self._async_motion_test(self._motion_test_entity, False)
+            except Exception:  # noqa: BLE001
+                LOGGER.warning("Could not stop X-Sense motion walk test; retrying")
+                await asyncio.sleep(30)
+
+    async def async_will_remove_from_hass(self) -> None:
+        await self._async_stop_motion_test()
+        await super().async_will_remove_from_hass()
+
+    async def _async_stop_motion_test(self, event=None) -> None:
+        """Stop temporary device mode on removal or normal HA shutdown."""
+        if self._motion_test_task:
+            self._motion_test_task.cancel()
+        if self._motion_test_entity is not None:
+            try:
+                await self._async_motion_test(self._motion_test_entity, False)
+            except Exception:  # noqa: BLE001
+                LOGGER.warning("Could not stop X-Sense motion walk test during unload")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if self.entity_description.data_key == "motionWalkTest":
+            self.async_on_remove(
+                self.hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, self._async_stop_motion_test)
+            )
 
     async def async_query_light_schedules(self) -> None:
         """Query and cache SBS50 light schedules from the APK schedule API."""
@@ -1084,6 +1166,16 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         if entity is None or not self.entity_description.exists_fn(entity):
             raise xsense_error("entity_unavailable")
 
+        if self.entity_description.data_key == "motionWalkTest":
+            await self._async_motion_test(entity, enabled)
+            return
+
+        if self.entity_description.data_key in {"lowTempAlarmEnabled", "radonAlarmEnabled"}:
+            await xsense.update_alarm_settings(entity, isEnable=on_off_value(enabled))
+            await xsense.refresh_alarm_settings(entity)
+            self.coordinator.async_update_listeners()
+            return
+
         if self.entity_description.data_key == "on":
             await xsense.update_light_power(entity, enabled)
             entity.data[self.entity_description.data_key] = enabled
@@ -1182,6 +1274,8 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
             self.entity_description.write_value_fn(enabled),
         )
         if self.entity_description.read_key:
+            if entity.type in PAIRED_ALARM_VOLUME_DEVICE_TYPES and self.entity_description.data_key == "alarmEnable":
+                entity.data["alarmVol"] = 50 if enabled else 0
             entity.data.pop(self.entity_description.data_key, None)
             entity.data[self.entity_description.read_key] = enabled
         else:

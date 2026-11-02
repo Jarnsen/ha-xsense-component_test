@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Pēc daudzām dienām izdzēsiet lokālos kešatmiņā saglabātos ierakstus. X-Sense mākoņa un SD kartes ieraksti netiek mainīti.",
           "recording_cache_max_size_mb": "Maksimālais vietējās kešatmiņas lielums MB. Kad limits ir sasniegts, vispirms tiek noņemti vismazāk skatītie ieraksti.",
           "recording_cache_mode": "Tikai atskaņošana pēc pieprasījuma pārsūta HLS multividi caur Home Assistant, nesaglabājot pilnus klipus. Saglabāšanas režīms glabā vietējās kopijas atbilstoši zemāk norādītajiem ierobežojumiem."
+        },
+        "menu_options": {
+          "recordings": "Ieraksti",
+          "local_mqtt": "Lokālais MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Ierakstu kešatmiņas mape tiks mainīta no `{old_path}` uz `{new_path}`. Esošie kešatmiņā saglabātie videoklipi un sīktēli netiek automātiski pārvietoti. Ja vēlaties, lai vecie kešatmiņā saglabātie ieraksti būtu pieejami, vispirms pārvietojiet esošās mapes `hls`, `videos` un `thumbs`."
+      },
+      "local_mqtt": {
+        "title": "Lokālais MQTT (SBS50)",
+        "description": "Lokālais MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Bāzes stacija",
+          "enabled": "Iespējot lokālo MQTT",
+          "host": "Starpnieka IPv4 adrese",
+          "port": "Starpnieka ports",
+          "username": "Lietotājvārds",
+          "password": "Parole"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Lokālais MQTT",
+        "description": "Iestatījumi nosūtīti; pārbaudiet savienojumu X-Sense lietotnē."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Izmantojiet mapi sadaļā /media."
+      "invalid_recording_media_path": "Izmantojiet mapi sadaļā /media.",
+      "local_mqtt_failed": "Neizdevās iestatīt lokālo MQTT."
     },
     "abort": {
-      "no_options": "Šim X-Sense kontam nav konfigurējamu opciju."
+      "no_options": "Šim X-Sense kontam nav konfigurējamu opciju.",
+      "local_mqtt_configured": "Iestatījumi nosūtīti; pārbaudiet savienojumu X-Sense lietotnē."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Pamodināt"
+      },
+      "reset_co_peak": {
+        "name": "Atiestatīt CO maksimumu"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Mehāniskā zvana ilgums"
+      },
+      "radon_alarm_threshold": {
+        "name": "Radona brīdinājuma slieksnis"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Baterijas līmenis automātiskai ieslēgšanai"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Radona uzraudzības dienas"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI palīgs: sūtījums"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Zemas temperatūras trauksme"
+      },
+      "radon_alarm_enabled": {
+        "name": "Radona brīdinājuma režīms"
+      },
+      "motion_walk_test": {
+        "name": "Kustības pārbaude ejot"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "E-pasta atgādinājums (SMA0A): Query mailbox schedules",
-        "description": "E-pasta atgādinājums (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "E-pasta atgādinājums (SMA0A): Query mailbox schedules",
+      "description": "E-pasta atgādinājums (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "E-pasta atgādinājums (SMA0A): Create mailbox schedule",
-        "description": "E-pasta atgādinājums (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Parādāmais nosaukums"
-            },
-            "start_time": {
-                "name": "Sākuma laiks (HH:MM vai HHMM)"
-            },
-            "end_time": {
-                "name": "Beigu laiks (HH:MM vai HHMM)"
-            },
-            "week_days": {
-                "name": "Nedēļas dienas (1 = svētdiena, 7 = sestdiena)"
-            },
-            "enabled": {
-                "name": "Iespējošanas stāvoklis"
-            },
-            "time_zone": {
-                "name": "Laika josla"
-            }
+      "name": "E-pasta atgādinājums (SMA0A): Create mailbox schedule",
+      "description": "E-pasta atgādinājums (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Parādāmais nosaukums"
+        },
+        "start_time": {
+          "name": "Sākuma laiks (HH:MM vai HHMM)"
+        },
+        "end_time": {
+          "name": "Beigu laiks (HH:MM vai HHMM)"
+        },
+        "week_days": {
+          "name": "Nedēļas dienas (1 = svētdiena, 7 = sestdiena)"
+        },
+        "enabled": {
+          "name": "Iespējošanas stāvoklis"
+        },
+        "time_zone": {
+          "name": "Laika josla"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "E-pasta atgādinājums (SMA0A): Update mailbox schedule",
-        "description": "E-pasta atgādinājums (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Grafika identifikators"
-            },
-            "start_time": {
-                "name": "Sākuma laiks (HH:MM vai HHMM)"
-            },
-            "end_time": {
-                "name": "Beigu laiks (HH:MM vai HHMM)"
-            },
-            "week_days": {
-                "name": "Nedēļas dienas (1 = svētdiena, 7 = sestdiena)"
-            },
-            "enabled": {
-                "name": "Iespējošanas stāvoklis"
-            },
-            "time_zone": {
-                "name": "Laika josla"
-            }
+      "name": "E-pasta atgādinājums (SMA0A): Update mailbox schedule",
+      "description": "E-pasta atgādinājums (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Grafika identifikators"
+        },
+        "start_time": {
+          "name": "Sākuma laiks (HH:MM vai HHMM)"
+        },
+        "end_time": {
+          "name": "Beigu laiks (HH:MM vai HHMM)"
+        },
+        "week_days": {
+          "name": "Nedēļas dienas (1 = svētdiena, 7 = sestdiena)"
+        },
+        "enabled": {
+          "name": "Iespējošanas stāvoklis"
+        },
+        "time_zone": {
+          "name": "Laika josla"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "E-pasta atgādinājums (SMA0A): Rename mailbox schedule",
-        "description": "E-pasta atgādinājums (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Grafika identifikators"
-            },
-            "name": {
-                "name": "Parādāmais nosaukums"
-            }
+      "name": "E-pasta atgādinājums (SMA0A): Rename mailbox schedule",
+      "description": "E-pasta atgādinājums (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Grafika identifikators"
+        },
+        "name": {
+          "name": "Parādāmais nosaukums"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "E-pasta atgādinājums (SMA0A): Delete mailbox schedule",
-        "description": "E-pasta atgādinājums (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Grafika identifikators"
-            }
+      "name": "E-pasta atgādinājums (SMA0A): Delete mailbox schedule",
+      "description": "E-pasta atgādinājums (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Grafika identifikators"
         }
+      }
     },
     "query_light_groups": {
       "name": "Iegūt apgaismojuma grupas",

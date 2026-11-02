@@ -362,17 +362,39 @@
           "recording_notification_quality": "HD prefers higher-resolution recording URLs. SD prefers standard-resolution URLs when X-Sense provides them.",
           "recording_media_days_order": "Choose whether newer or older days appear first in the recordings viewer.",
           "recording_media_clips_order": "Choose whether newer or older clips appear first within each day."
+        },
+        "menu_options": {
+          "recordings": "Recordings",
+          "local_mqtt": "Local MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "The recording cache folder will change from `{old_path}` to `{new_path}`. Existing cached videos and thumbnails are not moved automatically. Move the existing `hls`, `videos` and `thumbs` folders first if you want old cached recordings to remain available."
+      },
+      "local_mqtt": {
+        "title": "Local MQTT (SBS50)",
+        "description": "Configure the local broker used by the SBS50 native MQTT feature. Enable the MQTT integration in Home Assistant first. Supported Link+ Pro smoke, CO, combination and heat alarms publish through Home Assistant MQTT discovery. Initial provisioning requires the X-Sense cloud. This does not disable cloud support and may create separate MQTT devices. Broker credentials are sent to the base station through X-Sense and are not saved in this integration.",
+        "data": {
+          "station": "Base station",
+          "enabled": "Enable local MQTT",
+          "host": "Broker IPv4 address",
+          "port": "Broker port",
+          "username": "Broker username",
+          "password": "Broker password"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Configuration sent",
+        "description": "The broker configuration was sent. This does not confirm a broker connection. Check the SBS50 connection status in the X-Sense app and devices under the Home Assistant MQTT integration."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Use a folder under /media."
+      "invalid_recording_media_path": "Use a folder under /media.",
+      "local_mqtt_failed": "Unable to configure local MQTT. Check the broker settings and base station firmware support."
     },
     "abort": {
-      "no_options": "There are no configurable options for this X-Sense account."
+      "no_options": "There are no configurable options for this X-Sense account.",
+      "local_mqtt_configured": "Local MQTT configuration sent."
     }
   },
   "issues": {},
@@ -481,6 +503,9 @@
       },
       "camera_wake": {
         "name": "Wake Up"
+      },
+      "reset_co_peak": {
+        "name": "Reset CO peak"
       }
     },
     "event": {
@@ -804,6 +829,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Mechanical Chime Duration"
+      },
+      "radon_alarm_threshold": {
+        "name": "Radon warning threshold"
       }
     },
     "select": {
@@ -884,6 +912,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Auto Power-On Capacity"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Radon monitoring days"
       }
     },
     "switch": {
@@ -1024,6 +1055,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI Assistant Package"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Low temperature alarm"
+      },
+      "radon_alarm_enabled": {
+        "name": "Radon warning mode"
+      },
+      "motion_walk_test": {
+        "name": "Motion walk test"
       }
     },
     "alarm_control_panel": {

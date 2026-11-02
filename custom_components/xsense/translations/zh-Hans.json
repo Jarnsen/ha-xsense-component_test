@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "在这么多天后删除本地缓存的录音。 X-Sense云和SD卡录音没有改变。",
           "recording_cache_max_size_mb": "最大本地缓存大小（以 MB 为单位）。当达到限制时，最近最少查看的录音将首先被删除。",
           "recording_cache_mode": "仅播放模式按需通过 Home Assistant 代理 HLS 媒体，不保留完整片段。保留模式按下方限制保存本地副本。"
+        },
+        "menu_options": {
+          "recordings": "录像",
+          "local_mqtt": "本地MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "录制缓存文件夹将从 `{old_path}` 更改为 `{new_path}`。现有的缓存视频和缩略图不会自动移动。如果您希望旧的缓存录制内容保持可用，请先移动现有的 `hls`, `videos` 和 `thumbs` 文件夹。"
+      },
+      "local_mqtt": {
+        "title": "本地MQTT (SBS50)",
+        "description": "本地MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "基站",
+          "enabled": "启用本地MQTT",
+          "host": "代理服务器IPv4地址",
+          "port": "代理服务器端口",
+          "username": "用户名",
+          "password": "密码"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "本地MQTT",
+        "description": "设置已发送；请在X-Sense应用中检查连接。"
       }
     },
     "error": {
-      "invalid_recording_media_path": "请使用 /media 下的文件夹。"
+      "invalid_recording_media_path": "请使用 /media 下的文件夹。",
+      "local_mqtt_failed": "无法配置本地MQTT。"
     },
     "abort": {
-      "no_options": "此 X-Sense 帐户没有可配置选项。"
+      "no_options": "此 X-Sense 帐户没有可配置选项。",
+      "local_mqtt_configured": "设置已发送；请在X-Sense应用中检查连接。"
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "唤醒"
+      },
+      "reset_co_peak": {
+        "name": "重置一氧化碳峰值"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "机械门铃时长"
+      },
+      "radon_alarm_threshold": {
+        "name": "氡气警告阈值"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "自动开机电量"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "氡气监测天数"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI 助手：包裹"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "低温报警"
+      },
+      "radon_alarm_enabled": {
+        "name": "氡气警告模式"
+      },
+      "motion_walk_test": {
+        "name": "步行移动检测测试"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "删除灯光计划。目标应为 SBS50 灯光电源开关。"
     },
     "query_mailbox_schedules": {
-        "name": "邮件提醒 (SMA0A): Query mailbox schedules",
-        "description": "邮件提醒 (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "邮件提醒 (SMA0A): Query mailbox schedules",
+      "description": "邮件提醒 (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "邮件提醒 (SMA0A): Create mailbox schedule",
-        "description": "邮件提醒 (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "显示名称"
-            },
-            "start_time": {
-                "name": "开始时间（HH:MM 或 HHMM）"
-            },
-            "end_time": {
-                "name": "结束时间（HH:MM 或 HHMM）"
-            },
-            "week_days": {
-                "name": "星期（1 = 星期日，7 = 星期六）"
-            },
-            "enabled": {
-                "name": "启用状态"
-            },
-            "time_zone": {
-                "name": "时区"
-            }
+      "name": "邮件提醒 (SMA0A): Create mailbox schedule",
+      "description": "邮件提醒 (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "显示名称"
+        },
+        "start_time": {
+          "name": "开始时间（HH:MM 或 HHMM）"
+        },
+        "end_time": {
+          "name": "结束时间（HH:MM 或 HHMM）"
+        },
+        "week_days": {
+          "name": "星期（1 = 星期日，7 = 星期六）"
+        },
+        "enabled": {
+          "name": "启用状态"
+        },
+        "time_zone": {
+          "name": "时区"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "邮件提醒 (SMA0A): Update mailbox schedule",
-        "description": "邮件提醒 (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "计划标识符"
-            },
-            "start_time": {
-                "name": "开始时间（HH:MM 或 HHMM）"
-            },
-            "end_time": {
-                "name": "结束时间（HH:MM 或 HHMM）"
-            },
-            "week_days": {
-                "name": "星期（1 = 星期日，7 = 星期六）"
-            },
-            "enabled": {
-                "name": "启用状态"
-            },
-            "time_zone": {
-                "name": "时区"
-            }
+      "name": "邮件提醒 (SMA0A): Update mailbox schedule",
+      "description": "邮件提醒 (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "计划标识符"
+        },
+        "start_time": {
+          "name": "开始时间（HH:MM 或 HHMM）"
+        },
+        "end_time": {
+          "name": "结束时间（HH:MM 或 HHMM）"
+        },
+        "week_days": {
+          "name": "星期（1 = 星期日，7 = 星期六）"
+        },
+        "enabled": {
+          "name": "启用状态"
+        },
+        "time_zone": {
+          "name": "时区"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "邮件提醒 (SMA0A): Rename mailbox schedule",
-        "description": "邮件提醒 (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "计划标识符"
-            },
-            "name": {
-                "name": "显示名称"
-            }
+      "name": "邮件提醒 (SMA0A): Rename mailbox schedule",
+      "description": "邮件提醒 (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "计划标识符"
+        },
+        "name": {
+          "name": "显示名称"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "邮件提醒 (SMA0A): Delete mailbox schedule",
-        "description": "邮件提醒 (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "计划标识符"
-            }
+      "name": "邮件提醒 (SMA0A): Delete mailbox schedule",
+      "description": "邮件提醒 (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "计划标识符"
         }
+      }
     },
     "query_light_groups": {
       "name": "查询灯光组",

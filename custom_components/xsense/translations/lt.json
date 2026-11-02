@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Po tiek dienų ištrinkite vietinius talpykloje esančius įrašus. „X-Sense“ debesies ir SD kortelės įrašai nekeičiami.",
           "recording_cache_max_size_mb": "Didžiausias vietinės talpyklos dydis MB. Pasiekus limitą, pirmiausia pašalinami rečiausiai peržiūrėti įrašai.",
           "recording_cache_mode": "Tik atkūrimo režimas pagal poreikį perduoda HLS mediją per Home Assistant neišsaugant visų klipų. Saugojimo režimas laiko vietines kopijas pagal toliau pateiktas ribas."
+        },
+        "menu_options": {
+          "recordings": "Įrašai",
+          "local_mqtt": "Vietinis MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Įrašymo talpyklos aplankas pasikeis iš `{old_path}` į `{new_path}`. Esami talpykloje esantys vaizdo įrašai ir miniatiūros neperkeliami automatiškai. Pirmiausia perkelkite esamus aplankus `hls`, `videos` ir `thumbs`, jei norite, kad seni talpykloje esantys įrašai liktų pasiekiami."
+      },
+      "local_mqtt": {
+        "title": "Vietinis MQTT (SBS50)",
+        "description": "Vietinis MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Bazinė stotis",
+          "enabled": "Įjungti vietinį MQTT",
+          "host": "Tarpininko IPv4 adresas",
+          "port": "Tarpininko prievadas",
+          "username": "Naudotojo vardas",
+          "password": "Slaptažodis"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Vietinis MQTT",
+        "description": "Nustatymai išsiųsti; patikrinkite ryšį X-Sense programėlėje."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Naudokite aplanką, esantį /media."
+      "invalid_recording_media_path": "Naudokite aplanką, esantį /media.",
+      "local_mqtt_failed": "Nepavyko nustatyti vietinio MQTT."
     },
     "abort": {
-      "no_options": "Nėra konfigūruojamų šios X-Sense paskyros parinkčių."
+      "no_options": "Nėra konfigūruojamų šios X-Sense paskyros parinkčių.",
+      "local_mqtt_configured": "Nustatymai išsiųsti; patikrinkite ryšį X-Sense programėlėje."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Pažadinti"
+      },
+      "reset_co_peak": {
+        "name": "Atkurti CO didžiausią vertę"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Mechaninio skambučio trukmė"
+      },
+      "radon_alarm_threshold": {
+        "name": "Radono įspėjimo slenkstis"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Baterijos lygis automatiniam įjungimui"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Radono stebėjimo dienos"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI asistentas: siunta"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Žemos temperatūros pavojaus signalas"
+      },
+      "radon_alarm_enabled": {
+        "name": "Radono įspėjimo režimas"
+      },
+      "motion_walk_test": {
+        "name": "Judesio bandymas vaikštant"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       }
     },
     "query_mailbox_schedules": {
-        "name": "Priminimas el. paštu (SMA0A): Query mailbox schedules",
-        "description": "Priminimas el. paštu (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Priminimas el. paštu (SMA0A): Query mailbox schedules",
+      "description": "Priminimas el. paštu (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Priminimas el. paštu (SMA0A): Create mailbox schedule",
-        "description": "Priminimas el. paštu (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Rodomas pavadinimas"
-            },
-            "start_time": {
-                "name": "Pradžios laikas (HH:MM arba HHMM)"
-            },
-            "end_time": {
-                "name": "Pabaigos laikas (HH:MM arba HHMM)"
-            },
-            "week_days": {
-                "name": "Savaitės dienos (1 = sekmadienis, 7 = šeštadienis)"
-            },
-            "enabled": {
-                "name": "Įjungimo būsena"
-            },
-            "time_zone": {
-                "name": "Laiko juosta"
-            }
+      "name": "Priminimas el. paštu (SMA0A): Create mailbox schedule",
+      "description": "Priminimas el. paštu (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Rodomas pavadinimas"
+        },
+        "start_time": {
+          "name": "Pradžios laikas (HH:MM arba HHMM)"
+        },
+        "end_time": {
+          "name": "Pabaigos laikas (HH:MM arba HHMM)"
+        },
+        "week_days": {
+          "name": "Savaitės dienos (1 = sekmadienis, 7 = šeštadienis)"
+        },
+        "enabled": {
+          "name": "Įjungimo būsena"
+        },
+        "time_zone": {
+          "name": "Laiko juosta"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Priminimas el. paštu (SMA0A): Update mailbox schedule",
-        "description": "Priminimas el. paštu (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Tvarkaraščio identifikatorius"
-            },
-            "start_time": {
-                "name": "Pradžios laikas (HH:MM arba HHMM)"
-            },
-            "end_time": {
-                "name": "Pabaigos laikas (HH:MM arba HHMM)"
-            },
-            "week_days": {
-                "name": "Savaitės dienos (1 = sekmadienis, 7 = šeštadienis)"
-            },
-            "enabled": {
-                "name": "Įjungimo būsena"
-            },
-            "time_zone": {
-                "name": "Laiko juosta"
-            }
+      "name": "Priminimas el. paštu (SMA0A): Update mailbox schedule",
+      "description": "Priminimas el. paštu (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Tvarkaraščio identifikatorius"
+        },
+        "start_time": {
+          "name": "Pradžios laikas (HH:MM arba HHMM)"
+        },
+        "end_time": {
+          "name": "Pabaigos laikas (HH:MM arba HHMM)"
+        },
+        "week_days": {
+          "name": "Savaitės dienos (1 = sekmadienis, 7 = šeštadienis)"
+        },
+        "enabled": {
+          "name": "Įjungimo būsena"
+        },
+        "time_zone": {
+          "name": "Laiko juosta"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Priminimas el. paštu (SMA0A): Rename mailbox schedule",
-        "description": "Priminimas el. paštu (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Tvarkaraščio identifikatorius"
-            },
-            "name": {
-                "name": "Rodomas pavadinimas"
-            }
+      "name": "Priminimas el. paštu (SMA0A): Rename mailbox schedule",
+      "description": "Priminimas el. paštu (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Tvarkaraščio identifikatorius"
+        },
+        "name": {
+          "name": "Rodomas pavadinimas"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Priminimas el. paštu (SMA0A): Delete mailbox schedule",
-        "description": "Priminimas el. paštu (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Tvarkaraščio identifikatorius"
-            }
+      "name": "Priminimas el. paštu (SMA0A): Delete mailbox schedule",
+      "description": "Priminimas el. paštu (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Tvarkaraščio identifikatorius"
         }
+      }
     },
     "query_light_groups": {
       "name": "Gauti apšvietimo grupes",

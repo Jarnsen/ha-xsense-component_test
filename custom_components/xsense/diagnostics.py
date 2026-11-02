@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import urlsplit, urlunsplit
 
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.config_entries import ConfigEntry
@@ -179,6 +180,16 @@ def _diagnostic_data(data: dict[str, Any]) -> dict[str, Any]:
     filtered = {
         key: value for key, value in data.items() if key in DIAGNOSTIC_DATA_KEYS
     }
+    for key in ("cameraLiveUrl", "cameraAudioUrl"):
+        if key not in filtered:
+            continue
+        try:
+            parsed = urlsplit(filtered[key])
+            filtered[key] = urlunsplit(
+                (parsed.scheme, parsed.netloc.rsplit("@", 1)[-1], parsed.path, "", "")
+            )
+        except (TypeError, ValueError, AttributeError):
+            filtered[key] = "**REDACTED**"
     return async_redact_data(filtered, TO_REDACT)
 
 

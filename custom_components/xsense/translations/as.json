@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "ইয়াৰ বহুদিনৰ পিছত স্থানীয় কেচ কৰা ৰেকৰ্ডিংসমূহ মচি পেলাওক। এক্স-চেন্স ক্লাউড আৰু এছডি কাৰ্ড ৰেকৰ্ডিং সলনি কৰা নহয়।",
           "recording_cache_max_size_mb": "সৰ্বাধিক স্থানীয় কেশ্ব আকাৰ MB ত। যেতিয়া সীমাত উপনীত হয়, তেতিয়া কমকৈ শেহতীয়াকৈ চোৱা ৰেকৰ্ডিংবোৰ প্ৰথমে আঁতৰোৱা হয়।",
           "recording_cache_mode": "কেৱল প্লেবেকে সম্পূৰ্ণ ক্লিপ সংৰক্ষণ নকৰাকৈ প্ৰয়োজন অনুসৰি Home Assistant-ৰ মাজেৰে HLS media প্ৰক্সি কৰে। retained mode-এ তলৰ সীমা অনুসৰি স্থানীয় কপি ৰাখে।"
+        },
+        "menu_options": {
+          "recordings": "ৰেকৰ্ডিং",
+          "local_mqtt": "স্থানীয় MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "ৰেকৰ্ডিং কেশ্ব ফোল্ডাৰ `{old_path}` ৰ পৰা `{new_path}` লৈ সলনি হ'ব। বৰ্তমানৰ কেচ কৰা ভিডিঅ' আৰু থাম্বনেইলসমূহ স্বয়ংক্ৰিয়ভাৱে স্থানান্তৰ কৰা নহয়। বৰ্ত্তমানৰ `hls`, `videos` আৰু `thumbs` ফোল্ডাৰসমূহ প্ৰথমে স্থানান্তৰ কৰক যদি আপুনি পুৰণি কেশ্ব কৰা ৰেকৰ্ডিংসমূহ উপলব্ধ থাকিব বিচাৰে।"
+      },
+      "local_mqtt": {
+        "title": "স্থানীয় MQTT (SBS50)",
+        "description": "স্থানীয় MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "বেচ ষ্টেচন",
+          "enabled": "স্থানীয় MQTT সক্ৰিয় কৰক",
+          "host": "ব্ৰ’কাৰৰ IPv4 ঠিকনা",
+          "port": "ব্ৰ’কাৰৰ প’ৰ্ট",
+          "username": "ব্যৱহাৰকাৰীৰ নাম",
+          "password": "পাছৱৰ্ড"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "স্থানীয় MQTT",
+        "description": "ছেটিংছ পঠোৱা হৈছে; X-Sense এপত সংযোগ পৰীক্ষা কৰক।"
       }
     },
     "error": {
-      "invalid_recording_media_path": "/media ৰ অন্তৰ্গত এটা ফোল্ডাৰ ব্যৱহাৰ কৰক।"
+      "invalid_recording_media_path": "/media ৰ অন্তৰ্গত এটা ফোল্ডাৰ ব্যৱহাৰ কৰক।",
+      "local_mqtt_failed": "স্থানীয় MQTT ছেট কৰিব পৰা নগ’ল।"
     },
     "abort": {
-      "no_options": "এই X-Sense একাউণ্টৰ বাবে কোনো বিন্যাসযোগ্য বিকল্প নাই ।"
+      "no_options": "এই X-Sense একাউণ্টৰ বাবে কোনো বিন্যাসযোগ্য বিকল্প নাই ।",
+      "local_mqtt_configured": "ছেটিংছ পঠোৱা হৈছে; X-Sense এপত সংযোগ পৰীক্ষা কৰক।"
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "জগাওক"
+      },
+      "reset_co_peak": {
+        "name": "কাৰ্বন মনোক্সাইডৰ সৰ্বোচ্চ মান পুনৰ নিৰ্ধাৰণ"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "যান্ত্ৰিক ঘণ্টাৰ সময়সীমা"
+      },
+      "radon_alarm_threshold": {
+        "name": "ৰেডন সতৰ্কবাণীৰ সীমা"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "স্বয়ংক্ৰিয়ভাৱে চালু হোৱাৰ বেটাৰীৰ স্তৰ"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "ৰেডন নিৰীক্ষণৰ দিন"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI সহায়ক: পাৰ্চেল"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "নিম্ন উষ্ণতাৰ এলাৰ্ম"
+      },
+      "radon_alarm_enabled": {
+        "name": "ৰেডন সতৰ্কবাণী মোড"
+      },
+      "motion_walk_test": {
+        "name": "খোজ কাঢ়ি গতি পৰীক্ষা"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "লাইটৰ সময়সূচী মচক। SBS50-ৰ লাইটৰ পাৱাৰ চুইচটো লক্ষ্য হিচাপে বাছক।"
     },
     "query_mailbox_schedules": {
-        "name": "ডাকৰ সোঁৱৰণী (SMA0A): Query mailbox schedules",
-        "description": "ডাকৰ সোঁৱৰণী (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "ডাকৰ সোঁৱৰণী (SMA0A): Query mailbox schedules",
+      "description": "ডাকৰ সোঁৱৰণী (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "ডাকৰ সোঁৱৰণী (SMA0A): Create mailbox schedule",
-        "description": "ডাকৰ সোঁৱৰণী (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "প্ৰদৰ্শিত নাম"
-            },
-            "start_time": {
-                "name": "আৰম্ভণিৰ সময় (HH:MM বা HHMM)"
-            },
-            "end_time": {
-                "name": "সমাপ্তিৰ সময় (HH:MM বা HHMM)"
-            },
-            "week_days": {
-                "name": "সপ্তাহৰ দিন (1 = দেওবাৰ, 7 = শনিবাৰ)"
-            },
-            "enabled": {
-                "name": "সক্ৰিয় অৱস্থা"
-            },
-            "time_zone": {
-                "name": "সময় অঞ্চল"
-            }
+      "name": "ডাকৰ সোঁৱৰণী (SMA0A): Create mailbox schedule",
+      "description": "ডাকৰ সোঁৱৰণী (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "প্ৰদৰ্শিত নাম"
+        },
+        "start_time": {
+          "name": "আৰম্ভণিৰ সময় (HH:MM বা HHMM)"
+        },
+        "end_time": {
+          "name": "সমাপ্তিৰ সময় (HH:MM বা HHMM)"
+        },
+        "week_days": {
+          "name": "সপ্তাহৰ দিন (1 = দেওবাৰ, 7 = শনিবাৰ)"
+        },
+        "enabled": {
+          "name": "সক্ৰিয় অৱস্থা"
+        },
+        "time_zone": {
+          "name": "সময় অঞ্চল"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "ডাকৰ সোঁৱৰণী (SMA0A): Update mailbox schedule",
-        "description": "ডাকৰ সোঁৱৰণী (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "সময়সূচীৰ পৰিচয়ক"
-            },
-            "start_time": {
-                "name": "আৰম্ভণিৰ সময় (HH:MM বা HHMM)"
-            },
-            "end_time": {
-                "name": "সমাপ্তিৰ সময় (HH:MM বা HHMM)"
-            },
-            "week_days": {
-                "name": "সপ্তাহৰ দিন (1 = দেওবাৰ, 7 = শনিবাৰ)"
-            },
-            "enabled": {
-                "name": "সক্ৰিয় অৱস্থা"
-            },
-            "time_zone": {
-                "name": "সময় অঞ্চল"
-            }
+      "name": "ডাকৰ সোঁৱৰণী (SMA0A): Update mailbox schedule",
+      "description": "ডাকৰ সোঁৱৰণী (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "সময়সূচীৰ পৰিচয়ক"
+        },
+        "start_time": {
+          "name": "আৰম্ভণিৰ সময় (HH:MM বা HHMM)"
+        },
+        "end_time": {
+          "name": "সমাপ্তিৰ সময় (HH:MM বা HHMM)"
+        },
+        "week_days": {
+          "name": "সপ্তাহৰ দিন (1 = দেওবাৰ, 7 = শনিবাৰ)"
+        },
+        "enabled": {
+          "name": "সক্ৰিয় অৱস্থা"
+        },
+        "time_zone": {
+          "name": "সময় অঞ্চল"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "ডাকৰ সোঁৱৰণী (SMA0A): Rename mailbox schedule",
-        "description": "ডাকৰ সোঁৱৰণী (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "সময়সূচীৰ পৰিচয়ক"
-            },
-            "name": {
-                "name": "প্ৰদৰ্শিত নাম"
-            }
+      "name": "ডাকৰ সোঁৱৰণী (SMA0A): Rename mailbox schedule",
+      "description": "ডাকৰ সোঁৱৰণী (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "সময়সূচীৰ পৰিচয়ক"
+        },
+        "name": {
+          "name": "প্ৰদৰ্শিত নাম"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "ডাকৰ সোঁৱৰণী (SMA0A): Delete mailbox schedule",
-        "description": "ডাকৰ সোঁৱৰণী (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "সময়সূচীৰ পৰিচয়ক"
-            }
+      "name": "ডাকৰ সোঁৱৰণী (SMA0A): Delete mailbox schedule",
+      "description": "ডাকৰ সোঁৱৰণী (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "সময়সূচীৰ পৰিচয়ক"
         }
+      }
     },
     "query_light_groups": {
       "name": "লাইটৰ গোটসমূহ বিচাৰক",

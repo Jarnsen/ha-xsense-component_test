@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Poista paikalliset välimuistitallenteet tämän monen päivän jälkeen. X-Sense-pilvi- ja SD-kortin tallennukset eivät muutu.",
           "recording_cache_max_size_mb": "Paikallisen välimuistin enimmäiskoko megatavuina. Kun raja saavutetaan, ensin poistetaan tallenteet, joiden viimeisestä katselusta on kulunut eniten aikaa.",
           "recording_cache_mode": "Vain toisto välittää HLS-median pyydettäessä Home Assistantin kautta säilyttämättä kokonaisia leikkeitä. Säilytystila pitää paikalliset kopiot alla olevien rajojen mukaan."
+        },
+        "menu_options": {
+          "recordings": "Tallenteet",
+          "local_mqtt": "Paikallinen MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Tallennusvälimuistikansio vaihtuu `{old_path}`-kansiosta `{new_path}`-kansioon. Olemassa olevia välimuistissa olevia videoita ja pikkukuvia ei siirretä automaattisesti. Siirrä ensin olemassa olevat `hls`, `videos`- ja `thumbs`-kansiot, jos haluat säilyttää vanhat välimuistitallenteet."
+      },
+      "local_mqtt": {
+        "title": "Paikallinen MQTT (SBS50)",
+        "description": "Paikallinen MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Tukiasema",
+          "enabled": "Ota paikallinen MQTT käyttöön",
+          "host": "Välittäjän IPv4-osoite",
+          "port": "Välittäjän portti",
+          "username": "Käyttäjätunnus",
+          "password": "Salasana"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Paikallinen MQTT",
+        "description": "Asetukset lähetetty; tarkista yhteys X-Sense-sovelluksessa."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Käytä /media-kohdassa olevaa kansiota."
+      "invalid_recording_media_path": "Käytä /media-kohdassa olevaa kansiota.",
+      "local_mqtt_failed": "Paikallisen MQTT:n määritys epäonnistui."
     },
     "abort": {
-      "no_options": "Tälle X-Sense-tilille ei ole määritettäviä vaihtoehtoja."
+      "no_options": "Tälle X-Sense-tilille ei ole määritettäviä vaihtoehtoja.",
+      "local_mqtt_configured": "Asetukset lähetetty; tarkista yhteys X-Sense-sovelluksessa."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Herätä"
+      },
+      "reset_co_peak": {
+        "name": "Nollaa CO-huippuarvo"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Mekaanisen ovikellon soittoaika"
+      },
+      "radon_alarm_threshold": {
+        "name": "Radonvaroituksen raja"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Akun varaustaso automaattista käynnistystä varten"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Radonin seurantapäivät"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "Tekoälyavustaja: paketit"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Alhaisen lämpötilan hälytys"
+      },
+      "radon_alarm_enabled": {
+        "name": "Radonvaroitustila"
+      },
+      "motion_walk_test": {
+        "name": "Liikkeen kävelytesti"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Poista valaistusaikataulu. Valitse kohteeksi SBS50:n valaistuksen virtakytkin."
     },
     "query_mailbox_schedules": {
-        "name": "Postimuistutus (SMA0A): Query mailbox schedules",
-        "description": "Postimuistutus (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "Postimuistutus (SMA0A): Query mailbox schedules",
+      "description": "Postimuistutus (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "Postimuistutus (SMA0A): Create mailbox schedule",
-        "description": "Postimuistutus (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Näyttönimi"
-            },
-            "start_time": {
-                "name": "Aloitusaika (HH:MM tai HHMM)"
-            },
-            "end_time": {
-                "name": "Lopetusaika (HH:MM tai HHMM)"
-            },
-            "week_days": {
-                "name": "Viikonpäivät (1 = sunnuntai, 7 = lauantai)"
-            },
-            "enabled": {
-                "name": "Käytössä-tila"
-            },
-            "time_zone": {
-                "name": "Aikavyöhyke"
-            }
+      "name": "Postimuistutus (SMA0A): Create mailbox schedule",
+      "description": "Postimuistutus (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Näyttönimi"
+        },
+        "start_time": {
+          "name": "Aloitusaika (HH:MM tai HHMM)"
+        },
+        "end_time": {
+          "name": "Lopetusaika (HH:MM tai HHMM)"
+        },
+        "week_days": {
+          "name": "Viikonpäivät (1 = sunnuntai, 7 = lauantai)"
+        },
+        "enabled": {
+          "name": "Käytössä-tila"
+        },
+        "time_zone": {
+          "name": "Aikavyöhyke"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "Postimuistutus (SMA0A): Update mailbox schedule",
-        "description": "Postimuistutus (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Aikataulun tunnus"
-            },
-            "start_time": {
-                "name": "Aloitusaika (HH:MM tai HHMM)"
-            },
-            "end_time": {
-                "name": "Lopetusaika (HH:MM tai HHMM)"
-            },
-            "week_days": {
-                "name": "Viikonpäivät (1 = sunnuntai, 7 = lauantai)"
-            },
-            "enabled": {
-                "name": "Käytössä-tila"
-            },
-            "time_zone": {
-                "name": "Aikavyöhyke"
-            }
+      "name": "Postimuistutus (SMA0A): Update mailbox schedule",
+      "description": "Postimuistutus (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Aikataulun tunnus"
+        },
+        "start_time": {
+          "name": "Aloitusaika (HH:MM tai HHMM)"
+        },
+        "end_time": {
+          "name": "Lopetusaika (HH:MM tai HHMM)"
+        },
+        "week_days": {
+          "name": "Viikonpäivät (1 = sunnuntai, 7 = lauantai)"
+        },
+        "enabled": {
+          "name": "Käytössä-tila"
+        },
+        "time_zone": {
+          "name": "Aikavyöhyke"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "Postimuistutus (SMA0A): Rename mailbox schedule",
-        "description": "Postimuistutus (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Aikataulun tunnus"
-            },
-            "name": {
-                "name": "Näyttönimi"
-            }
+      "name": "Postimuistutus (SMA0A): Rename mailbox schedule",
+      "description": "Postimuistutus (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Aikataulun tunnus"
+        },
+        "name": {
+          "name": "Näyttönimi"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "Postimuistutus (SMA0A): Delete mailbox schedule",
-        "description": "Postimuistutus (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Aikataulun tunnus"
-            }
+      "name": "Postimuistutus (SMA0A): Delete mailbox schedule",
+      "description": "Postimuistutus (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Aikataulun tunnus"
         }
+      }
     },
     "query_light_groups": {
       "name": "Hae valoryhmät",

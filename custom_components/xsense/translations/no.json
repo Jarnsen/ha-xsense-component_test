@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "Slett lokale hurtigbufrede opptak etter disse mange dagene. X-Sense sky- og SD-kortopptak endres ikke.",
           "recording_cache_max_size_mb": "Maksimal lokal bufferstørrelse i MB. Når grensen er nådd, fjernes de minst nylig viste opptakene først.",
           "recording_cache_mode": "Bare avspilling videresender HLS-medier gjennom Home Assistant ved behov uten å beholde hele klipp. Lagringsmodus beholder lokale kopier etter grensene nedenfor."
+        },
+        "menu_options": {
+          "recordings": "Opptak",
+          "local_mqtt": "Lokal MQTT (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "Opptaksbuffermappen vil endres fra `{old_path}` til `{new_path}`. Eksisterende bufrede videoer og miniatyrbilder flyttes ikke automatisk. Flytt de eksisterende mappene `hls`, `videos` og `thumbs` først hvis du vil at gamle bufrede opptak skal forbli tilgjengelige."
+      },
+      "local_mqtt": {
+        "title": "Lokal MQTT (SBS50)",
+        "description": "Lokal MQTT: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "Basestasjon",
+          "enabled": "Aktiver lokal MQTT",
+          "host": "Meglerens IPv4-adresse",
+          "port": "Meglerport",
+          "username": "Brukernavn",
+          "password": "Passord"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "Lokal MQTT",
+        "description": "Innstillinger sendt; kontroller forbindelsen i X-Sense-appen."
       }
     },
     "error": {
-      "invalid_recording_media_path": "Bruk en mappe under /media."
+      "invalid_recording_media_path": "Bruk en mappe under /media.",
+      "local_mqtt_failed": "Kunne ikke konfigurere lokal MQTT."
     },
     "abort": {
-      "no_options": "Det er ingen konfigurerbare alternativer for denne X-Sense-kontoen."
+      "no_options": "Det er ingen konfigurerbare alternativer for denne X-Sense-kontoen.",
+      "local_mqtt_configured": "Innstillinger sendt; kontroller forbindelsen i X-Sense-appen."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "Vekk"
+      },
+      "reset_co_peak": {
+        "name": "Nullstill CO-toppverdi"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "Varighet for mekanisk ringeklokke"
+      },
+      "radon_alarm_threshold": {
+        "name": "Grense for radonvarsel"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "Batterinivå for automatisk påslåing"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "Dager med radonovervåking"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "AI-assistent: pakke"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "Lavtemperaturalarm"
+      },
+      "radon_alarm_enabled": {
+        "name": "Radonvarslingsmodus"
+      },
+      "motion_walk_test": {
+        "name": "Gangtest for bevegelse"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "Slett en lysplan. Velg lysbryteren på SBS50 som mål."
     },
     "query_mailbox_schedules": {
-        "name": "E-postpåminnelse (SMA0A): Query mailbox schedules",
-        "description": "E-postpåminnelse (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "E-postpåminnelse (SMA0A): Query mailbox schedules",
+      "description": "E-postpåminnelse (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "E-postpåminnelse (SMA0A): Create mailbox schedule",
-        "description": "E-postpåminnelse (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "Visningsnavn"
-            },
-            "start_time": {
-                "name": "Starttid (HH:MM eller HHMM)"
-            },
-            "end_time": {
-                "name": "Sluttid (HH:MM eller HHMM)"
-            },
-            "week_days": {
-                "name": "Ukedager (1 = søndag, 7 = lørdag)"
-            },
-            "enabled": {
-                "name": "Aktivert tilstand"
-            },
-            "time_zone": {
-                "name": "Tidssone"
-            }
+      "name": "E-postpåminnelse (SMA0A): Create mailbox schedule",
+      "description": "E-postpåminnelse (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "Visningsnavn"
+        },
+        "start_time": {
+          "name": "Starttid (HH:MM eller HHMM)"
+        },
+        "end_time": {
+          "name": "Sluttid (HH:MM eller HHMM)"
+        },
+        "week_days": {
+          "name": "Ukedager (1 = søndag, 7 = lørdag)"
+        },
+        "enabled": {
+          "name": "Aktivert tilstand"
+        },
+        "time_zone": {
+          "name": "Tidssone"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "E-postpåminnelse (SMA0A): Update mailbox schedule",
-        "description": "E-postpåminnelse (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Planidentifikator"
-            },
-            "start_time": {
-                "name": "Starttid (HH:MM eller HHMM)"
-            },
-            "end_time": {
-                "name": "Sluttid (HH:MM eller HHMM)"
-            },
-            "week_days": {
-                "name": "Ukedager (1 = søndag, 7 = lørdag)"
-            },
-            "enabled": {
-                "name": "Aktivert tilstand"
-            },
-            "time_zone": {
-                "name": "Tidssone"
-            }
+      "name": "E-postpåminnelse (SMA0A): Update mailbox schedule",
+      "description": "E-postpåminnelse (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Planidentifikator"
+        },
+        "start_time": {
+          "name": "Starttid (HH:MM eller HHMM)"
+        },
+        "end_time": {
+          "name": "Sluttid (HH:MM eller HHMM)"
+        },
+        "week_days": {
+          "name": "Ukedager (1 = søndag, 7 = lørdag)"
+        },
+        "enabled": {
+          "name": "Aktivert tilstand"
+        },
+        "time_zone": {
+          "name": "Tidssone"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "E-postpåminnelse (SMA0A): Rename mailbox schedule",
-        "description": "E-postpåminnelse (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Planidentifikator"
-            },
-            "name": {
-                "name": "Visningsnavn"
-            }
+      "name": "E-postpåminnelse (SMA0A): Rename mailbox schedule",
+      "description": "E-postpåminnelse (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Planidentifikator"
+        },
+        "name": {
+          "name": "Visningsnavn"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "E-postpåminnelse (SMA0A): Delete mailbox schedule",
-        "description": "E-postpåminnelse (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "Planidentifikator"
-            }
+      "name": "E-postpåminnelse (SMA0A): Delete mailbox schedule",
+      "description": "E-postpåminnelse (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "Planidentifikator"
         }
+      }
     },
     "query_light_groups": {
       "name": "Hent lysgrupper",

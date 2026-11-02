@@ -118,6 +118,8 @@ def option_strings(value) -> list[str]:
 
 def shadow_select_options(entity: Entity, description) -> list[str]:
     """Return conservative APK option values for non-camera settings."""
+    if description.data_key == "alarmTone" and entity.type in {"SDA51", "SMA51", "SMA0A"}:
+        return [str(tone) for tone in range(1, 8)]
     if description.fixed_options is not None:
         return option_strings(list(description.fixed_options))
     value = entity.data.get(description.data_key)
@@ -156,6 +158,14 @@ class XSenseSelectEntityDescription(SelectEntityDescription):
 
 
 SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
+    XSenseSelectEntityDescription(
+        key="radon_alarm_monitor_days",
+        data_key="radonAlarmMonitorDay",
+        translation_key="radon_alarm_monitor_days",
+        icon="mdi:calendar-range",
+        options=["1", "7", "30", "90"],
+        exists_fn=lambda entity: entity.type == "XR0A-iR" and "radonAlarmMonitorDay" in entity.data,
+    ),
     XSenseSelectEntityDescription(
         key="alarm_tone",
         data_key="alarmTone",
@@ -554,6 +564,11 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
             await self.coordinator.xsense.update_camera_config(
                 entity, **{self.entity_description.addx_key: _typed_option(option)}
             )
+        elif self.entity_description.data_key == "radonAlarmMonitorDay":
+            await self.coordinator.xsense.update_alarm_settings(entity, monitorDay=option)
+            await self.coordinator.xsense.refresh_alarm_settings(entity)
+            self.coordinator.async_update_listeners()
+            return
         elif not is_camera_entity(entity):
             if entity.type == "XR0A-iR" and self.entity_description.data_key == "tempUnit":
                 radon_unit = entity.data.get("radonUnit")
@@ -584,7 +599,8 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
         else:
             raise xsense_error("select_not_writable")
 
-        entity.data[self.entity_description.data_key] = _typed_option(option)
+        if entity.type != "STH0C" or self.entity_description.data_key != "tempUnit":
+            entity.data[self.entity_description.data_key] = _typed_option(option)
         self.coordinator.async_update_listeners()
 
     async def _async_select_comfort_type(self, entity: Entity, option: str) -> None:

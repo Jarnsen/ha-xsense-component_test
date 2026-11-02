@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "پس از این چند روز، ضبط های ذخیره شده محلی را حذف کنید. ضبط های ابری و کارت SD X-Sense تغییری نکرده اند.",
           "recording_cache_max_size_mb": "حداکثر اندازه کش محلی در مگابایت. با رسیدن به حد مجاز، ابتدا کمترین میزان مشاهده شده ضبط شده حذف می شود.",
           "recording_cache_mode": "حالت فقط پخش، رسانه HLS را هنگام نیاز بدون نگهداری کلیپ کامل از طریق Home Assistant عبور می‌دهد. حالت نگهداری نسخه‌های محلی را با محدودیت‌های زیر حفظ می‌کند."
+        },
+        "menu_options": {
+          "recordings": "ضبط‌ها",
+          "local_mqtt": "MQTT محلی (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "پوشه کش ضبط از `{old_path}` به `{new_path}` تغییر می کند. ویدیوها و تصاویر کوچک موجود در حافظه پنهان به طور خودکار جابجا نمی شوند. اگر می‌خواهید ضبط‌های ذخیره شده قدیمی در حافظه پنهان باقی بمانند، ابتدا پوشه‌های `hls`, `videos` و `thumbs` موجود را جابه‌جا کنید."
+      },
+      "local_mqtt": {
+        "title": "MQTT محلی (SBS50)",
+        "description": "MQTT محلی: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "ایستگاه پایه",
+          "enabled": "فعال‌سازی MQTT محلی",
+          "host": "نشانی IPv4 کارگزار",
+          "port": "درگاه کارگزار",
+          "username": "نام کاربری",
+          "password": "گذرواژه"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "MQTT محلی",
+        "description": "تنظیمات ارسال شد؛ اتصال را در برنامه X-Sense بررسی کنید."
       }
     },
     "error": {
-      "invalid_recording_media_path": "از پوشه ای در زیر /media استفاده کنید."
+      "invalid_recording_media_path": "از پوشه ای در زیر /media استفاده کنید.",
+      "local_mqtt_failed": "پیکربندی MQTT محلی ناموفق بود."
     },
     "abort": {
-      "no_options": "هیچ گزینه قابل تنظیمی برای این حساب X-Sense وجود ندارد."
+      "no_options": "هیچ گزینه قابل تنظیمی برای این حساب X-Sense وجود ندارد.",
+      "local_mqtt_configured": "تنظیمات ارسال شد؛ اتصال را در برنامه X-Sense بررسی کنید."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "بیدار کردن"
+      },
+      "reset_co_peak": {
+        "name": "بازنشانی بیشینه مونوکسید کربن"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "مدت زنگ مکانیکی"
+      },
+      "radon_alarm_threshold": {
+        "name": "آستانه هشدار رادون"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "سطح باتری برای روشن شدن خودکار"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "روزهای پایش رادون"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "دستیار هوش مصنوعی: بسته"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "هشدار دمای پایین"
+      },
+      "radon_alarm_enabled": {
+        "name": "حالت هشدار رادون"
+      },
+      "motion_walk_test": {
+        "name": "آزمون حرکت با راه رفتن"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "حذف زمان‌بندی روشنایی. کلید برق روشنایی SBS50 را به‌عنوان هدف انتخاب کنید."
     },
     "query_mailbox_schedules": {
-        "name": "یادآوری نامه (SMA0A): Query mailbox schedules",
-        "description": "یادآوری نامه (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "یادآوری نامه (SMA0A): Query mailbox schedules",
+      "description": "یادآوری نامه (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "یادآوری نامه (SMA0A): Create mailbox schedule",
-        "description": "یادآوری نامه (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "نام نمایشی"
-            },
-            "start_time": {
-                "name": "زمان شروع (HH:MM یا HHMM)"
-            },
-            "end_time": {
-                "name": "زمان پایان (HH:MM یا HHMM)"
-            },
-            "week_days": {
-                "name": "روزهای هفته (1 = یکشنبه، 7 = شنبه)"
-            },
-            "enabled": {
-                "name": "وضعیت فعال بودن"
-            },
-            "time_zone": {
-                "name": "منطقه زمانی"
-            }
+      "name": "یادآوری نامه (SMA0A): Create mailbox schedule",
+      "description": "یادآوری نامه (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "نام نمایشی"
+        },
+        "start_time": {
+          "name": "زمان شروع (HH:MM یا HHMM)"
+        },
+        "end_time": {
+          "name": "زمان پایان (HH:MM یا HHMM)"
+        },
+        "week_days": {
+          "name": "روزهای هفته (1 = یکشنبه، 7 = شنبه)"
+        },
+        "enabled": {
+          "name": "وضعیت فعال بودن"
+        },
+        "time_zone": {
+          "name": "منطقه زمانی"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "یادآوری نامه (SMA0A): Update mailbox schedule",
-        "description": "یادآوری نامه (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "شناسه زمان‌بندی"
-            },
-            "start_time": {
-                "name": "زمان شروع (HH:MM یا HHMM)"
-            },
-            "end_time": {
-                "name": "زمان پایان (HH:MM یا HHMM)"
-            },
-            "week_days": {
-                "name": "روزهای هفته (1 = یکشنبه، 7 = شنبه)"
-            },
-            "enabled": {
-                "name": "وضعیت فعال بودن"
-            },
-            "time_zone": {
-                "name": "منطقه زمانی"
-            }
+      "name": "یادآوری نامه (SMA0A): Update mailbox schedule",
+      "description": "یادآوری نامه (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "شناسه زمان‌بندی"
+        },
+        "start_time": {
+          "name": "زمان شروع (HH:MM یا HHMM)"
+        },
+        "end_time": {
+          "name": "زمان پایان (HH:MM یا HHMM)"
+        },
+        "week_days": {
+          "name": "روزهای هفته (1 = یکشنبه، 7 = شنبه)"
+        },
+        "enabled": {
+          "name": "وضعیت فعال بودن"
+        },
+        "time_zone": {
+          "name": "منطقه زمانی"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "یادآوری نامه (SMA0A): Rename mailbox schedule",
-        "description": "یادآوری نامه (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "شناسه زمان‌بندی"
-            },
-            "name": {
-                "name": "نام نمایشی"
-            }
+      "name": "یادآوری نامه (SMA0A): Rename mailbox schedule",
+      "description": "یادآوری نامه (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "شناسه زمان‌بندی"
+        },
+        "name": {
+          "name": "نام نمایشی"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "یادآوری نامه (SMA0A): Delete mailbox schedule",
-        "description": "یادآوری نامه (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "شناسه زمان‌بندی"
-            }
+      "name": "یادآوری نامه (SMA0A): Delete mailbox schedule",
+      "description": "یادآوری نامه (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "شناسه زمان‌بندی"
         }
+      }
     },
     "query_light_groups": {
       "name": "دریافت گروه‌های چراغ",

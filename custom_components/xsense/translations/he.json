@@ -60,17 +60,39 @@
           "recording_cache_retention_days": "מחק הקלטות מקומיות במטמון לאחר ימים רבים כל כך. הקלטות בענן X-Sense וכרטיס SD אינן משתנות.",
           "recording_cache_max_size_mb": "גודל מטמון מקומי מקסימלי ב-MB. כשמגיעים למגבלה, ההקלטות הפחות נצפו לאחרונה יוסרו תחילה.",
           "recording_cache_mode": "מצב הפעלה בלבד מעביר מדיית HLS דרך Home Assistant לפי דרישה בלי לשמור קליפים מלאים. מצב שמירה מחזיק עותקים מקומיים לפי המגבלות שלהלן."
+        },
+        "menu_options": {
+          "recordings": "הקלטות",
+          "local_mqtt": "MQTT מקומי (SBS50)"
         }
       },
       "confirm_recording_media_storage_path": {
         "description": "תיקיית מטמון ההקלטה תשתנה מ-`{old_path}` ל-`{new_path}`. סרטונים ותמונות ממוזערות קיימים במטמון אינם מוזזים אוטומטית. העבר תחילה את התיקיות `hls`, `videos` ו-`thumbs` הקיימות אם ברצונך שהקלטות ישנות המאוחסנות במטמון יישארו זמינות."
+      },
+      "local_mqtt": {
+        "title": "MQTT מקומי (SBS50)",
+        "description": "MQTT מקומי: SBS50 → Home Assistant MQTT.",
+        "data": {
+          "station": "תחנת בסיס",
+          "enabled": "הפעלת MQTT מקומי",
+          "host": "כתובת IPv4 של המתווך",
+          "port": "יציאת המתווך",
+          "username": "שם משתמש",
+          "password": "סיסמה"
+        }
+      },
+      "local_mqtt_done": {
+        "title": "MQTT מקומי",
+        "description": "ההגדרות נשלחו; יש לבדוק את החיבור באפליקציית X-Sense."
       }
     },
     "error": {
-      "invalid_recording_media_path": "השתמש בתיקייה תחת /media."
+      "invalid_recording_media_path": "השתמש בתיקייה תחת /media.",
+      "local_mqtt_failed": "הגדרת MQTT מקומי נכשלה."
     },
     "abort": {
-      "no_options": "אין אפשרויות הניתנות להגדרה עבור חשבון X-Sense זה."
+      "no_options": "אין אפשרויות הניתנות להגדרה עבור חשבון X-Sense זה.",
+      "local_mqtt_configured": "ההגדרות נשלחו; יש לבדוק את החיבור באפליקציית X-Sense."
     }
   },
   "entity": {
@@ -178,6 +200,9 @@
       },
       "camera_wake": {
         "name": "הפעלה ממצב שינה"
+      },
+      "reset_co_peak": {
+        "name": "איפוס שיא פחמן חד־חמצני"
       }
     },
     "event": {
@@ -501,6 +526,9 @@
       },
       "camera_mechanical_ding_dong_duration": {
         "name": "משך הצלצול המכני"
+      },
+      "radon_alarm_threshold": {
+        "name": "סף אזהרת ראדון"
       }
     },
     "select": {
@@ -581,6 +609,9 @@
       },
       "camera_auto_power_on_capacity": {
         "name": "רמת סוללה להפעלה אוטומטית"
+      },
+      "radon_alarm_monitor_days": {
+        "name": "ימי ניטור ראדון"
       }
     },
     "switch": {
@@ -721,6 +752,15 @@
       },
       "camera_ai_assistant_package": {
         "name": "עוזר בינה מלאכותית: חבילות"
+      },
+      "low_temperature_alarm_enabled": {
+        "name": "אזעקת טמפרטורה נמוכה"
+      },
+      "radon_alarm_enabled": {
+        "name": "מצב אזהרת ראדון"
+      },
+      "motion_walk_test": {
+        "name": "בדיקת תנועה בהליכה"
       }
     },
     "alarm_control_panel": {
@@ -982,77 +1022,77 @@
       "description": "מחיקת לוח זמנים לתאורה. יש לבחור במתג החשמל של תאורת SBS50 כיעד."
     },
     "query_mailbox_schedules": {
-        "name": "תזכורת דואר (SMA0A): Query mailbox schedules",
-        "description": "תזכורת דואר (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
+      "name": "תזכורת דואר (SMA0A): Query mailbox schedules",
+      "description": "תזכורת דואר (SMA0A). Query schedules. Target the SMA0A Mail Notice switch."
     },
     "create_mailbox_schedule": {
-        "name": "תזכורת דואר (SMA0A): Create mailbox schedule",
-        "description": "תזכורת דואר (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "name": {
-                "name": "שם תצוגה"
-            },
-            "start_time": {
-                "name": "שעת התחלה (HH:MM או HHMM)"
-            },
-            "end_time": {
-                "name": "שעת סיום (HH:MM או HHMM)"
-            },
-            "week_days": {
-                "name": "ימי השבוע (1 = יום ראשון, 7 = שבת)"
-            },
-            "enabled": {
-                "name": "מצב הפעלה"
-            },
-            "time_zone": {
-                "name": "אזור זמן"
-            }
+      "name": "תזכורת דואר (SMA0A): Create mailbox schedule",
+      "description": "תזכורת דואר (SMA0A). Create a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "name": {
+          "name": "שם תצוגה"
+        },
+        "start_time": {
+          "name": "שעת התחלה (HH:MM או HHMM)"
+        },
+        "end_time": {
+          "name": "שעת סיום (HH:MM או HHMM)"
+        },
+        "week_days": {
+          "name": "ימי השבוע (1 = יום ראשון, 7 = שבת)"
+        },
+        "enabled": {
+          "name": "מצב הפעלה"
+        },
+        "time_zone": {
+          "name": "אזור זמן"
         }
+      }
     },
     "update_mailbox_schedule": {
-        "name": "תזכורת דואר (SMA0A): Update mailbox schedule",
-        "description": "תזכורת דואר (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "מזהה לוח זמנים"
-            },
-            "start_time": {
-                "name": "שעת התחלה (HH:MM או HHMM)"
-            },
-            "end_time": {
-                "name": "שעת סיום (HH:MM או HHMM)"
-            },
-            "week_days": {
-                "name": "ימי השבוע (1 = יום ראשון, 7 = שבת)"
-            },
-            "enabled": {
-                "name": "מצב הפעלה"
-            },
-            "time_zone": {
-                "name": "אזור זמן"
-            }
+      "name": "תזכורת דואר (SMA0A): Update mailbox schedule",
+      "description": "תזכורת דואר (SMA0A). Update a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "מזהה לוח זמנים"
+        },
+        "start_time": {
+          "name": "שעת התחלה (HH:MM או HHMM)"
+        },
+        "end_time": {
+          "name": "שעת סיום (HH:MM או HHMM)"
+        },
+        "week_days": {
+          "name": "ימי השבוע (1 = יום ראשון, 7 = שבת)"
+        },
+        "enabled": {
+          "name": "מצב הפעלה"
+        },
+        "time_zone": {
+          "name": "אזור זמן"
         }
+      }
     },
     "rename_mailbox_schedule": {
-        "name": "תזכורת דואר (SMA0A): Rename mailbox schedule",
-        "description": "תזכורת דואר (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "מזהה לוח זמנים"
-            },
-            "name": {
-                "name": "שם תצוגה"
-            }
+      "name": "תזכורת דואר (SMA0A): Rename mailbox schedule",
+      "description": "תזכורת דואר (SMA0A). Rename a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "מזהה לוח זמנים"
+        },
+        "name": {
+          "name": "שם תצוגה"
         }
+      }
     },
     "delete_mailbox_schedule": {
-        "name": "תזכורת דואר (SMA0A): Delete mailbox schedule",
-        "description": "תזכורת דואר (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
-        "fields": {
-            "schedule_id": {
-                "name": "מזהה לוח זמנים"
-            }
+      "name": "תזכורת דואר (SMA0A): Delete mailbox schedule",
+      "description": "תזכורת דואר (SMA0A). Delete a schedule. Target the SMA0A Mail Notice switch.",
+      "fields": {
+        "schedule_id": {
+          "name": "מזהה לוח זמנים"
         }
+      }
     },
     "query_light_groups": {
       "name": "שליפת קבוצות תאורה",
