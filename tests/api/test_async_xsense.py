@@ -8,7 +8,9 @@ import logging
 import sys
 import types
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
+from threading import Event
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -192,6 +194,7 @@ def test_xsense_mqtt_clean_disconnect_is_not_a_warning(caplog):
     caplog.set_level(logging.DEBUG)
     client = object.__new__(xsense_mqtt.XSenseMQTT)
     client.connected = True
+    client._direct_subscribe_results = {}
     results = []
     client._async_connection_result = results.append
 
@@ -206,6 +209,7 @@ def test_xsense_mqtt_clean_disconnect_is_not_a_warning(caplog):
 def test_xsense_mqtt_nonzero_disconnect_still_warns(caplog):
     client = object.__new__(xsense_mqtt.XSenseMQTT)
     client.connected = True
+    client._direct_subscribe_results = {}
     results = []
     client._async_connection_result = results.append
 
@@ -492,6 +496,392 @@ async def test_xsense_mqtt_prepares_connection_in_executor():
     assert calls[0].__self__ is client.mqtt_helper
     assert calls[0].__name__ == "prepare_connection"
     assert prepared == [True]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("expired", [False, True])
+async def test_mqtt_prepare_uses_current_signer_after_api_rotation(expired):
+    old_signer = Mock()
+    new_signer = Mock()
+    new_signer.presign_url.return_value = "wss://mqtt.example/mqtt?sig=new"
+    helper = object.__new__(mqtt_helper.MQTTHelper)
+    helper.signer = old_signer
+    helper.house = SimpleNamespace(mqtt_server="mqtt.example", mqtt_region="us-east-1")
+    helper._mqtt_path = "/mqtt?sig=old"
+    helper._sig_age = datetime.now(UTC)
+    helper._tls_context_configured = True
+    helper.client = Mock()
+
+    api = async_xsense.AsyncXSense()
+    api.signer = old_signer if expired else new_signer
+    api.aws_access_expiry = datetime.now(UTC) + timedelta(hours=-1 if expired else 1)
+
+    async def refresh_aws():
+        api.signer = new_signer
+        api.aws_access_expiry = datetime.now(UTC) + timedelta(hours=1)
+
+    api.load_aws = AsyncMock(side_effect=refresh_aws)
+
+    async def executor(func, *args):
+        return func(*args)
+
+    client = object.__new__(xsense_mqtt.XSenseMQTT)
+    client.hass = SimpleNamespace(async_add_executor_job=executor)
+    client.mqtt_helper = helper
+    client.async_get_signer = api.get_mqtt_signer
+    await client._async_prepare_connection()
+
+    assert api.load_aws.await_count == int(expired)
+    old_signer.presign_url.assert_not_called()
+    new_signer.presign_url.assert_called_once()
+    helper.client.ws_set_options.assert_called_once_with(path="/mqtt?sig=new")
+
+
+@pytest.mark.asyncio
+async def test_mqtt_retry_connects_after_initial_credential_failure(monkeypatch):
+    client = object.__new__(xsense_mqtt.XSenseMQTT)
+    client._connection_lock = asyncio.Lock()
+    client.connected = False
+    client._mqttc = Mock()
+    client._mqttc.connect.return_value = 0
+    client._mqttc.socket.return_value = None
+    client._async_connection_result = Mock()
+    client.mqtt_helper = Mock(house=SimpleNamespace(mqtt_server="mqtt.example"))
+    client.async_get_signer = AsyncMock(
+        side_effect=[exceptions.APIFailure("unavailable"), Mock()]
+    )
+
+    async def executor(func, *args):
+        return func(*args)
+
+    client.hass = SimpleNamespace(async_add_executor_job=executor)
+    await client.async_connect()
+    client._mqttc.connect.assert_not_called()
+    client._async_connection_result.assert_called_once_with(False)
+    monkeypatch.setattr(
+        xsense_mqtt.asyncio, "sleep", AsyncMock(side_effect=[None, asyncio.CancelledError])
+    )
+    with pytest.raises(asyncio.CancelledError):
+        await client._reconnect_loop()
+    client._mqttc.connect.assert_called_once_with("mqtt.example", 443)
+
+
+@pytest.mark.asyncio
+async def test_mqtt_retry_leaves_socket_waiting_for_connack_open():
+    client = _subscription_test_client()
+    client._should_reconnect = True
+    client._connection_lock = asyncio.Lock()
+    client._mqttc = Mock()
+    client._mqttc.socket.return_value = object()
+    client._async_prepare_connection = AsyncMock()
+    assert await client._async_open_connection() == 0
+    client._async_prepare_connection.assert_not_awaited()
+    client._mqttc.connect.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scenario", ["accept", "reject", "exchange_failure"])
+async def test_repeated_websocket_rejection_refreshes_unexpired_credentials(
+    monkeypatch, scenario
+):
+    api = async_xsense.AsyncXSense()
+    api.signer = aws_signer.AWSSigner("old-key", "test-secret", "test-token")
+    api.aws_access_expiry = datetime.now(UTC) + timedelta(hours=1)
+
+    async def refresh():
+        if scenario == "exchange_failure":
+            raise exceptions.APIFailure("credential exchange unavailable")
+        api.signer = aws_signer.AWSSigner("new-key", "test-secret", "test-token")
+
+    api.load_aws = AsyncMock(side_effect=refresh)
+    client = _subscription_test_client()
+    client._connection_lock = asyncio.Lock()
+    client._should_reconnect = True
+    client.async_get_signer = api.get_mqtt_signer
+    broker = Mock()
+    broker.socket.return_value = None
+    client._mqttc = broker
+    helper = SimpleNamespace(house=SimpleNamespace(mqtt_server="mqtt.example"))
+    client.mqtt_helper = helper
+
+    def prepare(signer):
+        helper.signer = signer
+
+    helper.prepare_connection = prepare
+
+    async def executor(func, *args):
+        return func(*args)
+
+    client.hass = SimpleNamespace(async_add_executor_job=executor)
+    used_keys = []
+
+    def connect(*args):
+        used_keys.append(helper.signer.client_id)
+        if scenario == "accept" and helper.signer.client_id == "new-key":
+            return 0
+        raise xsense_mqtt.mqtt.WebsocketConnectionError("upgrade rejected")
+
+    broker.connect.side_effect = connect
+    now = 1000.0
+    monkeypatch.setattr(xsense_mqtt, "monotonic", lambda: now)
+    for _ in range(3):
+        with pytest.raises(xsense_mqtt.mqtt.WebsocketConnectionError):
+            await client._async_open_connection()
+    api.load_aws.assert_not_awaited()
+
+    if scenario == "accept":
+        assert await client._async_open_connection() == 0
+    else:
+        if scenario == "exchange_failure":
+            with pytest.raises(exceptions.APIFailure, match="exchange unavailable"):
+                await client._async_open_connection()
+        for _ in range(5):
+            with pytest.raises(xsense_mqtt.mqtt.WebsocketConnectionError):
+                await client._async_open_connection()
+    api.load_aws.assert_awaited_once()
+    next_key = "old-key" if scenario == "exchange_failure" else "new-key"
+    assert used_keys[:4] == ["old-key", "old-key", "old-key", next_key]
+
+    if scenario != "accept":
+        now += xsense_mqtt.MQTT_CREDENTIAL_REFRESH_COOLDOWN
+        error = (
+            exceptions.APIFailure if scenario == "exchange_failure"
+            else xsense_mqtt.mqtt.WebsocketConnectionError
+        )
+        with pytest.raises(error):
+            await client._async_open_connection()
+        assert api.load_aws.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_mqtt_retries_after_malformed_identity_configuration(monkeypatch):
+    api = async_xsense.AsyncXSense()
+    api.user_id_code = "user-code"
+    api.api_call = AsyncMock(side_effect=[
+        {"cfgVersion": ["invalid"]},
+        {"cfgVersion": {"identityEnable": "0"}},
+    ])
+    client = _subscription_test_client()
+    client._should_reconnect = True
+
+    async def open_connection():
+        await api.get_identity_mode()
+        return 0
+
+    client._async_open_connection = open_connection
+    sleep = AsyncMock(side_effect=[None, None, asyncio.CancelledError])
+    monkeypatch.setattr(xsense_mqtt.asyncio, "sleep", sleep)
+    with pytest.raises(asyncio.CancelledError):
+        await client._reconnect_loop()
+    assert api.api_call.await_count == 2
+    assert api.identity_enabled is False
+    assert [call.args[0] for call in sleep.await_args_list] == [1, 2, 1]
+
+
+@pytest.mark.asyncio
+async def test_disconnect_during_resubscribe_preserves_topic_intent():
+    client = _subscription_test_client()
+    await client.async_subscribe("test/one", lambda msg: None, qos=1)
+    await client.async_subscribe("test/two", lambda msg: None, qos=1)
+    client.connected = True
+
+    async def disconnect_during_subscribe(subscription):
+        client.connected = False
+        raise OSError("connection dropped")
+
+    client._async_perform_subscription = AsyncMock(side_effect=disconnect_during_subscribe)
+    await client._async_perform_subscriptions()
+    client._async_perform_subscription.assert_awaited_once()
+    assert client.is_subscribed("test/one")
+    assert client.is_subscribed("test/two")
+
+
+@pytest.mark.asyncio
+async def test_failed_forced_exchange_does_not_bypass_cooldown_or_block_http(monkeypatch):
+    api = async_xsense.AsyncXSense()
+    api.identity_enabled = False
+    api.signer = aws_signer.AWSSigner("old-key", "test-secret", "test-token")
+    api.aws_access_expiry = datetime.now(UTC) + timedelta(hours=1)
+    api.access_token_expiry = datetime.now(UTC) - timedelta(seconds=1)
+    api.refresh = AsyncMock(side_effect=lambda: api._parse_refresh_result({
+        "IdToken": "new-id", "AccessToken": "new-access", "ExpiresIn": 3600,
+    }))
+    api.api_call = AsyncMock(side_effect=[
+        exceptions.APIFailure("exchange unavailable"),
+        {
+            "accessKeyId": "http-key",
+            "secretAccessKey": "test-secret",
+            "sessionToken": "test-token",
+            "expiration": "2099-01-01 00:00:00+0000",
+        },
+    ])
+    api._thing_request = Mock(return_value=("https://mqtt.example/shadow", {}))
+
+    @asynccontextmanager
+    async def shadow_request(*args, **kwargs):
+        yield SimpleNamespace(status=200, json=AsyncMock(return_value={"state": {}}))
+
+    api._shadow_request = shadow_request
+    client = _subscription_test_client()
+    client._websocket_failures = xsense_mqtt.WEBSOCKET_FAILURES_BEFORE_CREDENTIAL_REFRESH
+    client.async_get_signer = api.get_mqtt_signer
+    client.mqtt_helper = SimpleNamespace(prepare_connection=Mock())
+
+    async def executor(func, *args):
+        return func(*args)
+
+    client.hass = SimpleNamespace(async_add_executor_job=executor)
+    monkeypatch.setattr(xsense_mqtt, "monotonic", lambda: 1000.0)
+
+    with pytest.raises(exceptions.APIFailure, match="exchange unavailable"):
+        await client._async_prepare_connection()
+    assert api.signer is None
+    for _ in range(3):
+        with pytest.raises(exceptions.APIFailure, match="cooldown"):
+            await client._async_prepare_connection()
+    api.api_call.assert_awaited_once()
+    client.mqtt_helper.prepare_connection.assert_not_called()
+
+    assert await api.get_thing(object(), "mainpage") == {"state": {}}
+    assert api.api_call.await_count == 2
+    await client._async_prepare_connection()
+    assert api.api_call.await_count == 2
+    assert client.mqtt_helper.prepare_connection.call_args.args[0].client_id == "http-key"
+
+
+@pytest.mark.asyncio
+async def test_mqtt_signing_snapshot_survives_concurrent_http_signer_update():
+    api = async_xsense.AsyncXSense()
+    api.signer = aws_signer.AWSSigner("key", "secret", "token")
+    api.aws_access_expiry = datetime.now(UTC) + timedelta(hours=1)
+    snapshot = await api.get_mqtt_signer()
+    api.signer.update("other-key", "other-secret", "other-token")
+    assert (snapshot.client_id, snapshot.client_secret, snapshot.token) == (
+        "key", "secret", "token"
+    )
+
+
+@pytest.mark.asyncio
+async def test_malformed_legacy_aws_credentials_do_not_partially_replace_bundle():
+    api = async_xsense.AsyncXSense()
+    api.aws_access_key = "existing"
+    api.api_call = AsyncMock(return_value={"accessKeyId": "partial"})
+    with pytest.raises(exceptions.APIFailure, match="AWS credentials"):
+        await api.get_aws_tokens()
+    assert api.aws_access_key == "existing"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cached", [False, True])
+async def test_identity_exchange_uses_id_token_from_refreshed_session(cached):
+    session = CapturePostSession({
+        "reCode": 200,
+        "reData": {
+            "identityId": "new-id",
+            "identityPoolId": "new-pool",
+            "idProviderName": "new-provider",
+        },
+    })
+    api = async_xsense.AsyncXSense(session)
+    api.clientsecret = b"secret"
+    api.username = "user@example.com"
+    api.id_token = "old-id-token"
+    api.access_token_expiry = datetime.now(UTC) - timedelta(seconds=1)
+    if cached:
+        api.identity_id = "old-id"
+        api.identity_pool_id = "old-pool"
+        api.identity_provider_name = "old-provider"
+
+    async def refresh():
+        api._parse_refresh_result({
+            "IdToken": "new-id-token",
+            "AccessToken": "new-access-token",
+            "ExpiresIn": 3600,
+        })
+
+    api.refresh = AsyncMock(side_effect=refresh)
+    await api.get_identity_auth_info()
+    api.refresh.assert_awaited_once()
+    assert session.posts[0][1]["json"]["idToken"] == "new-id-token"
+    assert api.identity_id == "new-id"
+
+
+@pytest.mark.asyncio
+async def test_late_identity_response_cannot_restore_rotated_identity():
+    api = async_xsense.AsyncXSense()
+    api.id_token = "old"
+    api.access_token_expiry = datetime.now(UTC) + timedelta(hours=1)
+    started, resume = asyncio.Event(), asyncio.Event()
+
+    async def api_call(code, **kwargs):
+        assert kwargs["idToken"] == "old"
+        started.set()
+        await resume.wait()
+        return {
+            "identityId": "old-id",
+            "identityPoolId": "old-pool",
+            "idProviderName": "old-provider",
+        }
+
+    api.api_call = api_call
+    request = asyncio.create_task(api.get_identity_auth_info())
+    await started.wait()
+    api._parse_refresh_result({
+        "IdToken": "new", "AccessToken": "new-access", "ExpiresIn": 3600,
+    })
+    resume.set()
+    with pytest.raises(exceptions.APIFailure, match="session changed"):
+        await request
+    assert api.identity_id is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("identity_enabled", [False, True])
+async def test_late_aws_exchange_cannot_restore_credentials(identity_enabled):
+    api = async_xsense.AsyncXSense()
+    api.identity_enabled = identity_enabled
+    api.identity_id = "old-id"
+    api.identity_provider_name = "old-provider"
+    api.id_token = "old"
+    api.access_token_expiry = datetime.now(UTC) + timedelta(hours=1)
+    api.get_identity_auth_info = AsyncMock()
+    loop = asyncio.get_running_loop()
+    started = asyncio.Event()
+    worker_resume = Event()
+    legacy_resume = asyncio.Event()
+
+    def fetch(identity_id, provider_name, id_token):
+        assert (identity_id, provider_name, id_token) == ("old-id", "old-provider", "old")
+        loop.call_soon_threadsafe(started.set)
+        assert worker_resume.wait(5)
+        return "key", "secret", "token", datetime.now(UTC) + timedelta(hours=1)
+
+    async def legacy_call(code, **kwargs):
+        assert code == "101003"
+        started.set()
+        await legacy_resume.wait()
+        return {
+            "accessKeyId": "key",
+            "secretAccessKey": "secret",
+            "sessionToken": "token",
+            "expiration": "2099-01-01 00:00:00+0000",
+        }
+
+    api._fetch_identity_aws_tokens = fetch
+    api.api_call = legacy_call
+    request = asyncio.create_task(api.load_aws())
+    try:
+        await asyncio.wait_for(started.wait(), 2)
+        api._parse_refresh_result({
+            "IdToken": "new", "AccessToken": "new-access", "ExpiresIn": 3600,
+        })
+    finally:
+        worker_resume.set()
+        legacy_resume.set()
+    with pytest.raises(exceptions.APIFailure, match="session changed"):
+        await request
+    assert api.aws_access_key is None
+    assert api.signer is None
 
 
 class FakeResponse:
@@ -5529,13 +5919,10 @@ async def test_identity_credentials_replace_legacy_sts_only_when_enabled():
     client.get_identity_auth_info = AsyncMock()
     client.get_aws_tokens = AsyncMock()
 
-    def identity_credentials():
-        client.aws_access_key = "identity-key"
-        client.aws_secret_access_key = "identity-secret"
-        client.aws_session_token = "identity-token"
-        client.aws_access_expiry = async_xsense.datetime.now(async_xsense.UTC)
+    def identity_credentials(*args):
+        return "identity-key", "identity-secret", "identity-token", datetime.now(UTC)
 
-    client.get_identity_aws_tokens = identity_credentials
+    client._fetch_identity_aws_tokens = identity_credentials
 
     await client.load_aws()
 

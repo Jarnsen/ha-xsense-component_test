@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import UTC
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -278,6 +278,27 @@ async def test_known_camera_ipc_registration_failure_still_warns(caplog):
         assert await coordinator._update_cameras() is False
 
     assert "Could not update X-Sense camera data" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_periodic_refresh_rearms_existing_disconnected_mqtt_client():
+    from custom_components.xsense.coordinator import XSenseDataUpdateCoordinator
+
+    house = SimpleNamespace(mqtt_server="mqtt.example")
+    mqtt = SimpleNamespace(connected=False, async_ensure_reconnect=Mock())
+    coordinator = XSenseDataUpdateCoordinator.__new__(XSenseDataUpdateCoordinator)
+    coordinator.xsense = SimpleNamespace(houses={"house-id": house})
+    coordinator._startup_refresh_complete = True
+    coordinator.mqtt_server = Mock(return_value=mqtt)
+    coordinator.get_devices = AsyncMock(return_value={})
+    coordinator.assure_subscriptions = AsyncMock()
+    coordinator.request_device_updates = AsyncMock()
+
+    await coordinator._async_update_data_once()
+
+    mqtt.async_ensure_reconnect.assert_called_once_with()
+    coordinator.assure_subscriptions.assert_awaited_once_with(house)
+    coordinator.request_device_updates.assert_not_awaited()
 
 
 @pytest.mark.asyncio

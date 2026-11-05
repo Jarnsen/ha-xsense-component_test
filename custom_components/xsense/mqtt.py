@@ -8,8 +8,10 @@ from collections import defaultdict
 from collections.abc import AsyncGenerator, Callable, Coroutine, Iterable
 from functools import partial
 from itertools import chain
+from time import monotonic
 from typing import Any
 
+import aiohttp
 import paho.mqtt.client as mqtt
 from homeassistant.components.mqtt.client import Subscription, _matcher_for_topic
 from homeassistant.components.mqtt.models import ReceiveMessage
@@ -22,10 +24,13 @@ from homeassistant.core import (
     callback,
     get_hassjob_callable_job_type,
 )
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.collection import chunked_or_all
 from homeassistant.util.logging import catch_log_exception
 
 from .errors import xsense_error
+from .python_xsense.aws_signer import AWSSigner
+from .python_xsense.exceptions import XSenseError
 from .python_xsense.mqtt_helper import MQTTHelper
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,6 +39,8 @@ INITIAL_SUBSCRIBE_COOLDOWN = 0.5
 UNSUBSCRIBE_COOLDOWN = 0.1
 TIMEOUT_ACK = 10
 RECONNECT_INTERVAL_SECONDS = 15
+WEBSOCKET_FAILURES_BEFORE_CREDENTIAL_REFRESH = 3
+MQTT_CREDENTIAL_REFRESH_COOLDOWN = 300
 DEFAULT_ENCODING = "utf-8"
 DEFAULT_OPTIMISTIC = False
 DEFAULT_QOS = 0
@@ -64,6 +71,11 @@ def _subscription_accepts_id() -> bool:
 
 class XSenseMQTT:
     """XSenseMQTT is a MQTT client for xsense, copied from the Home Assistant MQTT client."""
+
+    async_get_signer: Callable[[bool, bool], Coroutine[Any, Any, AWSSigner]] | None = None
+    _connection_generation = 0
+    _websocket_failures = 0
+    _last_forced_credential_refresh: float | None = None
 
     def __init__(
         self,
@@ -102,6 +114,7 @@ class XSenseMQTT:
         self.connected = False
         self._connection_lock = asyncio.Lock()
         self._pending_operations: dict[int, asyncio.Future[None]] = {}
+        self._direct_subscribe_results: dict[Subscription, asyncio.Future[bool]] = {}
 
         self._misc_timer: asyncio.TimerHandle | None = None
         self._reconnect_task: asyncio.Task | None = None
@@ -289,9 +302,69 @@ class XSenseMQTT:
         )
         await self._async_wait_for_mid_or_raise(msg_info.mid, msg_info.rc)
 
+    async def _async_run_connection_job[T](self, func: Callable[..., T], *args: Any) -> T:
+        """Keep the connection lock held until a Paho worker stops using the client."""
+        job = asyncio.ensure_future(self.hass.async_add_executor_job(func, *args))
+        cancelled = False
+        while not job.done():
+            try:
+                await asyncio.shield(job)
+            except asyncio.CancelledError:
+                cancelled = True
+            except Exception:  # noqa: BLE001 - job.result() propagates worker errors below.
+                break  # Retrieve the worker exception below.
+        if cancelled:
+            if not job.cancelled():
+                job.exception()
+            raise asyncio.CancelledError
+        return job.result()
+
     async def _async_prepare_connection(self) -> None:
         """Prepare MQTT connection settings without blocking the event loop."""
-        await self.hass.async_add_executor_job(self.mqtt_helper.prepare_connection)
+        args = ()
+        if self.async_get_signer:
+            now = monotonic()
+            last = self._last_forced_credential_refresh
+            cooling_down = last is not None and now - last < MQTT_CREDENTIAL_REFRESH_COOLDOWN
+            force_refresh = (
+                not cooling_down
+                and self._websocket_failures >= WEBSOCKET_FAILURES_BEFORE_CREDENTIAL_REFRESH
+            )
+            if force_refresh:
+                # Count failed exchanges too, so an API outage cannot bypass the limit.
+                self._last_forced_credential_refresh = now
+                self._websocket_failures = 0
+                _LOGGER.debug("Refreshing X-Sense MQTT credentials after repeated WebSocket failures")
+            args = (await self.async_get_signer(force_refresh, not cooling_down),)
+        await self._async_run_connection_job(self.mqtt_helper.prepare_connection, *args)
+
+    async def _async_open_connection(self) -> int | None:
+        """Open a socket even if a previous attempt failed before Paho setup."""
+        async with self._connection_lock:
+            if not self._should_reconnect:
+                return None
+            # A successful WebSocket upgrade precedes MQTT CONNACK. Let Paho's
+            # keepalive handling time out an unresponsive socket.
+            if self.connected or self._mqttc.socket() is not None:
+                return mqtt.MQTT_ERR_SUCCESS
+            await self._async_prepare_connection()
+            if not self._should_reconnect:
+                return None
+            async with self._async_connect_in_executor():
+                try:
+                    result = await self._async_run_connection_job(
+                        self._mqttc.connect, self.mqtt_helper.house.mqtt_server, 443
+                    )
+                except mqtt.WebsocketConnectionError:
+                    self._websocket_failures = min(
+                        self._websocket_failures + 1, WEBSOCKET_FAILURES_BEFORE_CREDENTIAL_REFRESH
+                    )
+                    raise
+                except OSError:
+                    self._websocket_failures = 0
+                    raise
+                self._websocket_failures = 0
+                return result
 
     # updated call, added exception handler
     async def async_connect(self) -> None:
@@ -301,16 +374,15 @@ class XSenseMQTT:
         # self._available_future = client_available
         self._should_reconnect = True
         try:
-            async with self._connection_lock, self._async_connect_in_executor():
-                await self._async_prepare_connection()
-                result = await self.hass.async_add_executor_job(
-                    self._mqttc.connect, self.mqtt_helper.house.mqtt_server, 443
-                )
+            result = await self._async_open_connection()
+        except (XSenseError, aiohttp.ClientError) as err:
+            _LOGGER.warning("Could not prepare X-Sense MQTT credentials (%s)", type(err).__name__)
+            self._async_connection_result(False)
+        except mqtt.WebsocketConnectionError:
+            _LOGGER.error("X-Sense MQTT WebSocket handshake failed")
+            self._async_connection_result(False)
         except OSError as err:
             _LOGGER.error("Failed to connect to MQTT server due to exception: %s", err)
-            self._async_connection_result(False)
-        except mqtt.WebsocketConnectionError as err:
-            _LOGGER.error("Error while connecting to XSense MQTT: %s", err)
             self._async_connection_result(False)
         finally:
             if result is not None and result != 0:
@@ -330,7 +402,15 @@ class XSenseMQTT:
 
         if connected:
             self._async_cancel_reconnect()
-        elif self._should_reconnect and not self._reconnect_task:
+        else:
+            self.async_ensure_reconnect()
+
+    @callback
+    def async_ensure_reconnect(self) -> None:
+        """Resume retrying if no active task owns the disconnected client."""
+        if not self.connected and self._should_reconnect and (
+            self._reconnect_task is None or self._reconnect_task.done()
+        ):
             self._reconnect_task = self.config_entry.async_create_background_task(
                 self.hass, self._reconnect_loop(), "mqtt reconnect loop"
             )
@@ -346,8 +426,10 @@ class XSenseMQTT:
     async def _reconnect_loop(self) -> None:
         """Reconnect to the MQTT server with exponential backoff."""
         delay = 1
-        while True:
+        while self._should_reconnect:
             await asyncio.sleep(delay)
+            if not self._should_reconnect:
+                return
 
             if self.connected:
                 delay = 1
@@ -355,15 +437,20 @@ class XSenseMQTT:
 
             _LOGGER.debug("Reconnecting to XSense MQTT server")
             try:
-                async with self._connection_lock, self._async_connect_in_executor():
-                    await self._async_prepare_connection()
-                    await self.hass.async_add_executor_job(self._mqttc.reconnect)
-                delay = 1
+                result = await self._async_open_connection()
+                if result is None:
+                    return
+                delay = 1 if result == mqtt.MQTT_ERR_SUCCESS else min(
+                    delay * 2, RECONNECT_INTERVAL_SECONDS
+                )
+            except (XSenseError, aiohttp.ClientError) as err:
+                _LOGGER.debug("Could not prepare X-Sense MQTT credentials (%s)", type(err).__name__)
+                delay = min(delay * 2, RECONNECT_INTERVAL_SECONDS)
+            except mqtt.WebsocketConnectionError:
+                _LOGGER.debug("X-Sense MQTT WebSocket handshake failed on retry")
+                delay = min(delay * 2, RECONNECT_INTERVAL_SECONDS)
             except OSError as err:
                 _LOGGER.debug("Error reconnecting to XSense MQTT server: %s", err)
-                delay = min(delay * 2, RECONNECT_INTERVAL_SECONDS)
-            except mqtt.WebsocketConnectionError as err:
-                _LOGGER.error("WebSocket error reconnecting to XSense MQTT: %s", err)
                 delay = min(delay * 2, RECONNECT_INTERVAL_SECONDS)
 
     async def async_disconnect(self, disconnect_paho_client: bool = False) -> None:
@@ -373,30 +460,24 @@ class XSenseMQTT:
         when Home Assistant is shut down.
         """
 
-        # stop waiting for any pending subscriptions
-        await self._subscribe_debouncer.async_cleanup()
-        # reset timeout to initial subscribe cooldown
-        self._subscribe_debouncer.set_timeout(INITIAL_SUBSCRIBE_COOLDOWN)
-        # stop the unsubscribe debouncer
-        await self._unsubscribe_debouncer.async_cleanup()
-        # make sure the unsubscribes are processed
-        await self._async_perform_unsubscribes()
-
-        # wait for ACKs to be processed
-        if pending := self._pending_operations.values():
-            await asyncio.wait(pending)
-
-        # stop the MQTT loop
-        async with self._connection_lock:
-            self._should_reconnect = False
-            self._async_cancel_reconnect()
-            # We do not gracefully disconnect to ensure
-            # the broker publishes the will message unless the entry is reloaded
-            if disconnect_paho_client:
-                self._mqttc.disconnect()
-
-        # Release cached subscription jobs when this config entry unloads.
-        self._matching_subscriptions_cache.clear()
+        self._should_reconnect = False
+        self._connection_generation += 1
+        try:
+            await self._subscribe_debouncer.async_cleanup()
+            self._subscribe_debouncer.set_timeout(INITIAL_SUBSCRIBE_COOLDOWN)
+            await self._unsubscribe_debouncer.async_cleanup()
+            await self._async_perform_unsubscribes()
+            if pending := list(self._pending_operations.values()):
+                await asyncio.wait(pending)
+        except (HomeAssistantError, OSError) as err:
+            _LOGGER.debug("Could not finish X-Sense MQTT unsubscribe (%s)", type(err).__name__)
+        finally:
+            # Wait for any socket executor job before retiring its client.
+            async with self._connection_lock:
+                self._async_cancel_reconnect()
+                if disconnect_paho_client:
+                    self._mqttc.disconnect()
+            self._matching_subscriptions_cache.clear()
 
     # unchanged
     @callback
@@ -528,15 +609,41 @@ class XSenseMQTT:
         self._matching_subscriptions_cache.clear()
 
         if self.connected:
+            generation = self._connection_generation
+            self._direct_subscribe_results[subscription] = self.hass.loop.create_future()
             try:
-                await self._async_perform_subscription(subscription)
+                try:
+                    await self._async_perform_subscription(subscription)
+                except (HomeAssistantError, TimeoutError):
+                    if generation == self._connection_generation:
+                        raise
+                    if not await self._async_wait_for_replacement_suback(subscription):
+                        raise
+                else:
+                    if (
+                        generation != self._connection_generation
+                        and not await self._async_wait_for_replacement_suback(subscription)
+                    ):
+                        raise xsense_error("mqtt_error", error="MQTT subscription rejected")
             except BaseException:
-                self._async_untrack_subscription(subscription)
-                self._matching_subscriptions_cache.clear()
+                if self._is_tracked_subscription(subscription):
+                    self._async_remove(subscription)
                 raise
+            finally:
+                self._direct_subscribe_results.pop(subscription, None)
 
         # self.topics.append(topic)
         return partial(self._async_remove, subscription)
+
+    async def _async_wait_for_replacement_suback(self, subscription: Subscription) -> bool:
+        """Accept an ACK only from the current connection, or retain offline intent."""
+        async with asyncio.timeout(TIMEOUT_ACK):
+            while self.connected and self._is_tracked_subscription(subscription):
+                generation = self._connection_generation
+                accepted = await self._direct_subscribe_results[subscription]
+                if generation == self._connection_generation:
+                    return accepted and self._is_tracked_subscription(subscription)
+        return self._is_tracked_subscription(subscription)
 
     @callback
     def _async_remove(self, subscription: Subscription) -> None:
@@ -568,18 +675,40 @@ class XSenseMQTT:
         self._pending_unsubscribes.add(topic)
         self._unsubscribe_debouncer.async_schedule()
 
-    async def _async_perform_subscriptions(self) -> None:
+    def _is_tracked_subscription(self, subscription: Subscription) -> bool:
+        if subscription.is_simple_match:
+            return subscription in self._simple_subscriptions.get(subscription.topic, ())
+        return subscription in self._wildcard_subscriptions
+
+    async def _async_perform_subscriptions(self, generation: int | None = None) -> None:
         # Send separately: the X-Sense broker rejects large subscription batches.
         # Cancellation propagates, retaining subscription intent for reconnect.
+        if generation is None:
+            generation = self._connection_generation
         for subscription in self.subscriptions:
+            if not self.connected or generation != self._connection_generation:
+                return
+            if not self._is_tracked_subscription(subscription):
+                continue
             try:
                 await self._async_perform_subscription(subscription)
             except Exception as exc:  # noqa: BLE001 - MQTT client errors vary by transport.
+                if not self.connected or generation != self._connection_generation:
+                    return
+                if not self._is_tracked_subscription(subscription):
+                    continue
+                if (result := self._direct_subscribe_results.get(subscription)) and not result.done():
+                    result.set_result(False)
                 self._async_untrack_subscription(subscription)
                 self._matching_subscriptions_cache.clear()
                 _LOGGER.warning(
                     "Could not subscribe to X-Sense MQTT topic (%s)", type(exc).__name__
                 )
+            else:
+                if generation != self._connection_generation:
+                    return
+                if (result := self._direct_subscribe_results.get(subscription)) and not result.done():
+                    result.set_result(True)
 
     # unchanged
     async def _async_perform_unsubscribes(self) -> None:
@@ -592,7 +721,10 @@ class XSenseMQTT:
         debug_enabled = _LOGGER.isEnabledFor(logging.DEBUG)
 
         for chunk in chunked_or_all(topics, MAX_UNSUBSCRIBES_PER_CALL):
-            chunk_list = list(chunk)
+            # The topic may have been added again during the debounce or a prior ACK.
+            chunk_list = [topic for topic in chunk if not self._is_active_subscription(topic)]
+            if not chunk_list:
+                continue
 
             result, mid = self._mqttc.unsubscribe(chunk_list)
             if debug_enabled:
@@ -624,11 +756,11 @@ class XSenseMQTT:
         message.
         """
 
+        if not self._should_reconnect:
+            return
         if result_code != mqtt.CONNACK_ACCEPTED:
-            if result_code in (
-                mqtt.CONNACK_REFUSED_BAD_USERNAME_PASSWORD,
-                mqtt.CONNACK_REFUSED_NOT_AUTHORIZED,
-            ):
+            # Callback API v2 normalizes MQTT 3.x refusals to MQTT 5 reason codes.
+            if result_code.value in (134, 135):
                 self._should_reconnect = False
                 self.hass.create_task(self.async_disconnect())
             _LOGGER.error(
@@ -639,10 +771,11 @@ class XSenseMQTT:
             return
 
         self.connected = True
+        self._connection_generation += 1
 
         self.config_entry.async_create_background_task(
             self.hass,
-            self._async_perform_subscriptions(),
+            self._async_perform_subscriptions(self._connection_generation),
             name="xsense-mqtt re-subscribe",
         )
 
@@ -750,8 +883,14 @@ class XSenseMQTT:
             return
         # If disconnect is called before the connect
         # result is set make sure the first connection result is set
-        self._async_connection_result(False)
         self.connected = False
+        self._connection_generation += 1
+        # Wake waiters from the old connection and give the next one a fresh result.
+        for subscription, result in self._direct_subscribe_results.items():
+            if not result.done():
+                result.set_result(False)
+            self._direct_subscribe_results[subscription] = self.hass.loop.create_future()
+        self._async_connection_result(False)
         if result_code == mqtt.MQTT_ERR_SUCCESS:
             _LOGGER.debug("Disconnected from MQTT server cleanly")
             return
