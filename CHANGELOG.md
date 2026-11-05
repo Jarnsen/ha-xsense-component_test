@@ -1,6 +1,7 @@
 # Changelog
 
 Release notes for each published X-Sense Home Security version.
+- [1.6.4](.github/release-notes/1.6.4.md)
 - [1.6.3](.github/release-notes/1.6.3.md)
 - [1.6.2](.github/release-notes/1.6.2.md)
 - [1.6.1](.github/release-notes/1.6.1.md)
