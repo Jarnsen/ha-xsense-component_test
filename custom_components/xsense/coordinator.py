@@ -79,6 +79,8 @@ _IGNORED_TOPIC_SUFFIXES = ("/update/accepted", "/update/documents", "/update/rej
 
 KEYPAD_CODE_EVENT_TYPE = "xsense_keypad_code"
 SELF_TEST_EVENT_TYPE = "xsense_self_test"
+INTRUSION_EVENT_TYPE = "xsense_intrusion_triggered"
+_INTRUSION_DEVICE_TYPES = {"SDS0A", "SMS0A"}
 
 # Match the motion-history request horizon. Cutoffs follow each source's
 # observed event time, not the polling clock (AI history has no time filter).
@@ -1199,6 +1201,13 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not isinstance(data, dict):
             return
         station_data = _mqtt_reported_data(data)
+        if (
+            topic.startswith("@xsense/events/safealarm/")
+            and isinstance(data.get("eventData"), (dict, str))
+            and "state" not in data
+            and isinstance(station_data, dict)
+        ):
+            self._async_fire_intrusion_event(topic, data, station_data)
 
         station_sn = None
         device_sn = None
@@ -1348,6 +1357,63 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.xsense.parse_get_state(station, station_data)
 
         self.async_update_listeners()
+
+    def _async_fire_intrusion_event(self, topic: str, envelope: dict, report: dict) -> None:
+        """Mirror the APK C2253w alarm event, not MainActivity's popup logic."""
+        house_id = topic.removeprefix("@xsense/events/safealarm/")
+        device_type = report.get("deviceType")
+        if (
+            str(report.get("isAlarm")) != "1"
+            or not isinstance(device_type, str)
+            or device_type not in _INTRUSION_DEVICE_TYPES
+            or envelope.get("eventType") in ("preAlarm", "sosAlarm")
+            or str(report.get("trainAlarmed")) == "1"
+        ):
+            return
+        house = self.xsense.houses.get(house_id)
+        if house is None or report.get("houseId") not in (None, "", house_id):
+            return
+        station_sn = report.get("stationSn")
+        station_id = report.get("stationId")
+        if not isinstance(station_sn, str) or not station_sn:
+            return
+        station = next(
+            (
+                item
+                for item in house.stations.values()
+                if item.type == "SBS50"
+                and item.sn == station_sn
+                and (not station_id or item.entity_id == station_id)
+            ),
+            None,
+        )
+        if station is None:
+            return
+        identifier = report.get("deviceSn")
+        if not isinstance(identifier, str) or not identifier:
+            return
+        device = station.get_device_by_sn(identifier)
+        if (
+            device is None
+            or device.type != device_type
+            or report.get("deviceId") not in (None, "", device.entity_id)
+        ):
+            return
+        event_id = report.get("eventId")
+        alarm_time = report.get("alarmTime")
+        self.hass.bus.async_fire(
+            INTRUSION_EVENT_TYPE,
+            {
+                "station_id": station.entity_id,
+                "station_serial": station.sn,
+                "device_id": device.entity_id,
+                "device_serial": device.sn,
+                "device_name": device.name,
+                "device_type": device.type,
+                "alarm_time": alarm_time if isinstance(alarm_time, str) else None,
+                "event_id": event_id if isinstance(event_id, str) else None,
+            },
+        )
 
     async def assure_subscriptions(self, h: House) -> None:
         """Assure there are subscriptions for all relevant topics.

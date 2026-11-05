@@ -3,7 +3,7 @@
 import asyncio
 import json
 from types import SimpleNamespace as NS
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from botocore.exceptions import ClientError
@@ -80,6 +80,67 @@ def receive(c, station, shadow, **payload):
             {"state": {"reported": {"stationSN": station.sn, **payload}}}
         ).encode(),
     )
+
+
+@pytest.mark.parametrize("model", ["SDS0A", "SMS0A"])
+def test_intrusion_event_uses_sbs50_safealarm_notice(model):
+    station = make_station()
+    station.set_devices({"devices": [
+        {
+            "deviceId": "sensor-id",
+            "deviceSn": "sensor-serial",
+            "deviceType": model,
+            "deviceName": "Back door",
+            "roomName": "Entry",
+        }
+    ]})
+    c = make_coordinator(station)
+    c.hass = NS(bus=Mock())
+    report = {
+        "stationSn": station.sn,
+        "deviceSn": "sensor-serial",
+        "deviceType": model,
+        "isAlarm": "1",
+        "alarmTime": "20261105120100",
+        "pinCode": "not-for-ha",
+    }
+    topic = "@xsense/events/safealarm/house"
+    c.async_event_received(topic, json.dumps({"eventData": report}).encode())
+    c.hass.bus.async_fire.assert_called_once_with(
+        "xsense_intrusion_triggered",
+        {
+            "station_id": "station",
+            "station_serial": "station",
+            "device_id": "sensor-id",
+            "device_serial": "sensor-serial",
+            "device_name": "Back door",
+            "device_type": model,
+            "alarm_time": "20261105120100",
+            "event_id": None,
+        },
+    )
+
+    c.hass.bus.reset_mock()
+    for overrides, event_type, event_topic in (
+        ({"isAlarm": "0"}, None, topic),
+        ({}, "preAlarm", topic),
+        ({}, "sosAlarm", topic),
+        ({"trainAlarmed": "1"}, None, topic),
+        ({"houseId": "other"}, None, topic),
+        ({"stationId": "other"}, None, topic),
+        ({"deviceId": "other"}, None, topic),
+        ({"deviceType": []}, None, topic),
+        ({}, None, "@xsense/events/safealarm/other"),
+        ({}, None, "@xsense/events/motion/house"),
+    ):
+        c.async_event_received(
+            event_topic,
+            json.dumps({
+                "eventType": event_type,
+                "eventData": {**report, **overrides},
+            }).encode(),
+        )
+    c.hass.bus.async_fire.assert_not_called()
 
 
 @pytest.mark.parametrize("reported", ["Home", "Away", "Disarmed"])
