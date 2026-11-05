@@ -107,7 +107,10 @@ class MQTTHelper:
     def prepare_connect(self):
         self.client.ws_set_options(path=self._get_path())
 
-    def prepare_connection(self):
+    def prepare_connection(self, signer: AWSSigner | None = None):
+        if signer is not None:
+            self.signer = signer
+            self._mqtt_path = None
         self.prepare_connect()
         self.ensure_tls_context()
 

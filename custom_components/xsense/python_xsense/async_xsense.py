@@ -5,6 +5,7 @@ import logging
 import math
 import socket
 from contextlib import AsyncExitStack, asynccontextmanager
+from copy import copy
 from datetime import UTC, datetime
 from typing import Any
 
@@ -1611,9 +1612,19 @@ class AsyncXSense(XSenseBase):
             await self.get_identity_mode()
         if self.identity_enabled:
             await self.get_identity_auth_info()
-            await asyncio.get_running_loop().run_in_executor(
-                None, self.get_identity_aws_tokens
+            generation = self._identity_generation
+            credentials = await asyncio.get_running_loop().run_in_executor(
+                None, self._fetch_identity_aws_tokens,
+                self.identity_id, self.identity_provider_name, self.id_token,
             )
+            if generation != self._identity_generation:
+                raise APIFailure("X-Sense session changed during AWS credential exchange")
+            (
+                self.aws_access_key,
+                self.aws_secret_access_key,
+                self.aws_session_token,
+                self.aws_access_expiry,
+            ) = credentials
         else:
             await self.get_aws_tokens()
         if self.signer:
@@ -1624,6 +1635,19 @@ class AsyncXSense(XSenseBase):
             self.signer = AWSSigner(
                 self.aws_access_key, self.aws_secret_access_key, self.aws_session_token
             )
+
+    async def get_mqtt_signer(
+        self, force_refresh: bool = False, allow_exchange: bool = True
+    ) -> AWSSigner:
+        """Return the current AWS signer before opening a broker connection."""
+        if force_refresh or self.signer is None or self._aws_token_expiring():
+            if not allow_exchange:
+                raise APIFailure("X-Sense MQTT credential exchange is in cooldown")
+            await self.load_aws()
+        if self.signer is None or self._aws_token_expiring():
+            raise APIFailure("Missing or expired X-Sense MQTT credentials")
+        # HTTP polling can update the shared signer while MQTT signs in an executor.
+        return copy(self.signer)
 
     async def load_all(self):
         result = {}
@@ -2225,13 +2249,25 @@ class AsyncXSense(XSenseBase):
         self.userpool = data["userPoolId"]
 
     async def get_aws_tokens(self):
+        if self.access_token_expiry is not None and self._access_token_expiring():
+            await self.refresh()
+        generation = self._identity_generation
         data = await self.api_call("101003", userName=self.username)
-        self.aws_access_key = data["accessKeyId"]
-        self.aws_secret_access_key = data["secretAccessKey"]
-        self.aws_session_token = data["sessionToken"]
-        self.aws_access_expiry = datetime.strptime(
-            data["expiration"], "%Y-%m-%d %H:%M:%S%z"
-        )
+        if generation != self._identity_generation:
+            raise APIFailure("X-Sense session changed during AWS credential exchange")
+        try:
+            access_key, secret_key, token = (
+                data[key] for key in ("accessKeyId", "secretAccessKey", "sessionToken")
+            )
+            if not all(isinstance(value, str) and value for value in (access_key, secret_key, token)):
+                raise ValueError("Invalid credential fields")
+            expiry = datetime.strptime(data["expiration"], "%Y-%m-%d %H:%M:%S%z")
+        except (KeyError, TypeError, ValueError) as ex:
+            raise APIFailure("Cannot understand X-Sense AWS credentials") from ex
+        self.aws_access_key = access_key
+        self.aws_secret_access_key = secret_key
+        self.aws_session_token = token
+        self.aws_access_expiry = expiry
 
     async def get_identity_mode(self) -> None:
         """Read the server flag that selects the APK's identity credential path."""
@@ -2241,11 +2277,16 @@ class AsyncXSense(XSenseBase):
         response = await self.api_call(
             "501001", userId=self.user_id_code, return_envelope=True
         )
-        config = response.get("cfgVersion") or {}
-        self.identity_enabled = config.get("identityEnable") == "1"
+        config = response.get("cfgVersion")
+        if config is not None and not isinstance(config, dict):
+            raise APIFailure("Cannot understand X-Sense identity configuration")
+        self.identity_enabled = config is not None and config.get("identityEnable") == "1"
 
     async def get_identity_auth_info(self) -> None:
         """Retrieve the identity bundle used by the Android client for AWS IoT."""
+        # Refresh before capturing idToken in the request body or using cached IDs.
+        if self._access_token_expiring():
+            await self.refresh()
         if all(
             (
                 self.identity_id,
@@ -2254,23 +2295,23 @@ class AsyncXSense(XSenseBase):
             )
         ):
             return
+        generation = self._identity_generation
         data = await self.api_call(
             "101010", userName=self.username, idToken=self.id_token
         )
+        if generation != self._identity_generation:
+            raise APIFailure("X-Sense session changed during identity exchange")
         try:
-            self.identity_id = data["identityId"]
-            self.identity_pool_id = data["identityPoolId"]
-            self.identity_provider_name = data["idProviderName"]
+            identity_id, pool_id, provider_name = (
+                data[key] for key in ("identityId", "identityPoolId", "idProviderName")
+            )
         except (KeyError, TypeError) as ex:
             raise APIFailure("Cannot understand X-Sense Cognito Identity response") from ex
-        if not all(
-            (
-                self.identity_id,
-                self.identity_pool_id,
-                self.identity_provider_name,
-            )
-        ):
+        if not all(isinstance(value, str) and value for value in (identity_id, pool_id, provider_name)):
             raise APIFailure("Cannot understand X-Sense Cognito Identity response")
+        self.identity_id = identity_id
+        self.identity_pool_id = pool_id
+        self.identity_provider_name = provider_name
 
     async def get_houses(self):
         params = {"utctimestamp": "0"}

@@ -129,6 +129,7 @@ class XSenseBase:
     identity_provider_name = None
 
     signer = None
+    _identity_generation = 0
 
     _lastres = None
 
@@ -237,6 +238,7 @@ class XSenseBase:
         would allow a shadow request to use a credential tied to the old ID
         token.
         """
+        self._identity_generation += 1
         self.identity_id = None
         self.identity_pool_id = None
         self.identity_provider_name = None
@@ -258,6 +260,20 @@ class XSenseBase:
         ):
             raise APIFailure("Missing X-Sense Cognito Identity credentials")
 
+        (
+            self.aws_access_key,
+            self.aws_secret_access_key,
+            self.aws_session_token,
+            self.aws_access_expiry,
+        ) = self._fetch_identity_aws_tokens(
+            self.identity_id, self.identity_provider_name, self.id_token
+        )
+
+    @staticmethod
+    def _fetch_identity_aws_tokens(identity_id, provider_name, id_token):
+        """Fetch a credential bundle without mutating the client."""
+        if not all((identity_id, provider_name, id_token)):
+            raise APIFailure("Missing X-Sense Cognito Identity credentials")
         try:
             client = boto3.Session().client(
                 "cognito-identity",
@@ -265,14 +281,21 @@ class XSenseBase:
                 config=_COGNITO_CLIENT_CONFIG,
             )
             response = client.get_credentials_for_identity(
-                IdentityId=self.identity_id,
-                Logins={self.identity_provider_name: self.id_token},
+                IdentityId=identity_id,
+                Logins={provider_name: id_token},
             )
             credentials = response["Credentials"]
-            self.aws_access_key = credentials["AccessKeyId"]
-            self.aws_secret_access_key = credentials["SecretKey"]
-            self.aws_session_token = credentials["SessionToken"]
-            self.aws_access_expiry = credentials["Expiration"]
+            bundle = (
+                credentials["AccessKeyId"],
+                credentials["SecretKey"],
+                credentials["SessionToken"],
+                credentials["Expiration"],
+            )
+            if not all(isinstance(value, str) and value for value in bundle[:3]):
+                raise TypeError("Invalid AWS credential fields")
+            if not isinstance(bundle[3], datetime) or bundle[3].utcoffset() is None:
+                raise TypeError("Invalid AWS credential expiry")
+            return bundle
         except (KeyError, TypeError) as ex:
             raise APIFailure("Cannot understand X-Sense Cognito Identity credentials") from ex
         except (BotoCoreError, ClientError) as ex:

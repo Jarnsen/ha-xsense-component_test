@@ -539,6 +539,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if not mqtt:
                     mqtt = self.setup_mqtt(h)
                     await mqtt.async_connect()
+                elif not mqtt.connected:
+                    mqtt.async_ensure_reconnect()
 
                 await self.assure_subscriptions(h)
 
@@ -1174,6 +1176,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise asyncio.CancelledError
         if not self.mqtt_server(h.mqtt_server):
             mqtt = XSenseMQTT(self.hass, self.entry, h.mqtt)
+            mqtt.async_get_signer = self.xsense.get_mqtt_signer
             mqtt.on_data = self.async_event_received
             mqtt.init_client()
             self.mqtt_servers[h.mqtt_server] = mqtt
