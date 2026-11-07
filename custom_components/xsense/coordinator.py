@@ -35,6 +35,11 @@ from .python_xsense import (
     cameras_share_identity,
 )
 from .python_xsense.async_xsense import camera_addx_serial, is_camera_entity
+from .python_xsense.base import (
+    _child_state_items,
+    _merge_top_level_child_state,
+    _state_child_device,
+)
 from .python_xsense.event_parser import (
     camera_ai_history_event_key as _camera_ai_history_event_key,
 )
@@ -169,6 +174,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.xsense: AsyncXSense = None
         self._initialized: bool = False
         self._camera_initialized: bool = False
+        self.active_intrusion_sensors: dict[str, set[str]] = {}
+        self._mqtt_mode_revisions: dict[str, int] = {}
         self._last_camera_update_attempt: datetime | None = None
         self._camera_station_cache: dict[str, Any] = {}
         self._camera_ai_history_seen: set[str] = set()
@@ -664,7 +671,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 for s in h.stations.values():
                     if include_state_update and not is_camera_entity(s):
                         await self.xsense.get_station_state(s)
-                        await self.xsense.get_state(s)
+                        await self._async_refresh_station_state(s)
                     if include_state_update and s.type == "SBS50":
                         await self._update_safe_mode(s)
                     devices.update(s.devices.items())
@@ -1145,15 +1152,61 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if existing is not cached:
                 _merge_camera_metadata(cached, existing)
 
+    async def _async_refresh_station_state(self, station) -> None:
+        """Reconcile active alarms against the fresh SBS50 main-page shadow."""
+        active = self.active_intrusion_sensors
+        snapshot = active.get(station.sn) if station.type == "SBS50" else None
+        reported = await self.xsense.get_state(station)
+        # An alarm notice received while polling is newer than this snapshot.
+        if not snapshot or active.get(station.sn) is not snapshot:
+            return
+        if isinstance(reported, dict):
+            fields = reported.copy()
+            children = _merge_top_level_child_state(
+                station, fields, fields.pop("devs", {}) or {}
+            )
+        elif isinstance(reported, list):
+            children = reported
+        else:
+            return
+        cleared = set()
+        for key, report in _child_state_items(children):
+            if not isinstance(report, dict):
+                continue
+            status = report.get("status")
+            alarm_status = report.get("alarmStatus")
+            if isinstance(status, dict):
+                alarm_status = status.get("a", status.get("alarmStatus", alarm_status))
+            if alarm_status not in (0, "0"):
+                continue
+            if device := _state_child_device(station, key, report):
+                cleared.add(device.sn)
+        if cleared:
+            if remaining := snapshot - cleared:
+                active[station.sn] = remaining
+            else:
+                active.pop(station.sn, None)
+
     async def _update_safe_mode(self, station) -> None:
         """Fetch safeMode from the 2nd_safemode AWS IoT shadow as a fallback."""
+        active = self.active_intrusion_sensors
+        snapshot = active.get(station.sn)
+        mode_revision = self._mqtt_mode_revisions.get(station.sn, 0)
         try:
             res = await self.xsense.get_thing(station, "2nd_safemode")
+            if self._mqtt_mode_revisions.get(station.sn, 0) != mode_revision:
+                return
             reported = res.get("state", {}).get("reported", {})
             safe_mode = reported.get("safeMode")
 
             if safe_mode is not None:
                 _apply_safe_mode(station, safe_mode)
+                if (
+                    safe_mode == "Disarmed"
+                    and snapshot is not None
+                    and active.get(station.sn) is snapshot
+                ):
+                    active.pop(station.sn, None)
                 LOGGER.debug(
                     "HTTP poll: station %s safeMode = %s", station.sn, safe_mode
                 )
@@ -1210,7 +1263,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             and "state" not in data
             and isinstance(station_data, dict)
         ):
-            self._async_fire_intrusion_event(topic, data, station_data)
+            self._async_handle_intrusion_notice(topic, data, station_data)
 
         station_sn = None
         device_sn = None
@@ -1289,6 +1342,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             station._xsense_mode_result = {**station_data, "kind": mode_result}
             try:
                 self.xsense.parse_get_state(station, station_data, mode_result=mode_result)
+                if mode_result == "mode" and station.type == "SBS50":
+                    revisions = self._mqtt_mode_revisions
+                    revisions[station.sn] = revisions.get(station.sn, 0) + 1
+                    if station_data.get("safeMode") == "Disarmed":
+                        self.active_intrusion_sensors.pop(station.sn, None)
                 self.async_update_listeners()
             finally:
                 del station._xsense_mode_result
@@ -1361,12 +1419,13 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         self.async_update_listeners()
 
-    def _async_fire_intrusion_event(self, topic: str, envelope: dict, report: dict) -> None:
-        """Mirror the APK C2253w alarm event, not MainActivity's popup logic."""
+    def _async_handle_intrusion_notice(self, topic: str, envelope: dict, report: dict) -> None:
+        """Track SBS50 alarms and clears per sensor, independently of armed mode."""
         house_id = topic.removeprefix("@xsense/events/safealarm/")
         device_type = report.get("deviceType")
+        alarm = str(report.get("isAlarm"))
         if (
-            str(report.get("isAlarm")) != "1"
+            alarm not in ("0", "1")
             or not isinstance(device_type, str)
             or device_type not in _INTRUSION_DEVICE_TYPES
             or envelope.get("eventType") in ("preAlarm", "sosAlarm")
@@ -1402,6 +1461,19 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             or report.get("deviceId") not in (None, "", device.entity_id)
         ):
             return
+        active = self.active_intrusion_sensors
+        was_triggered = station.sn in active
+        if alarm == "1":
+            active[station.sn] = active.get(station.sn, set()) | {device.sn}
+        elif remaining := active.get(station.sn, set()) - {device.sn}:
+            active[station.sn] = remaining
+        else:
+            active.pop(station.sn, None)
+        if was_triggered != (station.sn in active):
+            self.async_update_listeners()
+        if alarm == "0":
+            return
+
         event_id = report.get("eventId")
         alarm_time = report.get("alarmTime")
         self.hass.bus.async_fire(
