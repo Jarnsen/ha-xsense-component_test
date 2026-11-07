@@ -28,6 +28,8 @@ def make_coordinator(*cameras):
     )
     c.data = {"stations": dict(house.stations), "devices": {}}
     c._listeners = {}
+    c.active_intrusion_sensors = {}
+    c._mqtt_mode_revisions = {}
     c._shutting_down = False
     c._operation_tasks = {}
     c._connect_lock = asyncio.Lock()
@@ -141,6 +143,117 @@ def test_intrusion_event_uses_sbs50_safealarm_notice(model):
             }).encode(),
         )
     c.hass.bus.async_fire.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("clear_path", "clear_order"),
+    [
+        ("notice", ("door", "motion")),
+        ("notice", ("motion", "door")),
+        ("shadow", ("door", "motion")),
+        ("nested_shadow", ("door", "motion")),
+        ("disarm", ("door", "motion")),
+        ("http_disarm", ("door", "motion")),
+        ("stale_http_disarm", ("door", "motion")),
+    ],
+)
+async def test_sbs50_panel_stays_triggered_until_cleared(monkeypatch, clear_path, clear_order):
+    c, station, panel, _ = make_panel(monkeypatch)
+    other_station = make_station("other-station")
+    other_panel = alarm.XSenseAlarmControlPanel(c, other_station)
+    c.data["stations"][other_station.entity_id] = other_station
+    c.hass = NS(bus=Mock())
+    types = {"door": "SDS0A", "motion": "SMS0A"}
+    station.set_devices({"devices": [
+        {
+            "deviceId": sn,
+            "deviceSn": sn,
+            "deviceType": model,
+            "deviceName": sn,
+            "roomName": "Office",
+        }
+        for sn, model in types.items()
+    ]})
+    receive(c, station, "2nd_safemode", safeMode="Away")
+    assert str(panel.alarm_state) == "armed_away"
+
+    def notice(sn, active):
+        c.async_event_received(
+            "@xsense/events/safealarm/house",
+            json.dumps({"eventData": {
+                "stationSn": station.sn,
+                "deviceSn": sn,
+                "deviceType": types[sn],
+                "isAlarm": active,
+            }}).encode(),
+        )
+
+    notice("door", "1")
+    assert str(panel.alarm_state) == "triggered"
+    assert str(other_panel.alarm_state) != "triggered"
+    notice("motion", "1")
+    receive(c, station, "2nd_safemode", safeMode="Home")
+    assert str(panel.alarm_state) == "triggered"
+    if clear_path == "stale_http_disarm":
+        async def older_disarmed_shadow(*_args):
+            receive(c, station, "2nd_safemode", safeMode="Away")
+            return {"state": {"reported": {"safeMode": "Disarmed"}}}
+
+        c.xsense.get_thing = AsyncMock(side_effect=older_disarmed_shadow)
+        await c._update_safe_mode(station)
+        c.async_update_listeners()
+        assert station.safe_mode == "Away"
+        assert c.active_intrusion_sensors[station.sn] == {"door", "motion"}
+        assert str(panel.alarm_state) == "triggered"
+        notice("door", "0")
+        notice("motion", "0")
+        assert str(panel.alarm_state) == "armed_away"
+        assert [
+            call.args[1]["device_serial"] for call in c.hass.bus.async_fire.call_args_list
+        ] == ["door", "motion"]
+        return
+    if clear_path in ("disarm", "http_disarm"):
+        receive(c, station, "2nd_modeconfirm", safeMode="Disarmed")
+        assert str(panel.alarm_state) == "triggered"
+        if clear_path == "http_disarm":
+            async def disarmed_shadow(*_args):
+                notice("door", "1")
+                return {"state": {"reported": {"safeMode": "Disarmed"}}}
+
+            c.xsense.get_thing = AsyncMock(side_effect=disarmed_shadow)
+            await c._update_safe_mode(station)
+            assert str(panel.alarm_state) == "triggered"
+            assert c.active_intrusion_sensors[station.sn] == {"door", "motion"}
+            c.xsense.get_thing = AsyncMock(
+                return_value={"state": {"reported": {"safeMode": "Disarmed"}}}
+            )
+            await c._update_safe_mode(station)
+            c.async_update_listeners()
+        else:
+            receive(c, station, "2nd_safemode", safeMode="Disarmed")
+        assert str(panel.alarm_state) == "disarmed"
+    else:
+        if clear_path in ("shadow", "nested_shadow"):
+            station.get_device_by_sn("door").set_data({"alarmStatus": "0"})
+            c.xsense.get_state = AsyncMock(return_value={"devs": {"door": {}}})
+            await c._async_refresh_station_state(station)
+            assert c.active_intrusion_sensors[station.sn] == {"door", "motion"}
+            report = {"alarmStatus": "0"}
+            if clear_path == "nested_shadow":
+                report = {"status": report, "deviceSn": "door", "deviceType": "SDS0A"}
+            c.xsense.get_state.return_value = {"devs": {"door": report}}
+            await c._async_refresh_station_state(station)
+        else:
+            notice(clear_order[0], "0")
+            notice(clear_order[0], "0")
+        assert str(panel.alarm_state) == "triggered"
+        notice(clear_order[1], "0")
+        assert str(panel.alarm_state) == "armed_home"
+    assert not c.active_intrusion_sensors
+    assert [
+        call.args[1]["device_serial"] for call in c.hass.bus.async_fire.call_args_list
+    ] == (["door", "motion", "door"] if clear_path == "http_disarm" else ["door", "motion"])
 
 
 @pytest.mark.parametrize("reported", ["Home", "Away", "Disarmed"])

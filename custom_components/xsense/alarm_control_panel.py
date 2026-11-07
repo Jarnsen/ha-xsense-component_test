@@ -226,6 +226,11 @@ class XSenseAlarmControlPanel(
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
         """Return the current alarm state."""
+        station = self._station
+        if station is not None and station.sn in getattr(
+            self.coordinator, "active_intrusion_sensors", {}
+        ):
+            return AlarmControlPanelState.TRIGGERED
         return SAFEMODE_TO_STATE.get(self._safemode)
 
     @property

@@ -20,4 +20,13 @@ query. Opening a door, detecting motion, starting entry delay, or clearing
 an alarm does not itself emit this event. The event follows the app's
 SDS0A/SMS0A alarm handler, not its alarm popup logic. A supplied
 `event_id` is passed through as metadata, without assuming it groups
-multiple sensors. The event does not change the alarm panel's state.
+multiple sensors.
+
+The SBS50 alarm panel shows `triggered` while at least one sensor's live
+intrusion notice remains active. Each clear notice removes only that sensor.
+If a clear notice is missed, a fresh main-page shadow reporting that sensor
+inactive also clears it. A confirmed station disarm clears the station's
+active intrusion state; a bypass prompt or unconfirmed request does not.
+After the last sensor clears, the panel shows the latest reported armed mode.
+This state is tracked from live notices and is not reconstructed from history
+after a Home Assistant restart.

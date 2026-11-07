@@ -2400,9 +2400,10 @@ class AsyncXSense(XSenseBase):
                 return
 
             if "reported" in res.get("state", {}):
-                self.parse_get_state(station, res["state"]["reported"])
+                reported = res["state"]["reported"]
+                self.parse_get_state(station, reported)
                 await self._get_sbs50_child_info_state(station)
-                return
+                return reported
 
             text = await self._lastres.text()
             raise APIFailure(
