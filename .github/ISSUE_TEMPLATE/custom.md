@@ -23,8 +23,8 @@ Please specify the versions used:
 
 - **Home Assistant Version** (z. B. 2025.3.0):
   (e.g., 2025.3.0)
-- **X-Sense-Integration Version** (z. B. 1.6.4):
-  (e.g., 1.6.4)
+- **X-Sense-Integration Version** (z. B. 1.6.5):
+  (e.g., 1.6.5)
 - **HACS Version** (z. B. 2.0.0):  
   (e.g., 2.0.0)
 
