@@ -4,8 +4,8 @@ pytest-asyncio==1.4.1.post1
 # yanked upstream, so list the exact dependency to keep minimum-version CI reproducible.
 aiohttp==3.11.13; python_version < "3.14"
 homeassistant==2025.3.0; python_version < "3.14"
-homeassistant==2026.10.4; python_version >= "3.14"
-paho-mqtt==2.1.0
+homeassistant==2026.11.0; python_version >= "3.14"
+paho-mqtt==2.2.0
 numpy==2.5.4
 PyTurboJPEG==2.6.1
 av==19.0.2
