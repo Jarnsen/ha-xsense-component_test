@@ -1,5 +1,5 @@
 pytest==9.2.0
-pytest-asyncio==1.4.1
+pytest-asyncio==1.4.1.post1
 # Exercise the declared minimum HA version on Python 3.13. Its aiohttp pin was
 # yanked upstream, so list the exact dependency to keep minimum-version CI reproducible.
 aiohttp==3.11.13; python_version < "3.14"
