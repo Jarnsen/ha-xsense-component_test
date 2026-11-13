@@ -194,7 +194,9 @@ class XSenseCameraEntity(XSenseEntity, Camera):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle camera data updates and refresh HA stream capabilities."""
-        self._invalidate_camera_capabilities_cache()
+        # HA 2026.11 removed this cache; older versions still require invalidation.
+        if invalidate := getattr(self, "_invalidate_camera_capabilities_cache", None):
+            invalidate()
         super()._handle_coordinator_update()
 
     @property
