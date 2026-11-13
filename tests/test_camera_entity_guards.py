@@ -5860,6 +5860,35 @@ def test_camera_capabilities_use_native_webrtc_path_for_supported_ipc_cameras():
         } == {"web_rtc"}
 
 
+@pytest.mark.parametrize("legacy_cache", [False, True])
+def test_camera_update_with_optional_capabilities_invalidator(monkeypatch, legacy_cache):
+    from homeassistant.components.camera import Camera
+
+    monkeypatch.delattr(Camera, "_invalidate_camera_capabilities_cache", raising=False)
+    invalidator = MagicMock()
+    if legacy_cache:
+        monkeypatch.setattr(
+            Camera, "_invalidate_camera_capabilities_cache", invalidator, raising=False
+        )
+    current = entity("SSC0A", {"streamProtocol": "webrtc"})
+    current.entity_id = "camera-test"
+    current.sn = "SSC0ATEST"
+    current.name = "Camera"
+    current.online = True
+    coordinator = SimpleNamespace(
+        data={"stations": {current.entity_id: current}, "devices": {}},
+        last_update_success=True,
+    )
+    created = camera._camera_entity(coordinator, current)
+    created.async_write_ha_state = MagicMock()
+
+    created._handle_coordinator_update()
+
+    created.async_write_ha_state.assert_called_once_with()
+    assert invalidator.call_count == int(legacy_cache)
+    assert created.available
+
+
 def test_camera_factory_uses_native_webrtc_path_by_default():
     camera_module = importlib.import_module("custom_components.xsense.camera")
 
