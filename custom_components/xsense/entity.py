@@ -45,8 +45,29 @@ def setup_dynamic_entities(
     added_unique_ids: set[str] = set()
 
     def _new_entities() -> list[Any]:
+        # Discovery runs synchronously inside MQTT delivery. Share one identity
+        # index across constructors instead of scanning every device per entity.
+        validate_current_identities(coordinator)
+        counts: dict[tuple, int] = {}
+        for collection in ("stations", "devices"):
+            for item in (coordinator.data or {}).get(collection, {}).values():
+                identity = _serial_identity(item)
+                key = (collection, identity)
+                counts[key] = counts.get(key, 0) + 1
+        previous = coordinator.__dict__.get("_xsense_discovery_identity_counts")
+        coordinator._xsense_discovery_identity_counts = counts
+        try:
+            candidates = entity_factory()
+            # Constructors can assign new stable IDs. Check them before adding
+            # anything to HA, preserving conflict detection for the whole batch.
+            validate_current_identities(coordinator)
+        finally:
+            if previous is None:
+                coordinator.__dict__.pop("_xsense_discovery_identity_counts", None)
+            else:
+                coordinator._xsense_discovery_identity_counts = previous
         entities = []
-        for entity in entity_factory():
+        for entity in candidates:
             unique_id = str(entity.unique_id)
             if unique_id in added_unique_ids:
                 continue
@@ -319,13 +340,18 @@ def _stable_device_id(coordinator, entity: Entity, identity: tuple | None):
     manager = getattr(coordinator, "_xsense_identity_store", None)
     if getattr(coordinator, "_shutting_down", False) or (manager is not None and manager.closed):
         raise IdentityStoreClosedError("Cannot assign identities while entry unloads")
-    validate_current_identities(coordinator)
+    counts = coordinator.__dict__.get("_xsense_discovery_identity_counts")
+    if counts is None:
+        validate_current_identities(coordinator)
     if identity is None:
         return entity.entity_id
     collection = "devices" if identity[0] else "stations"
-    current = (getattr(coordinator, "data", None) or {}).get(collection, {})
-    matches = [item for item in current.values() if _serial_identity(item) == identity]
-    if len(matches) != 1:
+    if counts is None:
+        current = (getattr(coordinator, "data", None) or {}).get(collection, {})
+        matches = sum(_serial_identity(item) == identity for item in current.values())
+    else:
+        matches = counts.get((collection, identity), 0)
+    if matches != 1:
         return entity.entity_id
     stable_ids = getattr(coordinator, "_xsense_stable_device_ids", None)
     if stable_ids is None:
