@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from custom_components.xsense import entity as entity_module
 from custom_components.xsense import identity_store as storage
 from custom_components.xsense.entity import (
     _entity_by_id_or_serial,
@@ -27,6 +28,43 @@ def coordinator(entity):
 
 def resolve(current, entity):
     return _stable_device_id(current, entity, _serial_identity(entity))
+
+
+def test_discovery_identity_work_is_linear_per_notification(monkeypatch):
+    count = 40
+    current = NS(data={"stations": {
+        str(i): device(str(i), serial=f"SERIAL-{i}") for i in range(count)
+    }})
+    listeners, added = [], []
+    current.async_add_listener = lambda cb: listeners.append(cb)
+    original = entity_module._serial_identity
+    calls = 0
+
+    def identity(item):
+        nonlocal calls
+        calls += 1
+        return original(item)
+
+    monkeypatch.setattr(entity_module, "_serial_identity", identity)
+
+    def factory():
+        return [
+            NS(unique_id=f"{_stable_device_id(current, item, identity(item))}-{key}")
+            for item in current.data["stations"].values()
+            for key in range(8)
+        ]
+
+    setup_dynamic_entities(NS(async_on_unload=lambda _: None), current, added.extend, factory)
+    assert len(added) == count * 8
+    calls = 0
+    listeners[0]()
+    assert len(added) == count * 8
+    assert calls < count * 16
+    assert "_xsense_discovery_identity_counts" not in current.__dict__
+    current.data["stations"]["late"] = device("late", serial="LATE")
+    listeners[0]()
+    assert len(added) == (count + 1) * 8
+    assert "_xsense_discovery_identity_counts" not in current.__dict__
 
 
 @pytest.fixture
@@ -385,6 +423,7 @@ async def test_dynamic_discovery_collision_adds_nothing_then_recovers(stores):
     current.data["stations"]["old"] = device("old", serial="OTHER")
     listeners[0]()
     assert [item.unique_id for item in added] == ["old"]
+    assert "_xsense_discovery_identity_counts" not in current.__dict__
     current.data["stations"].pop("old")
     current.data["stations"]["other"] = device("other", serial="OTHER")
     listeners[0]()
