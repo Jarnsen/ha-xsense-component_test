@@ -342,6 +342,7 @@ def coordinator_diagnostics(
         "mqtt_servers": {
             server: {
                 "connected": mqtt.connected,
+                "callback_metrics": getattr(mqtt, "callback_diagnostics", None),
                 "subscriptions": len(
                     getattr(mqtt, "_simple_subscriptions", {})
                 )

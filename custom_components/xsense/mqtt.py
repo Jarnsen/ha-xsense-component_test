@@ -4,11 +4,11 @@ import asyncio
 import contextlib
 import inspect
 import logging
-from collections import defaultdict
+from collections import defaultdict, deque
 from collections.abc import AsyncGenerator, Callable, Coroutine, Iterable
 from functools import partial
 from itertools import chain
-from time import monotonic
+from time import monotonic, perf_counter
 from typing import Any
 
 import aiohttp
@@ -109,6 +109,18 @@ class XSenseMQTT:
 
         # self.topics: list[str] = []
         self.on_data: Callable[[str, bytes], None] | None = None
+        self._message_queue: deque[tuple[Callable[[str, bytes], None], str, bytes]] = deque()
+        self._message_dispatch_handle: asyncio.Handle | None = None
+        self._message_dispatch_stopped = False
+        self._message_read_deferred = False
+        self._reader_resume_handle: asyncio.Handle | None = None
+        self._message_dispatch_idle: asyncio.Future[None] | None = None
+        self._reader_callback_count = 0
+        self._application_message_count = 0
+        self._max_messages_per_read = 0
+        self._max_reader_duration = 0.0
+        self._max_dispatch_duration = 0.0
+        self._max_message_queue = 0
         self._debug_name = _redact_account_title(config_entry.title)
 
         self.connected = False
@@ -178,8 +190,34 @@ class XSenseMQTT:
     @callback
     def _async_reader_callback(self, client: mqtt.Client) -> None:
         """Handle reading data from the socket."""
-        if (status := client.loop_read(MAX_PACKETS_TO_READ)) != 0:
-            self._async_on_disconnect(status)
+        if client is not self._mqttc:
+            return
+        if self._message_queue or self._message_dispatch_idle is not None:
+            # Do not accept another Paho batch while its predecessor is pending.
+            self._message_read_deferred = True
+            return
+        started = perf_counter()
+        before = self._application_message_count
+        try:
+            if (status := client.loop_read(MAX_PACKETS_TO_READ)) != 0:
+                self._async_on_disconnect(status)
+        finally:
+            self._reader_callback_count += 1
+            self._max_messages_per_read = max(self._max_messages_per_read, self._application_message_count - before)
+            self._max_reader_duration = max(self._max_reader_duration, perf_counter() - started)
+
+    @property
+    def callback_diagnostics(self) -> dict[str, int | float]:
+        """Return aggregate timings/counts without topics, identities or payloads."""
+        return {
+            "reader_callbacks": self._reader_callback_count,
+            "application_messages": self._application_message_count,
+            "max_messages_per_read": self._max_messages_per_read,
+            "max_reader_seconds": round(self._max_reader_duration, 6),
+            "max_dispatch_seconds": round(self._max_dispatch_duration, 6),
+            "queued_messages": len(self._message_queue),
+            "max_queued_messages": self._max_message_queue,
+        }
 
     # unchanged / removed import
     @callback
@@ -373,6 +411,7 @@ class XSenseMQTT:
         result: int | None = None
         # self._available_future = client_available
         self._should_reconnect = True
+        self._message_dispatch_stopped = False
         try:
             result = await self._async_open_connection()
         except (XSenseError, aiohttp.ClientError) as err:
@@ -460,6 +499,16 @@ class XSenseMQTT:
         when Home Assistant is shut down.
         """
 
+        await self.async_drain_messages(stop_receiving=True)
+        self._message_dispatch_stopped = True
+        self._message_read_deferred = False
+        if self._reader_resume_handle is not None:
+            self._reader_resume_handle.cancel()
+            self._reader_resume_handle = None
+        if self._message_dispatch_handle is not None:
+            self._message_dispatch_handle.cancel()
+            self._message_dispatch_handle = None
+        self._message_queue.clear()
         self._should_reconnect = False
         self._connection_generation += 1
         try:
@@ -809,8 +858,79 @@ class XSenseMQTT:
         ):
             return
 
-        if self.on_data is not None:
-            self.on_data(topic, msg.payload)
+        if self.on_data is not None and not self._message_dispatch_stopped:
+            # Paho can read many packets per loop_read despite its max_packets
+            # argument. Preserve every message, but yield between HA updates.
+            self._message_queue.append((self.on_data, topic, msg.payload))
+            self._application_message_count += 1
+            self._max_message_queue = max(self._max_message_queue, len(self._message_queue))
+            if self._message_dispatch_handle is None:
+                self._message_dispatch_handle = self.loop.call_soon(self._async_dispatch_message)
+
+    @callback
+    def async_flush_messages(self, *, stop_receiving: bool = False) -> bool:
+        """Apply already received messages before their coordinator is retired."""
+        if self._message_dispatch_idle is not None:
+            return False
+        if self._message_dispatch_handle is not None:
+            self._message_dispatch_handle.cancel()
+            self._message_dispatch_handle = None
+        while self._message_queue and not self._message_dispatch_stopped:
+            self._async_dispatch_message()
+            if self._message_dispatch_handle is not None:
+                self._message_dispatch_handle.cancel()
+                self._message_dispatch_handle = None
+        if stop_receiving:
+            self._message_dispatch_stopped = True
+            self._message_read_deferred = False
+            if self._reader_resume_handle is not None:
+                self._reader_resume_handle.cancel()
+                self._reader_resume_handle = None
+        return True
+
+    async def async_drain_messages(self, *, stop_receiving: bool = False) -> None:
+        """Wait for an active handler before draining, without nesting deliveries."""
+        while self._message_dispatch_idle is not None:
+            await asyncio.shield(self._message_dispatch_idle)
+        self.async_flush_messages(stop_receiving=stop_receiving)
+
+    @callback
+    def _async_resume_message_reader(self) -> None:
+        """Consume buffered SSL/WebSocket data without waiting for a new fd edge."""
+        self._reader_resume_handle = None
+        if not self._message_dispatch_stopped:
+            self._async_reader_callback(self._mqttc)
+
+    @callback
+    def _async_dispatch_message(self) -> None:
+        """Deliver one received message per event-loop turn, in receipt order."""
+        if self._message_dispatch_idle is not None:
+            return
+        self._message_dispatch_handle = None
+        if self._message_dispatch_stopped or not self._message_queue:
+            return
+        receive, topic, payload = self._message_queue.popleft()
+        idle = self.loop.create_future()
+        self._message_dispatch_idle = idle
+        started = perf_counter()
+        try:
+            receive(topic, payload)
+        except Exception as err:  # noqa: BLE001 - Isolate failures like Paho's suppressed callbacks.
+            _LOGGER.error("Error processing X-Sense MQTT message (%s)", type(err).__name__)
+        finally:
+            self._message_dispatch_idle = None
+            idle.set_result(None)
+            self._max_dispatch_duration = max(self._max_dispatch_duration, perf_counter() - started)
+            if (
+                self._message_queue
+                and not self._message_dispatch_stopped
+                and self._message_dispatch_handle is None
+            ):
+                self._message_dispatch_handle = self.loop.call_soon(self._async_dispatch_message)
+            elif not self._message_queue and self._message_read_deferred:
+                self._message_read_deferred = False
+                if not self._message_dispatch_stopped and self._reader_resume_handle is None:
+                    self._reader_resume_handle = self.loop.call_soon(self._async_resume_message_reader)
 
     @callback
     def _async_mqtt_on_subscribe(

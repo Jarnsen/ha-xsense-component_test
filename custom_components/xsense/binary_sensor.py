@@ -659,15 +659,16 @@ async def async_setup_entry(
     """Set up the xsense binary sensor entry."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    def _entities() -> list[Device]:
+    def _entities(should_add) -> list[Device]:
         devices: list[Device] = []
         for station in coordinator_stations(coordinator).values():
             devices.extend(
                 XSenseBinarySensorEntity(coordinator, station, description)
                 for description in SENSORS
-                if description.exists_fn(station)
+                if description.exists_fn(station) and should_add(station, description.key)
             )
-            devices.append(XSenseMQTTConnectedEntity(coordinator, station, MQTTSensor))
+            if should_add(station, MQTTSensor.key):
+                devices.append(XSenseMQTTConnectedEntity(coordinator, station, MQTTSensor))
 
         for dev in coordinator_devices(coordinator).values():
             devices.extend(
@@ -675,7 +676,7 @@ async def async_setup_entry(
                     coordinator, dev, description, station_id=device_station_id(dev)
                 )
                 for description in SENSORS
-                if description.exists_fn(dev)
+                if description.exists_fn(dev) and should_add(dev, description.key)
             )
         return devices
 
@@ -686,6 +687,7 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
     """Binary sensors for xsense."""
 
     entity_description: XSenseBinarySensorEntityDescription
+    _mqtt_child_state_only = True
 
     def __init__(
         self,
@@ -725,6 +727,8 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
 
 class XSenseMQTTConnectedEntity(XSenseBinarySensorEntity):
     """Binary sensors for MQTT connectivity."""
+
+    _mqtt_child_state_only = False
 
     @property
     def is_on(self) -> bool | None:

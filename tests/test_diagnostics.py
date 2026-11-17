@@ -260,7 +260,7 @@ def test_coordinator_diagnostics_includes_compact_mqtt_state():
     assert diagnostics["mqtt_server_count"] == 1
     assert diagnostics["mqtt_connected_count"] == 1
     assert diagnostics["mqtt_servers"] == {
-        "mqtt.example": {"connected": True, "subscriptions": 3}
+        "mqtt.example": {"connected": True, "subscriptions": 3, "callback_metrics": None}
     }
     assert diagnostics["communication"] == {
         "local_runtime_candidates": 1,
