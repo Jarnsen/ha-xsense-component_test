@@ -6,6 +6,7 @@ import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -39,7 +40,7 @@ def setup_dynamic_entities(
     entry,
     coordinator: XSenseDataUpdateCoordinator,
     async_add_entities,
-    entity_factory: Callable[[], list[Any]],
+    entity_factory: Callable[[Callable[[Entity, str], bool]], list[Any]],
 ) -> None:
     """Add current entities and any new entities discovered on later refreshes."""
     added_unique_ids: set[str] = set()
@@ -57,7 +58,16 @@ def setup_dynamic_entities(
         previous = coordinator.__dict__.get("_xsense_discovery_identity_counts")
         coordinator._xsense_discovery_identity_counts = counts
         try:
-            candidates = entity_factory()
+            stable_ids = {}
+
+            def should_add(item: Entity, key: str) -> bool:
+                if id(item) not in stable_ids:
+                    camera_identity = camera_addx_serial(item) if is_camera_entity(item) else None
+                    identity = None if camera_identity else _serial_identity(item)
+                    stable_ids[id(item)] = _stable_device_id(coordinator, item, identity)
+                return _entity_unique_id(stable_ids[id(item)], key) not in added_unique_ids
+
+            candidates = entity_factory(should_add)
             # Constructors can assign new stable IDs. Check them before adding
             # anything to HA, preserving conflict detection for the whole batch.
             validate_current_identities(coordinator)
@@ -175,6 +185,7 @@ class XSenseEntity(CoordinatorEntity):
 
     _attr_has_entity_name = True
     _station_id: str | None = None
+    _mqtt_child_state_only = False
 
     def __init__(
         self,
@@ -190,6 +201,8 @@ class XSenseEntity(CoordinatorEntity):
         self._camera_identity = (
             camera_addx_serial(entity) if is_camera_entity(entity) else None
         )
+        if is_camera_entity(entity):
+            self._mqtt_child_state_only = False
         station = getattr(entity, "station", None)
         self._station_serial = _entity_serial(station)
         self._physical_identity = (
@@ -203,9 +216,7 @@ class XSenseEntity(CoordinatorEntity):
             else station_id or None
         )
 
-        self._attr_unique_id = f"{stable_id}-{self.entity_description.key}".replace(
-            "_", "-"
-        ).lower()
+        self._attr_unique_id = _entity_unique_id(stable_id, self.entity_description.key)
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, stable_id)},
@@ -251,14 +262,35 @@ class XSenseEntity(CoordinatorEntity):
                 [entity for entity in entities.values() if is_camera_entity(entity)],
                 self._camera_identity,
             )
-        return _entity_by_id_or_serial(
-            entities, self._dev_id, self._entity_serial, self._physical_identity
+        entity = _entity_by_id_or_serial(
+            entities, getattr(self, "_lookup_dev_id", self._dev_id),
+            self._entity_serial, self._physical_identity
         )
+        # Remember only the lookup key, not the object or HA identifier. Each
+        # subsequent read still verifies the current physical identity.
+        if entity is not None and entities.get(entity.entity_id) is entity:
+            self._lookup_dev_id = entity.entity_id
+        return entity
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to updates."""
         self._handle_coordinator_update()
         await super().async_added_to_hass()
+
+    @callback
+    def async_write_ha_state(self) -> None:
+        """Avoid serializing unrelated child states for a proven child-only update."""
+        scope = getattr(self.coordinator, "_mqtt_child_write_scope", None)
+        if (
+            scope is not None
+            and self._mqtt_child_state_only
+            and self._station_id
+            and self._physical_identity is not None
+            and self._physical_identity not in scope
+            and self._current_entity() is not None
+        ):
+            return
+        super().async_write_ha_state()
 
     def _current_entity_is_online(self) -> bool:
         """Return if the current X-Sense entity and parent station are online."""
@@ -267,12 +299,15 @@ class XSenseEntity(CoordinatorEntity):
             return False
 
         if self._station_id:
+            stations = (self.coordinator.data or {}).get("stations", {})
             station = _entity_by_id_or_serial(
-                (self.coordinator.data or {}).get("stations", {}),
-                self._station_id,
+                stations,
+                getattr(self, "_lookup_station_id", self._station_id),
                 self._station_serial,
                 self._parent_identity,
             )
+            if station is not None and stations.get(station.entity_id) is station:
+                self._lookup_station_id = station.entity_id
             return (
                 station is not None
                 and _entity_is_not_explicitly_offline(station)
@@ -333,6 +368,10 @@ def _serial_identity(entity: Entity | None) -> tuple | None:
         getattr(entity, "type", None),
         serial,
     )
+
+
+def _entity_unique_id(stable_id: str, key: str) -> str:
+    return f"{stable_id}-{key}".replace("_", "-").lower()
 
 
 def _stable_device_id(coordinator, entity: Entity, identity: tuple | None):

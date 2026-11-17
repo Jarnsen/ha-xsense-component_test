@@ -763,7 +763,7 @@ async def async_setup_entry(
             "async_set_light_group_power",
         )
 
-    def _entities() -> list[Device]:
+    def _entities(should_add) -> list[Device]:
         devices: list[Device] = []
         seen_entity_ids: set[str] = set()
         for station in coordinator_stations(coordinator).values():
@@ -771,7 +771,7 @@ async def async_setup_entry(
             devices.extend(
                 XSenseSwitchEntity(coordinator, station, description)
                 for description in SWITCHES
-                if description.exists_fn(station)
+                if description.exists_fn(station) and should_add(station, description.key)
             )
         for dev in coordinator_devices(coordinator).values():
             if dev.entity_id in seen_entity_ids:
@@ -781,7 +781,7 @@ async def async_setup_entry(
                     coordinator, dev, description, station_id=device_station_id(dev)
                 )
                 for description in SWITCHES
-                if description.exists_fn(dev)
+                if description.exists_fn(dev) and should_add(dev, description.key)
             )
         return devices
 

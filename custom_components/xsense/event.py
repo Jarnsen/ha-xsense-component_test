@@ -121,10 +121,10 @@ async def async_setup_entry(
         entry,
         coordinator,
         async_add_entities,
-        lambda: [
-            *_ai_detection_event_entities(coordinator),
-            *_motion_event_entities(coordinator),
-            *_mailbox_alarm_event_entities(coordinator),
+        lambda should_add: [
+            *_ai_detection_event_entities(coordinator, should_add),
+            *_motion_event_entities(coordinator, should_add),
+            *_mailbox_alarm_event_entities(coordinator, should_add),
         ],
     )
 
@@ -441,6 +441,7 @@ class XSenseMailboxAlarmEventEntity(XSenseEntity, EventEntity):
 
 def _ai_detection_event_entities(
     coordinator: XSenseDataUpdateCoordinator,
+    should_add=None,
 ) -> list[XSenseEventEntity]:
     """Return X-Sense event entities for supported cameras."""
     entities: list[XSenseEventEntity] = []
@@ -449,13 +450,17 @@ def _ai_detection_event_entities(
     devices = data.get("devices", {})
 
     for station in stations.values():
-        if AI_DETECTION_DESCRIPTION.exists_fn(station):
+        if AI_DETECTION_DESCRIPTION.exists_fn(station) and (
+            should_add is None or should_add(station, AI_DETECTION_DESCRIPTION.key)
+        ):
             entities.append(
                 XSenseEventEntity(coordinator, station, AI_DETECTION_DESCRIPTION)
             )
 
     for device in devices.values():
         if not AI_DETECTION_DESCRIPTION.exists_fn(device):
+            continue
+        if should_add is not None and not should_add(device, AI_DETECTION_DESCRIPTION.key):
             continue
 
         entities.append(
@@ -473,6 +478,7 @@ def _ai_detection_event_entities(
 
 def _motion_event_entities(
     coordinator: XSenseDataUpdateCoordinator,
+    should_add=None,
 ) -> list[XSenseMotionEventEntity]:
     """Return X-Sense motion event entities for supported cameras."""
     entities: list[XSenseMotionEventEntity] = []
@@ -481,13 +487,17 @@ def _motion_event_entities(
     devices = data.get("devices", {})
 
     for station in stations.values():
-        if MOTION_DESCRIPTION.exists_fn(station):
+        if MOTION_DESCRIPTION.exists_fn(station) and (
+            should_add is None or should_add(station, MOTION_DESCRIPTION.key)
+        ):
             entities.append(
                 XSenseMotionEventEntity(coordinator, station, MOTION_DESCRIPTION)
             )
 
     for device in devices.values():
         if not MOTION_DESCRIPTION.exists_fn(device):
+            continue
+        if should_add is not None and not should_add(device, MOTION_DESCRIPTION.key):
             continue
 
         entities.append(
@@ -505,6 +515,7 @@ def _motion_event_entities(
 
 def _mailbox_alarm_event_entities(
     coordinator: XSenseDataUpdateCoordinator,
+    should_add=None,
 ) -> list[XSenseMailboxAlarmEventEntity]:
     """Return mailbox alarm events for SBS50 mailbox children."""
     data = coordinator.data or {}
@@ -517,6 +528,7 @@ def _mailbox_alarm_event_entities(
         )
         for device in data.get("devices", {}).values()
         if MAILBOX_ALARM_DESCRIPTION.exists_fn(device)
+        and (should_add is None or should_add(device, MAILBOX_ALARM_DESCRIPTION.key))
     ]
 
 

@@ -7,7 +7,7 @@ import json
 import logging
 import sys
 import types
-from collections import defaultdict
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from threading import Event
@@ -222,6 +222,12 @@ def test_xsense_mqtt_nonzero_disconnect_still_warns(caplog):
 
 def _subscription_test_client():
     client = object.__new__(xsense_mqtt.XSenseMQTT)
+    client._message_queue = deque()
+    client._message_dispatch_handle = None
+    client._message_dispatch_stopped = False
+    client._message_read_deferred = False
+    client._reader_resume_handle = None
+    client._message_dispatch_idle = None
     client._simple_subscriptions = defaultdict(set)
     client._wildcard_subscriptions = set()
     client._retained_topics = defaultdict(set)

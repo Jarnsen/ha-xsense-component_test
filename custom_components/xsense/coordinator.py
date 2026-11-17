@@ -326,10 +326,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Retire clients whose credential helper belongs to the old session."""
         tasks = self.__dict__.setdefault("_mqtt_retirement_tasks", {})
         for mqtt in self.mqtt_servers.values():
-            mqtt.on_data = None
             if id(mqtt) not in tasks:
                 tasks[id(mqtt)] = asyncio.create_task(
-                    mqtt.async_disconnect(disconnect_paho_client=True),
+                    self._async_retire_mqtt_client(mqtt),
                     name="X-Sense MQTT retirement",
                 )
         self.mqtt_servers.clear()
@@ -346,18 +345,93 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if isinstance(result, BaseException):
                 LOGGER.warning("Could not disconnect XSense MQTT client: %s", result)
 
+    async def _async_retire_mqtt_client(self, mqtt: XSenseMQTT) -> None:
+        """Own both drain and disconnect before a retirement caller can be cancelled."""
+        drain = getattr(mqtt, "async_drain_messages", None)
+        if drain is not None:
+            await drain(stop_receiving=True)
+        mqtt.on_data = None
+        await mqtt.async_disconnect(disconnect_paho_client=True)
+
+    @callback
+    def async_flush_mqtt_messages(self, *, stop_receiving: bool = False) -> None:
+        """Deliver accepted MQTT events while entities and the cloud client are live."""
+        for mqtt in self.mqtt_servers.values():
+            flush = getattr(mqtt, "async_flush_messages", None)
+            if flush is not None:
+                flush(stop_receiving=stop_receiving)
+
+    async def async_drain_mqtt_messages(self, *, stop_receiving: bool = False) -> None:
+        """Wait for in-flight delivery before flushing or retiring its clients."""
+        drained = set()
+        while pending := [mqtt for mqtt in self.mqtt_servers.values() if id(mqtt) not in drained]:
+            for mqtt in pending:
+                drain = getattr(mqtt, "async_drain_messages", None)
+                if drain is not None:
+                    await drain(stop_receiving=stop_receiving)
+                drained.add(id(mqtt))
+
     async def async_shutdown(self) -> None:
+        """Join one shutdown operation without letting a cancelled caller abandon it."""
+        shutdown = self.__dict__.get("_shutdown_task")
+        requesters = self.__dict__.setdefault("_shutdown_requesters", set())
+        if "_shutdown_requester_changed" not in self.__dict__:
+            self._shutdown_requester_changed = asyncio.Event()
+        if shutdown is None or not shutdown.done():
+            requesters.add(asyncio.current_task())
+            self._shutdown_requester_changed.set()
+        if shutdown is None:
+            shutdown = self._shutdown_task = asyncio.create_task(
+                self._async_shutdown_running(), name="X-Sense coordinator shutdown"
+            )
+            shutdown.add_done_callback(lambda _task: requesters.clear())
+        cancelled = False
+        while not shutdown.done():
+            try:
+                await asyncio.shield(shutdown)
+            except asyncio.CancelledError:
+                cancelled = True
+            except Exception:  # noqa: BLE001 - Retrieve the shutdown result below.
+                break
+        if cancelled:
+            if not shutdown.cancelled():
+                shutdown.exception()
+            raise asyncio.CancelledError
+        shutdown.result()
+
+    async def _async_shutdown_running(self) -> None:
         """Disconnect all MQTT clients owned by this coordinator."""
+        if self._shutting_down:
+            return
+        await self.async_drain_mqtt_messages(stop_receiving=True)
         if self._shutting_down:
             return
         self._shutting_down = True
         await super().async_shutdown()
 
-        tasks = [task for task in self._operation_tasks if task is not asyncio.current_task()]
+        requesters = self.__dict__.get("_shutdown_requesters", ())
+        tasks = [
+            task for task in self._operation_tasks
+            if task is not asyncio.current_task() and task not in requesters
+        ]
         for task in tasks:
             task.cancel()
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            changed = self._shutdown_requester_changed
+            # A cancelled operation may join shutdown from its finally block.
+            # Stop joining that operation before it waits for this worker.
+            while True:
+                changed.clear()
+                pending = {task for task in tasks if not task.done() and task not in requesters}
+                if not pending:
+                    break
+                notification = asyncio.create_task(changed.wait())
+                try:
+                    await asyncio.wait((*pending, notification), return_when=asyncio.FIRST_COMPLETED)
+                finally:
+                    notification.cancel()
+                    await asyncio.gather(notification, return_exceptions=True)
+            await asyncio.gather(*(task for task in tasks if task.done()), return_exceptions=True)
 
         if self._deferred_refresh_unsub is not None:
             self._deferred_refresh_unsub()
@@ -1392,6 +1466,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if _is_keypad_notice_topic(topic):
             _fire_keypad_code_events(self.hass, station_data)
 
+        child_write_scope = _mqtt_child_write_scope(station, station_data)
         children = station_data.pop("devs", {}) or {}
         target_device_sn = _mqtt_target_device_sn(station_data)
         target_device = None
@@ -1417,7 +1492,12 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 station_data["devs"] = children
             self.xsense.parse_get_state(station, station_data)
 
-        self.async_update_listeners()
+        previous_scope = getattr(self, "_mqtt_child_write_scope", None)
+        self._mqtt_child_write_scope = child_write_scope
+        try:
+            self.async_update_listeners()
+        finally:
+            self._mqtt_child_write_scope = previous_scope
 
     def _async_handle_intrusion_notice(self, topic: str, envelope: dict, report: dict) -> None:
         """Track SBS50 alarms and clears per sensor, independently of armed mode."""
@@ -1573,6 +1653,29 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 0,
                 False,
             )
+
+
+def _mqtt_child_write_scope(station, report):
+    """Narrow state writes only when every reported field belongs to known children."""
+    from .entity import _serial_identity
+
+    if is_camera_entity(station) or set(report) - {"stationSN", "stationSn", "devs"}:
+        return None
+    children = report.get("devs")
+    if not isinstance(children, dict) or not children:
+        return None
+    identities = set()
+    for key, state in children.items():
+        if not isinstance(state, dict):
+            return None
+        child = _state_child_device(station, key, state)
+        if child is None or is_camera_entity(child):
+            return None
+        identity = _serial_identity(child)
+        if identity is None:
+            return None
+        identities.add(identity)
+    return frozenset(identities)
 
 
 def _apply_safe_mode(station, safe_mode: str) -> None:

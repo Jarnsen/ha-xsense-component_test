@@ -22,12 +22,104 @@ def device(identifier="old", *, serial="SERIAL", model="MODEL", house="house", p
     return NS(entity_id=identifier, sn=serial, type=model, house=NS(house_id=house), station=parent)
 
 
+class CountingEntities(dict):
+    """Count whole-collection fallback scans without timing-dependent assertions."""
+
+    scans = 0
+
+    def values(self):
+        self.scans += 1
+        return super().values()
+
+
+def test_current_entity_reuses_verified_lookup_id_after_rollover():
+    original = device()
+    subject = entity_module.XSenseEntity.__new__(entity_module.XSenseEntity)
+    subject._dev_id = original.entity_id
+    subject._camera_identity = None
+    subject._entity_serial = original.sn
+    subject._physical_identity = _serial_identity(original)
+    replacement = device("new")
+    entities = CountingEntities({"new": replacement})
+    for _ in range(20):
+        assert subject._current_entity_from(entities) is replacement
+    assert entities.scans == 1
+    assert subject._dev_id == "old"
+
+    # Resolve again when the ID changes a second time; never retain an object.
+    newest = device("newest")
+    entities = CountingEntities({"newest": newest})
+    assert subject._current_entity_from(entities) is newest
+    assert subject._current_entity_from(entities) is newest
+    assert entities.scans == 1
+    entities["newest"] = device("newest", serial="OTHER")
+    assert subject._current_entity_from(entities) is None
+    entities["newest"] = device("newest", model="OTHER")
+    assert subject._current_entity_from(entities) is None
+    entities.clear()
+    assert subject._current_entity_from(entities) is None
+
+
+def test_online_lookup_reuses_verified_parent_id_after_rollover():
+    original = device()
+    replacement = device("new")
+    replacement.online = True
+    child = device("child", serial="CHILD", parent=replacement)
+    child.online = True
+    entities = CountingEntities({"new": replacement})
+    subject = entity_module.XSenseEntity.__new__(entity_module.XSenseEntity)
+    subject.coordinator = NS(last_update_success=True, data={"stations": entities})
+    subject._current_entity = lambda: child
+    subject._station_id = "old"
+    subject._station_serial = original.sn
+    subject._parent_identity = _serial_identity(original)
+    for _ in range(20):
+        assert subject._current_entity_is_online()
+    assert entities.scans == 1
+    assert subject._station_id == "old"
+    entities["new"] = device("new", serial="OTHER")
+    assert not subject._current_entity_is_online()
+
+
 def coordinator(entity):
     return NS(data={"devices" if entity.station else "stations": {entity.entity_id: entity}})
 
 
 def resolve(current, entity):
     return _stable_device_id(current, entity, _serial_identity(entity))
+
+
+def test_discovery_filters_existing_entities_before_construction():
+    original = device()
+    current = coordinator(original)
+    listeners, added, constructed = [], [], []
+    current.async_add_listener = lambda cb: listeners.append(cb)
+    keys = ["battery"]
+
+    def factory(should_add):
+        result = []
+        for item in current.data["stations"].values():
+            for key in keys:
+                if should_add(item, key):
+                    constructed.append((item.entity_id, key))
+                    result.append(NS(unique_id=f"{resolve(current, item)}-{key}"))
+        return result
+
+    setup_dynamic_entities(NS(async_on_unload=lambda _: None), current, added.extend, factory)
+    listeners[0]()
+    assert constructed == [("old", "battery")]
+    keys.append("signal")
+    listeners[0]()
+    assert constructed == [("old", "battery"), ("old", "signal")]
+    current.data["stations"] = {"new": device("new")}
+    listeners[0]()
+    assert len(constructed) == 2
+    current.data["stations"]["other"] = device("other", serial="OTHER")
+    listeners[0]()
+    assert len(constructed) == 4
+    assert [item.unique_id for item in added] == [
+        "old-battery", "old-signal", "other-battery", "other-signal",
+    ]
 
 
 def test_discovery_identity_work_is_linear_per_notification(monkeypatch):
@@ -47,7 +139,7 @@ def test_discovery_identity_work_is_linear_per_notification(monkeypatch):
 
     monkeypatch.setattr(entity_module, "_serial_identity", identity)
 
-    def factory():
+    def factory(_should_add):
         return [
             NS(unique_id=f"{_stable_device_id(current, item, identity(item))}-{key}")
             for item in current.data["stations"].values()
@@ -415,7 +507,7 @@ async def test_dynamic_discovery_collision_adds_nothing_then_recovers(stores):
     current.async_add_listener = lambda cb: listeners.append(cb)
     added = []
 
-    def factory():
+    def factory(_should_add):
         return [NS(unique_id=resolve(current, item)) for item in current.data["stations"].values()]
 
     setup_dynamic_entities(NS(async_on_unload=lambda _: None), current, added.extend, factory)
@@ -437,7 +529,7 @@ async def test_discovery_during_flush_cannot_assign_unpersisted_identity(stores)
     await load(current)
     listeners, added = [], []
     current.async_add_listener = lambda cb: listeners.append(cb)
-    def factory():
+    def factory(_should_add):
         return [NS(unique_id=resolve(current, item)) for item in current.data["stations"].values()]
     setup_dynamic_entities(NS(async_on_unload=lambda _: None), current, added.extend, factory)
     store = stores.instances[-1]
