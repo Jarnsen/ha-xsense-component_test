@@ -1199,6 +1199,12 @@ def test_presence_topic_updates_station_online_like_apk():
 
     coordinator.async_event_received(
         "/events/presence/disconnected/XS01-WXstation-sn",
+        b'{"clientId":"XS01-WXstation-sn","eventType":"disconnected","timestamp":0}',
+    )
+    assert station.online is True
+
+    coordinator.async_event_received(
+        "/events/presence/disconnected/XS01-WXstation-sn",
         b"{\"clientId\":\"XS01-WXstation-sn\",\"eventType\":\"disconnected\",\"timestamp\":2}",
     )
     assert station.online is False

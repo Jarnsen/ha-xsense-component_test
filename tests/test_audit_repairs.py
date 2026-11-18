@@ -9,8 +9,16 @@ import pytest
 from botocore.exceptions import ClientError
 
 from custom_components.xsense import alarm_control_panel as alarm
+from custom_components.xsense import (
+    binary_sensor,
+    button,
+    event,
+    number,
+    select,
+    switch,
+)
 from custom_components.xsense import coordinator as module
-from custom_components.xsense import event
+from custom_components.xsense.python_xsense.async_xsense import AsyncXSense
 from custom_components.xsense.python_xsense.base import XSenseBase
 from custom_components.xsense.python_xsense.exceptions import APIFailure, AuthFailed
 from custom_components.xsense.python_xsense.house import House
@@ -57,6 +65,88 @@ def make_station(serial="station", category="SBS50"):
         stationName=serial,
         category=category,
         safeMode="Disarmed",
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("response_serial,new_disconnect,expected", [
+    ("station", False, True),
+    ("other-station", False, False),
+    ("station", True, False),
+])
+async def test_sbs50_status_poll_recovers_without_connected_event(
+    response_serial, new_disconnect, expected
+):
+    station = make_station()
+    station.house.house_id = "house"
+    station.set_devices({"devices": [{
+        "deviceId": "child", "deviceSn": "child-sn", "deviceType": "SWS51",
+        "deviceName": "Leak", "roomName": "Room",
+    }]})
+    coordinator = make_coordinator(station)
+    coordinator.data["devices"] = dict(station.devices)
+    coordinator._initialized = True
+    coordinator._camera_initialized = False
+    coordinator._camera_station_cache = {}
+    coordinator.xsense.get_house_state = AsyncMock()
+    coordinator.xsense.get_station_state = AsyncMock()
+    coordinator.xsense.get_state = AsyncMock()
+    coordinator.xsense.has_action = AsyncXSense().has_action
+    coordinator._update_safe_mode = AsyncMock()
+    coordinator.async_update_listeners = Mock()
+    connected = binary_sensor.XSenseMQTTConnectedEntity(
+        coordinator, station, binary_sensor.MQTTSensor,
+    )
+    control = button.XSenseButtonEntity(
+        coordinator, station.devices["child"],
+        next(item for item in button.BUTTONS if item.key == "test"),
+        station_id=station.entity_id,
+    )
+    controls = [control]
+    for subject, parent_id in ((station, None), (station.devices["child"], station.entity_id)):
+        subject.set_data({"alarmVol": 75, "alarmTone": "1", "alarmEnabled": True})
+        for entity_type, descriptions, key in (
+            (number.XSenseNumberEntity, number.NUMBERS, "alarm_volume"),
+            (select.XSenseSelectEntity, select.SELECTS, "alarm_tone"),
+            (switch.XSenseSwitchEntity, switch.SWITCHES, "alarm_enabled"),
+        ):
+            description = next(item for item in descriptions if item.key == key)
+            controls.append(entity_type(coordinator, subject, description, station_id=parent_id))
+    station._set_online(True)
+    for entity in controls:
+        assert entity.available, entity.unique_id
+    topic = f"$aws/events/presence/disconnected/{station.shadow_name}"
+
+    def disconnect(timestamp):
+        coordinator.async_event_received(topic, json.dumps({
+            "clientId": station.shadow_name, "eventType": "disconnected",
+            "timestamp": timestamp,
+        }).encode())
+
+    disconnect(1)
+    station.set_data({"wifiRSSI": -45})
+    assert station.online is False
+    assert connected.is_on is False
+    for entity in controls:
+        assert not entity.available, entity.unique_id
+
+    async def status(*args, **kwargs):
+        if new_disconnect:
+            disconnect(2)
+        return {"stationSn": response_serial, "online": 1}
+
+    api_call = AsyncMock(side_effect=status)
+    coordinator.xsense.get_station_online_status = lambda subject: (
+        AsyncXSense.get_station_online_status(NS(api_call=api_call), subject)
+    )
+    coordinator.data = await coordinator.get_devices(
+        include_camera_history=False, include_camera_update=False,
+    )
+    assert connected.is_on is expected
+    for entity in controls:
+        assert entity.available is expected, entity.unique_id
+    api_call.assert_awaited_once_with(
+        "409001", houseId="house", category="SBS50", stationSn="station"
     )
 
 
