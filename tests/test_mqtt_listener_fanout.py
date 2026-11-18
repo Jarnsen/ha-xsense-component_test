@@ -21,12 +21,50 @@ def station_with_children():
     return station
 
 
+def test_temperature_request_echo_does_not_dispatch_state_updates():
+    station = station_with_children()
+    coordinator = make_coordinator(station)
+    coordinator.async_update_listeners = Mock()
+    topic = f"$aws/things/{station.shadow_name}/shadow/name/2nd_apptempdata/update"
+    desired = {"shadow": "appTempData", "stationSN": station.sn, "deviceSN": ["SN-0"]}
+    coordinator.async_event_received(topic, json.dumps({"state": {"desired": desired}}).encode())
+    coordinator.async_update_listeners.assert_not_called()
+
+    reported = {"stationSN": station.sn, "devs": {"SN-0": {"alarmStatus": "1"}}}
+    coordinator.async_event_received(
+        topic, json.dumps({"state": {"desired": desired, "reported": reported}}).encode()
+    )
+    coordinator.async_update_listeners.assert_called_once()
+
+
 def test_child_scope_contains_every_reported_child():
     station = station_with_children()
     scope = _mqtt_child_write_scope(station, {
         "stationSN": station.sn, "devs": {"0": {"alarmStatus": "1"}, "SN-1": {"alarmStatus": "0"}}
     })
     assert scope == frozenset(_serial_identity(child) for child in station.devices.values())
+
+
+@pytest.mark.parametrize("shape", ["top_level", "nested_list", "reported_list"])
+def test_equivalent_child_collections_get_the_same_scope(shape):
+    station = station_with_children()
+    rows = [{"_deviceSN": "SN-0", "alarmStatus": "1"}]
+    report = {
+        "top_level": {"SN-0": {"alarmStatus": "1"}},
+        "nested_list": {"stationSN": station.sn, "devs": rows},
+        "reported_list": rows,
+    }[shape]
+    assert _mqtt_child_write_scope(station, report) == frozenset({_serial_identity(station.devices["0"])})
+
+
+@pytest.mark.parametrize("report", [
+    {"unknown": {"alarmStatus": "1"}},
+    {"devs": [{"_deviceSN": "SN-0"}, {"_deviceSN": "missing"}]},
+    {"devs": [{"_deviceSN": "SN-0"}, 1]},
+    [{"_deviceSN": "missing"}],
+])
+def test_uncertain_collection_shapes_keep_global_fallback(report):
+    assert _mqtt_child_write_scope(station_with_children(), report) is None
 
 
 @pytest.mark.parametrize("extra", [
@@ -82,3 +120,22 @@ def test_notification_scope_is_restored_when_listener_raises():
         )
     assert captured == [frozenset({_serial_identity(station.devices["0"])})]
     assert coordinator._mqtt_child_write_scope is previous
+
+
+@pytest.mark.parametrize("serial_key", ["_deviceSN", "deviceSN", "deviceSn"])
+def test_direct_child_shadow_scopes_notifications_to_the_child_it_changes(serial_key):
+    station = station_with_children()
+    coordinator = make_coordinator(station)
+    coordinator.data["devices"] = dict(station.devices)
+    scopes = []
+    coordinator.async_update_listeners = lambda: scopes.append(coordinator._mqtt_child_write_scope)
+    coordinator.async_event_received(
+        f"$aws/things/{station.shadow_name}/shadow/name/2nd_deviceinfo/update",
+        json.dumps({"state": {"reported": {
+            "stationSN": station.sn, serial_key: "SN-0", "alarmVol": "75",
+        }}}).encode(),
+    )
+    assert station.devices["0"].data["alarmVol"] in (75, "75")
+    assert "alarmVol" not in station.devices["1"].data
+    assert "alarmVol" not in station.data
+    assert scopes == [frozenset({_serial_identity(station.devices["0"])})]

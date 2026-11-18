@@ -1,9 +1,11 @@
 """Keep repeated MQTT discovery from reconstructing registered entities."""
 
+from dataclasses import replace
 from types import SimpleNamespace as NS
 from unittest.mock import Mock
 
 import pytest
+from test_mqtt_listener_fanout import station_with_children
 
 from custom_components.xsense import (
     binary_sensor,
@@ -14,8 +16,74 @@ from custom_components.xsense import (
     sensor,
     switch,
 )
+from custom_components.xsense.entity import _serial_identity
 from custom_components.xsense.python_xsense.async_xsense import AsyncXSense
 from custom_components.xsense.python_xsense.station import Station
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("platform, descriptions", [
+    (binary_sensor, ("SENSORS",)), (sensor, ("SENSORS",)),
+    (button, ("BUTTONS",)), (number, ("NUMBERS",)),
+    (select, ("SELECTS",)), (switch, ("SWITCHES",)),
+    (event, ("AI_DETECTION_DESCRIPTION", "MOTION_DESCRIPTION", "MAILBOX_ALARM_DESCRIPTION")),
+])
+async def test_child_shadow_does_not_repeat_eligibility_checks_for_known_siblings(monkeypatch, platform, descriptions):
+    station = station_with_children()
+    callbacks, checked = [], []
+    coordinator = NS(
+        data={"stations": {station.entity_id: station}, "devices": dict(station.devices)},
+        xsense=AsyncXSense(), last_update_success=True,
+        async_add_listener=lambda cb: callbacks.append(cb) or (lambda: None),
+    )
+
+    def observed(description):
+        def exists(item, *args):
+            checked.append(item)
+            return description.exists_fn(item, *args)
+        return replace(description, exists_fn=exists)
+
+    for name in descriptions:
+        original = getattr(platform, name)
+        replacement = tuple(observed(item) for item in original) if isinstance(original, tuple) else observed(original)
+        monkeypatch.setattr(platform, name, replacement)
+    entry = NS(entry_id="test", async_on_unload=lambda _: None)
+    hass = NS(data={"xsense": {"test": coordinator}})
+    await platform.async_setup_entry(hass, entry, lambda _: None)
+    checked.clear()
+    target, sibling = station.devices["0"], station.devices["1"]
+    coordinator._mqtt_child_write_scope = frozenset({_serial_identity(target)})
+    for callback in callbacks:
+        callback()
+    assert not any(item is sibling for item in checked)
+    assert any(item is target for item in checked)
+    # A full refresh must still reconsider every device and late capability.
+    checked.clear()
+    coordinator._mqtt_child_write_scope = None
+    for callback in callbacks:
+        callback()
+    assert any(item is sibling for item in checked)
+
+    # A newly discovered or replaced object must not be hidden by a different
+    # child's notification scope, even when its API key was already known.
+    coordinator._mqtt_child_write_scope = frozenset({_serial_identity(target)})
+    replacement_station = station_with_children()
+    replacement = replacement_station.devices["1"]
+    coordinator.data["devices"]["1"] = replacement
+    checked.clear()
+    for callback in callbacks:
+        callback()
+    assert any(item is replacement for item in checked)
+    replacement_station.set_devices({"devices": [{
+        "deviceId": "new-api-key", "deviceSn": "new-physical-device",
+        "deviceType": "SWS51", "deviceName": "New leak", "roomName": "Room",
+    }]})
+    new_device = replacement_station.devices["new-api-key"]
+    coordinator.data["devices"]["new-api-key"] = new_device
+    checked.clear()
+    for callback in callbacks:
+        callback()
+    assert any(item is new_device for item in checked)
 
 
 @pytest.mark.asyncio

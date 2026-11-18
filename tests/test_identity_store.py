@@ -96,7 +96,7 @@ def test_discovery_filters_existing_entities_before_construction():
     current.async_add_listener = lambda cb: listeners.append(cb)
     keys = ["battery"]
 
-    def factory(should_add):
+    def factory(should_add, _devices):
         result = []
         for item in current.data["stations"].values():
             for key in keys:
@@ -139,7 +139,7 @@ def test_discovery_identity_work_is_linear_per_notification(monkeypatch):
 
     monkeypatch.setattr(entity_module, "_serial_identity", identity)
 
-    def factory(_should_add):
+    def factory(_should_add, _devices):
         return [
             NS(unique_id=f"{_stable_device_id(current, item, identity(item))}-{key}")
             for item in current.data["stations"].values()
@@ -507,7 +507,7 @@ async def test_dynamic_discovery_collision_adds_nothing_then_recovers(stores):
     current.async_add_listener = lambda cb: listeners.append(cb)
     added = []
 
-    def factory(_should_add):
+    def factory(_should_add, _devices):
         return [NS(unique_id=resolve(current, item)) for item in current.data["stations"].values()]
 
     setup_dynamic_entities(NS(async_on_unload=lambda _: None), current, added.extend, factory)
@@ -529,7 +529,7 @@ async def test_discovery_during_flush_cannot_assign_unpersisted_identity(stores)
     await load(current)
     listeners, added = [], []
     current.async_add_listener = lambda cb: listeners.append(cb)
-    def factory(_should_add):
+    def factory(_should_add, _devices):
         return [NS(unique_id=resolve(current, item)) for item in current.data["stations"].values()]
     setup_dynamic_entities(NS(async_on_unload=lambda _: None), current, added.extend, factory)
     store = stores.instances[-1]

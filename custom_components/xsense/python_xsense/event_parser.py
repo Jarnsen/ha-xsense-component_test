@@ -197,6 +197,7 @@ def mqtt_identifier_candidates(*values: Any) -> list[str]:
     """Return possible station/device identifiers from nested MQTT payloads."""
     candidates: list[str] = []
     seen: set[str] = set()
+    visited: dict[int, Any] = {}
 
     def add(value: Any) -> None:
         if value in (None, ""):
@@ -208,6 +209,12 @@ def mqtt_identifier_candidates(*values: Any) -> list[str]:
         candidates.append(text)
 
     def walk(value: Any) -> None:
+        if isinstance(value, (dict, list, tuple, set)):
+            if id(value) in visited:
+                return
+            # Keep decoded JSON containers alive until traversal finishes so
+            # their IDs cannot be reused by another encoded eventData value.
+            visited[id(value)] = value
         if isinstance(value, str):
             text = value.strip()
             if text.startswith(("{", "[")):

@@ -28,7 +28,6 @@ from homeassistant.helpers.typing import StateType
 from .const import DOMAIN, NON_ENTITY_DIAGNOSTIC_SENSOR_KEYS, STATE_SIGNAL
 from .entity import (
     XSenseEntity,
-    coordinator_devices,
     coordinator_stations,
     device_station_id,
     setup_dynamic_entities,
@@ -829,7 +828,7 @@ async def async_setup_entry(
     """Set up the xsense sensor entry."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    def _entities(should_add) -> list[Device]:
+    def _entities(should_add, discovery_devices) -> list[Device]:
         devices: list[Device] = []
         for station in coordinator_stations(coordinator).values():
             devices.extend(
@@ -837,7 +836,7 @@ async def async_setup_entry(
                 for description in SENSORS
                 if description.exists_fn(station) and should_add(station, description.key)
             )
-        for dev in coordinator_devices(coordinator).values():
+        for dev in discovery_devices.values():
             devices.extend(
                 XSenseSensorEntity(
                     coordinator, dev, description, station_id=device_station_id(dev)

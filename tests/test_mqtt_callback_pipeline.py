@@ -17,9 +17,17 @@ from homeassistant.helpers.entity import Entity as HAEntity
 from homeassistant.helpers.entity_component import EntityComponent
 from test_audit_repairs import make_coordinator, make_station
 
-from custom_components.xsense import binary_sensor, sensor
-from custom_components.xsense.entity import XSenseEntity
+from custom_components.xsense import (
+    binary_sensor,
+    button,
+    number,
+    select,
+    sensor,
+    switch,
+)
+from custom_components.xsense.entity import XSenseEntity, _serial_identity
 from custom_components.xsense.mqtt import XSenseMQTT
+from custom_components.xsense.python_xsense.async_xsense import AsyncXSense
 
 
 def publish_packet(topic, report):
@@ -36,8 +44,10 @@ def publish_packet(topic, report):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("websocket", [False, True])
 @pytest.mark.parametrize("rollover", [False, True])
+@pytest.mark.parametrize("report_shape", ["wrapped", "direct", "top_level", "nested_list", "reported_list"])
+@pytest.mark.parametrize("inventory", ["leak_sensors", "issue_447"])
 async def test_socket_callback_preserves_alarm_transitions_without_reconstruction(
-    tmp_path, monkeypatch, websocket, rollover
+    tmp_path, monkeypatch, websocket, rollover, report_shape, inventory
 ):
     hass = HomeAssistant(str(tmp_path))
     loader.async_setup(hass)
@@ -48,16 +58,21 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
     await device_registry.async_load(hass)
     await entity_registry.async_load(hass)
     station = make_station()
+    models = (
+        ["XP0A-MR", *(["STH51"] * 6), *(["SMS0A"] * 5), *(["SDS0A"] * 9), "SKP0A"]
+        if inventory == "issue_447" else ["SWS51"] * 40
+    )
     station.set_devices({"devices": [
-        {"deviceId": str(i), "deviceSn": str(i), "deviceType": "SWS51",
+        {"deviceId": str(i), "deviceSn": str(i), "deviceType": model,
          "deviceName": f"Leak {i}", "roomName": "Room"}
-        for i in range(40)
+        for i, model in enumerate(models)
     ]})
     station._set_online(True)
     for device in station.devices.values():
         device._set_online(True)
-        device.set_data({"batInfo": 3, "rfLevel": 3, "alarmStatus": "0", "muteStatus": "0"})
+        device.set_data({"batInfo": 3, "rfLevel": 3, "alarmStatus": "0", "muteStatus": "0", "alarmVol": 75, "alarmTone": 1, "ledLight": 1, "alarmEnabled": "1"})
     coordinator = make_coordinator(station)
+    coordinator.xsense.has_action = AsyncXSense().has_action
     coordinator.hass = hass
     coordinator.data["devices"] = dict(station.devices)
     callbacks = []
@@ -76,7 +91,7 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
         entities.extend(batch)
         pending.append(component.async_add_entities(batch))
 
-    for domain, platform in (("binary_sensor", binary_sensor), ("sensor", sensor)):
+    for domain, platform in (("binary_sensor", binary_sensor), ("sensor", sensor), ("button", button), ("number", number), ("select", select), ("switch", switch)):
         component = EntityComponent(logging.getLogger(domain), domain, hass)
         await platform.async_setup_entry(
             hass, entry, lambda batch, component=component: add(component, batch)
@@ -87,9 +102,9 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
     assert len(hass.states.async_all()) == len(entities)
     if rollover:
         station.set_devices({"devices": [
-            {"deviceId": f"new-{i}", "deviceSn": str(i), "deviceType": "SWS51",
+            {"deviceId": f"new-{i}", "deviceSn": str(i), "deviceType": model,
              "deviceName": f"Leak {i}", "roomName": "Room"}
-            for i in range(40)
+            for i, model in enumerate(models)
         ]})
         for device in station.devices.values():
             device._set_online(True)
@@ -100,6 +115,10 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
         (binary_sensor, "XSenseBinarySensorEntity"),
         (binary_sensor, "XSenseMQTTConnectedEntity"),
         (sensor, "XSenseSensorEntity"),
+        (button, "XSenseButtonEntity"),
+        (number, "XSenseNumberEntity"),
+        (select, "XSenseSelectEntity"),
+        (switch, "XSenseSwitchEntity"),
     ):
         spy = Mock(wraps=getattr(platform, name))
         monkeypatch.setattr(platform, name, spy)
@@ -114,6 +133,10 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
         original_write(item)
 
     monkeypatch.setattr(HAEntity, "async_write_ha_state", record_write)
+    coordinator._mqtt_child_write_scope = frozenset({_serial_identity(station.devices["new-1" if rollover else "1"])})
+    alarm.async_write_ha_state()
+    assert alarm.entity_id in writes
+    coordinator._mqtt_child_write_scope = None
     mqtt = XSenseMQTT(hass, NS(title="Offline test"), NS(client=paho.Client(paho.CallbackAPIVersion.VERSION2)))
     mqtt.init_client()
     mqtt.on_data = coordinator.async_event_received
@@ -127,9 +150,19 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
     topic = f"$aws/things/{station.shadow_name}/shadow/name/2nd_mainpage/update"
 
     def packet_for(value, extra=None):
-        packet = publish_packet(topic, {"state": {"reported": {
+        fields = {
             "stationSN": station.sn, "devs": {"0": {"alarmStatus": value}}, **(extra or {})
-        }}})
+        }
+        if extra is None:
+            rows = [{"_deviceSN": "0", "alarmStatus": value}]
+            fields = {
+                "wrapped": {**fields, "wifiRSSI": -47},
+                "direct": {"stationSN": station.sn, "_deviceSN": "0", "alarmStatus": value},
+                "top_level": {"stationSN": station.sn, "0": {"alarmStatus": value}},
+                "nested_list": {"stationSN": station.sn, "devs": rows},
+                "reported_list": rows,
+            }[report_shape]
+        packet = publish_packet(topic, {"state": {"reported": fields}})
         if websocket:
             length = len(packet)
             frame_header = bytes([0x82, length]) if length < 126 else b"\x82\x7e" + struct.pack("!H", length)
@@ -151,6 +184,17 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
             assert hass.states.get(alarm.entity_id).state == expected
             assert alarm.entity_id in writes
             assert sibling.entity_id not in writes
+            if report_shape == "wrapped":
+                assert station.data["wifiRSSI"] == -47
+            work = coordinator._mqtt_slowest_dispatch_work
+            assert work["entity_write_calls"] > 0
+            assert work["discovery_calls"] == 6
+            sibling_controls = [item for item in entities if item.unique_id.startswith("1-") and item.entity_id.split(".")[0] in {"button", "number", "select", "switch"}]
+            assert sibling_controls
+            assert all(item.entity_id not in writes for item in sibling_controls)
+            for item in sibling_controls:
+                item.async_write_ha_state()
+                assert item.entity_id in writes
         delivered = []
 
         def receive(topic, payload):
