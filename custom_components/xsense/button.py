@@ -16,7 +16,6 @@ from .const import DOMAIN, LOGGER
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
     XSenseEntity,
-    coordinator_devices,
     coordinator_stations,
     device_station_id,
     setup_dynamic_entities,
@@ -121,7 +120,7 @@ async def async_setup_entry(
     """Set up the xsense button entry."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    def _entities(should_add) -> list[Device]:
+    def _entities(should_add, discovery_devices) -> list[Device]:
         devices: list[Device] = []
         for station in coordinator_stations(coordinator).values():
             devices.extend(
@@ -130,7 +129,7 @@ async def async_setup_entry(
                 if description.exists_fn(station, coordinator.xsense)
                 and should_add(station, description.key)
             )
-        for dev in coordinator_devices(coordinator).values():
+        for dev in discovery_devices.values():
             devices.extend(
                 XSenseButtonEntity(
                     coordinator, dev, description, station_id=device_station_id(dev)
@@ -147,6 +146,7 @@ async def async_setup_entry(
 class XSenseButtonEntity(XSenseEntity, ButtonEntity):
     """Buttons for xsense."""
 
+    _mqtt_child_state_only = True
     entity_description: XSenseButtonEntityDescription
 
     def __init__(

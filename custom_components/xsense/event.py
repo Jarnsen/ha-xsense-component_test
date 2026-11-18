@@ -121,10 +121,10 @@ async def async_setup_entry(
         entry,
         coordinator,
         async_add_entities,
-        lambda should_add: [
-            *_ai_detection_event_entities(coordinator, should_add),
-            *_motion_event_entities(coordinator, should_add),
-            *_mailbox_alarm_event_entities(coordinator, should_add),
+        lambda should_add, devices: [
+            *_ai_detection_event_entities(coordinator, should_add, devices),
+            *_motion_event_entities(coordinator, should_add, devices),
+            *_mailbox_alarm_event_entities(coordinator, should_add, devices),
         ],
     )
 
@@ -442,12 +442,13 @@ class XSenseMailboxAlarmEventEntity(XSenseEntity, EventEntity):
 def _ai_detection_event_entities(
     coordinator: XSenseDataUpdateCoordinator,
     should_add=None,
+    devices=None,
 ) -> list[XSenseEventEntity]:
     """Return X-Sense event entities for supported cameras."""
     entities: list[XSenseEventEntity] = []
     data = coordinator.data or {}
     stations = data.get("stations", {})
-    devices = data.get("devices", {})
+    devices = data.get("devices", {}) if devices is None else devices
 
     for station in stations.values():
         if AI_DETECTION_DESCRIPTION.exists_fn(station) and (
@@ -479,12 +480,13 @@ def _ai_detection_event_entities(
 def _motion_event_entities(
     coordinator: XSenseDataUpdateCoordinator,
     should_add=None,
+    devices=None,
 ) -> list[XSenseMotionEventEntity]:
     """Return X-Sense motion event entities for supported cameras."""
     entities: list[XSenseMotionEventEntity] = []
     data = coordinator.data or {}
     stations = data.get("stations", {})
-    devices = data.get("devices", {})
+    devices = data.get("devices", {}) if devices is None else devices
 
     for station in stations.values():
         if MOTION_DESCRIPTION.exists_fn(station) and (
@@ -516,9 +518,11 @@ def _motion_event_entities(
 def _mailbox_alarm_event_entities(
     coordinator: XSenseDataUpdateCoordinator,
     should_add=None,
+    devices=None,
 ) -> list[XSenseMailboxAlarmEventEntity]:
     """Return mailbox alarm events for SBS50 mailbox children."""
     data = coordinator.data or {}
+    devices = data.get("devices", {}) if devices is None else devices
     return [
         XSenseMailboxAlarmEventEntity(
             coordinator,
@@ -526,7 +530,7 @@ def _mailbox_alarm_event_entities(
             MAILBOX_ALARM_DESCRIPTION,
             station_id=_device_station_id(device),
         )
-        for device in data.get("devices", {}).values()
+        for device in devices.values()
         if MAILBOX_ALARM_DESCRIPTION.exists_fn(device)
         and (should_add is None or should_add(device, MAILBOX_ALARM_DESCRIPTION.key))
     ]

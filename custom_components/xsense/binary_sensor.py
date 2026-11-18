@@ -19,7 +19,6 @@ from .const import DOMAIN, NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS
 from .coordinator import XSenseDataUpdateCoordinator
 from .entity import (
     XSenseEntity,
-    coordinator_devices,
     coordinator_stations,
     device_station_id,
     setup_dynamic_entities,
@@ -659,7 +658,7 @@ async def async_setup_entry(
     """Set up the xsense binary sensor entry."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    def _entities(should_add) -> list[Device]:
+    def _entities(should_add, discovery_devices) -> list[Device]:
         devices: list[Device] = []
         for station in coordinator_stations(coordinator).values():
             devices.extend(
@@ -670,7 +669,7 @@ async def async_setup_entry(
             if should_add(station, MQTTSensor.key):
                 devices.append(XSenseMQTTConnectedEntity(coordinator, station, MQTTSensor))
 
-        for dev in coordinator_devices(coordinator).values():
+        for dev in discovery_devices.values():
             devices.extend(
                 XSenseBinarySensorEntity(
                     coordinator, dev, description, station_id=device_station_id(dev)

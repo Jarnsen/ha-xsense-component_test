@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta
+from time import perf_counter
 from typing import Any
 
 import aiohttp
@@ -18,6 +20,7 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.logging import catch_log_exception
 
+from .callback_timing import CallbackTiming
 from .const import (
     CAMERA_AI_HISTORY_SCAN_INTERVAL,
     CAMERA_AI_SERVICE_AVAILABLE,
@@ -1328,6 +1331,45 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return self.mqtt_servers[h.mqtt_server]
 
     def async_event_received(self, topic: str, data_str: bytes) -> None:
+        """Measure one delivery without changing its synchronous ordering."""
+        timing = CallbackTiming()
+        previous = getattr(self, "_mqtt_callback_timing", None)
+        self._mqtt_callback_timing = timing
+        started = perf_counter()
+        try:
+            self._async_process_mqtt_event(topic, data_str)
+        finally:
+            self._mqtt_callback_timing = previous
+            duration = perf_counter() - started
+            slowest = getattr(self, "_mqtt_slowest_dispatch_work", None)
+            keep_slowest = slowest is None or duration > slowest["total_seconds"]
+            extrema = None
+            keep_fast = keep_slow = False
+            if timing.reported_child_count is not None:
+                extrema = self.__dict__.setdefault("_mqtt_rssi_child_dispatch_work", {})
+                fastest_child = extrema.get("fastest")
+                slowest_child = extrema.get("slowest")
+                keep_fast = fastest_child is None or duration < fastest_child["total_seconds"]
+                keep_slow = slowest_child is None or duration > slowest_child["total_seconds"]
+            log_sample = False
+            if duration >= 0.1 and LOGGER.isEnabledFor(logging.DEBUG):
+                now = perf_counter()
+                if now >= getattr(self, "_mqtt_next_work_log", 0.0):
+                    self._mqtt_next_work_log = now + 60.0
+                    log_sample = True
+            if keep_slowest or keep_fast or keep_slow or log_sample:
+                sample = timing.snapshot(duration)
+            if keep_slowest:
+                self._mqtt_slowest_dispatch_work = sample
+            if extrema is not None:
+                if keep_fast:
+                    extrema["fastest"] = sample
+                if keep_slow:
+                    extrema["slowest"] = sample
+            if log_sample:
+                LOGGER.debug("X-Sense slow MQTT dispatch work: %s", sample)
+
+    def _async_process_mqtt_event(self, topic: str, data_str: bytes) -> None:
         """Handle incoming data from MQTT.
 
         AWS IoT shadow updates are delivered on update plus accepted/documents
@@ -1347,7 +1389,24 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         if not isinstance(data, dict):
             return
+        state = data.get("state")
+        if (
+            topic.endswith("/shadow/name/2nd_apptempdata/update")
+            and isinstance(state, dict)
+            and "reported" not in state
+            and isinstance(desired := state.get("desired"), dict)
+            and desired.get("shadow") == "appTempData"
+        ):
+            # A request echo carries no readings; the reported update follows separately.
+            return
         station_data = _mqtt_reported_data(data)
+        if (
+            isinstance(station_data, dict)
+            and station_data.keys() == {"devs", "stationSN", "wifiRSSI"}
+            and isinstance(children := station_data["devs"], (dict, list))
+            and (timing := getattr(self, "_mqtt_callback_timing", None)) is not None
+        ):
+            timing.reported_child_count = len(children)
         if (
             topic.startswith("@xsense/events/safealarm/")
             and isinstance(data.get("eventData"), (dict, str))
@@ -1378,10 +1437,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             station = self._get_station_by_id(station_sn)
         if station is None:
             station = _station_for_device_identifier(self, device_sn)
-        identifier_candidates: list[str] = []
-        if isinstance(station_data, dict):
-            identifier_candidates.extend(_mqtt_identifier_candidates(station_data))
-        identifier_candidates.extend(_mqtt_identifier_candidates(data))
+        identifier_candidates = []
+        if station is None or LOGGER.isEnabledFor(logging.DEBUG):
+            identifier_candidates = _mqtt_identifier_candidates(
+                station_data if isinstance(station_data, dict) else None, data
+            )
         if station is None:
             for identifier in identifier_candidates:
                 station = self._get_station_by_id(identifier)
@@ -1429,8 +1489,14 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return
 
         if isinstance(station_data, list):
+            child_write_scope = _mqtt_child_write_scope(station, station_data)
             self.xsense.parse_get_state(station, station_data)
-            self.async_update_listeners()
+            previous_scope = getattr(self, "_mqtt_child_write_scope", None)
+            self._mqtt_child_write_scope = child_write_scope
+            try:
+                self.async_update_listeners()
+            finally:
+                self._mqtt_child_write_scope = previous_scope
             return
 
         mode_result = None
@@ -1506,6 +1572,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             and target_device_sn != station.sn
             and target_device
         ):
+            # This parser branch applies every field to this child, not the
+            # station. Use that same target for discovery and state writes.
+            child_write_scope = _mqtt_child_write_scope(
+                station, {"devs": {target_device_sn: station_data}}
+            )
             self.xsense.parse_get_state(
                 station,
                 {
@@ -1686,13 +1757,26 @@ def _mqtt_child_write_scope(station, report):
     """Narrow state writes only when every reported field belongs to known children."""
     from .entity import _serial_identity
 
-    if is_camera_entity(station) or set(report) - {"stationSN", "stationSn", "devs"}:
+    if is_camera_entity(station):
         return None
-    children = report.get("devs")
-    if not isinstance(children, dict) or not children:
+    if isinstance(report, dict):
+        fields = report.copy()
+        children = fields.pop("devs", {})
+        if not isinstance(children, (dict, list)):
+            return None
+        children = _merge_top_level_child_state(station, fields, children)
+        # Station listeners always run. RSSI does not alter child availability
+        # or child data, unlike online flags and parent alarm context.
+        if set(fields) - {"stationSN", "stationSn", "wifiRSSI"}:
+            return None
+    elif isinstance(report, list):
+        children = report
+    else:
+        return None
+    if not children or (isinstance(children, list) and any(not isinstance(row, dict) for row in children)):
         return None
     identities = set()
-    for key, state in children.items():
+    for key, state in _child_state_items(children):
         if not isinstance(state, dict):
             return None
         child = _state_child_device(station, key, state)

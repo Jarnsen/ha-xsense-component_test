@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from time import perf_counter
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import callback
@@ -40,12 +41,14 @@ def setup_dynamic_entities(
     entry,
     coordinator: XSenseDataUpdateCoordinator,
     async_add_entities,
-    entity_factory: Callable[[Callable[[Entity, str], bool]], list[Any]],
+    entity_factory: Callable[[Callable[[Entity, str], bool], dict[str, Entity]], list[Any]],
 ) -> None:
     """Add current entities and any new entities discovered on later refreshes."""
     added_unique_ids: set[str] = set()
+    known_devices: dict[str, Entity] = {}
 
     def _new_entities() -> list[Any]:
+        nonlocal known_devices
         # Discovery runs synchronously inside MQTT delivery. Share one identity
         # index across constructors instead of scanning every device per entity.
         validate_current_identities(coordinator)
@@ -67,10 +70,20 @@ def setup_dynamic_entities(
                     stable_ids[id(item)] = _stable_device_id(coordinator, item, identity)
                 return _entity_unique_id(stable_ids[id(item)], key) not in added_unique_ids
 
-            candidates = entity_factory(should_add)
+            devices = dict(coordinator_devices(coordinator))
+            scope = getattr(coordinator, "_mqtt_child_write_scope", None)
+            scan_devices = devices if scope is None else {
+                key: item for key, item in devices.items()
+                if known_devices.get(key) is not item
+                or is_camera_entity(item)
+                or _serial_identity(item) is None
+                or _serial_identity(item) in scope
+            }
+            candidates = entity_factory(should_add, scan_devices)
             # Constructors can assign new stable IDs. Check them before adding
             # anything to HA, preserving conflict detection for the whole batch.
             validate_current_identities(coordinator)
+            known_devices = devices
         finally:
             if previous is None:
                 coordinator.__dict__.pop("_xsense_discovery_identity_counts", None)
@@ -91,11 +104,17 @@ def setup_dynamic_entities(
         manager = getattr(coordinator, "_xsense_identity_store", None)
         if getattr(coordinator, "_shutting_down", False) or (manager is not None and manager.closed):
             return
+        timing = getattr(coordinator, "_mqtt_callback_timing", None)
+        started = perf_counter() if timing is not None else 0.0
         try:
             entities = _new_entities()
         except IdentityConflictError:
             LOGGER.error("X-Sense discovery stopped: conflicting physical device identifiers")
             return
+        finally:
+            if timing is not None:
+                timing.discovery_seconds += perf_counter() - started
+                timing.discovery_calls += 1
         if entities:
             async_add_entities(entities)
 
@@ -278,19 +297,28 @@ class XSenseEntity(CoordinatorEntity):
         await super().async_added_to_hass()
 
     @callback
-    def async_write_ha_state(self) -> None:
-        """Avoid serializing unrelated child states for a proven child-only update."""
+    def _handle_coordinator_update(self) -> None:
+        """Skip unrelated notifications, never an entity's explicit state write."""
         scope = getattr(self.coordinator, "_mqtt_child_write_scope", None)
         if (
             scope is not None
             and self._mqtt_child_state_only
+            and getattr(self, "_coordinator_state_initialized", False)
             and self._station_id
             and self._physical_identity is not None
             and self._physical_identity not in scope
             and self._current_entity() is not None
         ):
             return
-        super().async_write_ha_state()
+        timing = getattr(self.coordinator, "_mqtt_callback_timing", None)
+        started = perf_counter() if timing is not None else 0.0
+        try:
+            super()._handle_coordinator_update()
+            self._coordinator_state_initialized = True
+        finally:
+            if timing is not None:
+                timing.entity_write_seconds += perf_counter() - started
+                timing.entity_write_calls += 1
 
     def _current_entity_is_online(self) -> bool:
         """Return if the current X-Sense entity and parent station are online."""
