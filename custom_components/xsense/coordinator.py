@@ -748,6 +748,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                         await self._async_refresh_station_state(s)
                     if include_state_update and s.type == "SBS50":
                         await self._update_safe_mode(s)
+                        if s.online is False:
+                            await self._async_reconcile_station_online(s)
                     devices.update(s.devices.items())
             if not include_state_update:
                 LOGGER.debug("X-Sense device state polling skipped during startup refresh")
@@ -1261,6 +1263,21 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             else:
                 active.pop(station.sn, None)
 
+    async def _async_reconcile_station_online(self, station) -> None:
+        """Recover a missed connect from the APK's server status query."""
+        presence = getattr(station, "_xsense_presence_revision", None)
+        try:
+            online = await self.xsense.get_station_online_status(station)
+        except (APIFailure, aiohttp.ClientError, TimeoutError, OSError):
+            LOGGER.debug("Could not reconcile X-Sense base-station online status")
+            return
+        if (
+            online is True
+            and station.online is False
+            and getattr(station, "_xsense_presence_revision", None) is presence
+        ):
+            station._set_online(True)
+
     async def _update_safe_mode(self, station) -> None:
         """Fetch safeMode from the 2nd_safemode AWS IoT shadow as a fallback."""
         active = self.active_intrusion_sensors
@@ -1396,7 +1413,17 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
         if _is_presence_topic(topic):
-            if event_type := data.get("eventType"):
+            event_type = data.get("eventType")
+            if event_type in ("connected", "disconnected"):
+                # The APK discards older presence notifications per client.
+                client_id = data.get("clientId")
+                timestamp = data.get("timestamp")
+                if isinstance(client_id, str) and client_id and type(timestamp) is int:
+                    timestamps = self.__dict__.setdefault("_mqtt_presence_timestamps", {})
+                    if timestamp < timestamps.get(client_id, timestamp):
+                        return
+                    timestamps[client_id] = timestamp
+                station._xsense_presence_revision = object()
                 station._set_online(event_type == "connected")
                 self.async_update_listeners()
             return

@@ -2325,6 +2325,19 @@ class AsyncXSense(XSenseBase):
         params = {"houseId": houseId, "utctimestamp": "0"}
         return await self.api_call("103007", **params)
 
+    async def get_station_online_status(self, station: Station) -> bool | None:
+        """Read the APK's authoritative base-station connection status."""
+        result = await self.api_call(
+            "409001", houseId=station.house.house_id,
+            category=station.type, stationSn=station.sn,
+        )
+        if not isinstance(result, dict) or result.get("stationSn") != station.sn:
+            return None
+        online = result.get("online")
+        if type(online) is int and online in (0, 1):
+            return bool(online)
+        return None
+
     async def get_house_state(self, house: House):
         for page in ("mainpage", "2nd_mainpage"):
             res = await self.get_house(house, page)
