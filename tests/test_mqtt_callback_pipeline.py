@@ -210,6 +210,8 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
                 assert hass.states.get(rssi.entity_id).state == ("-47" if value == "1" else "-52")
             work = coordinator._mqtt_slowest_dispatch_work
             assert work["entity_write_calls"] > 0
+            assert work["slowest_entity_write_seconds"] > 0
+            assert work["slowest_entity_write_class"].startswith("XSense")
             assert work["discovery_calls"] == 6
             sibling_controls = [item for item in entities if item.unique_id.startswith("1-") and item.entity_id.split(".")[0] in {"button", "number", "select", "switch"}]
             assert sibling_controls

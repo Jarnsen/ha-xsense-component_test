@@ -31,6 +31,7 @@ def test_slow_dispatch_breakdown_and_log_cooldown(monkeypatch, caplog):
     assert first == {
         "total_seconds": 0.85, "discovery_seconds": 0.2,
         "reported_child_count": None,
+        "slowest_entity_write_seconds": 0.0, "slowest_entity_write_class": None,
         "discovery_calls": 7, "entity_write_seconds": 0.6,
         "entity_write_calls": 100, "other_seconds": 0.05,
     }
