@@ -4,7 +4,9 @@ import asyncio
 import json
 import logging
 import socket
+import ssl
 import struct
+import subprocess
 from types import SimpleNamespace as NS
 from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
@@ -42,7 +44,7 @@ def publish_packet(topic, report):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("websocket", [False, True])
+@pytest.mark.parametrize("websocket", [False, True, "tls"])
 @pytest.mark.parametrize("rollover", [False, True])
 @pytest.mark.parametrize("report_shape", ["wrapped", "direct", "top_level", "nested_list", "reported_list"])
 @pytest.mark.parametrize("inventory", ["leak_sensors", "issue_447"])
@@ -141,12 +143,30 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
     mqtt.init_client()
     mqtt.on_data = coordinator.async_event_received
     left, right = socket.socketpair()
+    if websocket == "tls":
+        cert = tmp_path / "loopback.pem"
+        key = tmp_path / "loopback.key"
+        await asyncio.to_thread(
+            subprocess.run,
+            ["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+             "-subj", "/CN=localhost", "-keyout", str(key), "-out", str(cert)],
+            check=True, capture_output=True, timeout=10,
+        )
+        server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        server_context.load_cert_chain(cert, key)
+        client_context = ssl.create_default_context(cafile=str(cert))
+        left.settimeout(5)
+        right.settimeout(5)
+        left, right = await asyncio.gather(
+            asyncio.to_thread(client_context.wrap_socket, left, server_hostname="localhost"),
+            asyncio.to_thread(server_context.wrap_socket, right, server_side=True),
+        )
     left.setblocking(False)
     mqtt._mqttc._sock = left
     if websocket:
         # Exercise the actual frame decoder without a remote HTTP handshake.
         with patch.object(paho._WebsocketWrapper, "_do_handshake"):
-            mqtt._mqttc._sock = paho._WebsocketWrapper(left, "offline", 443, False, "/mqtt", None)
+            mqtt._mqttc._sock = paho._WebsocketWrapper(left, "offline", 443, websocket == "tls", "/mqtt", None)
     topic = f"$aws/things/{station.shadow_name}/shadow/name/2nd_mainpage/update"
 
     def packet_for(value, extra=None):
@@ -156,7 +176,7 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
         if extra is None:
             rows = [{"_deviceSN": "0", "alarmStatus": value}]
             fields = {
-                "wrapped": {**fields, "wifiRSSI": -47},
+                "wrapped": {**fields, "wifiRSSI": -47 if value == "1" else -52},
                 "direct": {"stationSN": station.sn, "_deviceSN": "0", "alarmStatus": value},
                 "top_level": {"stationSN": station.sn, "0": {"alarmStatus": value}},
                 "nested_list": {"stationSN": station.sn, "devs": rows},
@@ -185,7 +205,9 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
             assert alarm.entity_id in writes
             assert sibling.entity_id not in writes
             if report_shape == "wrapped":
-                assert station.data["wifiRSSI"] == -47
+                rssi = next(item for item in entities if item.unique_id == "station-wifi-rssi")
+                assert rssi.entity_id in writes
+                assert hass.states.get(rssi.entity_id).state == ("-47" if value == "1" else "-52")
             work = coordinator._mqtt_slowest_dispatch_work
             assert work["entity_write_calls"] > 0
             assert work["discovery_calls"] == 6
@@ -195,6 +217,21 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
             for item in sibling_controls:
                 item.async_write_ha_state()
                 assert item.entity_id in writes
+        if websocket == "tls" and report_shape == "wrapped":
+            rssi_values = []
+
+            def receive_rssi(topic, payload):
+                coordinator.async_event_received(topic, payload)
+                rssi_values.append(hass.states.get(rssi.entity_id).state)
+
+            mqtt.on_data = receive_rssi
+            right.sendall(packet_for("0") + packet_for("1"))
+            mqtt._async_reader_callback(mqtt._mqttc)
+            assert left.pending() > 0
+            for _ in range(4):
+                await asyncio.sleep(0)
+            assert rssi_values == ["-52", "-47"]
+            assert left.pending() == 0
         delivered = []
 
         def receive(topic, payload):
