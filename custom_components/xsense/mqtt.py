@@ -927,10 +927,17 @@ class XSenseMQTT:
                 and self._message_dispatch_handle is None
             ):
                 self._message_dispatch_handle = self.loop.call_soon(self._async_dispatch_message)
-            elif not self._message_queue and self._message_read_deferred:
+            elif not self._message_queue and (
+                self._message_read_deferred or self._has_buffered_socket_data()
+            ):
                 self._message_read_deferred = False
                 if not self._message_dispatch_stopped and self._reader_resume_handle is None:
                     self._reader_resume_handle = self.loop.call_soon(self._async_resume_message_reader)
+
+    def _has_buffered_socket_data(self) -> bool:
+        """Check for decrypted bytes that won't trigger another fd notification."""
+        pending = getattr(self._mqttc.socket(), "pending", None)
+        return not self._message_dispatch_stopped and pending is not None and pending() > 0
 
     @callback
     def _async_mqtt_on_subscribe(
