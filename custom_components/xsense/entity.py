@@ -317,8 +317,12 @@ class XSenseEntity(CoordinatorEntity):
             self._coordinator_state_initialized = True
         finally:
             if timing is not None:
-                timing.entity_write_seconds += perf_counter() - started
+                elapsed = perf_counter() - started
+                timing.entity_write_seconds += elapsed
                 timing.entity_write_calls += 1
+                if elapsed > timing.slowest_entity_write_seconds:
+                    timing.slowest_entity_write_seconds = elapsed
+                    timing.slowest_entity_write_class = type(self).__name__
 
     def _current_entity_is_online(self) -> bool:
         """Return if the current X-Sense entity and parent station are online."""
