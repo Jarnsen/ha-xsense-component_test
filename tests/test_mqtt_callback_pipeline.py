@@ -232,6 +232,16 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
                 await asyncio.sleep(0)
             assert rssi_values == ["-52", "-47"]
             assert left.pending() == 0
+            ignored = publish_packet(f"{topic}/accepted", {})
+            assert len(ignored) < 126
+            ignored_frame = bytes([0x82, len(ignored)]) + ignored
+            right.sendall(ignored_frame + packet_for("0"))
+            mqtt._async_reader_callback(mqtt._mqttc)
+            assert left.pending() > 0
+            for _ in range(4):
+                await asyncio.sleep(0)
+            assert rssi_values == ["-52", "-47", "-52"]
+            assert left.pending() == 0
         delivered = []
 
         def receive(topic, payload):

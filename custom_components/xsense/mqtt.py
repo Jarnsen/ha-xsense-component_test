@@ -201,6 +201,9 @@ class XSenseMQTT:
         try:
             if (status := client.loop_read(MAX_PACKETS_TO_READ)) != 0:
                 self._async_on_disconnect(status)
+            elif not self._message_queue and self._has_buffered_socket_data():
+                # An ignored message or protocol packet may not queue dispatch.
+                self._async_schedule_reader_resume()
         finally:
             self._reader_callback_count += 1
             self._max_messages_per_read = max(self._max_messages_per_read, self._application_message_count - before)
@@ -931,8 +934,11 @@ class XSenseMQTT:
                 self._message_read_deferred or self._has_buffered_socket_data()
             ):
                 self._message_read_deferred = False
-                if not self._message_dispatch_stopped and self._reader_resume_handle is None:
-                    self._reader_resume_handle = self.loop.call_soon(self._async_resume_message_reader)
+                self._async_schedule_reader_resume()
+
+    def _async_schedule_reader_resume(self) -> None:
+        if not self._message_dispatch_stopped and self._reader_resume_handle is None:
+            self._reader_resume_handle = self.loop.call_soon(self._async_resume_message_reader)
 
     def _has_buffered_socket_data(self) -> bool:
         """Check for decrypted bytes that won't trigger another fd notification."""
