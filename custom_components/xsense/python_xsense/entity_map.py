@@ -175,7 +175,7 @@ def WifiSelfTestAction():
 
 
 def _fire_drill_alarm_type(entity) -> str:
-    if entity.type in ("XC01-M", "XC0C-MR"):
+    if entity.type in ("XC01-M", "XC0C-MR", "XC0M-MR"):
         return "2"
     return "1"
 
@@ -185,20 +185,21 @@ def _fire_drill_device_sn(entity) -> str:
     return station.sn
 
 
-def FireDrillAction():
+def FireDrillAction(*, action="firedrill", alarm_type=None, device_type=None):
     return {
-        "action": "firedrill",
+        "action": action,
         "topic": "2nd_firedrill",
         "shadow": "appFireDrill",
         "target": _fire_drill_target,
         "data": lambda entity: {
             "alarmTone": "1",
-            "alarmType": _fire_drill_alarm_type(entity),
+            "alarmType": alarm_type or _fire_drill_alarm_type(entity),
             "alarmVol": "75",
             "deviceSN": _fire_drill_device_sn(entity),
             "drill": "1",
             "drillTime": "30",
             "location": "17",
+            **({"deviceType": device_type} if device_type else {}),
         },
     }
 
@@ -278,6 +279,35 @@ def SBS50CoMuteAction():
     )
 
 
+def XC0MMRMuteAction():
+    """Mirror the active CO alarm's silence-all command, not its acknowledge UI."""
+    return {**MuteAction("app2ndMute", mute_type="0"), "time_format": None}
+
+
+def _apk_remote_mute_exempt(entity) -> bool:
+    """Only enable remote mute when the APK's serial-based EN exemption is known."""
+    station = getattr(entity, "station", entity)
+    serial = getattr(station, "sn", None)
+    if not isinstance(serial, str) or len(serial) < 8:
+        return False
+    if entity.type == "XS0AD-MN":
+        return (
+            station is not entity
+            and station.type in {"SBS50", "SBS0A"}
+            and serial.startswith(("EN", "1", "3"))
+        )
+    return station is entity and serial.startswith("EN")
+
+
+def ProximityGatedMuteAction(*, wifi=False):
+    """Use the APK silence-all request only on proximity-exempt devices."""
+    return {
+        **MuteAction("appMute", mute_type="0", target=_wifi_thing_target if wifi else None),
+        "time_format": None,
+        "allowed": _apk_remote_mute_exempt,
+    }
+
+
 def SBS50VoiceSmokeMuteAction():
     return MuteAction(
         "app2ndMute",
@@ -344,7 +374,17 @@ entities = {
         "identifier": lambda entity: f"SBS50{entity.sn}",
     },
     "SBS0A": {"type": EntityType.BASESTATION, "actions": []},
-    "XCG0A-iA": {"type": EntityType.GAS_CO, "actions": []},
+    "XCG0A-iA": {
+        "type": EntityType.GAS_CO,
+        "actions": [
+            TestAction(
+                "app2ndSelfTest", extra={"userParam": "source=1"}, target=_wifi_thing_target
+            ),
+            FireDrillAction(action="gas_drill", alarm_type="3", device_type="XCG0A-iA"),
+            FireDrillAction(action="co_drill", alarm_type="2", device_type="XCG0A-iA"),
+            ProximityGatedMuteAction(wifi=True),
+        ],
+    },
     "SSC0A": {
         "type": EntityType.CAMERA,
     },
@@ -411,7 +451,10 @@ entities = {
         ],
     },
     # APK 7358 P1.c0 registers the same device card as SD19-MN.
-    "XS0AD-MN": {"type": EntityType.SMOKE, "actions": []},
+    "XS0AD-MN": {
+        "type": EntityType.SMOKE,
+        "actions": [SBS50SecondGenTestAction(), FireDrillAction(), ProximityGatedMuteAction()],
+    },
     "SDA51": {
         "type": EntityType.ALARM,
         "actions": [
@@ -691,7 +734,10 @@ entities = {
         ],
     },
     # APK 7358 P1.M reads CO concentration and alarm status.
-    "XC0M-MR": {"type": EntityType.CO, "actions": []},
+    "XC0M-MR": {
+        "type": EntityType.CO,
+        "actions": [SBS50SecondGenTestAction(), FireDrillAction(), XC0MMRMuteAction()],
+    },
     "XP0A-iR": {
         "type": EntityType.COMBI,
         "actions": [WifiAlarmMuteAction()],
@@ -806,5 +852,8 @@ entities = {
         ],
     },
     # APK 7358 P1.a0 is shared with XS0AA-iA and XS0AB-iA.
-    "XS0AE-iA": {"type": EntityType.SMOKE, "actions": []},
+    "XS0AE-iA": {
+        "type": EntityType.SMOKE,
+        "actions": [WifiSelfTestAction(), FireDrillAction(), ProximityGatedMuteAction(wifi=True)],
+    },
 }

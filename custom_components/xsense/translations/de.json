@@ -1,5 +1,23 @@
 {
   "services": {
+    "set_night_schedule": {
+      "name": "Nachtmodus",
+      "description": "Nachtmodus: Aktivierungszustand; Startzeit (HH:MM oder HHMM); Endzeit (HH:MM oder HHMM); Wochentage (1 = Sonntag, 7 = Samstag).",
+      "fields": {
+        "enabled": {
+          "name": "Aktivierungszustand"
+        },
+        "start_time": {
+          "name": "Startzeit (HH:MM oder HHMM)"
+        },
+        "end_time": {
+          "name": "Endzeit (HH:MM oder HHMM)"
+        },
+        "days": {
+          "name": "Wochentage (1 = Sonntag, 7 = Samstag)"
+        }
+      }
+    },
     "force_arm": {
       "name": "Scharfschalten bestätigen",
       "description": "Eine durch offene Sensoren blockierte Scharfschaltung für Zuhause oder Abwesend bestätigen. Offene Sensoren werden umgangen.",
@@ -408,6 +426,9 @@
       "activate": {
         "name": "Aktiviert"
       },
+      "low_co_warning": {
+        "name": "Warnung bei niedriger Kohlenmonoxidkonzentration"
+      },
       "alarm_status": {
         "name": "Alarmstatus"
       },
@@ -491,6 +512,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Gasalarm\u00fcbung"
+      },
+      "co_drill": {
+        "name": "Kohlenmonoxid-Alarm\u00fcbung"
+      },
       "fire_drill": {
         "name": "Alarmübung"
       },
@@ -917,6 +944,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Nachtmodus"
+      },
       "led_light": {
         "name": "LED-Anzeige"
       },

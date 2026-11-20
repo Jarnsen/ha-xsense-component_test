@@ -2692,6 +2692,14 @@ async def _capture_action(client, target, action):
             13,
             "SBS50station-sn",
         ),
+        (
+            "XS0AD-MN", entity_map.EntityType.SMOKE, {}, "SBS50",
+            "2nd_selftest_device-sn", "app2ndSelfTest", "source=1", 13, "SBS50station-sn",
+        ),
+        (
+            "XC0M-MR", entity_map.EntityType.CO, {}, "SBS50",
+            "2nd_selftest_device-sn", "app2ndSelfTest", "source=1", 13, "SBS50station-sn",
+        ),
     ],
 )
 async def test_self_test_uses_apk_payload_shape(
@@ -2973,7 +2981,9 @@ def test_entity_actions_match_supported_integration_action_matrix():
         "XC0C-MR": {"test", "mute", "firedrill"},
         "XC0C-iA": {"mute"},
         "XC0C-iR": {"mute"},
+        "XC0M-MR": {"test", "firedrill", "mute"},
         "XC0M-iR": {"mute"},
+        "XCG0A-iA": {"test", "gas_drill", "co_drill", "mute"},
         "XH02-M": {"test", "mute", "firedrill"},
         "XP02S-MR": {"test", "mute", "firedrill"},
         "XP0A-MR": {"test", "mute", "firedrill"},
@@ -2997,6 +3007,8 @@ def test_entity_actions_match_supported_integration_action_matrix():
         "XS03-iWX": {"test"},
         "XS0AA-iA": {"test", "mute", "firedrill"},
         "XS0AB-iA": {"test", "mute", "firedrill"},
+        "XS0AD-MN": {"test", "firedrill", "mute"},
+        "XS0AE-iA": {"test", "firedrill", "mute"},
         "XS0B-MR": {"test", "mute", "firedrill"},
         "XS0B-iR": {"mute"},
         "XS0D-MR": {"test", "mute", "firedrill"},
@@ -3058,6 +3070,13 @@ def test_all_declared_model_actions_resolve_for_representative_entities():
 
         if device_type in {"SBS10", "SBS50"}:
             entity_obj = FakeXSenseStation(device_type)
+        elif device_type in {"XS0AE-iA", "XCG0A-iA"}:
+            entity_obj = FakeXSenseStation(device_type)
+            entity_obj.sn = "EN123456"
+        elif device_type == "XS0AD-MN":
+            en_station = FakeXSenseStation("SBS50")
+            en_station.sn = "EN123456"
+            entity_obj = fake_child_device(device_type, station=en_station)
         else:
             entity_obj = fake_child_device(device_type, station=base_station)
         entity_obj.data.setdefault("smokeEdition", "9")
@@ -3133,6 +3152,8 @@ async def test_wifi_device_mute_uses_apk_factory_payload_shape(
         ("XS0R-iA", entity_map.EntityType.SMOKE, "XS0R-iA-station-sn"),
         ("XS0AA-iA", entity_map.EntityType.SMOKE, "XS0AA-iA-station-sn"),
         ("XS0AB-iA", entity_map.EntityType.SMOKE, "XS0AB-iA-station-sn"),
+        ("XS0AE-iA", entity_map.EntityType.SMOKE, "XS0AE-iA-station-sn"),
+        ("XCG0A-iA", entity_map.EntityType.GAS_CO, "XCG0A-iA-station-sn"),
     ],
 )
 async def test_standalone_wifi_self_test_uses_own_station_entity_path(
@@ -3147,7 +3168,9 @@ async def test_standalone_wifi_self_test_uses_own_station_entity_path(
 
     assert station_arg.shadow_name == expected_thing
     assert page == "2nd_selftest_station-sn"
-    assert desired["shadow"] == "appSelfTest"
+    assert desired["shadow"] == (
+        "app2ndSelfTest" if device_type == "XCG0A-iA" else "appSelfTest"
+    )
     assert desired["stationSN"] == "station-sn"
     assert desired["deviceSN"] == "station-sn"
     assert desired["userId"] == "user-id"
@@ -3296,6 +3319,7 @@ async def test_xs03_iwx_mute_is_not_exposed_without_confirmed_app_path():
         ("XS0AA-iA", entity_map.EntityType.SMOKE, "XS0AA-iA-station-sn"),
         ("XS0AB-iA", entity_map.EntityType.SMOKE, "XS0AB-iA-station-sn"),
         ("XS0R-iA", entity_map.EntityType.SMOKE, "XS0R-iA-station-sn"),
+        ("XS0AE-iA", entity_map.EntityType.SMOKE, "XS0AE-iA-station-sn"),
     ],
 )
 async def test_standalone_wifi_fire_drill_uses_own_station_entity_path(
@@ -3362,10 +3386,13 @@ async def test_standalone_wifi_mute_uses_own_station_entity_path_for_every_model
 
 
 @pytest.mark.asyncio
-async def test_fire_drill_keeps_datetime_payload_shape():
+@pytest.mark.parametrize(
+    ("model", "alarm_type"), [("XS0B-MR", "1"), ("XS0AD-MN", "1"), ("XC0M-MR", "2")]
+)
+async def test_fire_drill_keeps_datetime_payload_shape(model, alarm_type):
     client = async_xsense.AsyncXSense()
     client.userid = "user-id"
-    device = fake_child_device("XS0B-MR", station=FakeXSenseStation("SBS50"))
+    device = fake_child_device(model, station=FakeXSenseStation("SBS50"))
     calls = []
 
     async def do_thing(station, page, data):
@@ -3387,6 +3414,23 @@ async def test_fire_drill_keeps_datetime_payload_shape():
     assert len(desired["time"]) == 14
     assert desired["drill"] == "1"
     assert desired["drillTime"] == "30"
+    assert desired["alarmType"] == alarm_type
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("action", "alarm_type"), [("gas_drill", "3"), ("co_drill", "2")])
+async def test_xcg_drill_sends_distinct_alarm_type(action, alarm_type):
+    client = async_xsense.AsyncXSense()
+    client.userid = "user-id"
+    station = FakeXSenseStation("XCG0A-iA")
+    target, page, desired = await _capture_action(client, station, action)
+    assert target.shadow_name == "XCG0A-iA-station-sn"
+    assert page == "2nd_firedrill"
+    assert desired["shadow"] == "appFireDrill"
+    assert desired["deviceType"] == "XCG0A-iA"
+    assert desired["alarmType"] == alarm_type
+    assert desired["stationSN"] == desired["deviceSN"] == "station-sn"
+    assert desired["drill"] == "1"
 
 
 class FakePostResponse:

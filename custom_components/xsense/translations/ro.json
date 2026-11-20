@@ -106,6 +106,9 @@
       "activate": {
         "name": "Activat"
       },
+      "low_co_warning": {
+        "name": "Avertizare privind concentra\u021bia sc\u0103zut\u0103 de monoxid de carbon"
+      },
       "alarm_status": {
         "name": "Starea alarmei"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Exerci\u021biu de alarm\u0103 de gaz"
+      },
+      "co_drill": {
+        "name": "Exerci\u021biu de alarm\u0103 de monoxid de carbon"
+      },
       "fire_drill": {
         "name": "Foraj de alarmă"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Mod de noapte"
+      },
       "led_light": {
         "name": "Indicator LED"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Mod de noapte",
+      "description": "Mod de noapte: Stare de activare; Ora de \u00eenceput (HH:MM sau HHMM); Ora de sf\u00e2r\u0219it (HH:MM sau HHMM); Zilele s\u0103pt\u0103m\u00e2nii (1 = duminic\u0103, 7 = s\u00e2mb\u0103t\u0103).",
+      "fields": {
+        "enabled": {
+          "name": "Stare de activare"
+        },
+        "start_time": {
+          "name": "Ora de \u00eenceput (HH:MM sau HHMM)"
+        },
+        "end_time": {
+          "name": "Ora de sf\u00e2r\u0219it (HH:MM sau HHMM)"
+        },
+        "days": {
+          "name": "Zilele s\u0103pt\u0103m\u00e2nii (1 = duminic\u0103, 7 = s\u00e2mb\u0103t\u0103)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

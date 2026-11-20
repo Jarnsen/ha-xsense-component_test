@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktivirano"
       },
+      "low_co_warning": {
+        "name": "Opozorilo o nizki koncentraciji ogljikovega monoksida"
+      },
       "alarm_status": {
         "name": "Stanje alarma"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Vaja ob plinskem alarmu"
+      },
+      "co_drill": {
+        "name": "Vaja ob alarmu za ogljikov monoksid"
+      },
       "fire_drill": {
         "name": "Alarmna vaja"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "No\u010dni na\u010din"
+      },
       "led_light": {
         "name": "Indikator LED"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "No\u010dni na\u010din",
+      "description": "No\u010dni na\u010din: Stanje omogo\u010denosti; Za\u010detni \u010das (HH:MM ali HHMM); Kon\u010dni \u010das (HH:MM ali HHMM); Dnevi v tednu (1 = nedelja, 7 = sobota).",
+      "fields": {
+        "enabled": {
+          "name": "Stanje omogo\u010denosti"
+        },
+        "start_time": {
+          "name": "Za\u010detni \u010das (HH:MM ali HHMM)"
+        },
+        "end_time": {
+          "name": "Kon\u010dni \u010das (HH:MM ali HHMM)"
+        },
+        "days": {
+          "name": "Dnevi v tednu (1 = nedelja, 7 = sobota)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

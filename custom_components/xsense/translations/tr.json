@@ -106,6 +106,9 @@
       "activate": {
         "name": "Etkinleştirildi"
       },
+      "low_co_warning": {
+        "name": "D\u00fc\u015f\u00fck karbonmonoksit konsantrasyonu uyar\u0131s\u0131"
+      },
       "alarm_status": {
         "name": "Alarm Durumu"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Gaz alarm\u0131 tatbikat\u0131"
+      },
+      "co_drill": {
+        "name": "Karbonmonoksit alarm\u0131 tatbikat\u0131"
+      },
       "fire_drill": {
         "name": "Alarm Tatbikatı"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Gece modu"
+      },
       "led_light": {
         "name": "LED göstergesi"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Gece modu",
+      "description": "Gece modu: Etkinlik durumu; Ba\u015flang\u0131\u00e7 saati (HH:MM veya HHMM); Biti\u015f saati (HH:MM veya HHMM); Haftan\u0131n g\u00fcnleri (1 = Pazar, 7 = Cumartesi).",
+      "fields": {
+        "enabled": {
+          "name": "Etkinlik durumu"
+        },
+        "start_time": {
+          "name": "Ba\u015flang\u0131\u00e7 saati (HH:MM veya HHMM)"
+        },
+        "end_time": {
+          "name": "Biti\u015f saati (HH:MM veya HHMM)"
+        },
+        "days": {
+          "name": "Haftan\u0131n g\u00fcnleri (1 = Pazar, 7 = Cumartesi)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

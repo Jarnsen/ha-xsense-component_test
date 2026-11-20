@@ -1,5 +1,23 @@
 {
   "services": {
+    "set_night_schedule": {
+      "name": "Night mode",
+      "description": "Night mode: Enabled state; Start time (HH:MM or HHMM); End time (HH:MM or HHMM); Weekdays (1 = Sunday, 7 = Saturday).",
+      "fields": {
+        "enabled": {
+          "name": "Enabled state"
+        },
+        "start_time": {
+          "name": "Start time (HH:MM or HHMM)"
+        },
+        "end_time": {
+          "name": "End time (HH:MM or HHMM)"
+        },
+        "days": {
+          "name": "Weekdays (1 = Sunday, 7 = Saturday)"
+        }
+      }
+    },
     "force_arm": {
       "name": "Force arm",
       "description": "Confirm a pending Home or Away arm request blocked by open sensors. Open sensors are bypassed.",
@@ -412,6 +430,9 @@
       "alarm_status": {
         "name": "Alarm Status"
       },
+      "low_co_warning": {
+        "name": "Low carbon monoxide warning"
+      },
       "door": {
         "name": "Door"
       },
@@ -494,6 +515,12 @@
     "button": {
       "fire_drill": {
         "name": "Alarm Drill"
+      },
+      "gas_drill": {
+        "name": "Gas alarm drill"
+      },
+      "co_drill": {
+        "name": "Carbon monoxide alarm drill"
       },
       "test": {
         "name": "Device Test"
@@ -920,6 +947,9 @@
     "switch": {
       "led_light": {
         "name": "LED Indicator"
+      },
+      "xcg_night_mode": {
+        "name": "Night mode"
       },
       "light_power": {
         "name": "Light"

@@ -1,3 +1,30 @@
+set_night_schedule:
+  name: Set detector night schedule
+  description: Set the hours and days for the detector's night mode.
+  target:
+    entity:
+      integration: xsense
+      domain: switch
+  fields:
+    enabled:
+      required: true
+      selector:
+        boolean:
+    start_time:
+      required: true
+      selector:
+        time:
+    end_time:
+      required: true
+      selector:
+        time:
+    days:
+      required: true
+      selector:
+        select:
+          multiple: true
+          options: ["1", "2", "3", "4", "5", "6", "7"]
+
 force_arm:
   name: Force arm
   description: Confirm a pending X-Sense Home or Away arm request after open sensors blocked the normal request.

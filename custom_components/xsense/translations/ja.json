@@ -106,6 +106,9 @@
       "activate": {
         "name": "アクティブ化された"
       },
+      "low_co_warning": {
+        "name": "\u4f4e\u6fc3\u5ea6\u4e00\u9178\u5316\u70ad\u7d20\u8b66\u544a"
+      },
       "alarm_status": {
         "name": "アラームステータス"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "\u30ac\u30b9\u8b66\u5831\u8a13\u7df4"
+      },
+      "co_drill": {
+        "name": "\u4e00\u9178\u5316\u70ad\u7d20\u8b66\u5831\u8a13\u7df4"
+      },
       "fire_drill": {
         "name": "警報訓練"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "\u591c\u9593\u30e2\u30fc\u30c9"
+      },
       "led_light": {
         "name": "LEDインジケーター"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "\u591c\u9593\u30e2\u30fc\u30c9",
+      "description": "\u591c\u9593\u30e2\u30fc\u30c9: \u6709\u52b9\u72b6\u614b; \u958b\u59cb\u6642\u523b (HH:MM \u307e\u305f\u306f HHMM); \u7d42\u4e86\u6642\u523b (HH:MM \u307e\u305f\u306f HHMM); \u66dc\u65e5 (1 = \u65e5\u66dc\u65e5\u30017 = \u571f\u66dc\u65e5).",
+      "fields": {
+        "enabled": {
+          "name": "\u6709\u52b9\u72b6\u614b"
+        },
+        "start_time": {
+          "name": "\u958b\u59cb\u6642\u523b (HH:MM \u307e\u305f\u306f HHMM)"
+        },
+        "end_time": {
+          "name": "\u7d42\u4e86\u6642\u523b (HH:MM \u307e\u305f\u306f HHMM)"
+        },
+        "days": {
+          "name": "\u66dc\u65e5 (1 = \u65e5\u66dc\u65e5\u30017 = \u571f\u66dc\u65e5)"
+        }
+      }
+    },
     "force_arm": {
       "name": "強制警戒設定",
       "description": "開いているセンサーによってブロックされた、保留中の在宅または外出モードの警戒設定要求を確認します。開いているセンサーは無視されます。",

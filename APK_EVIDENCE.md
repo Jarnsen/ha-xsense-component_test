@@ -10,6 +10,26 @@ The local checkout currently excludes `references/` because that folder can cont
 
 Before changing APK-sensitive behavior, recover or refresh the APK evidence and compare the implementation against it. APK-sensitive behavior includes camera events, recording playback, AI notifications, WebRTC signaling, and alarm-topic mappings.
 
+## Product support scope
+
+- Add verified device state that is useful in Home Assistant: measurements, actual alarms and warnings, connectivity, and actionable diagnostics. Reported state is not a configuration flag. Keep distinct alarm channels distinct, and do not treat missing telemetry as a clear.
+- Reuse existing entity types and keys for equivalent capabilities. Add controls only where the app's target identity, payload, capability gates, safety restrictions, and confirmation behavior are verified for the model. Cloud, local transport, and physical-device verification are separate claims.
+- Leave notification preferences, warning configuration, sharing, commissioning, wireless setup, and firmware updates in the app unless explicitly scoped in. Do not remove existing controls on other models as part of applying this policy to new additions.
+- For each model, record the APK build and read/write paths, app-only or unverified capabilities, and regression coverage. Test discovery, state transitions, exact command routing, and rejected or unavailable states on supported Home Assistant versions.
+
+### APK 7358 Wi-Fi detectors
+
+- **XS0AE-iA:** House-shadow smoke state, Wi-Fi test and smoke drill, proximity-gated mute, supported voice languages, and night schedule. Settings dispatch in `smali_classes5/S5/a.smali` routes to the shared Wi-Fi language activity and `Xs0eirNightModeActivity`; their command sources are `V5/a.java` and `p021b6/b.java`. Wi-Fi setup, Matter sharing, install guidance, and notification preferences are app-only.
+- **XCG0A-iA:** Distinct gas and CO state, CO concentration, device test, distinct gas and CO drills, proximity-gated mute, and night schedule. The low-CO warning is `warnLong` from the shadow parser (`V.java`), not the `warnIsOpen` preference. The home card (`P1/N.java`, `p245s5/m.java`) shows it only online and outside the APK's active-alarm condition. Leave low-CO preference (`104023`/ `104022`) and notification settings in the app.
+- **Not established as parity:** XCG0A-iA whole-home linking is a separate app setup workflow, not a mapped Home Assistant control. Data charts, export, and hazard education are not device controls. Neither Wi-Fi model's support implies remote mute where the APK requires phone proximity.
+
+### APK 7358 paired detectors and hub
+
+- **XS0AD-MN:** Paired smoke state, self-test, smoke drill, and alarm volume and tone when reported. The app reuses `Sbs50Xs0bmrAlarmSoundActivity` for alarm audio. Remote mute is restricted to the serial-based exemption; commissioning and app notification preferences are out of scope.
+- **XS0AD-MN paired night schedule:** `D5/b.java` uses `406002` (station plus child IDs) and `406001` (station plus one child ID). `E5/g.java` matches the server request ID in the `nightMode` event on the house MQTT topic. The integration additionally binds confirmation to the station and child and ignores retained events.
+- **XC0M-MR:** Paired CO state and concentration, self-test, CO drill, and reported alarm volume and tone. The settings handler `p072f5/r.java` targets the child config shadow with both serials. The alarm screen acknowledges rather than silences high CO under its standard-0 guard.
+- **SBS0A:** `S1/a.java` reads the second-generation mainpage shadow. `W3/c.java` defines six writable hub controls; `W3/b.java` requires config acceptance and a matching hub report. Do not infer SBS50 security or local MQTT provisioning from the shared second-generation shadow layout.
+
 Local APK evidence:
 
 - Latest audited X-Sense APK: `v1.42.0_20260814`, app code `1420`, package `com.xsense.security`, stored locally as `references/xsense_apk/original/xsense-1420.apk`.

@@ -425,7 +425,28 @@ def _xcg0a_alarm(entity: Entity, *, gas: bool) -> bool | None:
     return (alarm == 4 and mute in {0, 7, 8}) if gas else (alarm == 2 and mute in {0, 5})
 
 
+def _xcg_low_co_warning(entity: Entity) -> bool | None:
+    """Mirror the app's low-CO warning indicator, not its setting."""
+    warning = status_code(entity.data.get("warnLong"))
+    if warning not in {0, 1}:
+        return None
+    alarm = status_code(entity.data.get("alarmStatus"))
+    mute = status_code(entity.data.get("muteStatus"))
+    # Unlike the gas-presence indicator, the APK excludes silenced gas here.
+    active_alarm = alarm == 5 or (alarm, mute) in {
+        (2, 0), (2, 5), (4, 0), (4, 8), (1, 4), (3, 6),
+    }
+    return warning == 1 and entity.online is True and not active_alarm
+
+
 _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
+    XSenseBinarySensorEntityDescription(
+        key="low_co_warning",
+        translation_key="low_co_warning",
+        icon="mdi:molecule-co",
+        exists_fn=lambda entity: entity.type == "XCG0A-iA" and "warnLong" in entity.data,
+        value_fn=_xcg_low_co_warning,
+    ),
     XSenseBinarySensorEntityDescription(
         key="gas_alarm_status",
         device_class=BinarySensorDeviceClass.GAS,

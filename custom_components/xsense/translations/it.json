@@ -106,6 +106,9 @@
       "activate": {
         "name": "Attivato"
       },
+      "low_co_warning": {
+        "name": "Avviso di bassa concentrazione di monossido di carbonio"
+      },
       "alarm_status": {
         "name": "Stato dell'allarme"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Esercitazione di allarme gas"
+      },
+      "co_drill": {
+        "name": "Esercitazione di allarme monossido di carbonio"
+      },
       "fire_drill": {
         "name": "Esercitazione di allarme"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Modalit\u00e0 notturna"
+      },
       "led_light": {
         "name": "Indicatore LED"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Modalit\u00e0 notturna",
+      "description": "Modalit\u00e0 notturna: Stato di abilitazione; Ora di inizio (HH:MM o HHMM); Ora di fine (HH:MM o HHMM); Giorni della settimana (1 = domenica, 7 = sabato).",
+      "fields": {
+        "enabled": {
+          "name": "Stato di abilitazione"
+        },
+        "start_time": {
+          "name": "Ora di inizio (HH:MM o HHMM)"
+        },
+        "end_time": {
+          "name": "Ora di fine (HH:MM o HHMM)"
+        },
+        "days": {
+          "name": "Giorni della settimana (1 = domenica, 7 = sabato)"
+        }
+      }
+    },
     "force_arm": {
       "name": "Inserimento forzato",
       "description": "Conferma una richiesta di inserimento in modalità In casa o Fuori casa in attesa, bloccata da sensori aperti. I sensori aperti vengono esclusi.",

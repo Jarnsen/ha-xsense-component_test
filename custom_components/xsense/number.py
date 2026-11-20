@@ -290,7 +290,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_min_value=1,
         native_max_value=60,
         native_step=1,
-        exists_fn=has_shadow_number("warnPeriod"),
+        exists_fn=lambda entity: entity.type != "XCG0A-iA" and has_shadow_number("warnPeriod")(entity),
     ),
     XSenseNumberEntityDescription(
         key="temperature_min",
@@ -618,6 +618,12 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         if parsed_value is None:
             raise xsense_error("unsupported_option", option=value)
         value = parsed_value
+
+        if entity.type == "SBS0A" and self.entity_description.data_key in {"voiceVol", "alarmVol"}:
+            await self.coordinator.async_set_sbs0a_setting(
+                entity, self.entity_description.data_key, round(value)
+            )
+            return
 
         if self.entity_description.data_key == "radonAlarmThreshold":
             await self.coordinator.xsense.update_alarm_settings(entity, alarmThreshold=round(value))

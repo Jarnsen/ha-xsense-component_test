@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktywowano"
       },
+      "low_co_warning": {
+        "name": "Ostrze\u017cenie o niskim st\u0119\u017ceniu tlenku w\u0119gla"
+      },
       "alarm_status": {
         "name": "Stan alarmu"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "\u0106wiczenie alarmu gazowego"
+      },
+      "co_drill": {
+        "name": "\u0106wiczenie alarmu tlenku w\u0119gla"
+      },
       "fire_drill": {
         "name": "Wiertarka alarmowa"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Tryb nocny"
+      },
       "led_light": {
         "name": "Wskaźnik LED"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Tryb nocny",
+      "description": "Tryb nocny: Stan w\u0142\u0105czenia; Czas rozpocz\u0119cia (HH:MM lub HHMM); Czas zako\u0144czenia (HH:MM lub HHMM); Dni tygodnia (1 = niedziela, 7 = sobota).",
+      "fields": {
+        "enabled": {
+          "name": "Stan w\u0142\u0105czenia"
+        },
+        "start_time": {
+          "name": "Czas rozpocz\u0119cia (HH:MM lub HHMM)"
+        },
+        "end_time": {
+          "name": "Czas zako\u0144czenia (HH:MM lub HHMM)"
+        },
+        "days": {
+          "name": "Dni tygodnia (1 = niedziela, 7 = sobota)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

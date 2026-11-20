@@ -315,6 +315,32 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         value_fn=optional_data_bool("ledLight"),
     ),
     XSenseSwitchEntityDescription(
+        key="sbs0a_status_light",
+        data_key="idleLedOff",
+        translation_key="led_light",
+        icon="mdi:led-on",
+        exists_fn=lambda entity: entity.type == "SBS0A" and "idleLedOff" in entity.data,
+        value_fn=lambda entity: str(entity.data.get("idleLedOff")) == "0",
+    ),
+    XSenseSwitchEntityDescription(
+        key="xcg_night_mode",
+        data_key="xcgNightMode",
+        translation_key="xcg_night_mode",
+        icon="mdi:weather-night",
+        exists_fn=lambda entity: entity.type in {"XCG0A-iA", "XS0AE-iA"}
+        and isinstance(entity.data.get("xcgNightMode"), dict),
+        value_fn=lambda entity: str(entity.data["xcgNightMode"].get("isEnable")) == "1",
+    ),
+    XSenseSwitchEntityDescription(
+        key="paired_night_mode",
+        data_key="pairedNightMode",
+        translation_key="xcg_night_mode",
+        icon="mdi:weather-night",
+        exists_fn=lambda entity: entity.type == "XS0AD-MN"
+        and isinstance(entity.data.get("pairedNightMode"), dict),
+        value_fn=lambda entity: str(entity.data["pairedNightMode"].get("isEnable")) == "1",
+    ),
+    XSenseSwitchEntityDescription(
         key="light_power",
         data_key="on",
         translation_key="light_power",
@@ -431,7 +457,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         data_key="warnIsOpen",
         translation_key="warning_enabled",
         icon="mdi:alert",
-        exists_fn=has_shadow_data("warnIsOpen"),
+        exists_fn=lambda entity: entity.type != "XCG0A-iA" and has_shadow_data("warnIsOpen")(entity),
         value_fn=data_bool("warnIsOpen"),
     ),
     XSenseSwitchEntityDescription(
@@ -671,6 +697,19 @@ async def async_setup_entry(
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     platform = entity_platform.current_platform.get()
     if platform is not None:
+        platform.async_register_entity_service(
+            "set_night_schedule",
+            {
+                vol.Required("enabled"): cv.boolean,
+                vol.Required("start_time"): cv.time,
+                vol.Required("end_time"): cv.time,
+                vol.Required("days"): vol.All(
+                    cv.ensure_list, [vol.In(["1", "2", "3", "4", "5", "6", "7"])],
+                    vol.Length(min=1),
+                ),
+            },
+            "async_set_xcg_night_schedule",
+        )
         platform.async_register_entity_service(
             "query_light_schedules",
             {},
@@ -1159,12 +1198,55 @@ class XSenseSwitchEntity(XSenseEntity, SwitchEntity):
         """Return the supplied or Home Assistant configured timezone."""
         return time_zone or self.coordinator.hass.config.time_zone
 
+    async def async_set_xcg_night_schedule(self, enabled, start_time, end_time, days) -> None:
+        """Apply all night schedule fields in one request."""
+        entity = self._current_entity()
+        if entity is not None and self.entity_description.key == "paired_night_mode":
+            if not self.entity_description.exists_fn(entity):
+                raise xsense_error("entity_unavailable")
+            await self.coordinator.async_set_paired_night_schedule(
+                entity, enabled, self.hass.config.time_zone,
+                {"startTime": start_time.strftime("%H%M"), "endTime": end_time.strftime("%H%M"),
+                 "weekDays": days},
+            )
+            return
+        if entity is None or self.entity_description.key != "xcg_night_mode":
+            raise xsense_error("entity_unavailable")
+        await self.coordinator.xsense.set_xcg_night_schedule(
+            entity, enabled, self.hass.config.time_zone,
+            schedule={
+                "startTime": start_time.strftime("%H%M"),
+                "endTime": end_time.strftime("%H%M"),
+                "weekDays": days,
+            },
+        )
+        self.coordinator.async_update_listeners()
+
     async def _async_set_state(self, enabled: bool) -> None:
         """Write the switch state through the X-Sense device settings shadow."""
         xsense = self.coordinator.xsense
         entity = self._current_entity()
         if entity is None or not self.entity_description.exists_fn(entity):
             raise xsense_error("entity_unavailable")
+
+        if self.entity_description.key == "sbs0a_status_light":
+            await self.coordinator.async_set_sbs0a_setting(
+                entity, "idleLedOff", int(not enabled)
+            )
+            return
+
+        if self.entity_description.key == "xcg_night_mode":
+            await xsense.set_xcg_night_mode_enabled(
+                entity, enabled, self.hass.config.time_zone
+            )
+            self.coordinator.async_update_listeners()
+            return
+
+        if self.entity_description.key == "paired_night_mode":
+            await self.coordinator.async_set_paired_night_schedule(
+                entity, enabled, self.hass.config.time_zone, entity.data["pairedNightMode"]
+            )
+            return
 
         if self.entity_description.data_key == "motionWalkTest":
             await self._async_motion_test(entity, enabled)

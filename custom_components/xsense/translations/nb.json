@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktivert"
       },
+      "low_co_warning": {
+        "name": "Varsel om lav karbonmonoksidkonsentrasjon"
+      },
       "alarm_status": {
         "name": "Alarmstatus"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Gassalarm\u00f8velse"
+      },
+      "co_drill": {
+        "name": "Karbonmonoksidalarm\u00f8velse"
+      },
       "fire_drill": {
         "name": "Alarmøvelse"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Nattmodus"
+      },
       "led_light": {
         "name": "LED-indikator"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Nattmodus",
+      "description": "Nattmodus: Aktivert tilstand; Starttid (HH:MM eller HHMM); Sluttid (HH:MM eller HHMM); Ukedager (1 = s\u00f8ndag, 7 = l\u00f8rdag).",
+      "fields": {
+        "enabled": {
+          "name": "Aktivert tilstand"
+        },
+        "start_time": {
+          "name": "Starttid (HH:MM eller HHMM)"
+        },
+        "end_time": {
+          "name": "Sluttid (HH:MM eller HHMM)"
+        },
+        "days": {
+          "name": "Ukedager (1 = s\u00f8ndag, 7 = l\u00f8rdag)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

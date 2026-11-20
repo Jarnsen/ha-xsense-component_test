@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktiverad"
       },
+      "low_co_warning": {
+        "name": "Varning f\u00f6r l\u00e5g kolmonoxidhalt"
+      },
       "alarm_status": {
         "name": "Larmstatus"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Gaslarms\u00f6vning"
+      },
+      "co_drill": {
+        "name": "Kolmonoxidlarms\u00f6vning"
+      },
       "fire_drill": {
         "name": "Larmövning"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Nattl\u00e4ge"
+      },
       "led_light": {
         "name": "LED-indikator"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Nattl\u00e4ge",
+      "description": "Nattl\u00e4ge: Aktiveringsstatus; Starttid (HH:MM eller HHMM); Sluttid (HH:MM eller HHMM); Veckodagar (1 = s\u00f6ndag, 7 = l\u00f6rdag).",
+      "fields": {
+        "enabled": {
+          "name": "Aktiveringsstatus"
+        },
+        "start_time": {
+          "name": "Starttid (HH:MM eller HHMM)"
+        },
+        "end_time": {
+          "name": "Sluttid (HH:MM eller HHMM)"
+        },
+        "days": {
+          "name": "Veckodagar (1 = s\u00f6ndag, 7 = l\u00f6rdag)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

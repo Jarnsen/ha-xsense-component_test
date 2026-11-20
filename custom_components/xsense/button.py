@@ -109,6 +109,22 @@ BUTTONS: tuple[XSenseButtonEntityDescription, ...] = (
         available_fn=camera_is_sleeping,
         press_fn=wake_camera,
     ),
+    XSenseButtonEntityDescription(
+        key="gas_drill",
+        translation_key="gas_drill",
+        icon="mdi:gas-cylinder",
+        entity_category=EntityCategory.CONFIG,
+        exists_fn=lambda entity, xsense: xsense.has_action(entity, "gas_drill"),
+        press_fn=partial(run_action, action="gas_drill"),
+    ),
+    XSenseButtonEntityDescription(
+        key="co_drill",
+        translation_key="co_drill",
+        icon="mdi:molecule-co",
+        entity_category=EntityCategory.CONFIG,
+        exists_fn=lambda entity, xsense: xsense.has_action(entity, "co_drill"),
+        press_fn=partial(run_action, action="co_drill"),
+    ),
 )
 
 

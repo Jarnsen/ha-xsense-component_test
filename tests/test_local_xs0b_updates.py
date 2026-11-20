@@ -3,8 +3,8 @@
 import asyncio
 import shutil
 import socket
-from types import SimpleNamespace
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest

@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktivované"
       },
+      "low_co_warning": {
+        "name": "Upozornenie na n\u00edzku koncentr\u00e1ciu oxidu uho\u013enat\u00e9ho"
+      },
       "alarm_status": {
         "name": "Stav alarmu"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "N\u00e1cvik plynov\u00e9ho poplachu"
+      },
+      "co_drill": {
+        "name": "N\u00e1cvik poplachu oxidu uho\u013enat\u00e9ho"
+      },
       "fire_drill": {
         "name": "Poplachové cvičenie"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "No\u010dn\u00fd re\u017eim"
+      },
       "led_light": {
         "name": "Indikátor LED"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "No\u010dn\u00fd re\u017eim",
+      "description": "No\u010dn\u00fd re\u017eim: Stav zapnutia; \u010cas za\u010diatku (HH:MM alebo HHMM); \u010cas konca (HH:MM alebo HHMM); Dni v t\u00fd\u017edni (1 = nede\u013ea, 7 = sobota).",
+      "fields": {
+        "enabled": {
+          "name": "Stav zapnutia"
+        },
+        "start_time": {
+          "name": "\u010cas za\u010diatku (HH:MM alebo HHMM)"
+        },
+        "end_time": {
+          "name": "\u010cas konca (HH:MM alebo HHMM)"
+        },
+        "days": {
+          "name": "Dni v t\u00fd\u017edni (1 = nede\u013ea, 7 = sobota)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

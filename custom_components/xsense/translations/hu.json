@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktiválva"
       },
+      "low_co_warning": {
+        "name": "Alacsony sz\u00e9n-monoxid-koncentr\u00e1ci\u00f3ra figyelmeztet\u00e9s"
+      },
       "alarm_status": {
         "name": "Riasztás állapota"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "G\u00e1zriaszt\u00e1si gyakorlat"
+      },
+      "co_drill": {
+        "name": "Sz\u00e9n-monoxid-riaszt\u00e1si gyakorlat"
+      },
       "fire_drill": {
         "name": "Riasztófúró"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "\u00c9jszakai m\u00f3d"
+      },
       "led_light": {
         "name": "LED-jelző"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "\u00c9jszakai m\u00f3d",
+      "description": "\u00c9jszakai m\u00f3d: Enged\u00e9lyezett \u00e1llapot; Kezd\u00e9si id\u0151 (HH:MM vagy HHMM); Befejez\u00e9si id\u0151 (HH:MM vagy HHMM); A h\u00e9t napjai (1 = vas\u00e1rnap, 7 = szombat).",
+      "fields": {
+        "enabled": {
+          "name": "Enged\u00e9lyezett \u00e1llapot"
+        },
+        "start_time": {
+          "name": "Kezd\u00e9si id\u0151 (HH:MM vagy HHMM)"
+        },
+        "end_time": {
+          "name": "Befejez\u00e9si id\u0151 (HH:MM vagy HHMM)"
+        },
+        "days": {
+          "name": "A h\u00e9t napjai (1 = vas\u00e1rnap, 7 = szombat)"
+        }
+      }
+    },
     "force_arm": {
       "name": "Kényszerített élesítés",
       "description": "Erősítse meg a nyitott érzékelők által blokkolt, függőben lévő Otthon vagy Távol módú élesítési kérelmet. A nyitott érzékelők ki lesznek kerülve.",

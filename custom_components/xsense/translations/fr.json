@@ -1,5 +1,23 @@
 {
   "services": {
+    "set_night_schedule": {
+      "name": "Mode nuit",
+      "description": "Mode nuit: \u00c9tat d\u2019activation; Heure de d\u00e9but (HH:MM ou HHMM); Heure de fin (HH:MM ou HHMM); Jours (1 = dimanche, 7 = samedi).",
+      "fields": {
+        "enabled": {
+          "name": "\u00c9tat d\u2019activation"
+        },
+        "start_time": {
+          "name": "Heure de d\u00e9but (HH:MM ou HHMM)"
+        },
+        "end_time": {
+          "name": "Heure de fin (HH:MM ou HHMM)"
+        },
+        "days": {
+          "name": "Jours (1 = dimanche, 7 = samedi)"
+        }
+      }
+    },
     "force_arm": {
       "name": "Confirmer l’armement forcé",
       "description": "Confirmer une demande d’armement Présent ou Absent bloquée par des capteurs ouverts. Ces capteurs seront contournés.",
@@ -408,6 +426,9 @@
       "activate": {
         "name": "Activé"
       },
+      "low_co_warning": {
+        "name": "Alerte de faible concentration de monoxyde de carbone"
+      },
       "alarm_status": {
         "name": "État de l'alarme"
       },
@@ -491,6 +512,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Exercice d\u2019alarme de gaz"
+      },
+      "co_drill": {
+        "name": "Exercice d\u2019alarme de monoxyde de carbone"
+      },
       "fire_drill": {
         "name": "Exercice d'alarme"
       },
@@ -917,6 +944,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Mode nuit"
+      },
       "led_light": {
         "name": "Voyant LED"
       },

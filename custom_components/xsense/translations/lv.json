@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktivizēts"
       },
+      "low_co_warning": {
+        "name": "Br\u012bdin\u0101jums par zemu oglek\u013ca monoks\u012bda koncentr\u0101ciju"
+      },
       "alarm_status": {
         "name": "Trauksmes statuss"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "G\u0101zes trauksmes m\u0101c\u012bbas"
+      },
+      "co_drill": {
+        "name": "Oglek\u013ca monoks\u012bda trauksmes m\u0101c\u012bbas"
+      },
       "fire_drill": {
         "name": "Signalizācijas urbis"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Nakts re\u017e\u012bms"
+      },
       "led_light": {
         "name": "LED indikators"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Nakts re\u017e\u012bms",
+      "description": "Nakts re\u017e\u012bms: Iesp\u0113jo\u0161anas st\u0101voklis; S\u0101kuma laiks (HH:MM vai HHMM); Beigu laiks (HH:MM vai HHMM); Ned\u0113\u013cas dienas (1 = sv\u0113tdiena, 7 = sestdiena).",
+      "fields": {
+        "enabled": {
+          "name": "Iesp\u0113jo\u0161anas st\u0101voklis"
+        },
+        "start_time": {
+          "name": "S\u0101kuma laiks (HH:MM vai HHMM)"
+        },
+        "end_time": {
+          "name": "Beigu laiks (HH:MM vai HHMM)"
+        },
+        "days": {
+          "name": "Ned\u0113\u013cas dienas (1 = sv\u0113tdiena, 7 = sestdiena)"
+        }
+      }
+    },
     "force_arm": {
       "name": "Piespiedu apsardzes ieslēgšana",
       "description": "Apstipriniet gaidošu apsardzes ieslēgšanas pieprasījumu režīmā Mājās vai Prom, ko bloķē atvērti sensori. Atvērtie sensori tiks apieti.",

@@ -3,6 +3,7 @@ import errno
 import json
 import logging
 import math
+import re
 import socket
 from contextlib import AsyncExitStack, asynccontextmanager
 from copy import copy
@@ -186,11 +187,9 @@ def _station_state_shadow_names(station: Station) -> tuple[str, ...]:
 
 
 def _station_info_shadow_names(station: Station) -> tuple[str, ...]:
-    if station.type == "SBS0A":
-        return ()
     if station.type == "SBS10":
         return (f"info_{station.sn}",)
-    if station.type == "SBS50" or station.type in _SECOND_INFO_DEVICE_TYPES:
+    if station.type in {"SBS50", "SBS0A"} or station.type in _SECOND_INFO_DEVICE_TYPES:
         return (f"2nd_info_{station.sn}",)
     return (f"info_{station.sn}",)
 
@@ -2384,6 +2383,11 @@ class AsyncXSense(XSenseBase):
                 self.apply_safe_mode(station, reported["safeMode"])
 
     async def get_station_state(self, station: Station):
+        if station.type in {"XCG0A-iA", "XS0AE-iA"}:
+            try:
+                await self.refresh_xcg_night_mode(station)
+            except APIFailure:
+                LOGGER.debug("Night-mode settings unavailable for %s", station.type)
         for page in _station_info_shadow_names(station):
             res = await self.get_thing(station, page)
 
@@ -2409,6 +2413,63 @@ class AsyncXSense(XSenseBase):
                 f"Unable to retrieve station data: {self._lastres.status}/{text}"
             )
 
+    async def refresh_xcg_night_mode(self, station: Station) -> dict:
+        """Read the applied and pending night schedules from the app API."""
+        if station.type not in {"XCG0A-iA", "XS0AE-iA"} or not station.entity_id:
+            raise APIFailure("Night-mode settings require a supported Wi-Fi detector")
+        result = await self.api_call("406012", stationId=station.entity_id)
+        if not isinstance(result, dict):
+            raise APIFailure("Invalid XCG0A-iA night-mode response")
+        current = result.get("currentMode")
+        station.set_data({"xcgNightMode": current if isinstance(current, dict) else None})
+        return result
+
+    async def set_xcg_night_mode_enabled(
+        self, station: Station, enabled: bool, fallback_zone: str
+    ) -> None:
+        """Toggle the verified schedule without replacing its hours or days."""
+        await self.set_xcg_night_schedule(station, enabled, fallback_zone)
+
+    async def set_xcg_night_schedule(
+        self, station: Station, enabled: bool, fallback_zone: str, *,
+        schedule: dict | None = None,
+    ) -> None:
+        """Submit one complete schedule and read back applied state."""
+        result = await self.refresh_xcg_night_mode(station)
+        if str(result.get("updateState")) == "1":
+            raise APIFailure("XCG0A-iA night-mode update is still pending")
+        mode = result.get("currentMode") if schedule is None else schedule
+        if not isinstance(mode, dict):
+            raise APIFailure("No current XCG0A-iA night-mode schedule")
+        if schedule is None and str(mode.get("isEnable")) == str(int(enabled)):
+            return
+        times = [str(mode.get(key, "")) for key in ("startTime", "endTime")]
+        days = mode.get("weekDays")
+        if isinstance(days, str):
+            days = [digit for digit in days if digit not in ", \t\r\n"]
+        if (
+            any(not re.fullmatch(r"(?:[01][0-9]|2[0-3])[0-5][0-9]", time) for time in times)
+            or not isinstance(days, list)
+            or not days
+            or any(str(day) not in {"1", "2", "3", "4", "5", "6", "7"} for day in days)
+        ):
+            raise APIFailure("Invalid XCG0A-iA night-mode schedule")
+        valid_zone = bool_state(station.data.get("timeZoneValid")) is True
+        zone = (
+            station.data.get("zoneName")
+            if valid_zone
+            else None
+        )
+        weekdays = sorted({str(day) for day in days})
+        legacy_wifi = station.type == "XS0AE-iA"
+        await self.api_call(
+            "406011", stationId=station.entity_id, isEnable=str(int(enabled)),
+            timeZone=zone or fallback_zone, startTime=times[0], endTime=times[1],
+            weekDays=weekdays if legacy_wifi else "".join(weekdays),
+            **({"newTimeZoneMode": "1"} if legacy_wifi and valid_zone else {}),
+        )
+        await self.refresh_xcg_night_mode(station)
+
     async def get_state(self, station: Station):
         for page in _station_state_shadow_names(station):
             res = await self.get_thing(station, page)
@@ -2420,12 +2481,72 @@ class AsyncXSense(XSenseBase):
                 reported = res["state"]["reported"]
                 self.parse_get_state(station, reported)
                 await self._get_sbs50_child_info_state(station)
+                if station.type == "SBS50" and any(
+                    child.type == "XS0AD-MN"
+                    for child in getattr(station, "devices", {}).values()
+                ):
+                    try:
+                        await self.refresh_paired_night_schedules(station)
+                    except APIFailure:
+                        LOGGER.debug("Paired smoke detector night schedules unavailable")
                 return reported
 
             text = await self._lastres.text()
             raise APIFailure(
                 f"Unable to retrieve station data: {self._lastres.status}/{text}"
             )
+
+    async def refresh_paired_night_schedules(self, station: Station) -> None:
+        """Read the SBS50 night schedule table for supported children only."""
+        children = {
+            child.entity_id: child for child in station.devices.values()
+            if child.type == "XS0AD-MN" and child.entity_id
+        }
+        if station.type != "SBS50" or not station.entity_id or not children:
+            return
+        rows = await self.api_call(
+            "406002", stationId=station.entity_id, deviceIds=list(children)
+        )
+        if not isinstance(rows, list):
+            raise APIFailure("Invalid paired night schedule response")
+        schedules = {}
+        for row in rows:
+            if (
+                isinstance(row, dict)
+                and str(row.get("stationId")) == station.entity_id
+                and str(row.get("deviceId")) in children
+                and str(row.get("isEnable")) in {"0", "1"}
+            ):
+                schedules[str(row["deviceId"])] = row
+        for device_id, child in children.items():
+            schedule = schedules.get(device_id)
+            if schedule is None and not rows:
+                schedule = {"isEnable": "0", "startTime": "2100", "endTime": "0700",
+                            "weekDays": list("1234567")}
+            child.set_data({"pairedNightMode": schedule})
+
+    async def request_paired_night_schedule(
+        self, device: Entity, enabled: bool, zone_fallback: str, schedule: dict
+    ) -> str:
+        """Submit the APK's child-specific request and return its correlation ID."""
+        station = getattr(device, "station", None)
+        if (
+            device.type != "XS0AD-MN" or station is None or station.type != "SBS50"
+            or not station.entity_id or not device.entity_id
+        ):
+            raise APIFailure("Unsupported paired night schedule target")
+        start, end, days = _night_schedule_fields(schedule)
+        valid_zone = bool_state(station.data.get("timeZoneValid")) is True
+        zone = (station.data.get("zoneName") if valid_zone else None) or zone_fallback
+        result = await self.api_call(
+            "406001", stationId=station.entity_id, deviceId=device.entity_id,
+            isEnable=str(int(enabled)), timeZone=zone, startTime=start, endTime=end,
+            weekDays=days, **({"newTimeZoneMode": "1"} if valid_zone else {}),
+        )
+        request_id = result.get("requestId") if isinstance(result, dict) else None
+        if not isinstance(request_id, str) or not request_id.strip():
+            raise APIFailure("Paired night schedule response omitted request ID")
+        return request_id
 
     async def _get_sbs50_child_info_state(self, station: Station) -> None:
         """Merge optional APK per-device info shadows for SBS50 children."""
@@ -3552,6 +3673,12 @@ class AsyncXSense(XSenseBase):
                 f"Action {action} is not supported for entity type {entity.type}"
             )
 
+        if entity.type in {"XC0M-MR", "XCG0A-iA"} and action == "mute":
+            standard = str(entity.data.get("standard"))
+            ppm = safe_int(entity.data.get("coPpm"))
+            if standard not in {"0", "1"} or (standard == "0" and (ppm is None or ppm > 210)):
+                raise XSenseError(f"{entity.type} alarm cannot be silenced with the reported CO state")
+
         topic = action_def.get("topic")
         if callable(topic):
             topic = topic(entity)
@@ -3559,6 +3686,34 @@ class AsyncXSense(XSenseBase):
         if callable(shadow):
             shadow = shadow(entity)
         return await self.set_state(entity, shadow, topic, action_def)
+
+    async def set_xs0ae_language(self, station: Station, index: int) -> None:
+        """Write a language reported as supported by this Wi-Fi detector."""
+        count = safe_int(station.data.get("languageCount"))
+        if station.type != "XS0AE-iA" or count not in range(2, 6) or not 1 <= index <= count:
+            raise XSenseError("Unsupported XS0AE-iA language")
+        await self.do_thing(
+            station, f"2nd_cfg_{station.sn}", {"state": {"desired": {
+                "shadow": "infoBase", "stationSN": station.sn, "deviceSN": station.sn,
+                "languageIndex": str(index),
+            }}},
+        )
+        await self.get_station_state(station)
+
+
+def _night_schedule_fields(schedule: dict) -> tuple[str, str, list[str]]:
+    """Validate local times and normalize the APK's weekday formats."""
+    start, end = [str(schedule.get(key, "")) for key in ("startTime", "endTime")]
+    days = schedule.get("weekDays")
+    if isinstance(days, str):
+        days = [digit for digit in days if digit not in ", \t\r\n"]
+    if (
+        any(not re.fullmatch(r"(?:[01][0-9]|2[0-3])[0-5][0-9]", time) for time in (start, end))
+        or not isinstance(days, list) or not days
+        or any(str(day) not in {"1", "2", "3", "4", "5", "6", "7"} for day in days)
+    ):
+        raise APIFailure("Invalid night schedule")
+    return start, end, sorted({str(day) for day in days})
 
 
 def _shadow_config_topic(entity: Entity) -> str:
@@ -3603,6 +3758,8 @@ def supports_co_peak_reset(entity: Entity) -> bool:
 
 def _volume_includes_station_sn(entity: Entity, data_key: str) -> bool:
     """Return if the APK volume payload includes stationSN for this entity."""
+    if entity.type == "XC0M-MR":
+        return True
     if data_key == "voiceVol":
         return True
     if data_key == "alarmTone":

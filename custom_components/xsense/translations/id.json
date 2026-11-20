@@ -106,6 +106,9 @@
       "activate": {
         "name": "Diaktifkan"
       },
+      "low_co_warning": {
+        "name": "Peringatan konsentrasi karbon monoksida rendah"
+      },
       "alarm_status": {
         "name": "Status Alarm"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Simulasi alarm gas"
+      },
+      "co_drill": {
+        "name": "Simulasi alarm karbon monoksida"
+      },
       "fire_drill": {
         "name": "Latihan Alarm"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Mode malam"
+      },
       "led_light": {
         "name": "Indikator LED"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Mode malam",
+      "description": "Mode malam: Status diaktifkan; Waktu mulai (HH:MM atau HHMM); Waktu selesai (HH:MM atau HHMM); Hari dalam seminggu (1 = Minggu, 7 = Sabtu).",
+      "fields": {
+        "enabled": {
+          "name": "Status diaktifkan"
+        },
+        "start_time": {
+          "name": "Waktu mulai (HH:MM atau HHMM)"
+        },
+        "end_time": {
+          "name": "Waktu selesai (HH:MM atau HHMM)"
+        },
+        "days": {
+          "name": "Hari dalam seminggu (1 = Minggu, 7 = Sabtu)"
+        }
+      }
+    },
     "force_arm": {
       "name": "Aktifkan penjagaan secara paksa",
       "description": "Konfirmasikan permintaan pengaktifan mode Di rumah atau Pergi yang tertunda karena sensor terbuka. Sensor terbuka akan dilewati.",
