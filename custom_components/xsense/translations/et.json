@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktiveeritud"
       },
+      "low_co_warning": {
+        "name": "Madala vingugaasisisalduse hoiatus"
+      },
       "alarm_status": {
         "name": "Häire olek"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Gaasi h\u00e4ire\u00f5ppus"
+      },
+      "co_drill": {
+        "name": "Vingugaasi h\u00e4ire\u00f5ppus"
+      },
       "fire_drill": {
         "name": "Häire puur"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "\u00d6\u00f6re\u017eiim"
+      },
       "led_light": {
         "name": "LED-märgutuli"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "\u00d6\u00f6re\u017eiim",
+      "description": "\u00d6\u00f6re\u017eiim: Lubatud olek; Algusaeg (HH:MM v\u00f5i HHMM); L\u00f5puaeg (HH:MM v\u00f5i HHMM); N\u00e4dalap\u00e4evad (1 = p\u00fchap\u00e4ev, 7 = laup\u00e4ev).",
+      "fields": {
+        "enabled": {
+          "name": "Lubatud olek"
+        },
+        "start_time": {
+          "name": "Algusaeg (HH:MM v\u00f5i HHMM)"
+        },
+        "end_time": {
+          "name": "L\u00f5puaeg (HH:MM v\u00f5i HHMM)"
+        },
+        "days": {
+          "name": "N\u00e4dalap\u00e4evad (1 = p\u00fchap\u00e4ev, 7 = laup\u00e4ev)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

@@ -106,6 +106,9 @@
       "activate": {
         "name": "সক্ৰিয় কৰা হৈছে"
       },
+      "low_co_warning": {
+        "name": "\u0995\u09ae \u0995\u09be\u09f0\u09cd\u09ac\u09a8 \u09ae\u09a8\u09cb\u0995\u09cd\u09b8\u09be\u0987\u09a1\u09f0 \u09b8\u09a4\u09f0\u09cd\u0995\u09ac\u09be\u09a3\u09c0"
+      },
       "alarm_status": {
         "name": "এলাৰ্মৰ অৱস্থা"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "\u0997\u09c7\u099b \u098f\u09b2\u09be\u09f0\u09cd\u09ae\u09f0 \u0985\u09a8\u09c1\u09b6\u09c0\u09b2\u09a8"
+      },
+      "co_drill": {
+        "name": "\u0995\u09be\u09f0\u09cd\u09ac\u09a8 \u09ae\u09a8\u09cb\u0995\u09cd\u09b8\u09be\u0987\u09a1 \u098f\u09b2\u09be\u09f0\u09cd\u09ae\u09f0 \u0985\u09a8\u09c1\u09b6\u09c0\u09b2\u09a8"
+      },
       "fire_drill": {
         "name": "এলাৰ্ম ড্ৰিল"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "\u09f0\u09be\u09a4\u09bf\u09f0 \u09ae\u09cb\u09a1"
+      },
       "led_light": {
         "name": "LED সূচক"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "\u09f0\u09be\u09a4\u09bf\u09f0 \u09ae\u09cb\u09a1",
+      "description": "\u09f0\u09be\u09a4\u09bf\u09f0 \u09ae\u09cb\u09a1: \u09b8\u0995\u09cd\u09f0\u09bf\u09af\u09bc \u0985\u09f1\u09b8\u09cd\u09a5\u09be; \u0986\u09f0\u09ae\u09cd\u09ad\u09a3\u09bf\u09f0 \u09b8\u09ae\u09af\u09bc (HH:MM \u09ac\u09be HHMM); \u09b8\u09ae\u09be\u09aa\u09cd\u09a4\u09bf\u09f0 \u09b8\u09ae\u09af\u09bc (HH:MM \u09ac\u09be HHMM); \u09b8\u09aa\u09cd\u09a4\u09be\u09b9\u09f0 \u09a6\u09bf\u09a8 (1 = \u09a6\u09c7\u0993\u09ac\u09be\u09f0, 7 = \u09b6\u09a8\u09bf\u09ac\u09be\u09f0).",
+      "fields": {
+        "enabled": {
+          "name": "\u09b8\u0995\u09cd\u09f0\u09bf\u09af\u09bc \u0985\u09f1\u09b8\u09cd\u09a5\u09be"
+        },
+        "start_time": {
+          "name": "\u0986\u09f0\u09ae\u09cd\u09ad\u09a3\u09bf\u09f0 \u09b8\u09ae\u09af\u09bc (HH:MM \u09ac\u09be HHMM)"
+        },
+        "end_time": {
+          "name": "\u09b8\u09ae\u09be\u09aa\u09cd\u09a4\u09bf\u09f0 \u09b8\u09ae\u09af\u09bc (HH:MM \u09ac\u09be HHMM)"
+        },
+        "days": {
+          "name": "\u09b8\u09aa\u09cd\u09a4\u09be\u09b9\u09f0 \u09a6\u09bf\u09a8 (1 = \u09a6\u09c7\u0993\u09ac\u09be\u09f0, 7 = \u09b6\u09a8\u09bf\u09ac\u09be\u09f0)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktiviran"
       },
+      "low_co_warning": {
+        "name": "Upozorenje na nisku koncentraciju ugljikova monoksida"
+      },
       "alarm_status": {
         "name": "Status alarma"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Vje\u017eba alarma za plin"
+      },
+      "co_drill": {
+        "name": "Vje\u017eba alarma za ugljikov monoksid"
+      },
       "fire_drill": {
         "name": "Bušilica za alarm"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "No\u0107ni na\u010din rada"
+      },
       "led_light": {
         "name": "LED pokazivač"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "No\u0107ni na\u010din rada",
+      "description": "No\u0107ni na\u010din rada: Omogu\u0107eno stanje; Vrijeme po\u010detka (HH:MM ili HHMM); Vrijeme zavr\u0161etka (HH:MM ili HHMM); Dani u tjednu (1 = nedjelja, 7 = subota).",
+      "fields": {
+        "enabled": {
+          "name": "Omogu\u0107eno stanje"
+        },
+        "start_time": {
+          "name": "Vrijeme po\u010detka (HH:MM ili HHMM)"
+        },
+        "end_time": {
+          "name": "Vrijeme zavr\u0161etka (HH:MM ili HHMM)"
+        },
+        "days": {
+          "name": "Dani u tjednu (1 = nedjelja, 7 = subota)"
+        }
+      }
+    },
     "force_arm": {
       "name": "Prisilno uključi zaštitu",
       "description": "Potvrdite zahtjev na čekanju za uključivanje zaštite u načinu Kod kuće ili Odsutan koji blokiraju otvoreni senzori. Otvoreni senzori se zaobilaze.",

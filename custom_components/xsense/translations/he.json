@@ -106,6 +106,9 @@
       "activate": {
         "name": "הופעל"
       },
+      "low_co_warning": {
+        "name": "\u05d4\u05ea\u05e8\u05d0\u05d4 \u05e2\u05dc \u05e8\u05d9\u05db\u05d5\u05d6 \u05e0\u05de\u05d5\u05da \u05e9\u05dc \u05e4\u05d7\u05de\u05df \u05d7\u05d3\u05be\u05d7\u05de\u05e6\u05e0\u05d9"
+      },
       "alarm_status": {
         "name": "מצב אזעקה"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "\u05ea\u05e8\u05d2\u05d9\u05dc \u05d0\u05d6\u05e2\u05e7\u05ea \u05d2\u05d6"
+      },
+      "co_drill": {
+        "name": "\u05ea\u05e8\u05d2\u05d9\u05dc \u05d0\u05d6\u05e2\u05e7\u05ea \u05e4\u05d7\u05de\u05df \u05d7\u05d3\u05be\u05d7\u05de\u05e6\u05e0\u05d9"
+      },
       "fire_drill": {
         "name": "תרגיל אזעקה"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "\u05de\u05e6\u05d1 \u05dc\u05d9\u05dc\u05d4"
+      },
       "led_light": {
         "name": "מחוון LED"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "\u05de\u05e6\u05d1 \u05dc\u05d9\u05dc\u05d4",
+      "description": "\u05de\u05e6\u05d1 \u05dc\u05d9\u05dc\u05d4: \u05de\u05e6\u05d1 \u05d4\u05e4\u05e2\u05dc\u05d4; \u05e9\u05e2\u05ea \u05d4\u05ea\u05d7\u05dc\u05d4 (HH:MM \u05d0\u05d5 HHMM); \u05e9\u05e2\u05ea \u05e1\u05d9\u05d5\u05dd (HH:MM \u05d0\u05d5 HHMM); \u05d9\u05de\u05d9 \u05d4\u05e9\u05d1\u05d5\u05e2 (1 = \u05d9\u05d5\u05dd \u05e8\u05d0\u05e9\u05d5\u05df, 7 = \u05e9\u05d1\u05ea).",
+      "fields": {
+        "enabled": {
+          "name": "\u05de\u05e6\u05d1 \u05d4\u05e4\u05e2\u05dc\u05d4"
+        },
+        "start_time": {
+          "name": "\u05e9\u05e2\u05ea \u05d4\u05ea\u05d7\u05dc\u05d4 (HH:MM \u05d0\u05d5 HHMM)"
+        },
+        "end_time": {
+          "name": "\u05e9\u05e2\u05ea \u05e1\u05d9\u05d5\u05dd (HH:MM \u05d0\u05d5 HHMM)"
+        },
+        "days": {
+          "name": "\u05d9\u05de\u05d9 \u05d4\u05e9\u05d1\u05d5\u05e2 (1 = \u05d9\u05d5\u05dd \u05e8\u05d0\u05e9\u05d5\u05df, 7 = \u05e9\u05d1\u05ea)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

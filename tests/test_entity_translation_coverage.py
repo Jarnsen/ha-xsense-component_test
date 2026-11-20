@@ -30,6 +30,10 @@ ENTITY_DESCRIPTIONS = {
 
 
 DEVICE_CLASS_ONLY_SENSOR_KEYS = {"temperature", "humidity", "battery"}
+DEVICE_CLASS_ONLY_BINARY_SENSORS = {
+    "gas_alarm_status": "gas",
+    "co_alarm_status": "carbon_monoxide",
+}
 ACTION_ERROR_FILES = (
     "alarm_control_panel.py",
     "button.py",
@@ -87,6 +91,11 @@ def test_entity_descriptions_have_translation_keys_or_core_device_class_names():
 
     for domain, descriptions in ENTITY_DESCRIPTIONS.items():
         for description in descriptions:
+            if domain == "binary_sensor" and description.key in DEVICE_CLASS_ONLY_BINARY_SENSORS:
+                assert description.device_class == DEVICE_CLASS_ONLY_BINARY_SENSORS[description.key]
+                assert description.translation_key is None
+                assert description.name in (None, UNDEFINED)
+                continue
             if domain == "sensor" and description.key in DEVICE_CLASS_ONLY_SENSOR_KEYS:
                 assert description.translation_key is None
                 assert description.name in (None, UNDEFINED)

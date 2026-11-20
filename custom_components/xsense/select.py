@@ -117,6 +117,9 @@ def option_strings(value) -> list[str]:
 
 def shadow_select_options(entity: Entity, description) -> list[str]:
     """Return conservative APK option values for non-camera settings."""
+    if description.key == "xs0ae_voice_language":
+        count = entity.data.get("languageCount")
+        return list(description.fixed_options[:int(count)]) if str(count) in {"2", "3", "4", "5"} else []
     if description.data_key == "alarmTone" and entity.type in {"SDA51", "SMA51", "SMA0A"}:
         return [str(tone) for tone in range(1, 8)]
     if description.fixed_options is not None:
@@ -157,6 +160,23 @@ class XSenseSelectEntityDescription(SelectEntityDescription):
 
 
 SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
+    XSenseSelectEntityDescription(
+        key="xs0ae_voice_language",
+        data_key="languageIndex",
+        translation_key="camera_language",
+        icon="mdi:translate",
+        fixed_options=("English", "Fran\u00e7ais", "Deutsch", "Italiano", "Espa\u00f1ol"),
+        exists_fn=lambda entity: entity.type == "XS0AE-iA"
+        and str(entity.data.get("languageCount")) in {"2", "3", "4", "5"},
+    ),
+    XSenseSelectEntityDescription(
+        key="sbs0a_voice_language",
+        data_key="languageIndex",
+        translation_key="camera_language",
+        icon="mdi:translate",
+        fixed_options=("English", "English (UK)", "Deutsch", "Fran\u00e7ais"),
+        exists_fn=lambda entity: entity.type == "SBS0A" and "languageIndex" in entity.data,
+    ),
     XSenseSelectEntityDescription(
         key="radon_alarm_monitor_days",
         data_key="radonAlarmMonitorDay",
@@ -503,6 +523,9 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
         if entity is None:
             return None
         value = entity.data.get(self.entity_description.data_key)
+        if self.entity_description.key in {"sbs0a_voice_language", "xs0ae_voice_language"}:
+            options = self.options
+            return options[value - 1] if isinstance(value, int) and 1 <= value <= len(options) else None
         if self.entity_description.key == "camera_motion_sensitivity":
             try:
                 sensitivity = int(value)
@@ -527,6 +550,24 @@ class XSenseSelectEntity(XSenseEntity, SelectEntity):
             raise xsense_error("entity_unavailable")
         if option not in self.options:
             raise xsense_error("unsupported_option", option=option)
+
+        if self.entity_description.key == "xs0ae_voice_language":
+            await self.coordinator.xsense.set_xs0ae_language(entity, self.options.index(option) + 1)
+            self.coordinator.async_update_listeners()
+            return
+
+        if entity.type == "SBS0A" and self.entity_description.data_key in {
+            "alarmTone", "ledBrt", "languageIndex"
+        }:
+            value = (
+                self.options.index(option) + 1
+                if self.entity_description.data_key == "languageIndex"
+                else int(option)
+            )
+            await self.coordinator.async_set_sbs0a_setting(
+                entity, self.entity_description.data_key, value
+            )
+            return
 
         if self.entity_description.key == "camera_motion_sensitivity":
             api_value = CAMERA_MOTION_SENSITIVITY_VALUES[option]

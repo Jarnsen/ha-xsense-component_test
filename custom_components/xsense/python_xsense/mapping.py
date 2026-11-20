@@ -328,4 +328,11 @@ def map_values(device_type: str, data: dict):
             "continueAlarm": "continuedAlarm",
         }
 
-    return {mapping.get(k, k): map_type(mapping.get(k, k), v) for k, v in data.items()}
+    return {
+        mapping.get(k, k): (
+            safe_int(v)
+            if device_type == "XCG0A-iA" and k == "alarmStatus"
+            else map_type(mapping.get(k, k), v)
+        )
+        for k, v in data.items()
+    }

@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktiveret"
       },
+      "low_co_warning": {
+        "name": "Advarsel om lav kuliltekoncentration"
+      },
       "alarm_status": {
         "name": "Alarmstatus"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Gasalarms\u00f8velse"
+      },
+      "co_drill": {
+        "name": "Kuliltealarms\u00f8velse"
+      },
       "fire_drill": {
         "name": "Alarmøvelse"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Nattilstand"
+      },
       "led_light": {
         "name": "LED-indikator"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Nattilstand",
+      "description": "Nattilstand: Aktiveringstilstand; Starttidspunkt (HH:MM eller HHMM); Sluttidspunkt (HH:MM eller HHMM); Ugedage (1 = s\u00f8ndag, 7 = l\u00f8rdag).",
+      "fields": {
+        "enabled": {
+          "name": "Aktiveringstilstand"
+        },
+        "start_time": {
+          "name": "Starttidspunkt (HH:MM eller HHMM)"
+        },
+        "end_time": {
+          "name": "Sluttidspunkt (HH:MM eller HHMM)"
+        },
+        "days": {
+          "name": "Ugedage (1 = s\u00f8ndag, 7 = l\u00f8rdag)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

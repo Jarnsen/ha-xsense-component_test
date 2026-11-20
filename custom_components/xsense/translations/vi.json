@@ -106,6 +106,9 @@
       "activate": {
         "name": "Đã kích hoạt"
       },
+      "low_co_warning": {
+        "name": "C\u1ea3nh b\u00e1o n\u1ed3ng \u0111\u1ed9 carbon monoxide th\u1ea5p"
+      },
       "alarm_status": {
         "name": "Trạng thái cảnh báo"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Di\u1ec5n t\u1eadp b\u00e1o \u0111\u1ed9ng kh\u00ed \u0111\u1ed1t"
+      },
+      "co_drill": {
+        "name": "Di\u1ec5n t\u1eadp b\u00e1o \u0111\u1ed9ng carbon monoxide"
+      },
       "fire_drill": {
         "name": "Máy khoan báo động"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Ch\u1ebf \u0111\u1ed9 ban \u0111\u00eam"
+      },
       "led_light": {
         "name": "Đèn chỉ báo LED"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Ch\u1ebf \u0111\u1ed9 ban \u0111\u00eam",
+      "description": "Ch\u1ebf \u0111\u1ed9 ban \u0111\u00eam: Tr\u1ea1ng th\u00e1i b\u1eadt; Gi\u1edd b\u1eaft \u0111\u1ea7u (HH:MM ho\u1eb7c HHMM); Gi\u1edd k\u1ebft th\u00fac (HH:MM ho\u1eb7c HHMM); Ng\u00e0y trong tu\u1ea7n (1 = Ch\u1ee7 nh\u1eadt, 7 = Th\u1ee9 b\u1ea3y).",
+      "fields": {
+        "enabled": {
+          "name": "Tr\u1ea1ng th\u00e1i b\u1eadt"
+        },
+        "start_time": {
+          "name": "Gi\u1edd b\u1eaft \u0111\u1ea7u (HH:MM ho\u1eb7c HHMM)"
+        },
+        "end_time": {
+          "name": "Gi\u1edd k\u1ebft th\u00fac (HH:MM ho\u1eb7c HHMM)"
+        },
+        "days": {
+          "name": "Ng\u00e0y trong tu\u1ea7n (1 = Ch\u1ee7 nh\u1eadt, 7 = Th\u1ee9 b\u1ea3y)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

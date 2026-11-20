@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktyvuota"
       },
+      "low_co_warning": {
+        "name": "\u012esp\u0117jimas apie ma\u017e\u0105 anglies monoksido koncentracij\u0105"
+      },
       "alarm_status": {
         "name": "Signalizacijos būsena"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Duj\u0173 pavojaus pratybos"
+      },
+      "co_drill": {
+        "name": "Anglies monoksido pavojaus pratybos"
+      },
       "fire_drill": {
         "name": "Signalizacijos gręžtuvas"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Naktinis re\u017eimas"
+      },
       "led_light": {
         "name": "LED indikatorius"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Naktinis re\u017eimas",
+      "description": "Naktinis re\u017eimas: \u012ejungimo b\u016bsena; Prad\u017eios laikas (HH:MM arba HHMM); Pabaigos laikas (HH:MM arba HHMM); Savait\u0117s dienos (1 = sekmadienis, 7 = \u0161e\u0161tadienis).",
+      "fields": {
+        "enabled": {
+          "name": "\u012ejungimo b\u016bsena"
+        },
+        "start_time": {
+          "name": "Prad\u017eios laikas (HH:MM arba HHMM)"
+        },
+        "end_time": {
+          "name": "Pabaigos laikas (HH:MM arba HHMM)"
+        },
+        "days": {
+          "name": "Savait\u0117s dienos (1 = sekmadienis, 7 = \u0161e\u0161tadienis)"
+        }
+      }
+    },
     "force_arm": {
       "name": "Priverstinai įjungti apsaugą",
       "description": "Patvirtinkite laukiančią apsaugos įjungimo režimu Namuose arba Išvykus užklausą, kurią blokuoja atviri jutikliai. Atviri jutikliai bus apeiti.",

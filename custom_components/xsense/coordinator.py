@@ -14,7 +14,7 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -212,6 +212,135 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             always_update=True,
         )
         self.mqtt_servers: dict[str, XSenseMQTT] = {}
+        self._sbs0a_pending_settings: set[tuple[str, str]] = set()
+        self._pending_paired_schedules: set[tuple[str, str, str]] = set()
+
+    async def async_set_paired_night_schedule(self, device, enabled, zone, schedule):
+        """Wait for the same house, station, child, and request confirmation."""
+        station = device.station
+        house = station.house
+        identity = (house.house_id, station.entity_id, device.entity_id)
+        mqtt = self.mqtt_server(house.mqtt_server)
+        if mqtt is None or not mqtt.connected:
+            raise HomeAssistantError("Paired night schedules require X-Sense MQTT")
+        if identity in self._pending_paired_schedules:
+            raise HomeAssistantError("A night schedule change is already pending")
+        self._pending_paired_schedules.add(identity)
+        reports = asyncio.Queue(maxsize=16)
+        submitted = False
+        unsubscribe = None
+
+        @callback
+        def on_report(message):
+            if not submitted or getattr(message, "retain", False):
+                return
+            try:
+                payload = json.loads(message.payload)
+                if not isinstance(payload, dict) or payload.get("eventType") != "nightMode":
+                    return
+                report = payload.get("eventData")
+                if isinstance(report, str):
+                    report = json.loads(report)
+            except (TypeError, ValueError):
+                return
+            if (
+                isinstance(report, dict)
+                and str(report.get("stationId")) == station.entity_id
+                and str(report.get("deviceId")) == device.entity_id
+                and isinstance(report.get("requestId"), str)
+            ):
+                if reports.full():
+                    reports.get_nowait()
+                reports.put_nowait(report["requestId"])
+
+        try:
+            async with asyncio.timeout(60):
+                unsubscribe = await mqtt.async_subscribe(
+                    f"@xsense/events/house/{house.house_id}", on_report,
+                    DEFAULT_SUBSCRIBE_QOS, encoding=DEFAULT_ENCODING,
+                )
+                submitted = True
+                request_id = await self.xsense.request_paired_night_schedule(
+                    device, enabled, zone, schedule
+                )
+                while await reports.get() != request_id:
+                    pass
+            device.set_data({"pairedNightMode": {**schedule, "isEnable": str(int(enabled))}})
+            self.async_update_listeners()
+        except TimeoutError as err:
+            raise HomeAssistantError("Detector did not confirm the night schedule") from err
+        finally:
+            self._pending_paired_schedules.discard(identity)
+            if unsubscribe is not None:
+                unsubscribe()
+
+    async def async_set_sbs0a_setting(self, station, key: str, value: int) -> None:
+        """Require both config acceptance and the hub's own reported value."""
+        allowed = {
+            "voiceVol": range(101),
+            "alarmVol": range(101),
+            "alarmTone": range(1, 4),
+            "ledBrt": (2, 4, 6, 8),
+            "idleLedOff": (0, 1),
+            "languageIndex": range(1, 5),
+        }
+        if station.type != "SBS0A" or not station.sn or value not in allowed.get(key, ()):
+            raise HomeAssistantError("Invalid SBS0A setting")
+        house = station.house
+        identity = (house.house_id, station.sn)
+        mqtt = self.mqtt_server(house.mqtt_server)
+        if mqtt is None or not mqtt.connected:
+            raise HomeAssistantError("SBS0A settings require a connected X-Sense MQTT session")
+        if identity in self._sbs0a_pending_settings:
+            raise HomeAssistantError("An SBS0A setting change is already pending")
+
+        self._sbs0a_pending_settings.add(identity)
+        reported_match = asyncio.Event()
+        publishing = False
+        wire_value = str(value)
+        topic = f"$aws/things/{station.shadow_name}/shadow/name/2nd_info_{station.sn}/update"
+        unsubscribe = None
+
+        @callback
+        def on_report(message) -> None:
+            if not publishing or getattr(message, "retain", False):
+                return
+            try:
+                payload = json.loads(message.payload)
+            except (ValueError, TypeError):
+                return
+            state = payload.get("state") if isinstance(payload, dict) else None
+            reported = state.get("reported") if isinstance(state, dict) else None
+            if not isinstance(reported, dict) or reported.get("stationSN") != station.sn:
+                return
+            if str(reported.get(key)) == wire_value:
+                reported_match.set()
+            else:
+                reported_match.clear()
+
+        try:
+            async with asyncio.timeout(60):
+                unsubscribe = await mqtt.async_subscribe(
+                    topic, on_report, DEFAULT_SUBSCRIBE_QOS, encoding=DEFAULT_ENCODING
+                )
+                publishing = True
+                await self.xsense.do_thing(
+                    station,
+                    f"2nd_cfg_{station.sn}",
+                    {"state": {"desired": {
+                        "shadow": "infoBase", "stationSN": station.sn, key: wire_value,
+                    }}},
+                )
+                while not reported_match.is_set():
+                    await reported_match.wait()
+            station.set_data({key: wire_value})
+            self.async_update_listeners()
+        except TimeoutError as err:
+            raise HomeAssistantError("SBS0A did not confirm the setting change") from err
+        finally:
+            self._sbs0a_pending_settings.discard(identity)
+            if unsubscribe is not None:
+                unsubscribe()
 
     def mqtt_server(self, host: str):
         """Get mqtt server instance for specific host."""

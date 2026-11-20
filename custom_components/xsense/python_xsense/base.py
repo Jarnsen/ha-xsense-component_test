@@ -595,6 +595,8 @@ def _action_route_resolves(entity: Entity, action_def: dict) -> bool:
     if not getattr(entity, 'sn', None):
         return False
     try:
+        if (allowed := action_def.get("allowed")) is not None and not allowed(entity):
+            return False
         topic = _resolve_action_value(action_def.get('topic'), entity)
         shadow = _resolve_action_value(action_def.get('shadow'), entity)
         target = _resolve_action_value(action_def.get('target'), entity)

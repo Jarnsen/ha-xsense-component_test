@@ -106,6 +106,9 @@
       "activate": {
         "name": "Ativado"
       },
+      "low_co_warning": {
+        "name": "Aviso de baixa concentra\u00e7\u00e3o de mon\u00f3xido de carbono"
+      },
       "alarm_status": {
         "name": "Status do alarme"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Simula\u00e7\u00e3o de alarme de g\u00e1s"
+      },
+      "co_drill": {
+        "name": "Simula\u00e7\u00e3o de alarme de mon\u00f3xido de carbono"
+      },
       "fire_drill": {
         "name": "Exercício de alarme"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Modo noturno"
+      },
       "led_light": {
         "name": "Indicador LED"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Modo noturno",
+      "description": "Modo noturno: Estado de ativa\u00e7\u00e3o; Hora de in\u00edcio (HH:MM ou HHMM); Hora de t\u00e9rmino (HH:MM ou HHMM); Dias da semana (1 = domingo, 7 = s\u00e1bado).",
+      "fields": {
+        "enabled": {
+          "name": "Estado de ativa\u00e7\u00e3o"
+        },
+        "start_time": {
+          "name": "Hora de in\u00edcio (HH:MM ou HHMM)"
+        },
+        "end_time": {
+          "name": "Hora de t\u00e9rmino (HH:MM ou HHMM)"
+        },
+        "days": {
+          "name": "Dias da semana (1 = domingo, 7 = s\u00e1bado)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

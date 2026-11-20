@@ -106,6 +106,9 @@
       "activate": {
         "name": "활성화됨"
       },
+      "low_co_warning": {
+        "name": "\uc800\ub18d\ub3c4 \uc77c\uc0b0\ud654\ud0c4\uc18c \uacbd\uace0"
+      },
       "alarm_status": {
         "name": "알람 상태"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "\uac00\uc2a4 \uacbd\ubcf4 \ud6c8\ub828"
+      },
+      "co_drill": {
+        "name": "\uc77c\uc0b0\ud654\ud0c4\uc18c \uacbd\ubcf4 \ud6c8\ub828"
+      },
       "fire_drill": {
         "name": "알람 드릴"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "\uc57c\uac04 \ubaa8\ub4dc"
+      },
       "led_light": {
         "name": "LED 표시등"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "\uc57c\uac04 \ubaa8\ub4dc",
+      "description": "\uc57c\uac04 \ubaa8\ub4dc: \ud65c\uc131\ud654 \uc0c1\ud0dc; \uc2dc\uc791 \uc2dc\uac04 (HH:MM \ub610\ub294 HHMM); \uc885\ub8cc \uc2dc\uac04 (HH:MM \ub610\ub294 HHMM); \uc694\uc77c (1 = \uc77c\uc694\uc77c, 7 = \ud1a0\uc694\uc77c).",
+      "fields": {
+        "enabled": {
+          "name": "\ud65c\uc131\ud654 \uc0c1\ud0dc"
+        },
+        "start_time": {
+          "name": "\uc2dc\uc791 \uc2dc\uac04 (HH:MM \ub610\ub294 HHMM)"
+        },
+        "end_time": {
+          "name": "\uc885\ub8cc \uc2dc\uac04 (HH:MM \ub610\ub294 HHMM)"
+        },
+        "days": {
+          "name": "\uc694\uc77c (1 = \uc77c\uc694\uc77c, 7 = \ud1a0\uc694\uc77c)"
+        }
+      }
+    },
     "force_arm": {
       "name": "강제 경계 설정",
       "description": "열린 센서로 인해 차단된 재택 또는 외출 모드의 대기 중인 경계 설정 요청을 확인합니다. 열린 센서는 우회합니다.",

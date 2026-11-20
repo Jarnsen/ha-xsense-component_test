@@ -106,6 +106,9 @@
       "activate": {
         "name": "Aktivoitu"
       },
+      "low_co_warning": {
+        "name": "Varoitus pienest\u00e4 h\u00e4k\u00e4pitoisuudesta"
+      },
       "alarm_status": {
         "name": "Hälytyksen tila"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Kaasuh\u00e4lytysharjoitus"
+      },
+      "co_drill": {
+        "name": "H\u00e4k\u00e4h\u00e4lytysharjoitus"
+      },
       "fire_drill": {
         "name": "Hälytysporaus"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Y\u00f6tila"
+      },
       "led_light": {
         "name": "LED-merkkivalo"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Y\u00f6tila",
+      "description": "Y\u00f6tila: K\u00e4yt\u00f6ss\u00e4-tila; Aloitusaika (HH:MM tai HHMM); Lopetusaika (HH:MM tai HHMM); Viikonp\u00e4iv\u00e4t (1 = sunnuntai, 7 = lauantai).",
+      "fields": {
+        "enabled": {
+          "name": "K\u00e4yt\u00f6ss\u00e4-tila"
+        },
+        "start_time": {
+          "name": "Aloitusaika (HH:MM tai HHMM)"
+        },
+        "end_time": {
+          "name": "Lopetusaika (HH:MM tai HHMM)"
+        },
+        "days": {
+          "name": "Viikonp\u00e4iv\u00e4t (1 = sunnuntai, 7 = lauantai)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

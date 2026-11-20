@@ -106,6 +106,9 @@
       "activate": {
         "name": "已激活"
       },
+      "low_co_warning": {
+        "name": "\u4f4e\u6d53\u5ea6\u4e00\u6c27\u5316\u78b3\u8b66\u544a"
+      },
       "alarm_status": {
         "name": "报警状态"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "\u71c3\u6c14\u62a5\u8b66\u6f14\u7ec3"
+      },
+      "co_drill": {
+        "name": "\u4e00\u6c27\u5316\u78b3\u62a5\u8b66\u6f14\u7ec3"
+      },
       "fire_drill": {
         "name": "警报演习"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "\u591c\u95f4\u6a21\u5f0f"
+      },
       "led_light": {
         "name": "LED 指示灯"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "\u591c\u95f4\u6a21\u5f0f",
+      "description": "\u591c\u95f4\u6a21\u5f0f: \u542f\u7528\u72b6\u6001; \u5f00\u59cb\u65f6\u95f4\uff08HH:MM \u6216 HHMM\uff09; \u7ed3\u675f\u65f6\u95f4\uff08HH:MM \u6216 HHMM\uff09; \u661f\u671f\uff081 = \u661f\u671f\u65e5\uff0c7 = \u661f\u671f\u516d\uff09.",
+      "fields": {
+        "enabled": {
+          "name": "\u542f\u7528\u72b6\u6001"
+        },
+        "start_time": {
+          "name": "\u5f00\u59cb\u65f6\u95f4\uff08HH:MM \u6216 HHMM\uff09"
+        },
+        "end_time": {
+          "name": "\u7ed3\u675f\u65f6\u95f4\uff08HH:MM \u6216 HHMM\uff09"
+        },
+        "days": {
+          "name": "\u661f\u671f\uff081 = \u661f\u671f\u65e5\uff0c7 = \u661f\u671f\u516d\uff09"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {

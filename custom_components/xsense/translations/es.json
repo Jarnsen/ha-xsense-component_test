@@ -1,5 +1,23 @@
 {
   "services": {
+    "set_night_schedule": {
+      "name": "Modo nocturno",
+      "description": "Modo nocturno: Estado de activaci\u00f3n; Hora de inicio (HH:MM o HHMM); Hora de fin (HH:MM o HHMM); D\u00edas (1 = domingo, 7 = s\u00e1bado).",
+      "fields": {
+        "enabled": {
+          "name": "Estado de activaci\u00f3n"
+        },
+        "start_time": {
+          "name": "Hora de inicio (HH:MM o HHMM)"
+        },
+        "end_time": {
+          "name": "Hora de fin (HH:MM o HHMM)"
+        },
+        "days": {
+          "name": "D\u00edas (1 = domingo, 7 = s\u00e1bado)"
+        }
+      }
+    },
     "force_arm": {
       "name": "Confirmar armado forzado",
       "description": "Confirmar una solicitud de armado En casa o Fuera bloqueada por sensores abiertos. Se omitirán esos sensores.",
@@ -408,6 +426,9 @@
       "activate": {
         "name": "Activado"
       },
+      "low_co_warning": {
+        "name": "Aviso de baja concentraci\u00f3n de mon\u00f3xido de carbono"
+      },
       "alarm_status": {
         "name": "Estado de alarma"
       },
@@ -491,6 +512,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Simulacro de alarma de gas"
+      },
+      "co_drill": {
+        "name": "Simulacro de alarma de mon\u00f3xido de carbono"
+      },
       "fire_drill": {
         "name": "Simulacro de alarma"
       },
@@ -917,6 +944,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Modo nocturno"
+      },
       "led_light": {
         "name": "Indicador LED"
       },

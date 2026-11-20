@@ -106,6 +106,9 @@
       "activate": {
         "name": "Geactiveerd"
       },
+      "low_co_warning": {
+        "name": "Waarschuwing voor lage koolmonoxideconcentratie"
+      },
       "alarm_status": {
         "name": "Alarmstatus"
       },
@@ -189,6 +192,12 @@
       }
     },
     "button": {
+      "gas_drill": {
+        "name": "Gasalarmoefening"
+      },
+      "co_drill": {
+        "name": "Koolmonoxidealarmoefening"
+      },
       "fire_drill": {
         "name": "Alarmboor"
       },
@@ -615,6 +624,9 @@
       }
     },
     "switch": {
+      "xcg_night_mode": {
+        "name": "Nachtmodus"
+      },
       "led_light": {
         "name": "LED-indicator"
       },
@@ -879,6 +891,24 @@
     }
   },
   "services": {
+    "set_night_schedule": {
+      "name": "Nachtmodus",
+      "description": "Nachtmodus: Ingeschakelde status; Begintijd (HH:MM of HHMM); Eindtijd (HH:MM of HHMM); Weekdagen (1 = zondag, 7 = zaterdag).",
+      "fields": {
+        "enabled": {
+          "name": "Ingeschakelde status"
+        },
+        "start_time": {
+          "name": "Begintijd (HH:MM of HHMM)"
+        },
+        "end_time": {
+          "name": "Eindtijd (HH:MM of HHMM)"
+        },
+        "days": {
+          "name": "Weekdagen (1 = zondag, 7 = zaterdag)"
+        }
+      }
+    },
     "force_arm": {
       "fields": {
         "mode": {
