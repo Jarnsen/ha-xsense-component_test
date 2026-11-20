@@ -33,8 +33,32 @@ session, or change camera signaling.
 
 Native MQTT discovery is owned by Home Assistant's MQTT integration. The existing
 cloud entities remain intact, so enabling both can create separate devices and
-entities. Existing entity IDs, history, and automations are not migrated. Choose
-which entities to use in automations; this feature does not merge two sources or
+entities remain intact, so enabling both can create separate devices and
+entities. Existing entity IDs, history, and automations are not migrated.
+
+With Home Assistant's MQTT integration loaded, the existing XS0B-MR and
+XS01-M smoke and end-of-life entities also listen for live SBS50 reports on
+the standard discovery prefix. Matching requires the exact station and child
+serials. The packet formats are documented in the
+[XS0B-MR capture](https://forum.iobroker.net/topic/81775/test-adapter-xsense-x-sense/190)
+and the [XS01-M broker report](https://github.com/cschnidr/openhab-xsense-mqtt).
+The existing XH02-M heat alarm entity also accepts live reports on the
+[documented heat alarm topic](https://github.com/arteck/ioBroker.xsense/blob/b65e18dc830f3a4a5d461d5a9c7aaa6c31b1a224/test/haTopics.test.js).
+An active cloud indication takes
+precedence over a local clear. Retained messages are ignored, and an MQTT
+broker disconnect drops the local reading. Entity availability and controls
+still depend on the existing integration path; this is not offline failover.
+
+For alarm state (not end of life), a cloud clear can replace a missed local
+clear only when the clear report carries a device timestamp newer than the
+local alarm receipt. Untimestamped reports and unrelated telemetry do not
+clear the local alarm.
+
+Enable debug logging on the X-Sense integration to see local state changes
+and cloud clear recovery decisions. For an unmapped model, a redacted device
+diagnostics export from Home Assistant's MQTT integration can provide the
+discovery and state payloads that X-Sense does not yet subscribe to. Keep the
+same replacement identifiers across topics and payloads so they can be matched.
 provide automatic local/cloud failover.
 
 To disable publishing, submit the broker settings again with **Enable local

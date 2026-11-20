@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import json
+import logging
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from homeassistant import config_entries
 from homeassistant.components.binary_sensor import (
@@ -12,7 +16,8 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN, NON_ENTITY_DIAGNOSTIC_BINARY_SENSOR_KEYS
@@ -29,6 +34,7 @@ from .python_xsense.entity import Entity
 from .python_xsense.entity_map import EntityType, entities
 from .python_xsense.station import Station
 
+_LOGGER = logging.getLogger(__name__)
 
 @dataclass(kw_only=True, frozen=True)
 class XSenseBinarySensorEntityDescription(BinarySensorEntityDescription):
@@ -682,6 +688,37 @@ async def async_setup_entry(
     setup_dynamic_entities(entry, coordinator, async_add_entities, _entities)
 
 
+_LOCAL_XS0B_STATES = {
+    "alarm_status": ("smokealarm", "Detected", "Cleared"),
+    "is_life_end": ("lifeend", "EOL", "Normal"),
+}
+_LOCAL_SMOKE_MODELS = frozenset({"XS0B-MR", "XS01-M"})
+
+
+def _local_alarm_state(device: Device, key: str) -> tuple[str, str, str] | None:
+    if device.type == "XH02-M" and key == "alarm_status":
+        return "heatalarm", "Detected", "Cleared"
+    if device.type in _LOCAL_SMOKE_MODELS:
+        return _LOCAL_XS0B_STATES.get(key)
+    return None
+
+
+def _local_xs0b_topic(device: Entity | None, key: str) -> str | None:
+    if not isinstance(device, Device):
+        return None
+    station = device.station
+    mapping = _local_alarm_state(device, key)
+    if station.type != "SBS50" or mapping is None:
+        return None
+    if not isinstance(station.sn, str) or not re.fullmatch(r"[0-9A-Fa-f]{8}", station.sn):
+        return None
+    if not isinstance(device.sn, str) or not re.fullmatch(r"[0-9A-Fa-f]{8}", device.sn):
+        return None
+    node = f"SBS50{station.sn}_{device.sn}"
+    attribute = mapping[0]
+    return f"homeassistant/binary_sensor/{node}/{node}_{attribute}/state"
+
+
 class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
     """Binary sensors for xsense."""
 
@@ -699,8 +736,102 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
         self._station_id = station_id
         self.entity_description = entity_description
         self._attr_available = False  # This overrides the default
+        self._local_state: bool | None = None
+        self._local_alarm_at: datetime | None = None
+        self._local_topic: str | None = None
 
         super().__init__(coordinator, entity, station_id)
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        topic = _local_xs0b_topic(self._current_entity(), self.entity_description.key)
+        if topic is None or "mqtt" not in self.hass.config.components:
+            return
+        from homeassistant.components import mqtt
+
+        try:
+            unsubscribe = await mqtt.async_subscribe(self.hass, topic, self._local_message, qos=1)
+        except HomeAssistantError:
+            _LOGGER.debug("SBS50 local MQTT subscription unavailable: entity=%s", self.entity_description.key)
+            return
+        self._local_topic = topic
+
+        def remove_subscription() -> None:
+            self._local_topic = None
+            self._local_state = None
+            unsubscribe()
+
+        self.async_on_remove(remove_subscription)
+        self.async_on_remove(
+            mqtt.async_subscribe_connection_status(self.hass, self._local_connection)
+        )
+
+    @callback
+    def _local_connection(self, connected: bool) -> None:
+        if not connected and self._local_state is not None:
+            self._local_state = None
+            self._local_alarm_at = None
+            _LOGGER.debug("SBS50 local MQTT disconnected; using cloud: entity=%s", self.entity_description.key)
+            self.async_write_ha_state()
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        if self._local_alarm_at is not None:
+            device = self._current_entity()
+            if (
+                isinstance(device, Device)
+                and self._local_topic == _local_xs0b_topic(device, self.entity_description.key)
+                and (clear := device.cloud_alarm_clear_time) is not None
+                and self._local_alarm_at < clear <= datetime.now(UTC)
+                and self.entity_description.value_fn(device) is False
+            ):
+                self._local_state = None
+                self._local_alarm_at = None
+                _LOGGER.debug("SBS50 newer cloud alarm clear recovered local state: model=%s", device.type)
+        super()._handle_coordinator_update()
+
+    @callback
+    def _local_message(self, message) -> None:
+        device = self._current_entity()
+        if (
+            not isinstance(device, Device)
+            or message.retain
+            or self._local_topic != message.topic
+            or message.topic != _local_xs0b_topic(
+                device, self.entity_description.key
+            )
+        ):
+            return
+        try:
+            payload = json.loads(message.payload)
+        except (ValueError, TypeError):
+            return
+        if not isinstance(payload, dict):
+            return
+        mapping = _local_alarm_state(device, self.entity_description.key)
+        if mapping is None:
+            return
+        _, on, off = mapping
+        status = payload.get("status")
+        if status not in (on, off):
+            _LOGGER.debug(
+                "Ignored SBS50 local MQTT status outside the verified mapping: model=%s field=%s",
+                device.type, self.entity_description.key,
+            )
+            return
+        previous = self.is_on
+        self._local_state = status == on
+        self._local_alarm_at = (
+            datetime.now(UTC)
+            if self._local_state and self.entity_description.key == "alarm_status"
+            else None
+        )
+        if previous != self.is_on:
+            _LOGGER.debug(
+                "SBS50 local MQTT state changed: model=%s field=%s active=%s",
+                device.type, self.entity_description.key, self._local_state,
+            )
+            self.async_write_ha_state()
 
     @property
     def is_on(self) -> bool | None:
@@ -709,7 +840,12 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
         if device is None:
             return None
 
-        return self.entity_description.value_fn(device)
+        cloud_state = self.entity_description.value_fn(device)
+        if cloud_state is True or self._local_state is None:
+            return cloud_state
+        if self._local_topic != _local_xs0b_topic(device, self.entity_description.key):
+            return cloud_state
+        return self._local_state
 
     @property
     def device_class(self) -> BinarySensorDeviceClass | None:

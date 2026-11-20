@@ -5,6 +5,7 @@
     "@theosnel"
   ],
   "config_flow": true,
+  "after_dependencies": ["mqtt"],
   "dependencies": [
     "ffmpeg",
     "frontend",
