@@ -5,7 +5,11 @@ import logging
 from unittest.mock import Mock
 
 import pytest
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from test_audit_repairs import make_coordinator, make_station
+
+from custom_components.xsense import entity, sensor
+from custom_components.xsense.callback_timing import CallbackTiming
 
 
 def test_slow_dispatch_breakdown_and_log_cooldown(monkeypatch, caplog):
@@ -83,3 +87,74 @@ def test_rssi_child_dispatch_keeps_fast_and_slow_counts(monkeypatch):
     assert samples["slowest"]["total_seconds"] == pytest.approx(0.9)
     assert samples["slowest"]["reported_child_count"] == 22
     assert "private-" not in json.dumps(samples)
+
+
+def test_slowest_sensor_phases_and_type_are_from_the_same_write(monkeypatch):
+    station = make_station()
+    coordinator = make_coordinator(station)
+    timing = coordinator._mqtt_callback_timing = CallbackTiming()
+    now = 0.0
+
+    def advance(seconds):
+        nonlocal now
+        now += seconds
+
+    monkeypatch.setattr(entity, "perf_counter", lambda: now)
+    monkeypatch.setattr(sensor, "perf_counter", lambda: now)
+
+    def lookup(self):
+        advance(self.lookup_delay)
+        return station
+
+    def is_available(self):
+        advance(self.availability_delay)
+        return True
+
+    def write(self):
+        if isinstance(self, sensor.XSenseSensorEntity):
+            assert self.available
+            assert self.native_value == "private-reading"
+        advance(self.other_delay)
+
+    monkeypatch.setattr(entity.XSenseEntity, "_current_entity", lookup)
+    monkeypatch.setattr(CoordinatorEntity, "available", property(is_available))
+    monkeypatch.setattr(CoordinatorEntity, "_handle_coordinator_update", write)
+
+    def make_sensor(key, lookup_delay, availability_delay, value_delay, other_delay):
+        def read_value(_):
+            advance(value_delay)
+            return "private-reading"
+
+        item = sensor.XSenseSensorEntity(
+            coordinator, station,
+            sensor.XSenseSensorEntityDescription(key=key, value_fn=read_value),
+        )
+        item.entity_id = f"sensor.private_{key}"
+        item.lookup_delay = lookup_delay
+        item.availability_delay = availability_delay
+        item.other_delay = other_delay
+        return item
+
+    slow = make_sensor("battery", 0.02, 0.03, 0.04, 0.835)
+    fast = make_sensor("wifi_rssi", 0.06, 0.07, 0.08, 0.0)
+    slow._handle_coordinator_update()
+    fast._handle_coordinator_update()
+    work = timing.snapshot(now)
+    assert work["entity_write_calls"] == 2
+    assert work["slowest_entity_write_seconds"] == pytest.approx(0.945)
+    assert work["slowest_entity_write_class"] == "XSenseSensorEntity"
+    assert work["slowest_sensor_type"] == "battery"
+    assert work["slowest_sensor_lookup_seconds"] == pytest.approx(0.04)
+    assert work["slowest_sensor_availability_seconds"] == pytest.approx(0.03)
+    assert work["slowest_sensor_value_seconds"] == pytest.approx(0.04)
+    assert "private" not in json.dumps(work)
+    assert slow._mqtt_sensor_write_timing is fast._mqtt_sensor_write_timing is None
+
+    # A longer non-sensor write replaces the entire winner, not only the duration.
+    control = object.__new__(entity.XSenseEntity)
+    control.coordinator = coordinator
+    control.other_delay = 1.0
+    control._handle_coordinator_update()
+    work = timing.snapshot(now)
+    assert work["slowest_entity_write_class"] == "XSenseEntity"
+    assert not any(key.startswith("slowest_sensor_") for key in work)
