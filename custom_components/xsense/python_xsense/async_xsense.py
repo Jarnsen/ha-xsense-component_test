@@ -100,6 +100,7 @@ _HOUSE_STATE_DEVICE_TYPES = {
     "XC0C-iA",
     "XC0C-iR",
     "XC0M-iR",
+    "XCG0A-iA",
     "XP0A-iR",
     "XP0H-iR",
     "XP0J-iA",
@@ -113,6 +114,7 @@ _HOUSE_STATE_DEVICE_TYPES = {
     "XS0B-iR",
     "XS0AA-iA",
     "XS0AB-iA",
+    "XS0AE-iA",
     "XS0E-iR",
     "XS0R-iA",
 }
@@ -178,12 +180,14 @@ def _station_state_shadow_names(station: Station) -> tuple[str, ...]:
         return ()
     if station.type == "SBS10":
         return ("mainpage",)
-    if station.type == "SBS50":
+    if station.type in {"SBS50", "SBS0A"}:
         return ("2nd_mainpage",)
     return ()
 
 
 def _station_info_shadow_names(station: Station) -> tuple[str, ...]:
+    if station.type == "SBS0A":
+        return ()
     if station.type == "SBS10":
         return (f"info_{station.sn}",)
     if station.type == "SBS50" or station.type in _SECOND_INFO_DEVICE_TYPES:

@@ -271,6 +271,8 @@ def alarm_device_class(entity: Entity) -> BinarySensorDeviceClass | None:
 
 def has_alarm_status(entity: Entity) -> bool:
     """Return if an XSense entity should expose an alarm status sensor."""
+    if entity.type == "XCG0A-iA":
+        return False
     return "alarmStatus" in entity.data or entity.type in ALARM_STATUS_DEVICE_TYPES
 
 
@@ -412,7 +414,30 @@ def motion_detection_value(entity: Entity) -> bool | None:
     return boolean_state(entity.data.get("isMoved"))
 
 
+def _xcg0a_alarm(entity: Entity, *, gas: bool) -> bool | None:
+    """Decode APK 7358's independent gas and CO home card indicators."""
+    alarm = status_code(entity.data.get("alarmStatus"))
+    mute = status_code(entity.data.get("muteStatus"))
+    if alarm is None:
+        return None
+    if alarm == 5:
+        return True
+    return (alarm == 4 and mute in {0, 7, 8}) if gas else (alarm == 2 and mute in {0, 5})
+
+
 _ALL_SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
+    XSenseBinarySensorEntityDescription(
+        key="gas_alarm_status",
+        device_class=BinarySensorDeviceClass.GAS,
+        exists_fn=lambda entity: entity.type == "XCG0A-iA",
+        value_fn=lambda entity: _xcg0a_alarm(entity, gas=True),
+    ),
+    XSenseBinarySensorEntityDescription(
+        key="co_alarm_status",
+        device_class=BinarySensorDeviceClass.CO,
+        exists_fn=lambda entity: entity.type == "XCG0A-iA",
+        value_fn=lambda entity: _xcg0a_alarm(entity, gas=False),
+    ),
     XSenseBinarySensorEntityDescription(
         key="alarm_status",
         translation_key="alarm_status",

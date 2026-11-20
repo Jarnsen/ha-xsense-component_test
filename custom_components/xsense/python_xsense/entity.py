@@ -162,6 +162,7 @@ _DASHED_THING_TYPES = {
     "XC0C-iA",
     "XC0C-iR",
     "XC0M-iR",
+    "XCG0A-iA",
     "XP0A-iR",
     "XP0H-iR",
     "XP0J-iA",
@@ -173,6 +174,7 @@ _DASHED_THING_TYPES = {
     "XS0B-iR",
     "XS0AA-iA",
     "XS0AB-iA",
+    "XS0AE-iA",
     "XS0R-iA",
 }
 

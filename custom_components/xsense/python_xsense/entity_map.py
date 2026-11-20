@@ -10,6 +10,7 @@ class EntityType(Enum):
     CO = "co"
     COMBI = "combi"
     DOOR = "door"
+    GAS_CO = "gas_co"
     HEAT = "heat"
     KEYPAD = "keypad"
     LIGHT = "light"
@@ -342,6 +343,8 @@ entities = {
         "type": EntityType.BASESTATION,
         "identifier": lambda entity: f"SBS50{entity.sn}",
     },
+    "SBS0A": {"type": EntityType.BASESTATION, "actions": []},
+    "XCG0A-iA": {"type": EntityType.GAS_CO, "actions": []},
     "SSC0A": {
         "type": EntityType.CAMERA,
     },
@@ -407,6 +410,8 @@ entities = {
             FireDrillAction(),
         ],
     },
+    # APK 7358 P1.c0 registers the same device card as SD19-MN.
+    "XS0AD-MN": {"type": EntityType.SMOKE, "actions": []},
     "SDA51": {
         "type": EntityType.ALARM,
         "actions": [
@@ -685,6 +690,8 @@ entities = {
             FireDrillAction(),
         ],
     },
+    # APK 7358 P1.M reads CO concentration and alarm status.
+    "XC0M-MR": {"type": EntityType.CO, "actions": []},
     "XP0A-iR": {
         "type": EntityType.COMBI,
         "actions": [WifiAlarmMuteAction()],
@@ -798,4 +805,6 @@ entities = {
             FireDrillAction(),
         ],
     },
+    # APK 7358 P1.a0 is shared with XS0AA-iA and XS0AB-iA.
+    "XS0AE-iA": {"type": EntityType.SMOKE, "actions": []},
 }

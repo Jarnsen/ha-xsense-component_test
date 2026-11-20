@@ -2767,6 +2767,11 @@ def test_wifi_action_requires_resolvable_target_context():
 
 def test_entity_map_covers_current_apk_router_models():
     apk_models = {
+        "SBS0A",
+        "XC0M-MR",
+        "XCG0A-iA",
+        "XS0AD-MN",
+        "XS0AE-iA",
         "CB0T-3B",
         "CB0T-4B",
         "CB0Z-3S",
@@ -2850,7 +2855,7 @@ def test_entity_map_covers_current_apk_router_models():
 def test_entity_map_matches_current_apk_model_families():
     expected_families = {
         entity_map.EntityType.ALARM: {"SDA51"},
-        entity_map.EntityType.BASESTATION: {"SBS10", "SBS50"},
+        entity_map.EntityType.BASESTATION: {"SBS0A", "SBS10", "SBS50"},
         entity_map.EntityType.CAMERA: {"SSC0A", "SSC0B"},
         entity_map.EntityType.CO: {
             "XC01-M",
@@ -2858,6 +2863,7 @@ def test_entity_map_matches_current_apk_model_families():
             "XC0C-MR",
             "XC0C-iA",
             "XC0C-iR",
+            "XC0M-MR",
             "XC0M-iR",
         },
         entity_map.EntityType.COMBI: {
@@ -2885,6 +2891,7 @@ def test_entity_map_matches_current_apk_model_families():
             "XP0W-iA",
         },
         entity_map.EntityType.DOOR: {"SDS0A", "SES01"},
+        entity_map.EntityType.GAS_CO: {"XCG0A-iA"},
         entity_map.EntityType.HEAT: {"XH02-M"},
         entity_map.EntityType.KEYPAD: {"SKP01", "SKP0A"},
         entity_map.EntityType.LIGHT: {"SPL51", "SSL51", "SWL51", "group-L"},
@@ -2906,6 +2913,8 @@ def test_entity_map_matches_current_apk_model_families():
             "XS03-iWX",
             "XS0AA-iA",
             "XS0AB-iA",
+            "XS0AD-MN",
+            "XS0AE-iA",
             "XS0B-MR",
             "XS0B-iR",
             "XS0D-MR",
