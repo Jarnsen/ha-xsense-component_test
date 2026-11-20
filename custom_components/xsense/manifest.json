@@ -1,11 +1,11 @@
 {
   "domain": "xsense",
   "name": "X-Sense Home Security",
+  "after_dependencies": ["mqtt"],
   "codeowners": [
     "@theosnel"
   ],
   "config_flow": true,
-  "after_dependencies": ["mqtt"],
   "dependencies": [
     "ffmpeg",
     "frontend",
