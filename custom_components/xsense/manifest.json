@@ -1,6 +1,7 @@
 {
   "domain": "xsense",
   "name": "X-Sense Home Security",
+  "after_dependencies": ["mqtt"],
   "codeowners": [
     "@theosnel"
   ],
