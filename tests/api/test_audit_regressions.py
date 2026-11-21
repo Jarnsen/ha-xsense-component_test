@@ -12,6 +12,8 @@ from custom_components.xsense.python_xsense.async_xsense import (
     AsyncXSense,
     _station_info_shadow_names,
 )
+from custom_components.xsense.python_xsense.aws_signer import AWSSigner
+from custom_components.xsense.python_xsense.base import house_shadow_pages
 from custom_components.xsense.python_xsense.event_parser import mqtt_reported_data
 from custom_components.xsense.python_xsense.exceptions import APIFailure, SessionExpired
 from custom_components.xsense.python_xsense.mapping import (
@@ -112,7 +114,70 @@ async def test_house_shadow_failure_is_not_silently_successful(status):
     client._lastres = SimpleNamespace(status=status)
     client.get_house = AsyncMock(return_value={"message": "failure"})
     with pytest.raises(APIFailure):
-        await client.get_house_state(SimpleNamespace())
+        await client.get_house_state(SimpleNamespace(stations={
+            "smoke": SimpleNamespace(type="XS03-WX"),
+        }))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [200, 403])
+async def test_second_generation_wifi_house_skips_legacy_shadow(status):
+    client = AsyncXSense()
+    house = SimpleNamespace(stations={
+        "combo": SimpleNamespace(type="XP0A-iR"),
+        "smoke": SimpleNamespace(type="XS0B-iR"),
+    })
+
+    async def get_house(_house, page):
+        client._lastres = SimpleNamespace(status=403 if page == "mainpage" else status)
+        return {"state": {}}
+
+    client.get_house = AsyncMock(side_effect=get_house)
+    if status == 403:
+        with pytest.raises(APIFailure, match="HTTP 403"):
+            await client.get_house_state(house)
+    else:
+        await client.get_house_state(house)
+    client.get_house.assert_awaited_once_with(house, "2nd_mainpage")
+
+
+@pytest.mark.parametrize(
+    "models,pages",
+    [
+        ([("SBS50", None), ("SBS0A", None)], ()),
+        ([("XS03-WX", None)], ("mainpage",)),
+        ([("XC04-WX", None), ("SBS50", None)], ("2nd_mainpage",)),
+        ([("XS03-WX", None), ("SBS50", None), ("XP0A-iR", None)], ("mainpage", "2nd_mainpage")),
+        ([("XS01-WX", "8")], ("mainpage",)),
+        ([("XS01-WX", "9")], ("2nd_mainpage",)),
+        ([("XS01-WX", None)], ("mainpage", "2nd_mainpage")),
+        ([("XS0AE-iA", None)], ("2nd_mainpage",)),
+        ([("XS0AE-iA", None), ("XS0B-iR", None)], ("mainpage", "2nd_mainpage")),
+        ([("XCG0A-iA", None)], ("2nd_mainpage",)),
+    ],
+)
+def test_house_shadow_pages_follow_apk_model_rules(models, pages):
+    house = SimpleNamespace(stations={
+        i: SimpleNamespace(type=model, data={"smokeEdition": edition})
+        for i, (model, edition) in enumerate(models)
+    })
+    assert house_shadow_pages(house) == pages
+
+
+def test_house_shadow_uses_discovered_house_and_session_signing_credentials():
+    client = AsyncXSense()
+    client.username = "dedicated@example.invalid"
+    client.aws_session_token = "iot-session-token"
+    client.signer = AWSSigner("iot-access-key", "iot-secret", client.aws_session_token)
+    house = SimpleNamespace(house_id="shared-house-id", mqtt_region="eu-central-1")
+
+    url, headers = client._house_request(house, "2nd_mainpage")
+
+    assert url == "https://eu-central-1.x-sense-iot.com/things/shared-house-id/shadow?name=2nd_mainpage"
+    signed = {key.lower(): value for key, value in headers.items()}
+    assert signed["x-amz-security-token"] == "iot-session-token"
+    assert "Credential=iot-access-key/" in signed["authorization"]
+    assert "/eu-central-1/iotdata/aws4_request" in signed["authorization"]
 
 
 @pytest.mark.parametrize("status", [403, 429, 500])

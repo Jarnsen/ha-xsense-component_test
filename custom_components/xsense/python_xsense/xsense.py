@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import requests
 
 from .aws_signer import AWSSigner
-from .base import XSenseBase
+from .base import XSenseBase, house_shadow_pages
 from .entity import Entity
 from .entity_map import entities
 from .exceptions import APIFailure, SessionExpired, XSenseError
@@ -357,7 +357,7 @@ class XSense(XSenseBase):
         return self.api_call("104015", **params)
 
     def get_house_state(self, house: House):
-        for page in ('mainpage', '2nd_mainpage'):
+        for page in house_shadow_pages(house):
             res = self.get_house(house, page)
 
             if self._lastres.status_code == 404:

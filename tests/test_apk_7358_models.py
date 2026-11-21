@@ -289,7 +289,7 @@ async def test_xcg0a_decodes_independent_indicators_from_house_shadow():
     assert [action["action"] for action in entities[station.type]["actions"]] == [
         "test", "gas_drill", "co_drill", "mute",
     ]
-    house = SimpleNamespace(get_station_by_sn={station.sn: station}.get)
+    house = SimpleNamespace(stations={"gas": station}, get_station_by_sn={station.sn: station}.get)
     client = object.__new__(AsyncXSense)
     client._lastres = SimpleNamespace(status=200)
     descriptions = {sensor.key: sensor for sensor in SENSORS}
@@ -312,7 +312,7 @@ async def test_xcg0a_decodes_independent_indicators_from_house_shadow():
             "status": {"alarmStatus": alarm, "muteStatus": mute}, "coPpm": "42",
         }}
         client.get_house = AsyncMock(side_effect=[
-            {"state": {}}, {"state": {"reported": reported}},
+            {"state": {"reported": reported}},
         ])
         await client.get_house_state(house)
         client.get_house.assert_awaited_with(house, "2nd_mainpage")
