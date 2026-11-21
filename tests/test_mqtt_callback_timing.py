@@ -89,7 +89,7 @@ def test_rssi_child_dispatch_keeps_fast_and_slow_counts(monkeypatch):
     assert "private-" not in json.dumps(samples)
 
 
-def test_slowest_sensor_phases_and_type_are_from_the_same_write(monkeypatch):
+def test_sensor_writes_keep_aggregate_metrics_without_sensor_detail(monkeypatch):
     station = make_station()
     coordinator = make_coordinator(station)
     timing = coordinator._mqtt_callback_timing = CallbackTiming()
@@ -100,7 +100,6 @@ def test_slowest_sensor_phases_and_type_are_from_the_same_write(monkeypatch):
         now += seconds
 
     monkeypatch.setattr(entity, "perf_counter", lambda: now)
-    monkeypatch.setattr(sensor, "perf_counter", lambda: now)
 
     def lookup(self):
         advance(self.lookup_delay)
@@ -143,12 +142,9 @@ def test_slowest_sensor_phases_and_type_are_from_the_same_write(monkeypatch):
     assert work["entity_write_calls"] == 2
     assert work["slowest_entity_write_seconds"] == pytest.approx(0.945)
     assert work["slowest_entity_write_class"] == "XSenseSensorEntity"
-    assert work["slowest_sensor_type"] == "battery"
-    assert work["slowest_sensor_lookup_seconds"] == pytest.approx(0.04)
-    assert work["slowest_sensor_availability_seconds"] == pytest.approx(0.03)
-    assert work["slowest_sensor_value_seconds"] == pytest.approx(0.04)
+    assert work["entity_write_seconds"] == pytest.approx(now)
+    assert not any(key.startswith("slowest_sensor_") for key in work)
     assert "private" not in json.dumps(work)
-    assert slow._mqtt_sensor_write_timing is fast._mqtt_sensor_write_timing is None
 
     # A longer non-sensor write replaces the entire winner, not only the duration.
     control = object.__new__(entity.XSenseEntity)
@@ -157,4 +153,6 @@ def test_slowest_sensor_phases_and_type_are_from_the_same_write(monkeypatch):
     control._handle_coordinator_update()
     work = timing.snapshot(now)
     assert work["slowest_entity_write_class"] == "XSenseEntity"
+    assert work["slowest_entity_write_seconds"] == pytest.approx(1.0)
+    assert work["entity_write_calls"] == 3
     assert not any(key.startswith("slowest_sensor_") for key in work)

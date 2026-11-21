@@ -12,7 +12,6 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .callback_timing import SensorWriteTiming
 from .const import DOMAIN, MANUFACTURER
 from .identity_store import (
     IdentityConflictError,
@@ -206,8 +205,6 @@ class XSenseEntity(CoordinatorEntity):
     _attr_has_entity_name = True
     _station_id: str | None = None
     _mqtt_child_state_only = False
-    _mqtt_measure_sensor_write = False
-    _mqtt_sensor_write_timing: SensorWriteTiming | None = None
 
     def __init__(
         self,
@@ -318,12 +315,6 @@ class XSenseEntity(CoordinatorEntity):
         ):
             return
         timing = getattr(self.coordinator, "_mqtt_callback_timing", None)
-        sensor_write = None
-        previous_sensor_write = None
-        if timing is not None and self._mqtt_measure_sensor_write:
-            previous_sensor_write = self._mqtt_sensor_write_timing
-            sensor_write = SensorWriteTiming(self.entity_description.key)
-            self._mqtt_sensor_write_timing = sensor_write
         started = perf_counter() if timing is not None else 0.0
         try:
             super()._handle_coordinator_update()
@@ -331,14 +322,11 @@ class XSenseEntity(CoordinatorEntity):
         finally:
             if timing is not None:
                 elapsed = perf_counter() - started
-                if sensor_write is not None:
-                    self._mqtt_sensor_write_timing = previous_sensor_write
                 timing.entity_write_seconds += elapsed
                 timing.entity_write_calls += 1
                 if elapsed > timing.slowest_entity_write_seconds:
                     timing.slowest_entity_write_seconds = elapsed
                     timing.slowest_entity_write_class = type(self).__name__
-                    timing.slowest_sensor_write = sensor_write
 
     def _current_entity_is_online(self) -> bool:
         """Return if the current X-Sense entity and parent station are online."""
