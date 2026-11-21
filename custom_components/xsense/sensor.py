@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from time import perf_counter
 from typing import TYPE_CHECKING
 
 from homeassistant import config_entries
@@ -855,7 +854,6 @@ class XSenseSensorEntity(XSenseEntity, SensorEntity):
 
     entity_description: XSenseSensorEntityDescription
     _mqtt_child_state_only = True
-    _mqtt_measure_sensor_write = True
 
     def __init__(
         self,
@@ -871,29 +869,6 @@ class XSenseSensorEntity(XSenseEntity, SensorEntity):
 
         super().__init__(coordinator, entity, station_id)
 
-    def _current_entity(self) -> Entity | None:
-        sample = self._mqtt_sensor_write_timing
-        if sample is None:
-            return super()._current_entity()
-        start = perf_counter()
-        try:
-            return super()._current_entity()
-        finally:
-            sample.lookup_seconds += perf_counter() - start
-
-    @property
-    def available(self) -> bool:
-        sample = self._mqtt_sensor_write_timing
-        if sample is None:
-            return super().available
-        lookup_before = sample.lookup_seconds
-        start = perf_counter()
-        try:
-            return super().available
-        finally:
-            lookup_elapsed = sample.lookup_seconds - lookup_before
-            sample.availability_seconds += max(0.0, perf_counter() - start - lookup_elapsed)
-
     @property
     def native_value(self) -> str | int | float | datetime | None:
         """Return the state of the sensor."""
@@ -901,11 +876,4 @@ class XSenseSensorEntity(XSenseEntity, SensorEntity):
         if device is None:
             return None
 
-        sample = self._mqtt_sensor_write_timing
-        if sample is None:
-            return self.entity_description.value_fn(device)
-        start = perf_counter()
-        try:
-            return self.entity_description.value_fn(device)
-        finally:
-            sample.value_seconds += perf_counter() - start
+        return self.entity_description.value_fn(device)
