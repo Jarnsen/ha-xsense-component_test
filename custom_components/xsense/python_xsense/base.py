@@ -371,9 +371,14 @@ class XSenseBase:
         if server_date.tzinfo is None:
             server_date = server_date.replace(tzinfo=UTC)
         offset = (datetime.now(UTC) - server_date).total_seconds()
+        previous_offset = get_global_time_offset()
         if abs(offset) < _CLOCK_SKEW_THRESHOLD_SECONDS:
-            return False
-        if abs(offset - get_global_time_offset()) < 1:
+            if previous_offset == 0:
+                return False
+            set_global_time_offset(0)
+            LOGGER.debug("Cleared stale AWS signing clock skew after host clock resync")
+            return True
+        if abs(offset - previous_offset) < 1:
             return False
         set_global_time_offset(offset)
         LOGGER.warning(
