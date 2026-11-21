@@ -3712,6 +3712,49 @@ def test_apply_clock_skew_ignores_small_offset():
 
 
 @pytest.mark.asyncio
+async def test_house_shadow_retry_clears_stale_clock_skew_after_reload(monkeypatch):
+    from email.utils import format_datetime
+
+    server_now = datetime(2026, 11, 21, 15, 0, tzinfo=UTC)
+    host_now = server_now - timedelta(seconds=840)
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return host_now.astimezone(tz)
+
+    monkeypatch.setattr(base, "datetime", Clock)
+    monkeypatch.setattr(aws_signer.datetime, "datetime", Clock)
+    monkeypatch.setattr(aws_signer, "_GLOBAL_TIME_OFFSET_SECONDS", 0.0)
+    dates = {"Date": format_datetime(server_now, usegmt=True)}
+    initial = async_xsense.AsyncXSense()
+    assert initial._apply_clock_skew_from_response(FakeGetResponse(403, dates, {}))
+    assert aws_signer.get_global_time_offset() == -840
+
+    host_now = server_now
+    client = async_xsense.AsyncXSense()
+    client.signer = aws_signer.AWSSigner("key", "secret", "token")
+    client.aws_session_token = "token"
+    client._aws_token_expiring = lambda: False
+    client.load_aws = AsyncMock()
+    stamps = []
+
+    def get(url, headers):
+        stamp = headers["X-Amz-Date"]
+        stamps.append(stamp)
+        if stamp != "20261121T150000Z":
+            return FakeGetResponse(403, dates, {"message": "Forbidden"})
+        return FakeGetResponse(200, dates, {"state": {"reported": {}}})
+
+    client._get_session = AsyncMock(return_value=SimpleNamespace(get=get))
+    shared_house = SimpleNamespace(house_id="shared", mqtt_region="eu-central-1")
+    assert await client.get_house(shared_house, "2nd_mainpage") == {"state": {"reported": {}}}
+    assert stamps == ["20261121T151400Z", "20261121T150000Z"]
+    assert aws_signer.get_global_time_offset() == 0
+    client.load_aws.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_get_thing_corrects_clock_skew_and_retries():
     from email.utils import format_datetime
 
