@@ -28,6 +28,45 @@ LOGGER = logging.getLogger(__name__)
 # correction. This keeps a normal 403 (e.g. bad credentials) on the same path.
 _CLOCK_SKEW_THRESHOLD_SECONDS = 60
 
+# APK p149l3.a and S1.f: house-level pages, not per-station shadows.
+_SECOND_GEN_HOUSE_MODELS = frozenset({
+    "XC04-WX", "XS0E-iR", "XS0B-iR", "SWS0B", "STH0C", "XR0A-iR",
+    "XC0M-iR", "XC0C-iR", "XC0C-iA", "XS0R-iA", "XS0AA-iA", "XS0AB-iA",
+    "SC07-WX", "XP0H-iR", "SC06-WX", "XP0A-iR", "CB0T-4B", "W/R-SCA(VL)-0G",
+    "XP0V-iA", "XP0W-iA", "XP0S-iA", "XP0T-iA", "SC07-iA", "XCG0A-iA", "XP0J-iA",
+})
+
+
+def house_shadow_pages(house: House) -> tuple[str, ...]:
+    """Select the union of house pages required by the discovered Wi-Fi devices."""
+    legacy = modern = False
+    has_smoke_list = False
+    for station in house.stations.values():
+        model = station.type
+        # The APK also requires a nonempty smoke list before reading mainpage.
+        has_smoke_list |= model in {"XS01-WX", "XS03-WX", "XS0E-iR", "XS0B-iR"}
+        if model in _SECOND_GEN_HOUSE_MODELS:
+            modern = True
+        elif model == "XS03-WX":
+            legacy = True
+        elif model == "XS0AE-iA":
+            legacy = modern = True
+        elif model == "XS01-WX":
+            edition = station.data.get("smokeEdition")
+            if edition is None or not str(edition).strip():
+                legacy = modern = True
+            else:
+                try:
+                    second_gen = int(edition) >= 9
+                except (TypeError, ValueError):
+                    second_gen = False
+                modern |= second_gen
+                legacy |= not second_gen
+    return (
+        *(("mainpage",) if legacy and has_smoke_list else ()),
+        *(("2nd_mainpage",) if modern else ()),
+    )
+
 
 def _mac_json(value) -> str:
     """Return compact Gson-style JSON for X-Sense MAC input."""

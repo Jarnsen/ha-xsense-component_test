@@ -13,7 +13,7 @@ from typing import Any
 import aiohttp
 
 from .aws_signer import AWSSigner
-from .base import XSenseBase, shadow_update_body
+from .base import XSenseBase, house_shadow_pages, shadow_update_body
 from .entity import Entity
 from .entity_map import EntityType
 from .exceptions import APIFailure, SessionExpired, XSenseError
@@ -2342,7 +2342,7 @@ class AsyncXSense(XSenseBase):
         return None
 
     async def get_house_state(self, house: House):
-        for page in ("mainpage", "2nd_mainpage"):
+        for page in house_shadow_pages(house):
             res = await self.get_house(house, page)
 
             if self._lastres.status == 404:
