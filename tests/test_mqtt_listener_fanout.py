@@ -45,6 +45,125 @@ def test_child_scope_contains_every_reported_child():
     assert scope == frozenset(_serial_identity(child) for child in station.devices.values())
 
 
+@pytest.mark.parametrize("rssi_key", ["wifiRSSI", "wifiRssi"])
+def test_station_only_rssi_does_not_write_child_states(monkeypatch, rssi_key):
+    from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
+    station = station_with_children()
+    other_station = make_station(serial="other-station")
+    coordinator = make_coordinator(station, other_station)
+    coordinator.data["devices"] = dict(station.devices)
+    description = next(item for item in sensor.SENSORS if item.key == "wifi_rssi")
+    station_sensor = sensor.XSenseSensorEntity(coordinator, station, description)
+    station_sensor._coordinator_state_initialized = True
+    other_sensor = sensor.XSenseSensorEntity(coordinator, other_station, description)
+    other_sensor._coordinator_state_initialized = True
+    child = station.devices["0"]
+    child_sensor = sensor.XSenseSensorEntity(coordinator, child, description, station.entity_id)
+    child_sensor._coordinator_state_initialized = True
+    writes = []
+    monkeypatch.setattr(CoordinatorEntity, "_handle_coordinator_update", lambda item: writes.append(item))
+    coordinator.async_update_listeners = lambda: [
+        item._handle_coordinator_update() for item in (station_sensor, child_sensor, other_sensor)
+    ]
+    coordinator.async_event_received(
+        f"$aws/things/{station.shadow_name}/shadow/name/2nd_mainpage/update",
+        json.dumps({"state": {"reported": {"stationSN": station.sn, rssi_key: -48}}}).encode(),
+    )
+    assert station.data["wifiRSSI"] == -48
+    assert writes == [station_sensor]
+    coordinator.async_update_listeners()
+    assert writes == [station_sensor, station_sensor, child_sensor, other_sensor]
+
+
+def test_rssi_alias_with_child_keeps_scope_and_timing_count():
+    station = station_with_children()
+    coordinator = make_coordinator(station)
+    scopes = []
+    coordinator.async_update_listeners = lambda: scopes.append(coordinator._mqtt_child_write_scope)
+    coordinator.async_event_received(
+        f"$aws/things/{station.shadow_name}/shadow/name/2nd_mainpage/update",
+        json.dumps({"state": {"reported": {
+            "stationSn": station.sn, "wifiRssi": -48, "devs": {"0": {"alarmStatus": "1"}},
+        }}}).encode(),
+    )
+    assert scopes == [frozenset({_serial_identity(station.devices["0"])})]
+    assert coordinator._mqtt_rssi_child_dispatch_work["slowest"]["reported_child_count"] == 1
+
+
+def test_resolved_mqtt_message_does_not_build_routing_debug_context_when_disabled(monkeypatch):
+    from custom_components.xsense import coordinator as module
+
+    station = station_with_children()
+    coordinator = make_coordinator(station)
+    coordinator.async_update_listeners = Mock()
+    context = Mock(return_value={})
+    monkeypatch.setattr(module, "_mqtt_event_debug_context", context)
+    monkeypatch.setattr(module.LOGGER, "isEnabledFor", lambda _: False)
+    coordinator.async_event_received(
+        f"$aws/things/{station.shadow_name}/shadow/name/2nd_mainpage/update",
+        json.dumps({"state": {"reported": {"stationSN": station.sn, "wifiRSSI": -48}}}).encode(),
+    )
+    assert station.data["wifiRSSI"] == -48
+    context.assert_not_called()
+
+
+@pytest.mark.parametrize("route", ["unmatched", "self_test"])
+@pytest.mark.parametrize("debug", [False, True])
+def test_mqtt_debug_context_is_lazy_without_changing_dispatch(monkeypatch, route, debug):
+    from custom_components.xsense import coordinator as module
+
+    station = station_with_children()
+    coordinator = make_coordinator(station)
+    coordinator.async_update_listeners = Mock()
+    context = Mock(return_value={})
+    fire_self_test_event = Mock()
+    monkeypatch.setattr(module, "_mqtt_event_debug_context", context)
+    monkeypatch.setattr(module, "_fire_self_test_event", fire_self_test_event)
+    monkeypatch.setattr(module.LOGGER, "isEnabledFor", lambda _: debug)
+    if route == "self_test":
+        shadow_name, serial, shadow = station.shadow_name, station.sn, "2nd_selftestup"
+    else:
+        shadow_name, serial, shadow = "unknown-thing", "unknown-serial", "2nd_mainpage"
+    coordinator.async_event_received(
+        f"$aws/things/{shadow_name}/shadow/name/{shadow}/update",
+        json.dumps({"state": {"reported": {"stationSN": serial, "wifiRSSI": -48}}}).encode(),
+    )
+    expected_calls = 2 if route == "self_test" else 1
+    assert context.call_count == (expected_calls if debug else 0)
+    if route == "self_test":
+        fire_self_test_event.assert_called_once()
+        coordinator.async_update_listeners.assert_called_once()
+    else:
+        fire_self_test_event.assert_not_called()
+        coordinator.async_update_listeners.assert_not_called()
+
+
+def test_repeated_sbs50_presence_keeps_freshness_without_fanning_out():
+    station = station_with_children()
+    coordinator = make_coordinator(station)
+    coordinator.async_update_listeners = Mock()
+
+    def deliver(event, timestamp):
+        coordinator.async_event_received(
+            f"$aws/events/presence/{event}/{station.shadow_name}",
+            json.dumps({
+                "clientId": station.shadow_name, "eventType": event, "timestamp": timestamp,
+            }).encode(),
+        )
+
+    deliver("connected", 1)
+    first_revision = station._xsense_presence_revision
+    deliver("connected", 3)
+    assert station._xsense_presence_revision is not first_revision
+    coordinator.async_update_listeners.assert_called_once()
+    deliver("disconnected", 2)
+    assert station.online is True
+    deliver("disconnected", 4)
+    assert station.online is False
+    assert coordinator.async_update_listeners.call_count == 2
+
+
 @pytest.mark.parametrize("shape", ["top_level", "nested_list", "reported_list"])
 def test_equivalent_child_collections_get_the_same_scope(shape):
     station = station_with_children()

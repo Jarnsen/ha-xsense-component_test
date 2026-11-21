@@ -303,14 +303,18 @@ class XSenseEntity(CoordinatorEntity):
     def _handle_coordinator_update(self) -> None:
         """Skip unrelated notifications, never an entity's explicit state write."""
         scope = getattr(self.coordinator, "_mqtt_child_write_scope", None)
+        rssi_station = getattr(self.coordinator, "_mqtt_rssi_write_station", None)
         if (
             scope is not None
             and self._mqtt_child_state_only
             and getattr(self, "_coordinator_state_initialized", False)
-            and self._station_id
             and self._physical_identity is not None
-            and self._physical_identity not in scope
-            and self._current_entity() is not None
+            and (
+                (self._station_id and self._physical_identity not in scope)
+                or (self._station_id is None and rssi_station is not None)
+            )
+            and (current := self._current_entity()) is not None
+            and current is not rssi_station
         ):
             return
         timing = getattr(self.coordinator, "_mqtt_callback_timing", None)
