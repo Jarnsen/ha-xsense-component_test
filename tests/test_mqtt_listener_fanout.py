@@ -92,14 +92,13 @@ def test_rssi_alias_with_child_keeps_scope_and_timing_count():
 
 
 def test_resolved_mqtt_message_does_not_build_routing_debug_context_when_disabled(monkeypatch):
-    from custom_components.xsense import coordinator as module
-
     station = station_with_children()
     coordinator = make_coordinator(station)
+    namespace = coordinator._async_process_mqtt_event.__func__.__globals__
     coordinator.async_update_listeners = Mock()
     context = Mock(return_value={})
-    monkeypatch.setattr(module, "_mqtt_event_debug_context", context)
-    monkeypatch.setattr(module.LOGGER, "isEnabledFor", lambda _: False)
+    monkeypatch.setitem(namespace, "_mqtt_event_debug_context", context)
+    monkeypatch.setattr(namespace["LOGGER"], "isEnabledFor", lambda _: False)
     coordinator.async_event_received(
         f"$aws/things/{station.shadow_name}/shadow/name/2nd_mainpage/update",
         json.dumps({"state": {"reported": {"stationSN": station.sn, "wifiRSSI": -48}}}).encode(),
@@ -111,16 +110,15 @@ def test_resolved_mqtt_message_does_not_build_routing_debug_context_when_disable
 @pytest.mark.parametrize("route", ["unmatched", "self_test"])
 @pytest.mark.parametrize("debug", [False, True])
 def test_mqtt_debug_context_is_lazy_without_changing_dispatch(monkeypatch, route, debug):
-    from custom_components.xsense import coordinator as module
-
     station = station_with_children()
     coordinator = make_coordinator(station)
+    namespace = coordinator._async_process_mqtt_event.__func__.__globals__
     coordinator.async_update_listeners = Mock()
     context = Mock(return_value={})
     fire_self_test_event = Mock()
-    monkeypatch.setattr(module, "_mqtt_event_debug_context", context)
-    monkeypatch.setattr(module, "_fire_self_test_event", fire_self_test_event)
-    monkeypatch.setattr(module.LOGGER, "isEnabledFor", lambda _: debug)
+    monkeypatch.setitem(namespace, "_mqtt_event_debug_context", context)
+    monkeypatch.setitem(namespace, "_fire_self_test_event", fire_self_test_event)
+    monkeypatch.setattr(namespace["LOGGER"], "isEnabledFor", lambda _: debug)
     if route == "self_test":
         shadow_name, serial, shadow = station.shadow_name, station.sn, "2nd_selftestup"
     else:
