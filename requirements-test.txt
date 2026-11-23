@@ -5,7 +5,12 @@ pytest-asyncio==1.5.0
 aiohttp==3.11.13; python_version < "3.14"
 homeassistant==2025.3.0; python_version < "3.14"
 homeassistant==2026.11.2; python_version >= "3.14"
-paho-mqtt==2.2.0
+# Exercise the dependencies shipped by Core, not just the newest PyPI builds.
+boto3==1.34.131; python_version < "3.14"
+botocore==1.34.131; python_version < "3.14"
+boto3==1.42.97; python_version >= "3.14"
+botocore==1.42.97; python_version >= "3.14"
+paho-mqtt==2.1.0
 numpy==2.5.5
 PyTurboJPEG==2.6.1
 av==19.0.2
