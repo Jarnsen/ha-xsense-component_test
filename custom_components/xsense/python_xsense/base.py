@@ -5,6 +5,7 @@ import hmac
 import json
 import logging
 import math
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from typing import ClassVar
@@ -667,8 +668,8 @@ def _resolve_action_value(value, entity: Entity):
 
 def _state_child_device(station: Station, child_key, child_state):
     """Return the child device targeted by an app shadow payload."""
+    getter = getattr(station, "get_device_by_identifier", None)
     for value in _child_state_identifiers(child_key, child_state):
-        getter = getattr(station, "get_device_by_identifier", None)
         if getter is not None and (dev := getter(value)):
             return dev
         if dev := station.get_device_by_sn(value):
@@ -678,9 +679,7 @@ def _state_child_device(station: Station, child_key, child_state):
 
 def _merge_top_level_child_state(station: Station, station_data: dict, children):
     """Move APK child-id keyed shadow records into the child update collection."""
-    if isinstance(children, dict):
-        child_updates = children.copy()
-    elif isinstance(children, list):
+    if isinstance(children, list):
         child_updates = list(children)
     else:
         child_updates = children
@@ -690,7 +689,7 @@ def _merge_top_level_child_state(station: Station, station_data: dict, children)
             continue
         getter = getattr(station, "get_device_by_identifier", None)
         device = getter(key) if getter is not None else None
-        if device is None and station.get_device_by_sn(key):
+        if device is None:
             device = station.get_device_by_sn(key)
         if device is None:
             continue
@@ -702,6 +701,8 @@ def _merge_top_level_child_state(station: Station, station_data: dict, children)
             continue
         if not isinstance(child_updates, dict):
             child_updates = {}
+        elif child_updates is children:
+            child_updates = children.copy()
         child_updates[key] = station_data.pop(key)
     return child_updates
 
@@ -716,32 +717,30 @@ def _child_state_items(children):
                 yield None, child_state
 
 
-def _child_state_identifiers(child_key, child_state) -> tuple[str, ...]:
-    """Return device serial identifiers used by X-Sense child shadows."""
-    values = [child_key]
-    if isinstance(child_state, dict):
-        values.extend(
-            child_state.get(key)
-            for key in (
-                "deviceSN",
-                "deviceSn",
-                "_deviceSN",
-                "_deviceSn",
-                "devSerialNumber",
-                "serialNumber",
-                "sn",
-            )
-        )
-    seen = set()
-    result = []
-    for value in values:
+def _child_state_identifiers(child_key, child_state) -> Iterator[str]:
+    """Try the shadow key before reading fallback IDs from the payload."""
+    first = str(child_key) if child_key is not None else ""
+    if first:
+        yield first
+    if not isinstance(child_state, dict):
+        return
+    seen = {first}
+    for key in (
+        "deviceSN",
+        "deviceSn",
+        "_deviceSN",
+        "_deviceSn",
+        "devSerialNumber",
+        "serialNumber",
+        "sn",
+    ):
+        value = child_state.get(key)
         if value is None:
             continue
         text = str(value)
-        if text and text not in seen:
+        if text not in seen and text:
             seen.add(text)
-            result.append(text)
-    return tuple(result)
+            yield text
 
 
 def _apply_sbs50_mode_result(station: Station, station_data: dict) -> None:

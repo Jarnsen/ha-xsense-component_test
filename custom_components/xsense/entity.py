@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from time import perf_counter
 from typing import TYPE_CHECKING, Any
+from weakref import ReferenceType, ref
 
+from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -51,13 +53,9 @@ def setup_dynamic_entities(
         nonlocal known_devices
         # Discovery runs synchronously inside MQTT delivery. Share one identity
         # index across constructors instead of scanning every device per entity.
-        validate_current_identities(coordinator)
+        identity_count = len(getattr(coordinator, "_xsense_stable_device_ids", ()))
         counts: dict[tuple, int] = {}
-        for collection in ("stations", "devices"):
-            for item in (coordinator.data or {}).get(collection, {}).values():
-                identity = _serial_identity(item)
-                key = (collection, identity)
-                counts[key] = counts.get(key, 0) + 1
+        validate_current_identities(coordinator, counts=counts)
         previous = coordinator.__dict__.get("_xsense_discovery_identity_counts")
         coordinator._xsense_discovery_identity_counts = counts
         try:
@@ -76,13 +74,14 @@ def setup_dynamic_entities(
                 key: item for key, item in devices.items()
                 if known_devices.get(key) is not item
                 or is_camera_entity(item)
-                or _serial_identity(item) is None
-                or _serial_identity(item) in scope
+                or (identity := _serial_identity(item)) is None
+                or identity in scope
             }
             candidates = entity_factory(should_add, scan_devices)
             # Constructors can assign new stable IDs. Check them before adding
             # anything to HA, preserving conflict detection for the whole batch.
-            validate_current_identities(coordinator)
+            if candidates or len(getattr(coordinator, "_xsense_stable_device_ids", ())) != identity_count:
+                validate_current_identities(coordinator)
             known_devices = devices
         finally:
             if previous is None:
@@ -205,6 +204,8 @@ class XSenseEntity(CoordinatorEntity):
     _attr_has_entity_name = True
     _station_id: str | None = None
     _mqtt_child_state_only = False
+    _mqtt_parent_availability_independent = False
+    _last_control_record: ReferenceType[Entity] | None = None
 
     def __init__(
         self,
@@ -265,11 +266,11 @@ class XSenseEntity(CoordinatorEntity):
 
     def _current_entity(self) -> Entity | None:
         """Return the current coordinator entity for this Home Assistant entity."""
-        data = self.coordinator.data or {}
-        if self._station_id is not None:
-            entities = data.get("devices", {})
-        else:
-            entities = data.get("stations", {})
+        if not (data := self.coordinator.data):
+            return None
+        entities = data.get("devices" if self._station_id is not None else "stations")
+        if entities is None:
+            return None
         return self._current_entity_from(entities)
 
     def _current_entity_from(self, entities: dict[str, Entity]) -> Entity | None:
@@ -301,24 +302,62 @@ class XSenseEntity(CoordinatorEntity):
         """Skip unrelated notifications, never an entity's explicit state write."""
         scope = getattr(self.coordinator, "_mqtt_child_write_scope", None)
         rssi_station = getattr(self.coordinator, "_mqtt_rssi_write_station", None)
+        write_station = getattr(self.coordinator, "_mqtt_write_station", None)
+        initialized = getattr(self, "_coordinator_state_initialized", False)
+        resolved = True
+        current = None
+        track_control = False
         if (
-            scope is not None
-            and self._mqtt_child_state_only
-            and getattr(self, "_coordinator_state_initialized", False)
+            self._mqtt_child_state_only
             and self._physical_identity is not None
-            and (
-                (self._station_id and self._physical_identity not in scope)
+        ):
+            track_control = bool(self._station_id) and not self._mqtt_parent_availability_independent
+            refresh_parent_availability = (
+                scope is not None and not self._mqtt_parent_availability_independent
+                and scope is getattr(self.coordinator, "_mqtt_parent_availability_scope", None)
+            )
+            outside_child_scope = scope is not None and (
+                (self._station_id and not refresh_parent_availability and self._physical_identity not in scope)
                 or (self._station_id is None and rssi_station is not None)
             )
-            and (current := self._current_entity()) is not None
-            and current is not rssi_station
-        ):
-            return
+            # A refresh while a child is absent must not mark it ready for
+            # filtering again. Recheck it until a write sees the child return.
+            if write_station is not None or outside_child_scope or not initialized:
+                current = self._current_entity()
+                resolved = current is not None
+                if initialized and current is not None:
+                    if outside_child_scope and current is not rssi_station:
+                        return
+                    if write_station is not None:
+                        parent = getattr(current, "station", None) if self._station_id else current
+                        if parent is not None and parent is not write_station:
+                            parent_identity = _serial_identity(parent)
+                            if parent_identity is not None and parent_identity != _serial_identity(write_station):
+                                return
+                    if track_control and refresh_parent_availability and self._physical_identity not in scope:
+                        dedup = getattr(self.coordinator, "_mqtt_parent_availability_dedup", None)
+                        if dedup is not None and dedup[0] is scope and self._control_availability_is_published(
+                            current, available=dedup[1],
+                        ):
+                            return
+                    if scope is not None and self._mqtt_parent_availability_independent:
+                        observations = getattr(self.coordinator, "_mqtt_availability_observations", None)
+                        if (
+                            observations is not None and observations[0] is scope
+                            and self._mqtt_unreported_observation_is_current(current, observations[1])
+                        ):
+                            return
         timing = getattr(self.coordinator, "_mqtt_callback_timing", None)
         started = perf_counter() if timing is not None else 0.0
         try:
             super()._handle_coordinator_update()
-            self._coordinator_state_initialized = True
+            # A returning entity needs one write before it can be filtered again.
+            self._coordinator_state_initialized = resolved
+            if track_control and current is not None:
+                try:
+                    self._last_control_record = ref(current)
+                except TypeError:
+                    self._last_control_record = None
         finally:
             if timing is not None:
                 elapsed = perf_counter() - started
@@ -327,6 +366,28 @@ class XSenseEntity(CoordinatorEntity):
                 if elapsed > timing.slowest_entity_write_seconds:
                     timing.slowest_entity_write_seconds = elapsed
                     timing.slowest_entity_write_class = type(self).__name__
+
+    def _control_availability_is_published(self, current: Entity, *, available: bool) -> bool:
+        """Only skip if this control's record and published availability both match."""
+        if self._last_control_record is None or self._last_control_record() is not current:
+            return False
+        if self.hass is None or self.entity_id is None:
+            return False
+        published = self.hass.states.get(self.entity_id)
+        return (
+            published is not None
+            and (published.state != STATE_UNAVAILABLE) is available
+            and self.available is available
+        )
+
+    def _mqtt_unreported_observation_is_current(self, current: Entity, station_fields: Collection[str]) -> bool:
+        return False
+
+    def _mqtt_observation_state_is_published(self, expected: str) -> bool:
+        if expected == STATE_UNAVAILABLE or self.hass is None or self.entity_id is None:
+            return False
+        published = self.hass.states.get(self.entity_id)
+        return published is not None and published.state == expected and self.available
 
     def _current_entity_is_online(self) -> bool:
         """Return if the current X-Sense entity and parent station are online."""
@@ -375,17 +436,42 @@ def _entity_by_id_or_serial(
     identity: tuple | None = None,
 ) -> Entity | None:
     """Return an entity by stable ID, falling back to its physical serial."""
-    if entity_id is not None and (entity := entities.get(entity_id)) and (identity is None or _serial_identity(entity) == identity):
+    if (
+        entity_id is not None
+        and (entity := entities.get(entity_id))
+        and (identity is None or _matches_serial_identity(entity, identity))
+    ):
         return entity
     if serial is None:
         return None
-    matches = [
-        entity
-        for entity in entities.values()
-        if _entity_serial(entity) == serial
-        and (identity is None or _serial_identity(entity) == identity)
-    ]
-    return matches[0] if len(matches) == 1 else None
+    match = None
+    for entity in entities.values():
+        if _entity_serial(entity) != serial or (
+            identity is not None and not _matches_serial_identity(entity, identity)
+        ):
+            continue
+        if match is not None:
+            return None
+        match = entity
+    return match
+
+
+def _identity_house_id(entity: Entity) -> str | None:
+    house_id = getattr(getattr(entity, "house", None), "house_id", None)
+    return str(house_id) if house_id is not None else None
+
+
+def _matches_serial_identity(entity: Entity, identity: tuple) -> bool:
+    """Check a live registry record without rebuilding its identity tuple."""
+    is_child, house_id, parent_serial, model, serial = identity
+    if serial is None or _entity_serial(entity) != serial or getattr(entity, "type", None) != model:
+        return False
+    station = getattr(entity, "station", None)
+    if (station is not None) != is_child:
+        return False
+    if (is_child and parent_serial is None) or _entity_serial(station) != parent_serial:
+        return False
+    return _identity_house_id(station if station is not None else entity) == house_id
 
 
 def _serial_identity(entity: Entity | None) -> tuple | None:
@@ -394,13 +480,13 @@ def _serial_identity(entity: Entity | None) -> tuple | None:
     if serial is None:
         return None
     station = getattr(entity, "station", None)
-    if station is not None and _entity_serial(station) is None:
+    parent_serial = _entity_serial(station)
+    if station is not None and parent_serial is None:
         return None
-    house = getattr(station if station is not None else entity, "house", None)
     return (
         station is not None,
-        str(house.house_id) if getattr(house, "house_id", None) is not None else None,
-        _entity_serial(station),
+        _identity_house_id(station if station is not None else entity),
+        parent_serial,
         getattr(entity, "type", None),
         serial,
     )

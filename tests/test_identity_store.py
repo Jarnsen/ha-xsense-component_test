@@ -122,6 +122,33 @@ def test_discovery_filters_existing_entities_before_construction():
     ]
 
 
+def test_discovery_validates_and_counts_each_identity_in_one_pass(monkeypatch):
+    parent = device("station", serial="BASE")
+    child = device("child", parent=parent)
+    records = {item.entity_id: _serial_identity(item) for item in (parent, child)}
+    current = NS(
+        data={"stations": {"station": parent}, "devices": {"child": child}},
+        _xsense_stable_device_ids={identity: key for key, identity in records.items()},
+    )
+    seen = []
+    original = entity_module._serial_identity
+
+    def observe(item):
+        seen.append(item.entity_id)
+        return original(item)
+
+    def factory(_should_add, _devices):
+        assert current._xsense_discovery_identity_counts == {
+            ("stations", records["station"]): 1,
+            ("devices", records["child"]): 1,
+        }
+        return []
+
+    monkeypatch.setattr(entity_module, "_serial_identity", observe)
+    setup_dynamic_entities(NS(), current, lambda _entities: None, factory)
+    assert seen == ["station", "child"]
+
+
 def test_discovery_identity_work_is_linear_per_notification(monkeypatch):
     count = 40
     current = NS(data={"stations": {
@@ -497,6 +524,59 @@ def test_exact_id_reuse_does_not_redirect_existing_wrapper():
     assert _entity_by_id_or_serial({"old": other}, "old", "SERIAL", _serial_identity(original)) is None
 
 
+def test_state_lookup_checks_identity_without_rebuilding_the_tuple(monkeypatch):
+    parent = device("station", serial="STATION", house=42)
+    child = device("child", serial=123, parent=parent)
+    identity = _serial_identity(child)
+
+    def unexpected_identity(_entity):
+        pytest.fail("State lookup rebuilt a physical identity tuple")
+
+    monkeypatch.setattr(entity_module, "_serial_identity", unexpected_identity)
+    assert _entity_by_id_or_serial({"child": child}, "child", "123", identity) is child
+
+    replacement = device("new", serial="123", parent=parent)
+    reused = device("child", serial="123", parent=device(serial="OTHER", house="42"))
+    assert _entity_by_id_or_serial(
+        {"child": reused, "new": replacement}, "child", "123", identity
+    ) is replacement
+
+
+@pytest.mark.parametrize(
+    "change", ["serial", "model", "station", "missing_station_serial", "house", "no_station"]
+)
+def test_state_lookup_rejects_partial_child_identity_matches(change):
+    original = device("child", parent=device("station", serial="STATION", house=42))
+    other = device("child", parent=device("station", serial="STATION", house="42"))
+    if change == "serial":
+        other.sn = "OTHER"
+    elif change == "model":
+        other.type = "OTHER"
+    elif change == "station":
+        other.station.sn = "OTHER"
+    elif change == "missing_station_serial":
+        other.station.sn = ""
+    elif change == "house":
+        other.station.house.house_id = "OTHER"
+    else:
+        other.station = None
+    assert _entity_by_id_or_serial(
+        {"child": other}, "child", original.sn, _serial_identity(original)
+    ) is None
+
+
+def test_serial_fallback_stops_at_second_matching_identity():
+    original = device("old")
+
+    class AmbiguousRecords(dict):
+        def values(self):
+            yield device("new-1")
+            yield device("new-2")
+            pytest.fail("Lookup continued after ambiguity was established")
+
+    assert _entity_by_id_or_serial(AmbiguousRecords(), "old", "SERIAL", _serial_identity(original)) is None
+
+
 @pytest.mark.asyncio
 async def test_dynamic_discovery_collision_adds_nothing_then_recovers(stores):
     original = device("new")
@@ -521,6 +601,28 @@ async def test_dynamic_discovery_collision_adds_nothing_then_recovers(stores):
     listeners[0]()
     assert [item.unique_id for item in added] == ["old", "other"]
     await storage.async_close_identity_store(current)
+
+
+@pytest.mark.parametrize("adds_identity", [False, True])
+def test_dynamic_discovery_revalidates_empty_batch_only_when_ids_change(monkeypatch, adds_identity):
+    current = coordinator(device("new"))
+    current._xsense_stable_device_ids = {}
+    namespace = setup_dynamic_entities.__globals__
+    checks = []
+    validate = namespace["validate_current_identities"]
+
+    def check(item, *, counts=None):
+        checks.append((len(item._xsense_stable_device_ids), counts is not None))
+        validate(item, counts=counts)
+
+    def factory(_should_add, _devices):
+        if adds_identity:
+            resolve(current, current.data["stations"]["new"])
+        return []
+
+    monkeypatch.setitem(namespace, "validate_current_identities", check)
+    setup_dynamic_entities(NS(), current, lambda _entities: None, factory)
+    assert checks == ([(0, True), (1, False)] if adds_identity else [(0, True)])
 
 
 @pytest.mark.asyncio

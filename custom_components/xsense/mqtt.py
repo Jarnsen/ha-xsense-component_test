@@ -5,7 +5,7 @@ import contextlib
 import inspect
 import logging
 from collections import defaultdict, deque
-from collections.abc import AsyncGenerator, Callable, Coroutine, Iterable
+from collections.abc import AsyncGenerator, Callable, Coroutine
 from functools import partial
 from itertools import chain
 from time import monotonic, perf_counter
@@ -35,7 +35,6 @@ from .python_xsense.mqtt_helper import MQTTHelper
 
 _LOGGER = logging.getLogger(__name__)
 
-INITIAL_SUBSCRIBE_COOLDOWN = 0.5
 UNSUBSCRIBE_COOLDOWN = 0.1
 TIMEOUT_ACK = 10
 RECONNECT_INTERVAL_SECONDS = 15
@@ -94,14 +93,6 @@ class XSenseMQTT:
             set
         )
         self._wildcard_subscriptions: set[Subscription] = set()
-        self._retained_topics: defaultdict[Subscription, set[str]] = defaultdict(set)
-        self._matching_subscriptions_cache: dict[str, list[Subscription]] = {}
-
-        self._subscribe_debouncer = EnsureJobAfterCooldown(
-            INITIAL_SUBSCRIBE_COOLDOWN, self._async_perform_subscriptions
-        )
-        self._max_qos: defaultdict[str, int] = defaultdict(int)  # topic, max qos
-        self._pending_subscriptions: dict[str, int] = {}  # topic, qos
         self._unsubscribe_debouncer = EnsureJobAfterCooldown(
             UNSUBSCRIBE_COOLDOWN, self._async_perform_unsubscribes
         )
@@ -112,6 +103,7 @@ class XSenseMQTT:
         self._message_queue: deque[tuple[Callable[[str, bytes], None], str, bytes]] = deque()
         self._message_dispatch_handle: asyncio.Handle | None = None
         self._message_dispatch_stopped = False
+        self._message_stopping_drains = 0
         self._message_read_deferred = False
         self._reader_resume_handle: asyncio.Handle | None = None
         self._message_dispatch_idle: asyncio.Future[None] | None = None
@@ -126,6 +118,7 @@ class XSenseMQTT:
         self.connected = False
         self._connection_lock = asyncio.Lock()
         self._pending_operations: dict[int, asyncio.Future[None]] = {}
+        self._early_publish_mid: int | None = None
         self._direct_subscribe_results: dict[Subscription, asyncio.Future[bool]] = {}
 
         self._misc_timer: asyncio.TimerHandle | None = None
@@ -192,7 +185,7 @@ class XSenseMQTT:
         """Handle reading data from the socket."""
         if client is not self._mqttc:
             return
-        if self._message_queue or self._message_dispatch_idle is not None:
+        if self._message_stopping_drains or self._message_queue or self._message_dispatch_idle is not None:
             # Do not accept another Paho batch while its predecessor is pending.
             self._message_read_deferred = True
             return
@@ -332,7 +325,13 @@ class XSenseMQTT:
         self, topic: str, payload: PublishPayloadType, qos: int, retain: bool
     ) -> None:
         """Publish a MQTT message."""
-        msg_info = self._mqttc.publish(topic, payload, qos, retain)
+        # Paho can deliver a QoS 0 callback inside publish(), before it returns the MID.
+        self._early_publish_mid = -1
+        try:
+            msg_info = self._mqttc.publish(topic, payload, qos, retain)
+            acknowledged = self._early_publish_mid == msg_info.mid
+        finally:
+            self._early_publish_mid = None
         _LOGGER.debug(
             "Transmitting%s message on %s: '%s', mid: %s, qos: %s",
             " retained" if retain else "",
@@ -341,7 +340,8 @@ class XSenseMQTT:
             msg_info.mid,
             qos,
         )
-        await self._async_wait_for_mid_or_raise(msg_info.mid, msg_info.rc)
+        if not acknowledged or msg_info.rc != 0:
+            await self._async_wait_for_mid_or_raise(msg_info.mid, msg_info.rc)
 
     async def _async_run_connection_job[T](self, func: Callable[..., T], *args: Any) -> T:
         """Keep the connection lock held until a Paho worker stops using the client."""
@@ -515,8 +515,6 @@ class XSenseMQTT:
         self._should_reconnect = False
         self._connection_generation += 1
         try:
-            await self._subscribe_debouncer.async_cleanup()
-            self._subscribe_debouncer.set_timeout(INITIAL_SUBSCRIBE_COOLDOWN)
             await self._unsubscribe_debouncer.async_cleanup()
             await self._async_perform_unsubscribes()
             if pending := list(self._pending_operations.values()):
@@ -529,7 +527,6 @@ class XSenseMQTT:
                 self._async_cancel_reconnect()
                 if disconnect_paho_client:
                     self._mqttc.disconnect()
-            self._matching_subscriptions_cache.clear()
 
     # unchanged
     @callback
@@ -539,7 +536,6 @@ class XSenseMQTT:
         """Restore tracked subscriptions after reload."""
         for subscription in subscriptions:
             self._async_track_subscription(subscription)
-        self._matching_subscriptions_cache.clear()
 
     # unchanged
     @callback
@@ -548,7 +544,6 @@ class XSenseMQTT:
 
         This method does not send a SUBSCRIBE message to the broker.
 
-        The caller is responsible clearing the cache of _matching_subscriptions.
         """
         if subscription.is_simple_match:
             self._simple_subscriptions[subscription.topic].add(subscription)
@@ -562,7 +557,6 @@ class XSenseMQTT:
 
         This method does not send an UNSUBSCRIBE message to the broker.
 
-        The caller is responsible clearing the cache of _matching_subscriptions.
         """
         topic = subscription.topic
         try:
@@ -575,24 +569,6 @@ class XSenseMQTT:
                 self._wildcard_subscriptions.remove(subscription)
         except (KeyError, ValueError) as exc:
             raise xsense_error("subscription_remove_twice") from exc
-
-    # unchanged
-    @callback
-    def _async_queue_subscriptions(
-        self, subscriptions: Iterable[tuple[str, int]], queue_only: bool = False
-    ) -> None:
-        """Queue requested subscriptions."""
-        for subscription in subscriptions:
-            topic, qos = subscription
-            if (max_qos := self._max_qos[topic]) < qos:
-                self._max_qos[topic] = (max_qos := qos)
-            self._pending_subscriptions[topic] = max_qos
-            # Cancel any pending unsubscribe since we are subscribing now
-            if topic in self._pending_unsubscribes:
-                self._pending_unsubscribes.remove(topic)
-        if queue_only:
-            return
-        self._subscribe_debouncer.async_schedule()
 
     # unchanged
     def _exception_message(
@@ -658,7 +634,6 @@ class XSenseMQTT:
         )
 
         self._async_track_subscription(subscription)
-        self._matching_subscriptions_cache.clear()
 
         if self.connected:
             generation = self._connection_generation
@@ -701,9 +676,6 @@ class XSenseMQTT:
     def _async_remove(self, subscription: Subscription) -> None:
         """Remove subscription."""
         self._async_untrack_subscription(subscription)
-        self._matching_subscriptions_cache.clear()
-        if subscription in self._retained_topics:
-            del self._retained_topics[subscription]
         # Only unsubscribe if currently connected
         if self.connected:
             self._async_unsubscribe(subscription.topic)
@@ -712,17 +684,8 @@ class XSenseMQTT:
     def _async_unsubscribe(self, topic: str) -> None:
         """Unsubscribe from a topic."""
         if self._is_active_subscription(topic):
-            if self._max_qos[topic] == 0:
-                return
-            subs = self._matching_subscriptions(topic)
-            self._max_qos[topic] = max(sub.qos for sub in subs)
             # Other subscriptions on topic remaining - don't unsubscribe.
             return
-        if topic in self._max_qos:
-            del self._max_qos[topic]
-        if topic in self._pending_subscriptions:
-            # Avoid any pending subscription to be executed
-            del self._pending_subscriptions[topic]
 
         self._pending_unsubscribes.add(topic)
         self._unsubscribe_debouncer.async_schedule()
@@ -737,13 +700,16 @@ class XSenseMQTT:
         # Cancellation propagates, retaining subscription intent for reconnect.
         if generation is None:
             generation = self._connection_generation
+        restored_qos: dict[str, int] = {}
         for subscription in self.subscriptions:
             if not self.connected or generation != self._connection_generation:
                 return
             if not self._is_tracked_subscription(subscription):
                 continue
             try:
-                await self._async_perform_subscription(subscription)
+                if restored_qos.get(subscription.topic) != subscription.qos:
+                    restored_qos.pop(subscription.topic, None)
+                    await self._async_perform_subscription(subscription)
             except Exception as exc:  # noqa: BLE001 - MQTT client errors vary by transport.
                 if not self.connected or generation != self._connection_generation:
                     return
@@ -752,13 +718,13 @@ class XSenseMQTT:
                 if (result := self._direct_subscribe_results.get(subscription)) and not result.done():
                     result.set_result(False)
                 self._async_untrack_subscription(subscription)
-                self._matching_subscriptions_cache.clear()
                 _LOGGER.warning(
                     "Could not subscribe to X-Sense MQTT topic (%s)", type(exc).__name__
                 )
             else:
                 if generation != self._connection_generation:
                     return
+                restored_qos[subscription.topic] = subscription.qos
                 if (result := self._direct_subscribe_results.get(subscription)) and not result.done():
                     result.set_result(True)
 
@@ -833,23 +799,6 @@ class XSenseMQTT:
 
         self._async_connection_result(True)
 
-    # def _async_queue_resubscribe
-    def _matching_subscriptions(self, topic: str) -> list[Subscription]:
-        if topic in self._matching_subscriptions_cache:
-            return self._matching_subscriptions_cache[topic]
-        subscriptions: list[Subscription] = []
-        if topic in self._simple_subscriptions:
-            subscriptions.extend(self._simple_subscriptions[topic])
-        subscriptions.extend(
-            subscription
-            for subscription in self._wildcard_subscriptions
-            # mypy doesn't know that complex_matcher is always set when
-            # is_simple_match is False
-            if subscription.complex_matcher(topic)  # type: ignore[misc]
-        )
-        self._matching_subscriptions_cache[topic] = subscriptions
-        return subscriptions
-
     @callback
     def _async_mqtt_on_message(
         self, _mqttc: mqtt.Client, _userdata: None, msg: mqtt.MQTTMessage
@@ -861,7 +810,7 @@ class XSenseMQTT:
         ):
             return
 
-        if self.on_data is not None and not self._message_dispatch_stopped:
+        if self.on_data is not None and not self._message_dispatch_stopped and not self._message_stopping_drains:
             # Paho can read many packets per loop_read despite its max_packets
             # argument. Preserve every message, but yield between HA updates.
             self._message_queue.append((self.on_data, topic, msg.payload))
@@ -893,9 +842,30 @@ class XSenseMQTT:
 
     async def async_drain_messages(self, *, stop_receiving: bool = False) -> None:
         """Wait for an active handler before draining, without nesting deliveries."""
-        while self._message_dispatch_idle is not None:
-            await asyncio.shield(self._message_dispatch_idle)
-        self.async_flush_messages(stop_receiving=stop_receiving)
+        if stop_receiving:
+            self._message_stopping_drains += 1
+        try:
+            while not self._message_dispatch_stopped:
+                if self._message_dispatch_idle is not None:
+                    await asyncio.shield(self._message_dispatch_idle)
+                elif self._message_queue:
+                    if self._message_dispatch_handle is None:
+                        self._message_dispatch_handle = self.loop.call_soon(self._async_dispatch_message)
+                    await asyncio.sleep(0)
+                else:
+                    break
+            self.async_flush_messages(stop_receiving=stop_receiving)
+        finally:
+            if stop_receiving:
+                self._message_stopping_drains -= 1
+                if (
+                    not self._message_stopping_drains
+                    and not self._message_dispatch_stopped
+                    and not self._message_queue
+                    and (self._message_read_deferred or self._has_buffered_socket_data())
+                ):
+                    self._message_read_deferred = False
+                    self._async_schedule_reader_resume()
 
     @callback
     def _async_resume_message_reader(self) -> None:
@@ -930,14 +900,14 @@ class XSenseMQTT:
                 and self._message_dispatch_handle is None
             ):
                 self._message_dispatch_handle = self.loop.call_soon(self._async_dispatch_message)
-            elif not self._message_queue and (
+            elif not self._message_stopping_drains and not self._message_queue and (
                 self._message_read_deferred or self._has_buffered_socket_data()
             ):
                 self._message_read_deferred = False
                 self._async_schedule_reader_resume()
 
     def _async_schedule_reader_resume(self) -> None:
-        if not self._message_dispatch_stopped and self._reader_resume_handle is None:
+        if not self._message_dispatch_stopped and not self._message_stopping_drains and self._reader_resume_handle is None:
             self._reader_resume_handle = self.loop.call_soon(self._async_resume_message_reader)
 
     def _has_buffered_socket_data(self) -> bool:
@@ -978,7 +948,11 @@ class XSenseMQTT:
         # The callback signature for on_unsubscribe is different from on_subscribe
         # see https://github.com/eclipse/paho.mqtt.python/issues/687
         # properties and reason codes are not used in Home Assistant
-        future = self._async_get_mid_future(mid)
+        future = self._pending_operations.get(mid)
+        if future is None:
+            if self._early_publish_mid is not None:
+                self._early_publish_mid = mid
+            return
         if future.done():
             # Timed out or cancelled
             return
@@ -1049,8 +1023,6 @@ class XSenseMQTT:
         if result_code != 0:
             raise xsense_error("mqtt_error", error=mqtt.error_string(result_code))
 
-        # Create the mid event if not created, either _mqtt_handle_mid or
-        # _async_wait_for_mid_or_raise may be executed first.
         future = self._async_get_mid_future(mid)
         loop = self.hass.loop
         timer_handle = loop.call_later(TIMEOUT_ACK, self._async_timeout_mid, future)

@@ -65,6 +65,19 @@ property_mapper = {
     },
 }
 
+_COMMON_PROPERTY_ALIASES = property_mapper["*"]
+_TEMP_HUMIDITY_PROPERTY_ALIASES = {
+    "alarmEnable": "alarmEnabled",
+    "continueAlarm": "continuedAlarm",
+}
+_MODEL_PROPERTY_ALIASES = {
+    model: _COMMON_PROPERTY_ALIASES | aliases
+    for model, aliases in property_mapper.items()
+    if model != "*"
+}
+for _model in ("STH51", "STH0A", "STH0B", "XC0M-iR"):
+    _MODEL_PROPERTY_ALIASES[_model].update(_TEMP_HUMIDITY_PROPERTY_ALIASES)
+
 
 def bool_state(value: typing.Any) -> bool | None:
     if isinstance(value, bool):
@@ -317,22 +330,19 @@ type_mapping: dict[str, Callable[[typing.Any], typing.Any]] = {
 
 
 def map_type(k: str, value: typing.Any):
-    return type_mapping[k](value) if k in type_mapping else value
+    converter = type_mapping.get(k)
+    return converter(value) if converter is not None else value
 
 
 def map_values(device_type: str, data: dict):
-    mapping = property_mapper.get("*", {}) | property_mapper.get(device_type, {})
-    if device_type in {"STH51", "STH0A", "STH0B", "XC0M-iR"}:
-        mapping |= {
-            "alarmEnable": "alarmEnabled",
-            "continueAlarm": "continuedAlarm",
-        }
-
-    return {
-        mapping.get(k, k): (
-            safe_int(v)
-            if device_type == "XCG0A-iA" and k == "alarmStatus"
-            else map_type(mapping.get(k, k), v)
+    aliases = _MODEL_PROPERTY_ALIASES.get(device_type, _COMMON_PROPERTY_ALIASES)
+    preserve_alarm_code = device_type == "XCG0A-iA"
+    result = {}
+    for key, value in data.items():
+        mapped_key = aliases.get(key, key)
+        result[mapped_key] = (
+            safe_int(value)
+            if preserve_alarm_code and key == "alarmStatus"
+            else map_type(mapped_key, value)
         )
-        for k, v in data.items()
-    }
+    return result

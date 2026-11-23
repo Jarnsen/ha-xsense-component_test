@@ -266,12 +266,29 @@ async def test_socket_callback_preserves_alarm_transitions_without_reconstructio
         assert sibling.entity_id in writes
         assert hass.states.get(sibling.entity_id).state == "unavailable"
         coordinator.data["devices"][sibling_key] = missing
-        for extra in ({"onLine": "1"}, {"devs": {"unknown-child": {"alarmStatus": "1"}}}):
+        writes.clear()
+        right.sendall(packet_for("1"))
+        mqtt._async_reader_callback(mqtt._mqttc)
+        await asyncio.sleep(0)
+        assert sibling.entity_id in writes
+        assert hass.states.get(sibling.entity_id).state == "off"
+
+        for extra, broad in (
+            ({"onLine": "1"}, False),
+            ({"devs": {"unknown-child": {"alarmStatus": "1"}}}, True),
+        ):
+            control_states = {
+                item.entity_id: hass.states.get(item.entity_id).state for item in sibling_controls
+            }
             writes.clear()
             right.sendall(packet_for("0", extra))
             mqtt._async_reader_callback(mqtt._mqttc)
             await asyncio.sleep(0)
-            assert sibling.entity_id in writes
+            assert (sibling.entity_id in writes) is broad
+            assert hass.states.get(sibling.entity_id).state == "off"
+            for entity_id, state in control_states.items():
+                assert (entity_id in writes) is (broad or state == "unavailable")
+                assert hass.states.get(entity_id).state == state
         # HTTP/global refreshes must still serialize all entities.
         writes.clear()
         coordinator.async_update_listeners()

@@ -21,7 +21,7 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
@@ -44,11 +44,28 @@ UNIT_PARTS_PER_MILLION = getattr(
 
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     from .coordinator import XSenseDataUpdateCoordinator
 
 
 # These models report physical self-tests but have no remote self-test command.
 SELF_TEST_REPORT_ONLY_MODELS = {"SC06-WX", "XS01-WX", "XS0B-iR"}
+
+# These scalar observations have no dependency on station availability or on
+# the alarm and battery values in a flat child availability report.
+_AVAILABILITY_STATION_SENSOR_FIELDS = {
+    "wifi_rssi": ("wifiRSSI", "wifiRssi"),
+    "wifi_ssid": ("ssid",),
+    "wifi_sw": ("wifi_sw",),
+    "ip": ("ip",),
+    "zone_name": ("zoneName",),
+    "safe_mode": ("safeMode",),
+}
+_AVAILABILITY_CHILD_SCALAR_SENSORS = frozenset({
+    "co", "co_level", "rf_level", "standard", "silence_time", "location", "last_self_test",
+})
+_AVAILABILITY_CHILD_TIMESTAMP_SENSORS = frozenset({"time", "last_self_test_time"})
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -854,6 +871,7 @@ class XSenseSensorEntity(XSenseEntity, SensorEntity):
 
     entity_description: XSenseSensorEntityDescription
     _mqtt_child_state_only = True
+    _mqtt_parent_availability_independent = True
 
     def __init__(
         self,
@@ -868,6 +886,47 @@ class XSenseSensorEntity(XSenseEntity, SensorEntity):
         self._attr_available = False  # This overrides the default
 
         super().__init__(coordinator, entity, station_id)
+
+    @callback
+    def _async_write_ha_state(self) -> None:
+        """Measure the actual HA write during an opt-in MQTT debug capture."""
+        timing = getattr(self.coordinator, "_mqtt_callback_timing", None)
+        if timing is None or (probe := timing.state_write_probe) is None:
+            super()._async_write_ha_state()
+            return
+        before = self.hass.states.get(self.entity_id) if self.hass is not None and self.entity_id else None
+        reported = before.last_reported if before is not None else None
+        scope = probe.begin()
+        try:
+            super()._async_write_ha_state()
+        finally:
+            if (sample := probe.finish(scope, self.entity_description.key)) is not None:
+                after = self.hass.states.get(self.entity_id) if self.hass is not None and self.entity_id else None
+                result = "no_state_update"
+                if after is not None:
+                    if after is not before:
+                        result = "attributes_changed" if before is not None and before.state == after.state else "state_changed"
+                    elif after.last_reported != reported:
+                        result = "state_reported"
+                sample["write_result"] = result
+                timing.record_sensor_state_write(sample)
+
+    def _mqtt_unreported_observation_is_current(self, current: Entity, station_fields: Collection[str]) -> bool:
+        key = self.entity_description.key
+        if self._station_id is None:
+            fields = _AVAILABILITY_STATION_SENSOR_FIELDS.get(key)
+            if fields is None or any(field in station_fields for field in fields):
+                return False
+        elif key not in _AVAILABILITY_CHILD_SCALAR_SENSORS and key not in _AVAILABILITY_CHILD_TIMESTAMP_SENSORS:
+            return False
+        value = self.entity_description.value_fn(current)
+        if value is None:
+            return self._mqtt_observation_state_is_published(ha_const.STATE_UNKNOWN)
+        if key in _AVAILABILITY_CHILD_TIMESTAMP_SENSORS:
+            return isinstance(value, datetime) and value.tzinfo is not None and (
+                self._mqtt_observation_state_is_published(value.astimezone(UTC).isoformat(timespec="seconds"))
+            )
+        return type(value) in (str, int, float) and self._mqtt_observation_state_is_published(str(value))
 
     @property
     def native_value(self) -> str | int | float | datetime | None:

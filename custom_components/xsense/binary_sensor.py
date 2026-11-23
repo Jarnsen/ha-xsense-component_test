@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -15,7 +15,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.const import EntityCategory
+from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNKNOWN, EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -770,6 +770,7 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
 
     entity_description: XSenseBinarySensorEntityDescription
     _mqtt_child_state_only = True
+    _mqtt_parent_availability_independent = True
 
     def __init__(
         self,
@@ -787,6 +788,19 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
         self._local_topic: str | None = None
 
         super().__init__(coordinator, entity, station_id)
+
+    def _mqtt_unreported_observation_is_current(self, current: Entity, station_fields: Collection[str]) -> bool:
+        key = self.entity_description.key
+        if self._station_id is None:
+            if key != "alarm_status" or "alarmStatus" in station_fields:
+                return False
+        elif key != "is_life_end":
+            return False
+        if self._local_state is not None:
+            return False
+        value = self.entity_description.value_fn(current)
+        expected = STATE_UNKNOWN if value is None else STATE_ON if value else STATE_OFF
+        return self._mqtt_observation_state_is_published(expected)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
