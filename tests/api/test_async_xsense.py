@@ -225,43 +225,37 @@ def _subscription_test_client():
     client._message_queue = deque()
     client._message_dispatch_handle = None
     client._message_dispatch_stopped = False
+    client._message_stopping_drains = 0
     client._message_read_deferred = False
     client._reader_resume_handle = None
     client._message_dispatch_idle = None
     client._simple_subscriptions = defaultdict(set)
     client._wildcard_subscriptions = set()
-    client._retained_topics = defaultdict(set)
-    client._matching_subscriptions_cache = {}
     client._subscription_id = 0
     client.connected = False
     return client
 
 
-@pytest.mark.asyncio
-async def test_xsense_mqtt_disconnect_releases_subscription_match_cache():
-    class Debouncer:
-        async def async_cleanup(self):
-            return None
-
-        def set_timeout(self, timeout):
-            return None
-
+def test_xsense_mqtt_unsubscribes_only_after_last_subscriber_on_exact_filter():
     client = _subscription_test_client()
-    client._subscribe_debouncer = Debouncer()
-    client._unsubscribe_debouncer = Debouncer()
-    client._pending_operations = {}
-    client._connection_lock = asyncio.Lock()
-    client._should_reconnect = True
-    client._reconnect_task = None
-    client._async_perform_unsubscribes = AsyncMock()
-    client._mqttc = SimpleNamespace(disconnect=Mock())
+    topic = "x/sense/one"
+    client.connected = True
+    client._pending_unsubscribes = set()
+    client._unsubscribe_debouncer = Mock()
+    first = Mock(topic=topic, is_simple_match=True)
+    second = Mock(topic=topic, is_simple_match=True)
+    client._simple_subscriptions[topic] = {first, second}
+    overlapping = Mock(topic="x/sense/#", qos=1, complex_matcher=Mock(return_value=True))
+    client._wildcard_subscriptions.add(overlapping)
 
-    client._matching_subscriptions("x/sense/one")
-    assert set(client._matching_subscriptions_cache) == {"x/sense/one"}
+    client._async_remove(first)
+    assert client._pending_unsubscribes == set()
+    client._unsubscribe_debouncer.async_schedule.assert_not_called()
 
-    await client.async_disconnect()
-
-    assert client._matching_subscriptions_cache == {}
+    client._async_remove(second)
+    assert client._pending_unsubscribes == {topic}
+    client._unsubscribe_debouncer.async_schedule.assert_called_once_with()
+    overlapping.complex_matcher.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -2096,6 +2090,57 @@ async def test_get_alarm_state_does_not_overwrite_live_force_arm_prompt():
     assert station_obj.alarm_data["forceReason"] == [{"deviceSN": "door-sn"}]
 
 
+def test_keyed_shadow_child_does_not_read_fallback_identifiers():
+    class KeyedShadow(dict):
+        def get(self, key, default=None):
+            pytest.fail(f"Unexpected fallback lookup for {key}")
+
+    device = object()
+    owner = SimpleNamespace(
+        get_device_by_identifier={"0": device}.get,
+        get_device_by_sn=Mock(return_value=None),
+    )
+
+    assert base._state_child_device(owner, 0, KeyedShadow()) is device
+    owner.get_device_by_sn.assert_not_called()
+
+
+def test_shadow_child_fallback_keeps_order_and_deduplicates_ids():
+    device = object()
+    owner = SimpleNamespace(
+        get_device_by_identifier=Mock(return_value=None),
+        get_device_by_sn=Mock(side_effect={"stale": None, "found": device}.get),
+    )
+    payload = {"deviceSN": "stale", "_deviceSN": "found", "sn": "unused"}
+
+    assert base._state_child_device(owner, "stale", payload) is device
+    assert [call.args for call in owner.get_device_by_identifier.call_args_list] == [
+        ("stale",), ("found",),
+    ]
+    assert [call.args for call in owner.get_device_by_sn.call_args_list] == [
+        ("stale",), ("found",),
+    ]
+
+
+@pytest.mark.parametrize("model", ["STH51", "STH0A", "STH0B", "XC0M-iR"])
+def test_shadow_mapping_keeps_common_aliases_and_last_value_wins(model):
+    report = {"wifiRssi": "-47", "g": "1", "alarmEnable": "0", "continueAlarm": "1"}
+
+    assert mapping.map_values(model, report) == {
+        "wifiRSSI": -47, "alarmEnabled": False, "continuedAlarm": True,
+    }
+    assert report["alarmEnable"] == "0"
+    unknown = mapping.map_values("unknown-model", report)
+    assert unknown["wifiRSSI"] == -47
+    assert unknown["continueAlarm"] is True
+    assert "continuedAlarm" not in unknown
+
+
+def test_shadow_mapping_preserves_combination_detector_alarm_code():
+    assert mapping.map_values("XCG0A-iA", {"alarmStatus": "2"}) == {"alarmStatus": 2}
+    assert mapping.map_values("SBS50", {"alarmStatus": "2"}) == {"alarmStatus": True}
+
+
 def test_xc0m_ir_maps_compact_temperature_and_humidity_fields():
     data = mapping.map_values(
         "XC0M-iR",
@@ -3652,6 +3697,21 @@ async def test_close_closes_private_ipv4_fallback_session():
 
     ipv4_session.close.assert_awaited_once()
     assert client._ipv4_session is None
+
+
+def test_child_shadow_dictionary_is_copied_only_when_merging_top_level_records():
+    parent = SimpleNamespace(get_device_by_sn=lambda serial: object() if serial == "other" else None)
+    children = {"existing": {"alarmStatus": "0"}}
+    scalar_fields = {"stationSN": "station", "wifiRSSI": -40}
+
+    assert base._merge_top_level_child_state(parent, scalar_fields, children) is children
+
+    child_state = {"alarmStatus": "1"}
+    mixed_fields = {**scalar_fields, "other": child_state}
+    merged = base._merge_top_level_child_state(parent, mixed_fields, children)
+    assert merged == {**children, "other": child_state}
+    assert mixed_fields == scalar_fields
+    assert list(children) == ["existing"]
 
 
 def test_aws_signer_applies_global_time_offset():

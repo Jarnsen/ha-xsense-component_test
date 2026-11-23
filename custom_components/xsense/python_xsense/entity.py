@@ -100,7 +100,7 @@ class Entity:
             data.update(status_data)
         if "alarmStatus" not in data and "a" not in data and "isAlarm" in data:
             data["alarmStatus"] = data["isAlarm"]
-        peak_data = data.pop("peak", {})
+        peak_data = data.pop("peak", None)
         if isinstance(peak_data, dict):
             if "coPpmPeak" in peak_data:
                 data.setdefault("coPpmPeak", peak_data["coPpmPeak"])
@@ -112,7 +112,7 @@ class Entity:
                 if "radonPeak" in peak_data:
                     data.setdefault("radonPeakTime", peak_data["time"])
         for nested_key in ("lightShadowBean", "skp0aShadowBean"):
-            nested_data = data.pop(nested_key, {})
+            nested_data = data.pop(nested_key, None)
             if isinstance(nested_data, dict):
                 data.update(nested_data)
         # software versions are reported differently per device

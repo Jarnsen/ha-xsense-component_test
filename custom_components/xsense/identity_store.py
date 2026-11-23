@@ -140,24 +140,30 @@ async def async_load_identity_store(hass, entry, coordinator):
     validate_current_identities(coordinator)
 
 
-def validate_current_identities(coordinator):
-    """Reject reused IDs at startup and on subsequent dynamic discovery."""
+def validate_current_identities(coordinator, *, counts: dict[tuple, int] | None = None):
+    """Reject reused IDs, optionally indexing identities for discovery."""
     # A reused API ID cannot safely be assigned to either registry device by
     # guessing. Refuse setup instead of silently merging physical devices.
     from .entity import _serial_identity
 
     identities = getattr(coordinator, "_xsense_stable_device_ids", {})
-    if not identities:
+    if not identities and counts is None:
         return
     owners = {stable_id: identity for identity, stable_id in identities.items()}
     for collection in ("stations", "devices"):
         for entity in (coordinator.data or {}).get(collection, {}).values():
             owner = owners.get(entity.entity_id)
-            if owner is not None and owner != _serial_identity(entity):
+            if owner is None and counts is None:
+                continue
+            identity = _serial_identity(entity)
+            if owner is not None and owner != identity:
                 raise IdentityConflictError(
                     "Stored X-Sense identity conflicts with a reused device ID; "
                     "automatic registry reassignment is refused"
                 )
+            if counts is not None:
+                key = (collection, identity)
+                counts[key] = counts.get(key, 0) + 1
 
 
 async def async_close_identity_store(coordinator):

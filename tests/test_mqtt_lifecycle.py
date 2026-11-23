@@ -1,7 +1,8 @@
 """Exercise the broker-facing MQTT subscription lifecycle."""
 
 import asyncio
-from threading import Event
+import socket
+from threading import Event, get_ident
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -54,6 +55,83 @@ def client():
     )
     result.init_client()
     return result, broker
+
+
+@pytest.mark.asyncio
+async def test_mqtt_dns_timeout_does_not_block_home_assistant_loop(monkeypatch):
+    loop = asyncio.get_running_loop()
+    loop_thread = get_ident()
+    resolving = asyncio.Event()
+    release_dns = Event()
+    broker = mqtt.mqtt.Client(mqtt.mqtt.CallbackAPIVersion.VERSION2, transport="websockets")
+    connection = mqtt.XSenseMQTT(
+        SimpleNamespace(loop=loop, async_add_executor_job=lambda func, *args: loop.run_in_executor(None, func, *args)),
+        SimpleNamespace(title="Test account"),
+        SimpleNamespace(client=broker, house=SimpleNamespace(mqtt_server="xsense.invalid")),
+    )
+    connection.init_client()
+    connection._should_reconnect = True
+    connection._async_prepare_connection = AsyncMock()
+
+    def getaddrinfo(host, *_args, **_kwargs):
+        assert host == "xsense.invalid"
+        assert get_ident() != loop_thread
+        loop.call_soon_threadsafe(resolving.set)
+        assert release_dns.wait(5)
+        raise socket.gaierror(socket.EAI_AGAIN, "DNS temporarily unavailable")
+
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+    attempt = asyncio.create_task(connection._async_open_connection())
+    try:
+        await asyncio.wait_for(resolving.wait(), 2)
+        heartbeat = asyncio.Event()
+        loop.call_soon(heartbeat.set)
+        await asyncio.wait_for(heartbeat.wait(), 2)
+        assert not attempt.done()
+    finally:
+        release_dns.set()
+        result, = await asyncio.gather(attempt, return_exceptions=True)
+
+    assert isinstance(result, socket.gaierror)
+    assert result.errno == socket.EAI_AGAIN
+    assert broker.socket() is None
+    assert not connection._connection_lock.locked()
+
+
+@pytest.mark.asyncio
+async def test_reconnect_reuses_successful_suback_for_identical_filters():
+    connection, broker = client()
+    for topic in ("home/events", "home/events", "home/+/state", "home/+/state"):
+        await connection.async_subscribe(topic, receive_message, 1)
+    connection.connected = True
+
+    for _ in range(2):
+        connection._connection_generation += 1
+        pending = {
+            sub: asyncio.get_running_loop().create_future()
+            for sub in connection.subscriptions
+        }
+        connection._direct_subscribe_results.update(pending)
+        await connection._async_perform_subscriptions()
+        assert all(future.result() is True for future in pending.values())
+    assert broker.calls == [[("home/events", 1)], [("home/+/state", 1)]] * 2
+    assert len(connection.subscriptions) == 4
+
+
+@pytest.mark.asyncio
+async def test_reconnect_does_not_reuse_suback_across_qos_or_generations():
+    connection, broker = client()
+    topic = "home/events"
+    for qos in (0, 1):
+        await connection.async_subscribe(topic, receive_message, qos)
+    connection.connected = True
+
+    for _ in range(2):
+        connection._connection_generation += 1
+        broker.calls.clear()
+        await connection._async_perform_subscriptions()
+        assert sorted(broker.calls) == [[(topic, 0)], [(topic, 1)]]
+        assert not connection._pending_operations
 
 
 @pytest.mark.asyncio
@@ -487,6 +565,30 @@ async def test_reconnect_rejection_is_not_kept_as_subscribed():
     await connection._async_perform_subscriptions()
 
     assert not connection.is_subscribed("home/events")
+    assert connection._pending_operations == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("callback_name", ["on_publish", "on_unsubscribe"])
+async def test_late_ack_does_not_complete_later_wait_for_same_mid(callback_name):
+    connection, broker = client()
+    ack = getattr(broker, callback_name)
+    mid = 42
+    timed_out = asyncio.create_task(
+        connection._async_wait_for_mid_or_raise(mid, 0, raise_on_timeout=True)
+    )
+    await asyncio.sleep(0)
+    connection._async_timeout_mid(connection._pending_operations[mid])
+    with pytest.raises(TimeoutError):
+        await timed_out
+
+    ack(broker, None, mid)
+    assert connection._pending_operations == {}
+    replacement = asyncio.create_task(connection._async_wait_for_mid_or_raise(mid, 0))
+    await asyncio.sleep(0)
+    assert not replacement.done()
+    ack(broker, None, mid)
+    await replacement
     assert connection._pending_operations == {}
 
 

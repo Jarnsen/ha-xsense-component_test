@@ -82,7 +82,6 @@ async def test_explicit_stop_delivers_received_messages_before_cleanup_awaits():
     delivered = []
     mqtt.on_data = lambda topic, payload: delivered.append(payload)
     mqtt._async_mqtt_on_message(None, None, NS(topic="test", payload=b"pending"))
-    mqtt._subscribe_debouncer.async_cleanup = AsyncMock()
     mqtt._unsubscribe_debouncer.async_cleanup = AsyncMock()
     mqtt._async_perform_unsubscribes = AsyncMock()
     await mqtt.async_disconnect()
@@ -171,7 +170,6 @@ async def test_non_stopping_flush_keeps_failed_unload_runtime_usable():
 @pytest.mark.asyncio
 async def test_eager_disconnect_cannot_dispatch_second_alarm_inside_first_handler():
     mqtt = make_client()
-    mqtt._subscribe_debouncer.async_cleanup = AsyncMock()
     mqtt._unsubscribe_debouncer.async_cleanup = AsyncMock()
     mqtt._async_perform_unsubscribes = AsyncMock()
     order, tasks = [], []
@@ -226,6 +224,29 @@ async def test_two_eager_shutdowns_join_delivery_but_retire_coordinator_once(mon
 
 
 @pytest.mark.asyncio
+async def test_async_drain_yields_between_queued_messages():
+    mqtt = make_client()
+    order = []
+
+    def receive(topic, payload):
+        order.append(payload)
+        if payload == b"first":
+            mqtt.loop.call_soon(order.append, b"other-work")
+            mqtt.loop.call_soon(
+                mqtt._async_mqtt_on_message, None, None, NS(topic="test", payload=b"late")
+            )
+
+    mqtt.on_data = receive
+    for payload in (b"first", b"second"):
+        mqtt._async_mqtt_on_message(None, None, NS(topic="test", payload=payload))
+
+    await mqtt.async_drain_messages(stop_receiving=True)
+
+    assert order == [b"first", b"other-work", b"second"]
+    assert mqtt._message_dispatch_stopped
+
+
+@pytest.mark.asyncio
 async def test_cancelled_drain_waiter_does_not_cancel_active_delivery():
     mqtt = make_client()
     tasks, order = [], []
@@ -248,6 +269,38 @@ async def test_cancelled_drain_waiter_does_not_cancel_active_delivery():
     assert order == [b"first", b"second"]
     assert mqtt._message_dispatch_idle is None
     assert not mqtt._message_dispatch_stopped
+    mqtt._async_mqtt_on_message(None, None, NS(topic="test", payload=b"after-cancel"))
+    await asyncio.sleep(0)
+    assert order == [b"first", b"second", b"after-cancel"]
+
+
+@pytest.mark.asyncio
+async def test_cancelled_stopping_drain_resumes_buffered_read_without_fd_edge():
+    mqtt = make_client()
+    delivered = []
+    mqtt._mqttc.socket = Mock(return_value=NS(pending=lambda: 1))
+
+    def read(_limit):
+        mqtt._mqttc.socket.return_value = None
+        mqtt._async_mqtt_on_message(None, None, NS(topic="test", payload=b"buffered"))
+        return 0
+
+    mqtt._mqttc.loop_read = Mock(side_effect=read)
+
+    def receive(_topic, payload):
+        delivered.append(payload)
+        if payload == b"accepted":
+            drain.cancel()
+
+    mqtt.on_data = receive
+    mqtt._async_mqtt_on_message(None, None, NS(topic="test", payload=b"accepted"))
+    drain = asyncio.Task(mqtt.async_drain_messages(stop_receiving=True), loop=mqtt.loop, eager_start=True)
+    with pytest.raises(asyncio.CancelledError):
+        await drain
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    mqtt._mqttc.loop_read.assert_called_once()
+    assert delivered == [b"accepted", b"buffered"]
 
 
 @pytest.mark.asyncio
@@ -330,7 +383,6 @@ async def test_stop_cancels_deferred_buffered_read():
     mqtt._async_reader_callback(mqtt._mqttc)
     await asyncio.sleep(0)
     assert mqtt._reader_resume_handle is not None
-    mqtt._subscribe_debouncer.async_cleanup = AsyncMock()
     mqtt._unsubscribe_debouncer.async_cleanup = AsyncMock()
     mqtt._async_perform_unsubscribes = AsyncMock()
     await mqtt.async_disconnect()
@@ -352,7 +404,6 @@ async def test_protocol_ack_remains_readable_during_disconnect_cleanup():
     mqtt._mqttc._out_messages[7] = message
     completed = asyncio.get_running_loop().create_future()
     mqtt._pending_operations[7] = completed
-    mqtt._subscribe_debouncer.async_cleanup = AsyncMock()
     mqtt._unsubscribe_debouncer.async_cleanup = AsyncMock()
 
     async def cleanup():

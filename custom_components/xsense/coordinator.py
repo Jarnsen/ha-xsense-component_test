@@ -20,7 +20,7 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util.logging import catch_log_exception
 
-from .callback_timing import CallbackTiming
+from .callback_timing import CallbackTiming, StateWriteProbe
 from .const import (
     CAMERA_AI_HISTORY_SCAN_INTERVAL,
     CAMERA_AI_SERVICE_AVAILABLE,
@@ -82,8 +82,17 @@ from .python_xsense.exceptions import (
     NotFoundError,
     SessionExpired,
 )
+from .python_xsense.mapping import bool_state
 
 _IGNORED_TOPIC_SUFFIXES = ("/update/accepted", "/update/documents", "/update/rejected")
+_MAINPAGE_ROUTING_FIELDS = frozenset({"stationSN", "stationSn", "devs"})
+_STATION_NETWORK_FIELDS = frozenset({"wifiRSSI", "wifiRssi", "ssid", "ip", "wifi_sw"})
+_SCOPED_STATION_FIELDS = _STATION_NETWORK_FIELDS | {"stationSN", "stationSn"}
+_FLAT_AVAILABILITY_FIELDS = _SCOPED_STATION_FIELDS | {"online", "onLine", "safeMode", "devs"}
+_FLAT_AVAILABILITY_CHILD_FIELDS = frozenset({"alarmStatus", "batInfo"})
+_SBS50_MODE_ONLY_FIELDS = frozenset({
+    "stationSN", "stationSn", "safeMode", "safeModeAim", "forceReason", "exitDelay",
+})
 
 KEYPAD_CODE_EVENT_TYPE = "xsense_keypad_code"
 SELF_TEST_EVENT_TYPE = "xsense_self_test"
@@ -539,6 +548,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if self._shutting_down:
             return
         self._shutting_down = True
+        if probe := getattr(self, "_mqtt_state_write_probe", None):
+            probe.close()
+            self._mqtt_state_write_probe = None
         await super().async_shutdown()
 
         requesters = self.__dict__.get("_shutdown_requesters", ())
@@ -1461,7 +1473,17 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     def async_event_received(self, topic: str, data_str: bytes) -> None:
         """Measure one delivery without changing its synchronous ordering."""
-        timing = CallbackTiming()
+        probe = getattr(self, "_mqtt_state_write_probe", None)
+        if LOGGER.isEnabledFor(logging.DEBUG) and not getattr(self, "_shutting_down", False):
+            if probe is None or not probe.is_running():
+                try:
+                    probe = self._mqtt_state_write_probe = StateWriteProbe()
+                except RuntimeError:
+                    probe = None
+        elif probe is not None:
+            probe.close()
+            self._mqtt_state_write_probe = probe = None
+        timing = CallbackTiming(state_write_probe=probe)
         previous = getattr(self, "_mqtt_callback_timing", None)
         self._mqtt_callback_timing = timing
         started = perf_counter()
@@ -1470,6 +1492,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         finally:
             self._mqtt_callback_timing = previous
             duration = perf_counter() - started
+            if timing.slowest_sensor_state_write is not None:
+                self._record_mqtt_sensor_write_details(timing, duration, started + duration)
             slowest = getattr(self, "_mqtt_slowest_dispatch_work", None)
             keep_slowest = slowest is None or duration > slowest["total_seconds"]
             extrema = None
@@ -1498,6 +1522,37 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             if log_sample:
                 LOGGER.debug("X-Sense slow MQTT dispatch work: %s", sample)
 
+    def _record_mqtt_sensor_write_details(
+        self, timing: CallbackTiming, dispatch_seconds: float, now: float
+    ) -> None:
+        slowest = timing.slowest_sensor_state_write
+        if slowest is None:
+            return
+        traced = timing.slowest_traced_sensor_state_write
+        for sample, attr in (
+            (slowest, "_mqtt_slowest_sensor_state_write"),
+            (traced, "_mqtt_slowest_traced_sensor_state_write"),
+        ):
+            if sample is None:
+                continue
+            sample["dispatch_seconds"] = round(dispatch_seconds, 6)
+            previous = getattr(self, attr, None)
+            if previous is None or sample["wall_seconds"] > previous["wall_seconds"]:
+                setattr(self, attr, sample)
+
+        if timing.state_write_probe is None or not LOGGER.isEnabledFor(logging.DEBUG):
+            return
+        previous_log = getattr(self, "_mqtt_logged_sensor_write", None)
+        if (
+            previous_log is None or now >= previous_log[0]
+            or slowest["wall_seconds"] >= 1.5 * previous_log[1]
+            or (traced is not None and not previous_log[2])
+        ):
+            self._mqtt_logged_sensor_write = (now + 60., slowest["wall_seconds"], traced is not None)
+            LOGGER.debug("X-Sense slow MQTT sensor state write: %s", slowest)
+            if traced is not None and traced is not slowest:
+                LOGGER.debug("X-Sense slow MQTT sensor state write with stack: %s", traced)
+
     def _async_process_mqtt_event(self, topic: str, data_str: bytes) -> None:
         """Handle incoming data from MQTT.
 
@@ -1519,16 +1574,26 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if not isinstance(data, dict):
             return
         state = data.get("state")
-        if (
-            topic.endswith("/shadow/name/2nd_apptempdata/update")
-            and isinstance(state, dict)
-            and "reported" not in state
-            and isinstance(desired := state.get("desired"), dict)
-            and desired.get("shadow") == "appTempData"
-        ):
-            # A request echo carries no readings; the reported update follows separately.
-            return
         station_data = _mqtt_reported_data(data)
+        if (
+            not station_data
+            and topic.startswith("$aws/things/")
+            and "/shadow/name/" in topic
+            and topic.endswith("/update")
+            and isinstance(state, dict)
+        ):
+            # Command echoes and empty shadow reports contain no state to apply.
+            return
+        if (
+            topic.startswith("$aws/things/")
+            and topic.endswith("/shadow/name/2nd_mainpage/update")
+            and isinstance(state, dict)
+            and isinstance(state.get("reported"), dict)
+            and isinstance(station_data, dict)
+            and station_data.keys() <= _MAINPAGE_ROUTING_FIELDS
+            and not station_data.get("devs")
+        ):
+            return
         if (
             isinstance(station_data, dict)
             and len(station_data) == 3
@@ -1539,12 +1604,13 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             and (timing := getattr(self, "_mqtt_callback_timing", None)) is not None
         ):
             timing.reported_child_count = len(children)
-        if (
+        intrusion_notice = (
             topic.startswith("@xsense/events/safealarm/")
             and isinstance(data.get("eventData"), (dict, str))
             and "state" not in data
             and isinstance(station_data, dict)
-        ):
+        )
+        if intrusion_notice:
             self._async_handle_intrusion_notice(topic, data, station_data)
 
         station_sn = None
@@ -1620,15 +1686,16 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     timestamps[client_id] = timestamp
                 station._xsense_presence_revision = object()
                 online = event_type == "connected"
+                is_sbs50 = getattr(station, "type", None) == "SBS50"
                 unchanged = (
-                    getattr(station, "type", None) == "SBS50"
+                    is_sbs50
                     and station.online is online
                     and getattr(station, "_online_from_explicit_flag", False)
                 )
                 station._set_online(online)
                 # A new presence revision still invalidates an older in-flight poll.
                 if not unchanged:
-                    self.async_update_listeners()
+                    self._async_notify_mqtt_station(station)
             return
 
         if isinstance(station_data, list):
@@ -1637,7 +1704,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             previous_scope = getattr(self, "_mqtt_child_write_scope", None)
             self._mqtt_child_write_scope = child_write_scope
             try:
-                self.async_update_listeners()
+                self._async_notify_mqtt_station(station)
             finally:
                 self._mqtt_child_write_scope = previous_scope
             return
@@ -1657,7 +1724,14 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     revisions[station.sn] = revisions.get(station.sn, 0) + 1
                     if station_data.get("safeMode") == "Disarmed":
                         self.active_intrusion_sensors.pop(station.sn, None)
-                self.async_update_listeners()
+                # The parser can also interpret top-level objects as keyed child data.
+                self._async_notify_mqtt_station(
+                    station,
+                    station_only=(
+                        station_data.keys() <= _SBS50_MODE_ONLY_FIELDS
+                        and not any(isinstance(value, dict) for value in station_data.values())
+                    ),
+                )
             finally:
                 del station._xsense_mode_result
                 self._alarm_mode_station = None
@@ -1703,10 +1777,11 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if _is_keypad_notice_topic(topic):
             _fire_keypad_code_events(self.hass, station_data)
 
-        child_write_scope = _mqtt_child_write_scope(station, station_data)
-        children = station_data.pop("devs", {}) or {}
         target_device_sn = _mqtt_target_device_sn(station_data)
         target_device = None
+        refresh_parent_availability = False
+        skip_published_availability = None
+        availability_observations = None
         if target_device_sn and target_device_sn != station.sn:
             get_device_by_sn = getattr(station, "get_device_by_sn", None)
             if callable(get_device_by_sn):
@@ -1718,6 +1793,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ):
             # This parser branch applies every field to this child, not the
             # station. Use that same target for discovery and state writes.
+            station_data.pop("devs", None)
             child_write_scope = _mqtt_child_write_scope(
                 station, {"devs": {target_device_sn: station_data}}
             )
@@ -1730,21 +1806,82 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 },
             )
         else:
+            stations = (getattr(self, "data", None) or {}).get("stations", {})
+            published = stations.get(getattr(station, "entity_id", None)) is station
+            if published and getattr(station, "type", None) == "SBS50":
+                reported_online = bool_state(station_data.get("online", station_data.get("onLine")))
+                refresh_parent_availability = reported_online is not None
+                explicit = getattr(station, "_online_from_explicit_flag", False)
+                if reported_online is True and station.online is True and explicit:
+                    skip_published_availability = True
+                elif refresh_parent_availability and (
+                    (reported_online is False) != (station.online is False and explicit)
+                ):
+                    # Keep writes for controls that recover, even if HA still
+                    # shows an available state from before the disconnect.
+                    skip_published_availability = False
+            child_write_scope = _mqtt_child_write_scope(
+                station, station_data, published=published,
+                allow_parent_availability=refresh_parent_availability,
+            )
+            children = station_data.pop("devs", {}) or {}
             if isinstance(children, (dict, list)):
                 station_data["devs"] = children
+            if (
+                refresh_parent_availability and child_write_scope is not None
+                and station_data.keys() <= _FLAT_AVAILABILITY_FIELDS
+                and isinstance(children, dict)
+                and all(
+                    isinstance(row, dict) and row.keys() <= _FLAT_AVAILABILITY_CHILD_FIELDS
+                    for row in children.values()
+                )
+            ):
+                availability_observations = (child_write_scope, station_data.keys())
             self.xsense.parse_get_state(station, station_data)
 
         previous_scope = getattr(self, "_mqtt_child_write_scope", None)
         previous_rssi_station = getattr(self, "_mqtt_rssi_write_station", None)
+        previous_availability_scope = getattr(self, "_mqtt_parent_availability_scope", None)
+        previous_availability_dedup = getattr(self, "_mqtt_parent_availability_dedup", None)
+        previous_availability_observations = getattr(self, "_mqtt_availability_observations", None)
         self._mqtt_child_write_scope = child_write_scope
+        self._mqtt_parent_availability_scope = child_write_scope if refresh_parent_availability else None
+        self._mqtt_availability_observations = availability_observations
+        self._mqtt_parent_availability_dedup = (
+            (child_write_scope, skip_published_availability)
+            if child_write_scope is not None and skip_published_availability is not None
+            else None
+        )
         self._mqtt_rssi_write_station = (
-            station if child_write_scope is not None and not child_write_scope else None
+            station if child_write_scope is not None and (not child_write_scope or refresh_parent_availability) else None
         )
         try:
-            self.async_update_listeners()
+            self._async_notify_mqtt_station(station)
         finally:
             self._mqtt_child_write_scope = previous_scope
             self._mqtt_rssi_write_station = previous_rssi_station
+            self._mqtt_parent_availability_scope = previous_availability_scope
+            self._mqtt_parent_availability_dedup = previous_availability_dedup
+            self._mqtt_availability_observations = previous_availability_observations
+
+    def _async_notify_mqtt_station(self, station, *, station_only: bool = False) -> None:
+        """Notify listeners while limiting opted-in SBS50 writes to one station."""
+        previous = getattr(self, "_mqtt_write_station", None)
+        sbs50 = getattr(station, "type", None) == "SBS50"
+        self._mqtt_write_station = station if sbs50 else None
+        station_only = station_only and sbs50
+        if station_only:
+            previous_scope = getattr(self, "_mqtt_child_write_scope", None)
+            previous_station = getattr(self, "_mqtt_rssi_write_station", None)
+            self._mqtt_child_write_scope = frozenset()
+            self._mqtt_rssi_write_station = station
+        try:
+            self.async_update_listeners()
+        finally:
+            self._mqtt_write_station = previous
+            if station_only:
+                self._mqtt_child_write_scope = previous_scope
+                self._mqtt_rssi_write_station = previous_station
 
     def _async_handle_intrusion_notice(self, topic: str, envelope: dict, report: dict) -> None:
         """Track SBS50 alarms and clears per sensor, independently of armed mode."""
@@ -1797,7 +1934,9 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         else:
             active.pop(station.sn, None)
         if was_triggered != (station.sn in active):
-            self.async_update_listeners()
+            # Only the panel consumes the intrusion map. The child shadow
+            # update later in delivery still publishes its actual alarm state.
+            self._async_notify_mqtt_station(station, station_only=True)
         if alarm == "0":
             return
 
@@ -1902,8 +2041,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
 
 
-def _mqtt_child_write_scope(station, report):
-    """Narrow child writes only for known children or station-only RSSI."""
+def _mqtt_child_write_scope(station, report, *, published=False, allow_parent_availability=False):
+    """Narrow child writes only for known children or station-only network data."""
     from .entity import _serial_identity
 
     if is_camera_entity(station):
@@ -1914,11 +2053,22 @@ def _mqtt_child_write_scope(station, report):
         if not isinstance(children, (dict, list)):
             return None
         children = _merge_top_level_child_state(station, fields, children)
-        # Station listeners always run. RSSI does not alter child availability
-        # or child data, unlike online flags and parent alarm context.
-        if set(fields) - {"stationSN", "stationSn", "wifiRSSI", "wifiRssi"}:
+        if allow_parent_availability:
+            fields.pop("online", None)
+            fields.pop("onLine", None)
+        # Only compare against the station already visible to listeners.
+        if (
+            published
+            and getattr(station, "type", None) == "SBS50"
+            and (mode := fields.get("safeMode"))
+            and mode == station.safe_mode
+        ):
+            del fields["safeMode"]
+        # Network diagnostics do not alter child state, unlike online flags
+        # and parent alarm context.
+        if not fields.keys() <= _SCOPED_STATION_FIELDS:
             return None
-        if not children and ("wifiRSSI" in fields or "wifiRssi" in fields):
+        if not children and (allow_parent_availability or not _STATION_NETWORK_FIELDS.isdisjoint(fields)):
             return frozenset()
     elif isinstance(report, list):
         children = report

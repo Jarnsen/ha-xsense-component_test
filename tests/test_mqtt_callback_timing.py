@@ -2,6 +2,7 @@
 
 import json
 import logging
+from threading import Event
 from unittest.mock import Mock
 
 import pytest
@@ -45,6 +46,7 @@ def test_slow_dispatch_breakdown_and_log_cooldown(monkeypatch, caplog):
     assert "private-topic" not in caplog.text
     assert "private-payload" not in caplog.text
     assert coordinator._mqtt_callback_timing is None
+    coordinator._mqtt_state_write_probe.close()
 
 
 def test_failed_delivery_restores_timing_context_and_preserves_error(monkeypatch):
@@ -129,6 +131,7 @@ def test_sensor_writes_keep_aggregate_metrics_without_sensor_detail(monkeypatch)
             sensor.XSenseSensorEntityDescription(key=key, value_fn=read_value),
         )
         item.entity_id = f"sensor.private_{key}"
+        item._coordinator_state_initialized = True
         item.lookup_delay = lookup_delay
         item.availability_delay = availability_delay
         item.other_delay = other_delay
@@ -146,7 +149,7 @@ def test_sensor_writes_keep_aggregate_metrics_without_sensor_detail(monkeypatch)
     assert not any(key.startswith("slowest_sensor_") for key in work)
     assert "private" not in json.dumps(work)
 
-    # A longer non-sensor write replaces the entire winner, not only the duration.
+    # A longer non-sensor write replaces the aggregate winner.
     control = object.__new__(entity.XSenseEntity)
     control.coordinator = coordinator
     control.other_delay = 1.0
@@ -156,3 +159,125 @@ def test_sensor_writes_keep_aggregate_metrics_without_sensor_detail(monkeypatch)
     assert work["slowest_entity_write_seconds"] == pytest.approx(1.0)
     assert work["entity_write_calls"] == 3
     assert not any(key.startswith("slowest_sensor_") for key in work)
+
+
+@pytest.mark.asyncio
+async def test_slow_ha_write_keeps_cpu_and_same_write_stack(monkeypatch, caplog, tmp_path):
+    from homeassistant.const import EVENT_STATE_CHANGED, EVENT_STATE_REPORTED
+    from homeassistant.core import HomeAssistant, callback
+
+    station = make_station()
+    coordinator = make_coordinator(station)
+    hass = HomeAssistant(str(tmp_path))
+    item = sensor.XSenseSensorEntity(
+        coordinator, station,
+        sensor.XSenseSensorEntityDescription(key="battery", value_fn=lambda _: 100),
+    )
+    item.entity_id = "sensor.private_entity_id"
+    item.hass = hass
+    item._no_platform_reported = True
+    monkeypatch.setattr(sensor.XSenseSensorEntity, "unit_of_measurement", None)
+    monkeypatch.setattr(coordinator, "_async_process_mqtt_event", lambda *_: item.async_write_ha_state())
+    monkeypatch.setattr(coordinator, "_mqtt_next_work_log", float("inf"), raising=False)
+    logger = coordinator.async_event_received.__func__.__globals__["LOGGER"]
+
+    @callback
+    def slow_state_listener(event):
+        assert event.data["entity_id"] == "sensor.private_entity_id"
+        Event().wait(0.24)
+
+    @callback
+    def is_test_sensor(data):
+        return data["entity_id"] == item.entity_id
+
+    unsub_change = hass.bus.async_listen(EVENT_STATE_CHANGED, slow_state_listener, is_test_sensor)
+    unsub_report = hass.bus.async_listen(EVENT_STATE_REPORTED, slow_state_listener, is_test_sensor)
+    try:
+        with caplog.at_level(logging.DEBUG, logger=logger.name):
+            coordinator.async_event_received("private-topic", b"private-payload")
+            sample = coordinator._mqtt_slowest_sensor_state_write
+            assert sample["write_result"] == "state_changed"
+            assert "X-Sense slow MQTT sensor state write" in caplog.text
+            assert "X-Sense slow MQTT dispatch work" not in caplog.text
+
+            # A forced next log makes the unchanged write independently inspectable.
+            coordinator._mqtt_logged_sensor_write = None
+            coordinator.async_event_received("private-topic", b"private-payload")
+            assert "'write_result': 'state_reported'" in caplog.text
+
+        assert sample["sensor_type"] == "battery"
+        assert sample["wall_seconds"] >= 0.2
+        assert sample["non_cpu_seconds"] >= 0.1
+        assert sample["thread_cpu_seconds"] < sample["wall_seconds"]
+        assert sample["dispatch_seconds"] >= sample["wall_seconds"]
+        assert sample["stack_capture"] == "captured"
+        assert any(
+            ".slow_state_listener:" in frame
+            for stack in sample["stack_samples"] for frame in stack["frames"]
+        )
+        assert "private_entity_id" not in caplog.text
+        assert "private-topic" not in caplog.text
+        assert "private-payload" not in caplog.text
+    finally:
+        unsub_change()
+        unsub_report()
+        coordinator._mqtt_state_write_probe.close()
+
+
+def test_diagnostics_retain_slow_sensor_independently_of_slowest_dispatch(monkeypatch):
+    coordinator = make_coordinator(make_station())
+    monkeypatch.setattr(coordinator, "_mqtt_slowest_dispatch_work", {"total_seconds": 5}, raising=False)
+    traced = {"sensor_type": "battery", "wall_seconds": 1.5, "stack_samples": [{}]}
+    untraced = {"sensor_type": "battery", "wall_seconds": 2.46, "stack_samples": []}
+
+    def process(topic, payload):
+        timing = coordinator._mqtt_callback_timing
+        assert timing.state_write_probe is None
+        timing.record_sensor_state_write(traced)
+        timing.record_sensor_state_write(untraced)
+
+    monkeypatch.setattr(coordinator, "_async_process_mqtt_event", process)
+    coordinator.async_event_received("private-topic", b"private-payload")
+    assert coordinator._mqtt_slowest_dispatch_work == {"total_seconds": 5}
+    assert coordinator._mqtt_slowest_sensor_state_write is untraced
+    assert coordinator._mqtt_slowest_traced_sensor_state_write is traced
+
+
+def test_state_write_sampler_stops_when_debug_logging_is_disabled(monkeypatch, caplog):
+    coordinator = make_coordinator(make_station())
+    monkeypatch.setattr(coordinator, "_async_process_mqtt_event", Mock())
+    logger = coordinator.async_event_received.__func__.__globals__["LOGGER"]
+    with caplog.at_level(logging.DEBUG, logger=logger.name):
+        coordinator.async_event_received("topic", b"payload")
+        probe = coordinator._mqtt_state_write_probe
+        assert probe.is_running()
+        coordinator.async_event_received("topic", b"payload")
+        assert coordinator._mqtt_state_write_probe is probe
+    coordinator.async_event_received("topic", b"payload")
+    assert coordinator._mqtt_state_write_probe is None
+    assert not probe.is_running()
+
+
+def test_sensor_log_preserves_first_stack_and_later_severe_write(caplog):
+    coordinator = make_coordinator(make_station())
+    logger = coordinator.async_event_received.__func__.__globals__["LOGGER"]
+
+    def record(now, *samples):
+        timing = CallbackTiming(state_write_probe=Mock())
+        for wall, stack in samples:
+            timing.record_sensor_state_write({"wall_seconds": wall, "stack_samples": stack})
+        coordinator._record_mqtt_sensor_write_details(timing, 3, now)
+
+    stack = [{"frames": ["test.listener:1"]}]
+    with caplog.at_level(logging.DEBUG, logger=logger.name):
+        record(1, (0.2, []))
+        record(2, (0.21, []))
+        record(3, (0.22, stack))
+        record(4, (2.46, []), (0.5, stack))
+    messages = [item.getMessage() for item in caplog.records if "slow MQTT sensor state write" in item.getMessage()]
+    assert len(messages) == 4
+    assert "0.21" not in caplog.text
+    assert "0.22" in messages[1] and "test.listener:1" in messages[1]
+    assert "2.46" in messages[2] and "test.listener:1" in messages[3]
+    assert coordinator._mqtt_slowest_sensor_state_write["wall_seconds"] == 2.46
+    assert coordinator._mqtt_slowest_traced_sensor_state_write["wall_seconds"] == 0.5

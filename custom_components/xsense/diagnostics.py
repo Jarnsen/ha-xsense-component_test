@@ -337,6 +337,8 @@ def coordinator_diagnostics(
         "camera_station_cache_count": len(coordinator._camera_station_cache),
         "mqtt_server_count": len(coordinator.mqtt_servers),
         "mqtt_slowest_dispatch_work": getattr(coordinator, "_mqtt_slowest_dispatch_work", None),
+        "mqtt_slowest_sensor_state_write": getattr(coordinator, "_mqtt_slowest_sensor_state_write", None),
+        "mqtt_slowest_traced_sensor_state_write": getattr(coordinator, "_mqtt_slowest_traced_sensor_state_write", None),
         "mqtt_rssi_child_dispatch_work": getattr(coordinator, "_mqtt_rssi_child_dispatch_work", {}),
         "mqtt_connected_count": sum(
             1 for mqtt in coordinator.mqtt_servers.values() if mqtt.connected
