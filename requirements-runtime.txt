@@ -1,4 +1,5 @@
-# Direct integration dependencies. PyCognito supplies boto3 transitively.
-# Keep Paho compatible with Home Assistant's MQTT integration.
+# Keep the AWS SDK and Paho floors compatible with Home Assistant 2025.3.
+boto3>=1.34.131
+botocore>=1.34.131
 pycognito==2024.5.1
 paho-mqtt>=2.1.0
