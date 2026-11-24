@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Εγγραφές",
-          "local_mqtt": "Τοπικό MQTT (SBS50)"
+          "local_mqtt": "Τοπικό MQTT (SBS50)",
+          "local_mqtt_device": "Σύνδεση συσκευής"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Τοπικό MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Σταθμός βάσης",
-          "enabled": "Ενεργοποίηση τοπικού MQTT",
           "host": "Διεύθυνση IPv4 του broker",
           "port": "Θύρα broker",
           "username": "Όνομα χρήστη",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Τοπικό MQTT",
         "description": "Οι ρυθμίσεις στάλθηκαν· ελέγξτε τη σύνδεση στην εφαρμογή X-Sense."
+      },
+      "local_mqtt_device": {
+        "title": "Επιλέξτε ανιχνευτή",
+        "data": {"device": "Συσκευή"}
+      },
+      "local_mqtt_transport": {
+        "title": "Σύνδεση συσκευής",
+        "description": "Τα χειριστήρια cloud δεν θα είναι διαθέσιμα για αυτόν τον ανιχνευτή. Οι άλλες συσκευές δεν επηρεάζονται.",
+        "data": {"local_only": "Χρήση μόνο τοπικού MQTT"}
       }
     },
     "error": {

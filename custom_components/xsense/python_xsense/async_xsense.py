@@ -527,6 +527,7 @@ class AsyncXSense(XSenseBase):
         self.language = _ipc_language(language)
         self._sbs50_child_info_loaded: set[tuple[str, str]] = set()
         self._settings_locks: dict[tuple[str, str], asyncio.Lock] = {}
+        self.cloud_excluded_children: dict[str, dict[str, str]] = {}
 
     async def _get_session(self):
         if self.session is None or self.session.closed:
@@ -1664,6 +1665,8 @@ class AsyncXSense(XSenseBase):
                 i["mqttServer"],
             )
             result[i["houseId"]] = h
+            if excluded_children := getattr(self, "cloud_excluded_children", None):
+                h.cloud_excluded_children = excluded_children
 
             if rooms := await self.get_rooms(h.house_id):
                 h.set_rooms(rooms)
@@ -2712,7 +2715,7 @@ class AsyncXSense(XSenseBase):
 
     async def configure_local_mqtt(
         self, station: Station, *, enabled: bool, host: str, port: int,
-        username: str, password: str,
+        username: str, password: str, request_time: str | None = None,
     ):
         """Provision an SBS50 broker with the APK appHaParam command."""
         from ipaddress import IPv4Address
@@ -2747,7 +2750,7 @@ class AsyncXSense(XSenseBase):
             "userParam": "source=1", "haEnable": "1" if enabled else "0",
             "haIp": host, "haMqttPort": str(port),
             "haUserName": username, "haPassword": password,
-            "time": self._utc_timestamp(),
+            "time": request_time if request_time is not None else self._utc_timestamp(),
         }
         return await self.do_thing(
             station, "2nd_haparam", {"state": {"desired": desired}}

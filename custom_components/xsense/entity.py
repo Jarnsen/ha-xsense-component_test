@@ -44,6 +44,8 @@ def setup_dynamic_entities(
     coordinator: XSenseDataUpdateCoordinator,
     async_add_entities,
     entity_factory: Callable[[Callable[[Entity, str], bool], dict[str, Entity]], list[Any]],
+    *,
+    include_local_only: bool = False,
 ) -> None:
     """Add current entities and any new entities discovered on later refreshes."""
     added_unique_ids: set[str] = set()
@@ -69,6 +71,11 @@ def setup_dynamic_entities(
                 return _entity_unique_id(stable_ids[id(item)], key) not in added_unique_ids
 
             devices = dict(coordinator_devices(coordinator))
+            if not include_local_only and coordinator.__dict__.get("_local_only_devices"):
+                devices = {
+                    key: item for key, item in devices.items()
+                    if not getattr(item, "local_mqtt_only", False)
+                }
             scope = getattr(coordinator, "_mqtt_child_write_scope", None)
             scan_devices = devices if scope is None else {
                 key: item for key, item in devices.items()
@@ -204,6 +211,7 @@ class XSenseEntity(CoordinatorEntity):
     _attr_has_entity_name = True
     _station_id: str | None = None
     _mqtt_child_state_only = False
+    _accepts_local_only = False
     _mqtt_parent_availability_independent = False
     _last_control_record: ReferenceType[Entity] | None = None
 
@@ -286,6 +294,8 @@ class XSenseEntity(CoordinatorEntity):
             entities, getattr(self, "_lookup_dev_id", self._dev_id),
             self._entity_serial, self._physical_identity
         )
+        if getattr(entity, "local_mqtt_only", False) and not self._accepts_local_only:
+            return None
         # Remember only the lookup key, not the object or HA identifier. Each
         # subsequent read still verifies the current physical identity.
         if entity is not None and entities.get(entity.entity_id) is entity:
@@ -496,6 +506,21 @@ def _entity_unique_id(stable_id: str, key: str) -> str:
     return f"{stable_id}-{key}".replace("_", "-").lower()
 
 
+def _local_mqtt_id_owner(coordinator, entity: Entity) -> tuple | None:
+    """Find the original owner when a cloud record reuses a saved local ID."""
+    local = coordinator.__dict__.get("_local_only_devices", {}).get(entity.entity_id)
+    if local is None or local is entity:
+        return None
+    owner = _serial_identity(local)
+    return owner if owner != _serial_identity(entity) else None
+
+
+def _local_mqtt_collision_id(identity: tuple) -> str:
+    from hashlib import sha256
+
+    return "xsense-" + sha256(repr(identity).encode()).hexdigest()
+
+
 def _stable_device_id(coordinator, entity: Entity, identity: tuple | None):
     """Preserve observed IDs across unambiguous physical identity rollovers."""
     manager = getattr(coordinator, "_xsense_identity_store", None)
@@ -518,7 +543,10 @@ def _stable_device_id(coordinator, entity: Entity, identity: tuple | None):
     if stable_ids is None:
         stable_ids = coordinator._xsense_stable_device_ids = {}
     if identity not in stable_ids:
-        stable_ids[identity] = entity.entity_id
+        if _local_mqtt_id_owner(coordinator, entity) is not None:
+            stable_ids[identity] = _local_mqtt_collision_id(identity)
+        else:
+            stable_ids[identity] = entity.entity_id
         manager = getattr(coordinator, "_xsense_identity_store", None)
         if manager is not None:
             manager.async_schedule_save()

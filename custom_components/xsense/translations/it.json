@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Registrazioni",
-          "local_mqtt": "MQTT locale (SBS50)"
+          "local_mqtt": "MQTT locale (SBS50)",
+          "local_mqtt_device": "Connessione del dispositivo"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "MQTT locale: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Stazione base",
-          "enabled": "Abilita MQTT locale",
           "host": "Indirizzo IPv4 del broker",
           "port": "Porta del broker",
           "username": "Nome utente",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "MQTT locale",
         "description": "Impostazioni inviate; verifica la connessione nell’app X-Sense."
+      },
+      "local_mqtt_device": {
+        "title": "Seleziona un rilevatore",
+        "data": {"device": "Dispositivo"}
+      },
+      "local_mqtt_transport": {
+        "title": "Connessione del dispositivo",
+        "description": "I comandi tramite cloud non saranno disponibili per questo rilevatore. Gli altri dispositivi non cambieranno.",
+        "data": {"local_only": "Usa solo MQTT locale"}
       }
     },
     "error": {

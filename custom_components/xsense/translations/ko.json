@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "녹화",
-          "local_mqtt": "로컬 MQTT (SBS50)"
+          "local_mqtt": "로컬 MQTT (SBS50)",
+          "local_mqtt_device": "기기 연결 방식"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "로컬 MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "베이스 스테이션",
-          "enabled": "로컬 MQTT 사용",
           "host": "브로커 IPv4 주소",
           "port": "브로커 포트",
           "username": "사용자 이름",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "로컬 MQTT",
         "description": "설정을 전송했습니다. X-Sense 앱에서 연결을 확인하세요."
+      },
+      "local_mqtt_device": {
+        "title": "감지기 선택",
+        "data": {"device": "기기"}
+      },
+      "local_mqtt_transport": {
+        "title": "기기 연결 방식",
+        "description": "이 감지기는 클라우드에서 제어할 수 없습니다. 다른 기기에는 영향이 없습니다.",
+        "data": {"local_only": "로컬 MQTT만 사용"}
       }
     },
     "error": {

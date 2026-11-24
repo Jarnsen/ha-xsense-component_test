@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Opptak",
-          "local_mqtt": "Lokal MQTT (SBS50)"
+          "local_mqtt": "Lokal MQTT (SBS50)",
+          "local_mqtt_device": "Enhetstilkobling"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Lokal MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Basestasjon",
-          "enabled": "Aktiver lokal MQTT",
           "host": "Meglerens IPv4-adresse",
           "port": "Meglerport",
           "username": "Brukernavn",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Lokal MQTT",
         "description": "Innstillinger sendt; kontroller forbindelsen i X-Sense-appen."
+      },
+      "local_mqtt_device": {
+        "title": "Velg en detektor",
+        "data": {"device": "Enhet"}
+      },
+      "local_mqtt_transport": {
+        "title": "Enhetstilkobling",
+        "description": "Skystyring blir utilgjengelig for denne detektoren. Andre enheter påvirkes ikke.",
+        "data": {"local_only": "Bruk bare lokal MQTT"}
       }
     },
     "error": {

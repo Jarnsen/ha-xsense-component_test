@@ -286,6 +286,7 @@ async def test_config_entry_diagnostics_handles_missing_coordinator_data():
         as_dict=lambda: {
             "entry_id": "entry-id",
             "data": {"email": "user@example.test", "password": "secret-password"},
+            "options": {"local_mqtt_only": {"station:child": {"house_id": "private"}}},
         },
     )
     hass = SimpleNamespace(data={DOMAIN: {"entry-id": coordinator}})
@@ -294,6 +295,7 @@ async def test_config_entry_diagnostics_handles_missing_coordinator_data():
 
     assert diagnostics["entry"]["data"]["email"] == "**REDACTED**"
     assert diagnostics["entry"]["data"]["password"] == "**REDACTED**"
+    assert diagnostics["entry"]["options"]["local_mqtt_only"] == "**REDACTED**"
     assert diagnostics["coordinator"]["api"] == {"connected": False}
     assert diagnostics["coordinator"]["last_exception"] == "RuntimeError"
     assert diagnostics["data"] == {"stations": [], "devices": []}

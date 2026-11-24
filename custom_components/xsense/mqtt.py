@@ -809,6 +809,8 @@ class XSenseMQTT:
             topic.endswith(("/update/accepted", "/update/documents", "/update/rejected"))
         ):
             return
+        if topic.endswith("/shadow/name/2nd_haparamup/update") and msg.retain:
+            return
 
         if self.on_data is not None and not self._message_dispatch_stopped and not self._message_stopping_drains:
             # Paho can read many packets per loop_read despite its max_packets

@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Kayıtlar",
-          "local_mqtt": "Yerel MQTT (SBS50)"
+          "local_mqtt": "Yerel MQTT (SBS50)",
+          "local_mqtt_device": "Cihaz bağlantısı"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Yerel MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Baz istasyonu",
-          "enabled": "Yerel MQTT etkinleştir",
           "host": "Aracının IPv4 adresi",
           "port": "Aracı bağlantı noktası",
           "username": "Kullanıcı adı",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Yerel MQTT",
         "description": "Ayarlar gönderildi; bağlantıyı X-Sense uygulamasında kontrol edin."
+      },
+      "local_mqtt_device": {
+        "title": "Bir dedektör seçin",
+        "data": {"device": "Cihaz"}
+      },
+      "local_mqtt_transport": {
+        "title": "Cihaz bağlantısı",
+        "description": "Bu dedektörün bulut üzerinden kontrolü kullanılamaz. Diğer cihazlar etkilenmez.",
+        "data": {"local_only": "Yalnızca yerel MQTT kullan"}
       }
     },
     "error": {

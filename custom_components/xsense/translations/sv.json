@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Inspelningar",
-          "local_mqtt": "Lokal MQTT (SBS50)"
+          "local_mqtt": "Lokal MQTT (SBS50)",
+          "local_mqtt_device": "Enhetsanslutning"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Lokal MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Basstation",
-          "enabled": "Aktivera lokal MQTT",
           "host": "Mäklarens IPv4-adress",
           "port": "Mäklarport",
           "username": "Användarnamn",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Lokal MQTT",
         "description": "Inställningar skickade; kontrollera anslutningen i X-Sense-appen."
+      },
+      "local_mqtt_device": {
+        "title": "Välj en detektor",
+        "data": {"device": "Enhet"}
+      },
+      "local_mqtt_transport": {
+        "title": "Enhetsanslutning",
+        "description": "Molnstyrning blir inte tillgänglig för den här detektorn. Andra enheter påverkas inte.",
+        "data": {"local_only": "Använd endast lokal MQTT"}
       }
     },
     "error": {

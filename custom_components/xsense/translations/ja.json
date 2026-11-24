@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "録画",
-          "local_mqtt": "ローカルMQTT (SBS50)"
+          "local_mqtt": "ローカルMQTT (SBS50)",
+          "local_mqtt_device": "デバイスの接続方式"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "ローカルMQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "ベースステーション",
-          "enabled": "ローカルMQTTを有効にする",
           "host": "ブローカーのIPv4アドレス",
           "port": "ブローカーのポート",
           "username": "ユーザー名",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "ローカルMQTT",
         "description": "設定を送信しました。X-Senseアプリで接続を確認してください。"
+      },
+      "local_mqtt_device": {
+        "title": "検知器を選択",
+        "data": {"device": "デバイス"}
+      },
+      "local_mqtt_transport": {
+        "title": "デバイスの接続方式",
+        "description": "この検知器はクラウドから操作できなくなります。他のデバイスには影響しません。",
+        "data": {"local_only": "ローカル MQTT のみを使用"}
       }
     },
     "error": {

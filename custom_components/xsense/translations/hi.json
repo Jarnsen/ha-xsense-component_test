@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "रिकॉर्डिंग",
-          "local_mqtt": "स्थानीय MQTT (SBS50)"
+          "local_mqtt": "स्थानीय MQTT (SBS50)",
+          "local_mqtt_device": "डिवाइस कनेक्शन"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "स्थानीय MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "बेस स्टेशन",
-          "enabled": "स्थानीय MQTT सक्षम करें",
           "host": "ब्रोकर का IPv4 पता",
           "port": "ब्रोकर पोर्ट",
           "username": "उपयोगकर्ता नाम",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "स्थानीय MQTT",
         "description": "सेटिंग भेज दी गई; X-Sense ऐप में कनेक्शन जाँचें।"
+      },
+      "local_mqtt_device": {
+        "title": "डिटेक्टर चुनें",
+        "data": {"device": "डिवाइस"}
+      },
+      "local_mqtt_transport": {
+        "title": "डिवाइस कनेक्शन",
+        "description": "इस डिटेक्टर के क्लाउड नियंत्रण उपलब्ध नहीं होंगे। अन्य डिवाइस प्रभावित नहीं होंगे।",
+        "data": {"local_only": "सिर्फ़ स्थानीय MQTT का उपयोग करें"}
       }
     },
     "error": {

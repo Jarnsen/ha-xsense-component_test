@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Nahrávky",
-          "local_mqtt": "Místní MQTT (SBS50)"
+          "local_mqtt": "Místní MQTT (SBS50)",
+          "local_mqtt_device": "Připojení zařízení"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Místní MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Základnová stanice",
-          "enabled": "Povolit místní MQTT",
           "host": "IPv4 adresa brokeru",
           "port": "Port brokeru",
           "username": "Uživatelské jméno",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Místní MQTT",
         "description": "Nastavení odesláno; ověřte připojení v aplikaci X-Sense."
+      },
+      "local_mqtt_device": {
+        "title": "Vyberte detektor",
+        "data": {"device": "Zařízení"}
+      },
+      "local_mqtt_transport": {
+        "title": "Připojení zařízení",
+        "description": "Cloudové ovládání tohoto detektoru nebude dostupné. Ostatní zařízení se nezmění.",
+        "data": {"local_only": "Používat pouze místní MQTT"}
       }
     },
     "error": {

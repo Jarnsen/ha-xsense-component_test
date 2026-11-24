@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Tallenteet",
-          "local_mqtt": "Paikallinen MQTT (SBS50)"
+          "local_mqtt": "Paikallinen MQTT (SBS50)",
+          "local_mqtt_device": "Laitteen yhteys"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Paikallinen MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Tukiasema",
-          "enabled": "Ota paikallinen MQTT käyttöön",
           "host": "Välittäjän IPv4-osoite",
           "port": "Välittäjän portti",
           "username": "Käyttäjätunnus",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Paikallinen MQTT",
         "description": "Asetukset lähetetty; tarkista yhteys X-Sense-sovelluksessa."
+      },
+      "local_mqtt_device": {
+        "title": "Valitse ilmaisin",
+        "data": {"device": "Laite"}
+      },
+      "local_mqtt_transport": {
+        "title": "Laitteen yhteys",
+        "description": "Tämän ilmaisimen pilviohjaus ei ole käytettävissä. Muihin laitteisiin ei tule muutoksia.",
+        "data": {"local_only": "Käytä vain paikallista MQTT:tä"}
       }
     },
     "error": {

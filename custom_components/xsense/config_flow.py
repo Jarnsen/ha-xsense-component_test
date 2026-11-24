@@ -43,6 +43,7 @@ from .const import (
     RECORDING_MEDIA_ORDER_OPTIONS,
     RECORDING_NOTIFICATION_QUALITY_OPTIONS,
 )
+from .local_transport import CONF_LOCAL_MQTT_ONLY, local_device_key, local_device_record
 from .python_xsense import AsyncXSense
 from .python_xsense.async_xsense import is_camera_entity
 from .python_xsense.exceptions import APIFailure, AuthFailed, XSenseError
@@ -495,6 +496,7 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
         self._entry_id = getattr(config_entry, "entry_id", "")
         self._pending_options: dict[str, Any] | None = None
         self._confirmation_old_path: str | None = None
+        self._local_mqtt_selected: str | None = None
 
     def _current_options(self) -> dict[str, Any]:
         entries = getattr(getattr(self, "hass", None), "config_entries", None)
@@ -530,12 +532,62 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage X-Sense options."""
-        if user_input is None and self._local_mqtt_stations():
-            choices = ["local_mqtt"]
+        if user_input is None:
+            choices = []
+            if self._local_mqtt_stations():
+                choices.append("local_mqtt")
+            if self._local_mqtt_devices():
+                choices.append("local_mqtt_device")
+        else:
+            choices = []
+        if choices:
             if _entry_has_cameras(getattr(self, "hass", None), self._entry_id):
                 choices.insert(0, "recordings")
             return self.async_show_menu(step_id="init", menu_options=choices)
         return await self.async_step_recordings(user_input)
+
+    def _local_mqtt_devices(self):
+        coordinator = getattr(self.hass, "data", {}).get(DOMAIN, {}).get(self._entry_id)
+        data = getattr(coordinator, "data", None) or {}
+        return {
+            key: device for device in data.get("devices", {}).values()
+            if (key := local_device_key(device)) is not None
+        }
+
+    async def async_step_local_mqtt_device(self, user_input=None):
+        devices = self._local_mqtt_devices()
+        if not devices:
+            return self.async_abort(reason="no_options")
+        if user_input is not None and user_input.get("device") in devices:
+            self._local_mqtt_selected = user_input["device"]
+            return await self.async_step_local_mqtt_transport()
+        return self.async_show_form(
+            step_id="local_mqtt_device",
+            data_schema=vol.Schema({vol.Required("device"): vol.In({
+                key: f"{device.station.name or 'SBS50'}: {device.name or device.type}"
+                for key, device in devices.items()
+            })}),
+        )
+
+    async def async_step_local_mqtt_transport(self, user_input=None):
+        key = self._local_mqtt_selected
+        device = self._local_mqtt_devices().get(key)
+        if device is None:
+            return await self.async_step_local_mqtt_device()
+        options = self._current_options()
+        stored = options.get(CONF_LOCAL_MQTT_ONLY)
+        selected = dict(stored) if isinstance(stored, dict) else {}
+        if user_input is not None:
+            if user_input["local_only"]:
+                selected[key] = local_device_record(device)
+            else:
+                selected.pop(key, None)
+            options[CONF_LOCAL_MQTT_ONLY] = selected
+            return self.async_create_entry(title="", data=options)
+        return self.async_show_form(
+            step_id="local_mqtt_transport",
+            data_schema=vol.Schema({vol.Required("local_only", default=key in selected): bool}),
+        )
 
     def _local_mqtt_stations(self):
         coordinator = getattr(self, "hass", None)
@@ -557,19 +609,16 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
             if station is None:
                 errors["station"] = "local_mqtt_failed"
             else:
-                coordinator = self.hass.data[DOMAIN][self._entry_id]
                 try:
-                    client = getattr(coordinator, "xsense", None)
-                    if client is None:
-                        raise XSenseError("X-Sense session is not ready")
-                    result = await client.configure_local_mqtt(
-                        station, enabled=user_input["enabled"],
+                    coordinator = self.hass.data.get(DOMAIN, {}).get(self._entry_id)
+                    if coordinator is None:
+                        raise HomeAssistantError("X-Sense session is not ready")
+                    await coordinator.async_configure_local_mqtt(
+                        station, enabled=True,
                         host=user_input["host"], port=user_input["port"],
                         username=user_input["username"], password=user_input["password"],
                     )
-                    if isinstance(result, dict) and result.get("code"):
-                        raise XSenseError("Broker configuration rejected")
-                except (XSenseError, ValueError, OSError, aiohttp.ClientError):
+                except (XSenseError, HomeAssistantError, ValueError, OSError, aiohttp.ClientError):
                     errors["base"] = "local_mqtt_failed"
                 else:
                     return self.async_show_form(
@@ -582,7 +631,6 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
                     key: getattr(station, "name", None) or key
                     for key, station in stations.items()
                 }),
-                vol.Required("enabled", default=True): bool,
                 vol.Required("host"): str,
                 vol.Required("port", default=1883): vol.All(vol.Coerce(int), vol.Range(min=1, max=65535)),
                 vol.Required("username"): str,
@@ -614,7 +662,7 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
                 })
             current = await self._async_current_options()
             if current[CONF_RECORDING_MEDIA_STORAGE_PATH] == validated[CONF_RECORDING_MEDIA_STORAGE_PATH]:
-                return self.async_create_entry(title="", data=validated)
+                return self.async_create_entry(title="", data=self._current_options() | validated)
             self._pending_options = validated
             return await self.async_step_confirm_recording_media_storage_path()
 
@@ -638,7 +686,7 @@ class XSenseOptionsFlow(config_entries.OptionsFlow):
         old_path = current[CONF_RECORDING_MEDIA_STORAGE_PATH]
         new_path = pending_options[CONF_RECORDING_MEDIA_STORAGE_PATH]
         if user_input is not None and old_path in (new_path, self._confirmation_old_path):
-            return self.async_create_entry(title="", data=pending_options)
+            return self.async_create_entry(title="", data=self._current_options() | pending_options)
         self._confirmation_old_path = old_path
         return self.async_show_form(
             step_id="confirm_recording_media_storage_path",

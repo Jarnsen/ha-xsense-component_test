@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Bản ghi",
-          "local_mqtt": "MQTT cục bộ (SBS50)"
+          "local_mqtt": "MQTT cục bộ (SBS50)",
+          "local_mqtt_device": "Kết nối thiết bị"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "MQTT cục bộ: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Trạm gốc",
-          "enabled": "Bật MQTT cục bộ",
           "host": "Địa chỉ IPv4 của broker",
           "port": "Cổng broker",
           "username": "Tên người dùng",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "MQTT cục bộ",
         "description": "Đã gửi cài đặt; kiểm tra kết nối trong ứng dụng X-Sense."
+      },
+      "local_mqtt_device": {
+        "title": "Chọn đầu báo",
+        "data": {"device": "Thiết bị"}
+      },
+      "local_mqtt_transport": {
+        "title": "Kết nối thiết bị",
+        "description": "Không thể điều khiển đầu báo này qua đám mây. Các thiết bị khác không bị ảnh hưởng.",
+        "data": {"local_only": "Chỉ sử dụng MQTT cục bộ"}
       }
     },
     "error": {

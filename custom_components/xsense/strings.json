@@ -383,7 +383,8 @@
         },
         "menu_options": {
           "recordings": "Recordings",
-          "local_mqtt": "Local MQTT (SBS50)"
+          "local_mqtt": "Set up SBS50 broker",
+          "local_mqtt_device": "Device transport"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -391,10 +392,9 @@
       },
       "local_mqtt": {
         "title": "Local MQTT (SBS50)",
-        "description": "Configure the local broker used by the SBS50 native MQTT feature. Enable the MQTT integration in Home Assistant first. Supported Link+ Pro smoke, CO, combination and heat alarms publish through Home Assistant MQTT discovery. Initial provisioning requires the X-Sense cloud. This does not disable cloud support and may create separate MQTT devices. Broker credentials are sent to the base station through X-Sense and are not saved in this integration.",
+        "description": "Configure the local broker used by the SBS50 native MQTT feature. Supported Link+ Pro alarms appear under Home Assistant MQTT and may create separate devices. This setup does not switch any detector to local-only operation. Broker credentials are sent to the station through X-Sense and are not saved in this integration.",
         "data": {
           "station": "Base station",
-          "enabled": "Enable local MQTT",
           "host": "Broker IPv4 address",
           "port": "Broker port",
           "username": "Broker username",
@@ -402,8 +402,17 @@
         }
       },
       "local_mqtt_done": {
-        "title": "Configuration sent",
-        "description": "The broker configuration was sent. This does not confirm a broker connection. Check the SBS50 connection status in the X-Sense app and devices under the Home Assistant MQTT integration."
+        "title": "Broker settings saved",
+        "description": "The SBS50 confirmed it saved the settings. Check the broker connection separately in the X-Sense app and look for devices under Home Assistant MQTT."
+      },
+      "local_mqtt_device": {
+        "title": "Select a detector",
+        "data": {"device": "Device"}
+      },
+      "local_mqtt_transport": {
+        "title": "Detector transport",
+        "description": "Set up the SBS50 broker first. Local MQTT only uses the detector's verified local alarm and end-of-life reports. Cloud-only controls and readings for this detector will be unavailable. Other devices keep their cloud connection.",
+        "data": {"local_only": "Use Local MQTT only"}
       }
     },
     "error": {

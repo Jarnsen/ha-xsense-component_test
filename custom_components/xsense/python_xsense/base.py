@@ -548,6 +548,13 @@ class XSenseBase:
         else:
             station_data = data.copy()
             children = station_data.pop('devs', {}) or {}
+            if getattr(station, "cloud_excluded_children", None):
+                if any(station.cloud_excludes_child(identifier)
+                       for identifier in _child_state_identifiers(None, station_data)):
+                    return
+                for key in tuple(station_data):
+                    if station.cloud_excludes_child(key):
+                        station_data.pop(key)
 
         children = _merge_top_level_child_state(station, station_data, children)
 

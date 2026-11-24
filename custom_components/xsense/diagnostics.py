@@ -13,10 +13,12 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 from .coordinator import XSenseDataUpdateCoordinator
+from .local_transport import CONF_LOCAL_MQTT_ONLY
 
 TO_REDACT = {
     CONF_EMAIL,
     CONF_PASSWORD,
+    CONF_LOCAL_MQTT_ONLY,
     "adminId",
     "cameraLiveId",
     "deviceId",
@@ -213,7 +215,8 @@ def local_communication_diagnostics(entity) -> dict[str, Any]:
     ip_address = _first_present(data, LOCAL_ADDRESS_KEYS)
     ssid = data.get("ssid")
     mac_reported = any(data.get(key) not in (None, "") for key in LOCAL_MAC_KEYS)
-    shadow_name = getattr(entity, "shadow_name", None)
+    local_only = getattr(entity, "local_mqtt_only", False)
+    shadow_name = None if local_only else getattr(entity, "shadow_name", None)
 
     return {
         "ip_reported": bool(ip_address),
@@ -221,7 +224,7 @@ def local_communication_diagnostics(entity) -> dict[str, Any]:
         "mac_reported": mac_reported,
         "local_runtime_candidate": bool(ip_address or ssid or mac_reported),
         "local_control_confirmed": False,
-        "runtime_path": "aws_iot_shadow",
+        "runtime_path": "local_mqtt" if local_only else "aws_iot_shadow",
         "shadow_name": shadow_name,
     }
 
