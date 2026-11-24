@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Înregistrări",
-          "local_mqtt": "MQTT local (SBS50)"
+          "local_mqtt": "MQTT local (SBS50)",
+          "local_mqtt_device": "Conexiunea dispozitivului"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "MQTT local: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Stație de bază",
-          "enabled": "Activare MQTT local",
           "host": "Adresa IPv4 a brokerului",
           "port": "Portul brokerului",
           "username": "Nume de utilizator",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "MQTT local",
         "description": "Setări trimise; verificați conexiunea în aplicația X-Sense."
+      },
+      "local_mqtt_device": {
+        "title": "Selectați un detector",
+        "data": {"device": "Dispozitiv"}
+      },
+      "local_mqtt_transport": {
+        "title": "Conexiunea dispozitivului",
+        "description": "Comenzile prin cloud nu vor fi disponibile pentru acest detector. Celelalte dispozitive nu vor fi afectate.",
+        "data": {"local_only": "Folosește doar MQTT local"}
       }
     },
     "error": {

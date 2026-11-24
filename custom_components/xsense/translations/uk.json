@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Записи",
-          "local_mqtt": "Локальний MQTT (SBS50)"
+          "local_mqtt": "Локальний MQTT (SBS50)",
+          "local_mqtt_device": "Підключення пристрою"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Локальний MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Базова станція",
-          "enabled": "Увімкнути локальний MQTT",
           "host": "IPv4-адреса брокера",
           "port": "Порт брокера",
           "username": "Ім’я користувача",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Локальний MQTT",
         "description": "Налаштування надіслано; перевірте з’єднання в застосунку X-Sense."
+      },
+      "local_mqtt_device": {
+        "title": "Виберіть датчик",
+        "data": {"device": "Пристрій"}
+      },
+      "local_mqtt_transport": {
+        "title": "Підключення пристрою",
+        "description": "Хмарне керування цим датчиком буде недоступне. Інші пристрої не зміняться.",
+        "data": {"local_only": "Використовувати лише локальний MQTT"}
       }
     },
     "error": {

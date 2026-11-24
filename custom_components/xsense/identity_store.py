@@ -144,7 +144,7 @@ def validate_current_identities(coordinator, *, counts: dict[tuple, int] | None 
     """Reject reused IDs, optionally indexing identities for discovery."""
     # A reused API ID cannot safely be assigned to either registry device by
     # guessing. Refuse setup instead of silently merging physical devices.
-    from .entity import _serial_identity
+    from .entity import _local_mqtt_collision_id, _local_mqtt_id_owner, _serial_identity
 
     identities = getattr(coordinator, "_xsense_stable_device_ids", {})
     if not identities and counts is None:
@@ -157,10 +157,12 @@ def validate_current_identities(coordinator, *, counts: dict[tuple, int] | None 
                 continue
             identity = _serial_identity(entity)
             if owner is not None and owner != identity:
-                raise IdentityConflictError(
-                    "Stored X-Sense identity conflicts with a reused device ID; "
-                    "automatic registry reassignment is refused"
-                )
+                resolved = identity is not None and identities.get(identity) == _local_mqtt_collision_id(identity)
+                if not resolved and owner != _local_mqtt_id_owner(coordinator, entity):
+                    raise IdentityConflictError(
+                        "Stored X-Sense identity conflicts with a reused device ID; "
+                        "automatic registry reassignment is refused"
+                    )
             if counts is not None:
                 key = (collection, identity)
                 counts[key] = counts.get(key, 0) + 1

@@ -31,6 +31,7 @@ class Station(Entity):
         self.devices = {}
         self.device_order = []
         self.device_by_sn = {}
+        self.cloud_excluded_children: dict[str, str] = {}
         self.has_alarm = False
         self._alarm_data = {}
         super().__init__(**kwargs)
@@ -64,6 +65,9 @@ class Station(Entity):
             device_id = _first_value(device_data, ("deviceId",)) or device_sn
             if device_id in (None, "") or device_sn in (None, ""):
                 continue
+            if self.cloud_excluded_children and str(device_sn).casefold() in self.cloud_excluded_children:
+                self.cloud_excluded_children[str(device_sn).casefold()] = str(device_id)
+                continue
             device_data["deviceId"] = str(device_id)
             device_data["deviceSn"] = str(device_sn)
             if not device_data.get("roomName") and self.house is not None:
@@ -94,6 +98,12 @@ class Station(Entity):
         """Return a child device by app id or serial identifier."""
         identifier = str(identifier)
         return self.devices.get(identifier) or self.get_device_by_sn(identifier)
+
+    def cloud_excludes_child(self, identifier: object) -> bool:
+        if identifier is None:
+            return False
+        value = str(identifier)
+        return value.casefold() in self.cloud_excluded_children or value in self.cloud_excluded_children.values()
 
     def get_group_device(self, group_id):
         group_id = _java_string(group_id)

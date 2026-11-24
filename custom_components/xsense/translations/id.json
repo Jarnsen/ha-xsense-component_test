@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Rekaman",
-          "local_mqtt": "MQTT lokal (SBS50)"
+          "local_mqtt": "MQTT lokal (SBS50)",
+          "local_mqtt_device": "Koneksi perangkat"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "MQTT lokal: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Stasiun basis",
-          "enabled": "Aktifkan MQTT lokal",
           "host": "Alamat IPv4 broker",
           "port": "Port broker lokal",
           "username": "Nama pengguna",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "MQTT lokal",
         "description": "Pengaturan dikirim; periksa koneksi di aplikasi X-Sense."
+      },
+      "local_mqtt_device": {
+        "title": "Pilih detektor",
+        "data": {"device": "Perangkat"}
+      },
+      "local_mqtt_transport": {
+        "title": "Koneksi perangkat",
+        "description": "Kontrol melalui cloud tidak tersedia untuk detektor ini. Perangkat lain tidak terpengaruh.",
+        "data": {"local_only": "Gunakan hanya MQTT lokal"}
       }
     },
     "error": {

@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Opnamen",
-          "local_mqtt": "Lokale MQTT (SBS50)"
+          "local_mqtt": "Lokale MQTT (SBS50)",
+          "local_mqtt_device": "Apparaatverbinding"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Lokale MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Basisstation",
-          "enabled": "Lokale MQTT inschakelen",
           "host": "IPv4-adres van de broker",
           "port": "Brokerpoort",
           "username": "Gebruikersnaam",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Lokale MQTT",
         "description": "Instellingen verzonden; controleer de verbinding in de X-Sense-app."
+      },
+      "local_mqtt_device": {
+        "title": "Selecteer een melder",
+        "data": {"device": "Apparaat"}
+      },
+      "local_mqtt_transport": {
+        "title": "Apparaatverbinding",
+        "description": "Cloudbediening is niet beschikbaar voor deze melder. Andere apparaten blijven ongewijzigd.",
+        "data": {"local_only": "Alleen lokale MQTT gebruiken"}
       }
     },
     "error": {

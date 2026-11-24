@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Salvestised",
-          "local_mqtt": "Kohalik MQTT (SBS50)"
+          "local_mqtt": "Kohalik MQTT (SBS50)",
+          "local_mqtt_device": "Seadme ühendus"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Kohalik MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Tugijaam",
-          "enabled": "Luba kohalik MQTT",
           "host": "Maakleri IPv4-aadress",
           "port": "Maakleri port",
           "username": "Kasutajanimi",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Kohalik MQTT",
         "description": "Seaded saadetud; kontrollige ühendust X-Sense’i rakenduses."
+      },
+      "local_mqtt_device": {
+        "title": "Vali andur",
+        "data": {"device": "Seade"}
+      },
+      "local_mqtt_transport": {
+        "title": "Seadme ühendus",
+        "description": "Selle anduri pilvepõhised juhtseadised ei ole saadaval. Teised seadmed ei muutu.",
+        "data": {"local_only": "Kasuta ainult kohalikku MQTT-d"}
       }
     },
     "error": {

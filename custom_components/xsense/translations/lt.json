@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Įrašai",
-          "local_mqtt": "Vietinis MQTT (SBS50)"
+          "local_mqtt": "Vietinis MQTT (SBS50)",
+          "local_mqtt_device": "Įrenginio ryšys"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Vietinis MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Bazinė stotis",
-          "enabled": "Įjungti vietinį MQTT",
           "host": "Tarpininko IPv4 adresas",
           "port": "Tarpininko prievadas",
           "username": "Naudotojo vardas",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Vietinis MQTT",
         "description": "Nustatymai išsiųsti; patikrinkite ryšį X-Sense programėlėje."
+      },
+      "local_mqtt_device": {
+        "title": "Pasirinkite detektorių",
+        "data": {"device": "Įrenginys"}
+      },
+      "local_mqtt_transport": {
+        "title": "Įrenginio ryšys",
+        "description": "Šio detektoriaus valdymas per debesiją bus nepasiekiamas. Kiti įrenginiai nesikeis.",
+        "data": {"local_only": "Naudoti tik vietinį MQTT"}
       }
     },
     "error": {

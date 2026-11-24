@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Optagelser",
-          "local_mqtt": "Lokal MQTT (SBS50)"
+          "local_mqtt": "Lokal MQTT (SBS50)",
+          "local_mqtt_device": "Enhedsforbindelse"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Lokal MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Basestation",
-          "enabled": "Aktivér lokal MQTT",
           "host": "Brokerens IPv4-adresse",
           "port": "Brokerport",
           "username": "Brugernavn",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Lokal MQTT",
         "description": "Indstillinger sendt; kontrollér forbindelsen i X-Sense-appen."
+      },
+      "local_mqtt_device": {
+        "title": "Vælg en detektor",
+        "data": {"device": "Enhed"}
+      },
+      "local_mqtt_transport": {
+        "title": "Enhedsforbindelse",
+        "description": "Cloudstyring bliver utilgængelig for denne detektor. Andre enheder påvirkes ikke.",
+        "data": {"local_only": "Brug kun lokal MQTT"}
       }
     },
     "error": {

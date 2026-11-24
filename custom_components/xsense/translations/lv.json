@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Ieraksti",
-          "local_mqtt": "Lokālais MQTT (SBS50)"
+          "local_mqtt": "Lokālais MQTT (SBS50)",
+          "local_mqtt_device": "Ierīces savienojums"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Lokālais MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Bāzes stacija",
-          "enabled": "Iespējot lokālo MQTT",
           "host": "Starpnieka IPv4 adrese",
           "port": "Starpnieka ports",
           "username": "Lietotājvārds",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Lokālais MQTT",
         "description": "Iestatījumi nosūtīti; pārbaudiet savienojumu X-Sense lietotnē."
+      },
+      "local_mqtt_device": {
+        "title": "Izvēlieties detektoru",
+        "data": {"device": "Ierīce"}
+      },
+      "local_mqtt_transport": {
+        "title": "Ierīces savienojums",
+        "description": "Šī detektora vadība mākonī nebūs pieejama. Citas ierīces netiks skartas.",
+        "data": {"local_only": "Izmantot tikai lokālo MQTT"}
       }
     },
     "error": {

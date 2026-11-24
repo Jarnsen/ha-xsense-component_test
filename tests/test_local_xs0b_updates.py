@@ -54,7 +54,7 @@ async def test_live_packets_update_existing_entity(monkeypatch, key, suffix, act
     node = "SBS501234ABCD_00000001"
     topic = f"homeassistant/binary_sensor/{node}/{node}_{suffix}/state"
     subscribe.assert_awaited_once_with(entity.hass, topic, entity._local_message, qos=1)
-    connection.assert_called_once_with(entity.hass, entity._local_connection)
+    assert connection.call_args.args[0] is entity.hass
 
     def send(status, *, retain=False, received_topic=topic):
         entity._local_message(
@@ -139,7 +139,9 @@ def test_only_newer_explicit_cloud_clear_recovers_missed_local_clear(monkeypatch
 
 
 @pytest.mark.parametrize("model", ["XS0B-MR", "XS01-M", "XH02-M"])
-async def test_captured_sbs50_topics_through_mosquitto(tmp_path, monkeypatch, model):
+@pytest.mark.parametrize("late", [False, True])
+@pytest.mark.parametrize("local_only", [False, True])
+async def test_captured_sbs50_topics_through_mosquitto(tmp_path, monkeypatch, model, late, local_only):
     """Use a private broker and HA's actual MQTT subscription path."""
     from homeassistant import auth, config_entries, loader
     from homeassistant.core import HomeAssistant
@@ -193,8 +195,9 @@ async def test_captured_sbs50_topics_through_mosquitto(tmp_path, monkeypatch, mo
             data={"broker": "127.0.0.1", "port": port, "protocol": "5",
                   "discovery": False},
         )
-        await hass.config_entries.async_add(entry)
-        assert entry.state is config_entries.ConfigEntryState.LOADED
+        if not late:
+            await hass.config_entries.async_add(entry)
+            assert entry.state is config_entries.ConfigEntryState.LOADED
         await hass.async_start()
         monkeypatch.setattr(XSenseEntity, "async_added_to_hass", AsyncMock())
         entities = {}
@@ -202,6 +205,20 @@ async def test_captured_sbs50_topics_through_mosquitto(tmp_path, monkeypatch, mo
         heat = model == "XH02-M"
         station_sn, child_sn = ("15298924", "00000009") if heat else ("163988C7", "00000001")
         alarm_suffix = "heatalarm" if heat else "smokealarm"
+        node = f"SBS50{station_sn}_{child_sn}"
+
+        async def publish(suffix, status, *, retain=False):
+            proc = await asyncio.create_subprocess_exec(
+                publisher, "-h", "127.0.0.1", "-p", str(port), "-q", "1",
+                *(("-r",) if retain else ()),
+                "-t", f"homeassistant/binary_sensor/{node}/{node}_{suffix}/state",
+                "-m", f'{{"status":"{status}"}}',
+            )
+            assert await proc.wait() == 0
+
+        if local_only:
+            await publish(alarm_suffix, "Detected", retain=True)
+            await publish("online", "Online", retain=True)
         for label, device, key in (
             ("alarm", detector(station_sn, child_sn, model), "alarm_status"),
             ("life", detector(station_sn, child_sn, model), "is_life_end"),
@@ -218,36 +235,55 @@ async def test_captured_sbs50_topics_through_mosquitto(tmp_path, monkeypatch, mo
             )
             entity._current_entity = Mock(return_value=device)
             entity._local_state = entity._local_topic = None
+            if local_only and label in {"alarm", "life"}:
+                device.local_mqtt_only = entity._local_only = True
             entity.async_on_remove = remove.append
             entity.async_write_ha_state = (
                 lambda name=label, sensor=entity: updates.put_nowait((name, sensor.is_on))
             )
             await entity.async_added_to_hass()
             entities[label] = entity
+        if late:
+            assert entities["alarm"]._local_topic is None
+            await hass.config_entries.async_add(entry)
+            assert entry.state is config_entries.ConfigEntryState.LOADED
         assert entities["camera"]._local_topic is None
         assert entities["combo"]._local_topic is None
         if heat:
             assert entities["life"]._local_topic is None
         await hass.async_block_till_done()
-        node = f"SBS50{station_sn}_{child_sn}"
-
-        async def publish(suffix, status):
-            proc = await asyncio.create_subprocess_exec(
-                publisher, "-h", "127.0.0.1", "-p", str(port), "-q", "1",
-                "-t", f"homeassistant/binary_sensor/{node}/{node}_{suffix}/state",
-                "-m", f'{{"status":"{status}"}}',
-            )
-            assert await proc.wait() == 0
-
         # XH02-M topic and state payloads: ioBroker.xsense b65e18d,
         # test/haTopics.test.js. Smoke models use their own alarm topic.
-        async with asyncio.timeout(5):
-            while updates.empty():
-                await publish(alarm_suffix, "Detected")
-                await asyncio.sleep(0.1)
-        assert updates.get_nowait() == ("alarm", True)
+        if not local_only:
+            async with asyncio.timeout(5):
+                while updates.empty():
+                    await publish(alarm_suffix, "Detected")
+                    await asyncio.sleep(0.1)
+        assert await asyncio.wait_for(updates.get(), 5) == ("alarm", True)
+        if local_only:
+            assert entities["alarm"].available
+            entities["alarm"]._current_entity().data["cloud"] = True
         await publish(alarm_suffix, "Cleared")
         assert await asyncio.wait_for(updates.get(), 5) == ("alarm", False)
+        if local_only:
+            entities["alarm"]._current_entity().data["cloud"] = False
+            await publish("online", "Offline")
+            assert await asyncio.wait_for(updates.get(), 5) == ("alarm", None)
+            assert not entities["alarm"].available
+            await publish("online", "Online")
+            await publish(alarm_suffix, "Cleared")
+            assert await asyncio.wait_for(updates.get(), 5) == ("alarm", False)
+            assert entities["alarm"].available
+            if late and model == "XS01-M":
+                await publish(alarm_suffix, "Cleared", retain=True)
+                await publish("online", "Online", retain=True)
+                assert await hass.config_entries.async_reload(entry.entry_id)
+                assert await asyncio.wait_for(updates.get(), 8) == ("alarm", None)
+                assert await asyncio.wait_for(updates.get(), 8) == ("alarm", False)
+                assert entities["alarm"].available
+                assert entities["alarm"].is_on is False
+                while not updates.empty():
+                    updates.get_nowait()
         if not heat:
             await publish("lifeend", "EOL")
             assert await asyncio.wait_for(updates.get(), 5) == ("life", True)
@@ -257,6 +293,14 @@ async def test_captured_sbs50_topics_through_mosquitto(tmp_path, monkeypatch, mo
             assert entities[label].is_on is False
         assert all(entity._current_entity().data["cloud"] is False for entity in entities.values())
         assert updates.empty()
+        if local_only:
+            entities["alarm"]._current_entity().data["cloud"] = True
+            process.terminate()
+            await process.wait()
+            async with asyncio.timeout(5):
+                while entities["alarm"].available:
+                    await asyncio.sleep(0.02)
+            assert entities["alarm"].is_on is None
     finally:
         for unsubscribe in reversed(remove):
             unsubscribe()

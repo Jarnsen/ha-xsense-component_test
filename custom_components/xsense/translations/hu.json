@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Felvételek",
-          "local_mqtt": "Helyi MQTT (SBS50)"
+          "local_mqtt": "Helyi MQTT (SBS50)",
+          "local_mqtt_device": "Eszközkapcsolat"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Helyi MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Bázisállomás",
-          "enabled": "Helyi MQTT engedélyezése",
           "host": "Közvetítő IPv4-címe",
           "port": "Közvetítő portja",
           "username": "Felhasználónév",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Helyi MQTT",
         "description": "Beállítások elküldve; ellenőrizze a kapcsolatot az X-Sense alkalmazásban."
+      },
+      "local_mqtt_device": {
+        "title": "Válasszon érzékelőt",
+        "data": {"device": "Eszköz"}
+      },
+      "local_mqtt_transport": {
+        "title": "Eszközkapcsolat",
+        "description": "Ennél az érzékelőnél nem lesz elérhető a felhőalapú vezérlés. A többi eszköz nem változik.",
+        "data": {"local_only": "Csak helyi MQTT használata"}
       }
     },
     "error": {

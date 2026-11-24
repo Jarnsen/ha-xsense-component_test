@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import Callable
 from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta
 from time import perf_counter
@@ -30,6 +31,7 @@ from .const import (
     LOGGER,
     POLL_INTERVAL_MIN,
 )
+from .local_transport import local_device_key, restore_local_devices
 from .mqtt import DEFAULT_ENCODING, DEFAULT_SUBSCRIBE_QOS, XSenseMQTT
 from .python_xsense import (
     AsyncXSense,
@@ -39,6 +41,7 @@ from .python_xsense import (
 )
 from .python_xsense.async_xsense import camera_addx_serial, is_camera_entity
 from .python_xsense.base import (
+    _child_state_identifiers,
     _child_state_items,
     _merge_top_level_child_state,
     _state_child_device,
@@ -83,8 +86,12 @@ from .python_xsense.exceptions import (
     SessionExpired,
 )
 from .python_xsense.mapping import bool_state
+from .python_xsense.station import Station
 
 _IGNORED_TOPIC_SUFFIXES = ("/update/accepted", "/update/documents", "/update/rejected")
+_LOCAL_MQTT_SETTINGS_REPORT = "/shadow/name/2nd_haparamup/update"
+_LOCAL_MQTT_LINK_REPORT = "/shadow/name/2nd_halinkup/update"
+_LOCAL_MQTT_CONFIRM_TIMEOUT = 60
 _MAINPAGE_ROUTING_FIELDS = frozenset({"stationSN", "stationSn", "devs"})
 _STATION_NETWORK_FIELDS = frozenset({"wifiRSSI", "wifiRssi", "ssid", "ip", "wifi_sw"})
 _SCOPED_STATION_FIELDS = _STATION_NETWORK_FIELDS | {"stationSN", "stationSn"}
@@ -183,6 +190,7 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Initialize the XSense hub."""
         LOGGER.debug("XSenseDataUpdateCoordinator:__init__")
         self.entry = entry
+        self._local_only_devices = restore_local_devices(getattr(entry, "options", {}))
         self.xsense: AsyncXSense = None
         self._initialized: bool = False
         self._camera_initialized: bool = False
@@ -221,8 +229,77 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             always_update=True,
         )
         self.mqtt_servers: dict[str, XSenseMQTT] = {}
+        self._pending_local_mqtt_reports: dict[str, Callable[[dict], None]] = {}
         self._sbs0a_pending_settings: set[tuple[str, str]] = set()
         self._pending_paired_schedules: set[tuple[str, str, str]] = set()
+
+    async def async_configure_local_mqtt(
+        self, station: Station, *, enabled: bool, host: str, port: int,
+        username: str, password: str,
+    ) -> None:
+        """Wait for the station's save report, not just the AWS write result."""
+        async with self._async_operation():
+            xsense = self.xsense
+            mqtt = self.mqtt_server(station.house.mqtt_server)
+            if xsense is None or mqtt is None or not mqtt.connected:
+                raise HomeAssistantError("SBS50 settings require a connected X-Sense cloud session")
+
+            topic = f"$aws/things/{station.shadow_name}{_LOCAL_MQTT_SETTINGS_REPORT}"
+            pending = self._pending_local_mqtt_reports
+            if topic in pending:
+                raise HomeAssistantError("An SBS50 MQTT settings change is already pending")
+            confirmed = asyncio.Event()
+            submitted = None
+            unsubscribe = None
+            expected = {
+                "haEnable": "1" if enabled else "0", "haIp": host,
+                "haMqttPort": str(port), "haUserName": username, "haPassword": password,
+            }
+
+            def on_report(report: dict) -> None:
+                if submitted is None or report.get("stationSN") != station.sn:
+                    return
+                timestamp = report.get("time")
+                if (
+                    isinstance(timestamp, str) and len(timestamp) == 14
+                    and timestamp.isdecimal() and timestamp < submitted
+                ):
+                    return
+                if any(str(report[key]) != value for key, value in expected.items() if key in report):
+                    return
+                if not expected.keys() <= report.keys() and not (
+                    timestamp == submitted and expected.keys() & report.keys()
+                ):
+                    return
+                confirmed.set()
+
+            @callback
+            def on_shadow(_message) -> None:
+                """The cloud dispatcher delivers raw shadow updates by topic."""
+
+            pending[topic] = on_report
+            try:
+                async with asyncio.timeout(_LOCAL_MQTT_CONFIRM_TIMEOUT):
+                    unsubscribe = await mqtt.async_subscribe(
+                        f"$aws/things/{station.shadow_name}/shadow/name/+/update",
+                        on_shadow, DEFAULT_SUBSCRIBE_QOS, encoding=DEFAULT_ENCODING,
+                    )
+                    if not mqtt.connected:
+                        raise HomeAssistantError("X-Sense cloud MQTT disconnected before saving settings")
+                    submitted = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+                    result = await xsense.configure_local_mqtt(
+                        station, enabled=enabled, host=host, port=port,
+                        username=username, password=password, request_time=submitted,
+                    )
+                    if isinstance(result, dict) and result.get("code"):
+                        raise HomeAssistantError("SBS50 rejected the broker configuration")
+                    await confirmed.wait()
+            except TimeoutError as err:
+                raise HomeAssistantError("SBS50 did not confirm the broker settings") from err
+            finally:
+                pending.pop(topic, None)
+                if unsubscribe is not None:
+                    unsubscribe()
 
     async def async_set_paired_night_schedule(self, device, enabled, zone, schedule):
         """Wait for the same house, station, child, and request confirmation."""
@@ -694,6 +771,10 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         xsense = AsyncXSense(
             async_get_clientsession(self.hass), language=self.hass.config.language
         )
+        for device in getattr(self, "_local_only_devices", {}).values():
+            xsense.cloud_excluded_children.setdefault(device.station.sn.casefold(), {})[
+                device.sn.casefold()
+            ] = device.entity_id
 
         try:
             await _async_init_and_login(xsense, email, password)
@@ -926,7 +1007,18 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         except APIFailure as ex:
             raise UpdateFailed(f"XSense API Issue: {ex}") from ex
         else:
-            return {"stations": stations, "devices": devices}
+            if local_devices := getattr(self, "_local_only_devices", {}):
+                from .entity import _serial_identity
+
+                for device_id, local in local_devices.items():
+                    if device_id in devices and _serial_identity(devices[device_id]) != _serial_identity(local):
+                        # Keep both original IDs for registry identity and API calls.
+                        device_id = f"local-mqtt:{local_device_key(local)}"
+                    devices[device_id] = local
+            return {
+                "stations": stations,
+                "devices": devices,
+            }
 
     async def _update_cameras(self) -> bool:
         """Fetch camera metadata from the Android app IPC/ADDX APIs when present.
@@ -1565,6 +1657,22 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             LOGGER.debug("Ignoring duplicate MQTT shadow topic: %s", topic)
             return
 
+        if topic.startswith("$aws/things/") and topic.endswith(
+            (_LOCAL_MQTT_SETTINGS_REPORT, _LOCAL_MQTT_LINK_REPORT)
+        ):
+            # These reports are not telemetry and may contain broker credentials.
+            handle = getattr(self, "_pending_local_mqtt_reports", {}).get(topic)
+            if handle is not None:
+                try:
+                    payload = json.loads(data_str)
+                except ValueError:
+                    return
+                state = payload.get("state") if isinstance(payload, dict) else None
+                reported = state.get("reported") if isinstance(state, dict) else None
+                if isinstance(reported, dict):
+                    handle(reported)
+            return
+
         try:
             data = json.loads(data_str.decode("utf8"))
         except (json.JSONDecodeError, UnicodeDecodeError) as ex:
@@ -1666,6 +1774,17 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     _mqtt_event_debug_context(topic, data, station_data, identifier_candidates),
                 )
             return
+
+        if getattr(station, "cloud_excluded_children", None) and not intrusion_notice:
+            if isinstance(station_data, dict) and any(
+                station.cloud_excludes_child(identifier)
+                for identifier in (device_sn, station_data.get("deviceId"))
+            ):
+                return
+            shadow = topic.partition("/shadow/name/")[2].removesuffix("/update")
+            for prefix in ("2nd_info_", "2nd_cfg_"):
+                if shadow.startswith(prefix) and station.cloud_excludes_child(shadow[len(prefix):]):
+                    return
 
         if debug_routing:
             LOGGER.debug(
@@ -2081,6 +2200,11 @@ def _mqtt_child_write_scope(station, report, *, published=False, allow_parent_av
         if not isinstance(state, dict):
             return None
         child = _state_child_device(station, key, state)
+        if child is None and getattr(station, "cloud_excluded_children", None) and any(
+            station.cloud_excludes_child(identifier)
+            for identifier in (*_child_state_identifiers(key, state), state.get("deviceId"))
+        ):
+            continue
         if child is None or is_camera_entity(child):
             return None
         identity = _serial_identity(child)

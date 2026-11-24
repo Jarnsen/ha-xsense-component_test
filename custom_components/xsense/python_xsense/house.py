@@ -30,6 +30,7 @@ class House:
         self.room_order = []
         self.stations = {}
         self.station_order = []
+        self.cloud_excluded_children: dict[str, dict[str, str]] = {}
 
         self.mqtt = MQTTHelper(signer, self)
 
@@ -63,6 +64,8 @@ class House:
             if not station_id:
                 continue
             s = Station(self, **i)
+            if excluded := getattr(self, "cloud_excluded_children", None):
+                s.cloud_excluded_children = excluded.get(str(s.sn).casefold(), {}).copy()
             s.set_data(
                 {
                     key: value

@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "ৰেকৰ্ডিং",
-          "local_mqtt": "স্থানীয় MQTT (SBS50)"
+          "local_mqtt": "স্থানীয় MQTT (SBS50)",
+          "local_mqtt_device": "ডিভাইচৰ সংযোগ"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "স্থানীয় MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "বেচ ষ্টেচন",
-          "enabled": "স্থানীয় MQTT সক্ৰিয় কৰক",
           "host": "ব্ৰ’কাৰৰ IPv4 ঠিকনা",
           "port": "ব্ৰ’কাৰৰ প’ৰ্ট",
           "username": "ব্যৱহাৰকাৰীৰ নাম",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "স্থানীয় MQTT",
         "description": "ছেটিংছ পঠোৱা হৈছে; X-Sense এপত সংযোগ পৰীক্ষা কৰক।"
+      },
+      "local_mqtt_device": {
+        "title": "ডিটেক্টৰ বাছক",
+        "data": {"device": "ডিভাইচ"}
+      },
+      "local_mqtt_transport": {
+        "title": "ডিভাইচৰ সংযোগ",
+        "description": "এই ডিটেক্টৰৰ ক্লাউড নিয়ন্ত্ৰণ উপলব্ধ নহ’ব। আন ডিভাইচত কোনো পৰিৱৰ্তন নহ’ব।",
+        "data": {"local_only": "কেৱল স্থানীয় MQTT ব্যৱহাৰ কৰক"}
       }
     },
     "error": {

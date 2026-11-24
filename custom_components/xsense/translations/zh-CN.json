@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "录像",
-          "local_mqtt": "本地MQTT (SBS50)"
+          "local_mqtt": "本地MQTT (SBS50)",
+          "local_mqtt_device": "设备连接方式"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "本地MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "基站",
-          "enabled": "启用本地MQTT",
           "host": "代理服务器IPv4地址",
           "port": "代理服务器端口",
           "username": "用户名",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "本地MQTT",
         "description": "设置已发送；请在X-Sense应用中检查连接。"
+      },
+      "local_mqtt_device": {
+        "title": "选择探测器",
+        "data": {"device": "设备"}
+      },
+      "local_mqtt_transport": {
+        "title": "设备连接方式",
+        "description": "此探测器将无法通过云端控制。其他设备不受影响。",
+        "data": {"local_only": "仅使用本地 MQTT"}
       }
     },
     "error": {

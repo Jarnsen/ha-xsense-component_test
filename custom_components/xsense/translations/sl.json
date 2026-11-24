@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "Posnetki",
-          "local_mqtt": "Lokalni MQTT (SBS50)"
+          "local_mqtt": "Lokalni MQTT (SBS50)",
+          "local_mqtt_device": "Povezava naprave"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "Lokalni MQTT: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "Bazna postaja",
-          "enabled": "Omogoči lokalni MQTT",
           "host": "Naslov IPv4 posrednika",
           "port": "Vrata posrednika",
           "username": "Uporabniško ime",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "Lokalni MQTT",
         "description": "Nastavitve poslane; preverite povezavo v aplikaciji X-Sense."
+      },
+      "local_mqtt_device": {
+        "title": "Izberite detektor",
+        "data": {"device": "Naprava"}
+      },
+      "local_mqtt_transport": {
+        "title": "Povezava naprave",
+        "description": "Upravljanje tega detektorja prek oblaka ne bo na voljo. Druge naprave ostanejo nespremenjene.",
+        "data": {"local_only": "Uporabi samo lokalni MQTT"}
       }
     },
     "error": {

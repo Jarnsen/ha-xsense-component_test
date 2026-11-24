@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "הקלטות",
-          "local_mqtt": "MQTT מקומי (SBS50)"
+          "local_mqtt": "MQTT מקומי (SBS50)",
+          "local_mqtt_device": "חיבור המכשיר"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "MQTT מקומי: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "תחנת בסיס",
-          "enabled": "הפעלת MQTT מקומי",
           "host": "כתובת IPv4 של המתווך",
           "port": "יציאת המתווך",
           "username": "שם משתמש",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "MQTT מקומי",
         "description": "ההגדרות נשלחו; יש לבדוק את החיבור באפליקציית X-Sense."
+      },
+      "local_mqtt_device": {
+        "title": "בחירת גלאי",
+        "data": {"device": "מכשיר"}
+      },
+      "local_mqtt_transport": {
+        "title": "חיבור המכשיר",
+        "description": "בקרות הענן לא יהיו זמינות לגלאי זה. שאר המכשירים לא יושפעו.",
+        "data": {"local_only": "שימוש ב־MQTT מקומי בלבד"}
       }
     },
     "error": {

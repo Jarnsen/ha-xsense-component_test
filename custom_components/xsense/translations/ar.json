@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "التسجيلات",
-          "local_mqtt": "MQTT المحلي (SBS50)"
+          "local_mqtt": "MQTT المحلي (SBS50)",
+          "local_mqtt_device": "اتصال الجهاز"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "MQTT المحلي: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "المحطة الأساسية",
-          "enabled": "تمكين MQTT المحلي",
           "host": "عنوان IPv4 للوسيط",
           "port": "منفذ الوسيط",
           "username": "اسم المستخدم",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "MQTT المحلي",
         "description": "تم إرسال الإعدادات؛ تحقق من الاتصال في تطبيق X-Sense."
+      },
+      "local_mqtt_device": {
+        "title": "اختر الكاشف",
+        "data": {"device": "الجهاز"}
+      },
+      "local_mqtt_transport": {
+        "title": "اتصال الجهاز",
+        "description": "لن تتوفر عناصر التحكم السحابية لهذا الكاشف. لا تتأثر الأجهزة الأخرى.",
+        "data": {"local_only": "استخدام MQTT المحلي فقط"}
       }
     },
     "error": {

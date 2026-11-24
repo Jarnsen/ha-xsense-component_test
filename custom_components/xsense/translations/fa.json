@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "ضبط‌ها",
-          "local_mqtt": "MQTT محلی (SBS50)"
+          "local_mqtt": "MQTT محلی (SBS50)",
+          "local_mqtt_device": "اتصال دستگاه"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "MQTT محلی: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "ایستگاه پایه",
-          "enabled": "فعال‌سازی MQTT محلی",
           "host": "نشانی IPv4 کارگزار",
           "port": "درگاه کارگزار",
           "username": "نام کاربری",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "MQTT محلی",
         "description": "تنظیمات ارسال شد؛ اتصال را در برنامه X-Sense بررسی کنید."
+      },
+      "local_mqtt_device": {
+        "title": "آشکارساز را انتخاب کنید",
+        "data": {"device": "دستگاه"}
+      },
+      "local_mqtt_transport": {
+        "title": "اتصال دستگاه",
+        "description": "کنترل‌های ابری این آشکارساز در دسترس نخواهند بود. دستگاه‌های دیگر تغییری نمی‌کنند.",
+        "data": {"local_only": "فقط از MQTT محلی استفاده شود"}
       }
     },
     "error": {

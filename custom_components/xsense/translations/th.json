@@ -63,7 +63,8 @@
         },
         "menu_options": {
           "recordings": "การบันทึก",
-          "local_mqtt": "MQTT ภายในเครือข่าย (SBS50)"
+          "local_mqtt": "MQTT ภายในเครือข่าย (SBS50)",
+          "local_mqtt_device": "การเชื่อมต่ออุปกรณ์"
         }
       },
       "confirm_recording_media_storage_path": {
@@ -74,7 +75,6 @@
         "description": "MQTT ภายในเครือข่าย: SBS50 → Home Assistant MQTT.",
         "data": {
           "station": "สถานีฐาน",
-          "enabled": "เปิดใช้ MQTT ภายในเครือข่าย",
           "host": "ที่อยู่ IPv4 ของโบรกเกอร์",
           "port": "พอร์ตโบรกเกอร์",
           "username": "ชื่อผู้ใช้",
@@ -84,6 +84,15 @@
       "local_mqtt_done": {
         "title": "MQTT ภายในเครือข่าย",
         "description": "ส่งการตั้งค่าแล้ว โปรดตรวจสอบการเชื่อมต่อในแอป X-Sense"
+      },
+      "local_mqtt_device": {
+        "title": "เลือกเครื่องตรวจจับ",
+        "data": {"device": "อุปกรณ์"}
+      },
+      "local_mqtt_transport": {
+        "title": "การเชื่อมต่ออุปกรณ์",
+        "description": "จะไม่สามารถควบคุมเครื่องตรวจจับนี้ผ่านคลาวด์ได้ อุปกรณ์อื่นจะไม่เปลี่ยนแปลง",
+        "data": {"local_only": "ใช้เฉพาะ MQTT ในเครือข่ายท้องถิ่น"}
       }
     },
     "error": {

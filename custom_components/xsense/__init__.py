@@ -928,7 +928,13 @@ async def _async_setup_entry_runtime(
     hass: HomeAssistant, entry: ConfigEntry, coordinator: XSenseDataUpdateCoordinator
 ) -> bool:
     """Set up entry resources under the setup rollback boundary."""
-    await coordinator.async_config_entry_first_refresh()
+    local_only = coordinator.__dict__.get("_local_only_devices")
+    if local_only:
+        # A cloud outage must not prevent known local detectors from loading.
+        coordinator.data = {"stations": {}, "devices": dict(local_only)}
+        coordinator.last_update_success = False
+    else:
+        await coordinator.async_config_entry_first_refresh()
     await async_load_identity_store(hass, entry, coordinator)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
@@ -1023,6 +1029,10 @@ async def _async_setup_entry_runtime(
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    if local_only:
+        entry.async_create_background_task(
+            hass, coordinator.async_refresh(), "X-Sense initial cloud refresh"
+        )
     coordinator.async_start_camera_ai_history_polling(immediate=False)
     coordinator.async_schedule_deferred_refresh()
     _schedule_startup_maintenance(hass, entry, coordinator)
@@ -1079,6 +1089,12 @@ async def async_remove_config_entry_device(
         entry.entry_id
     )
     if coordinator is None:
+        return False
+
+    if coordinator.__dict__.get("_local_only_devices") and not (
+        coordinator._startup_refresh_complete and coordinator.last_update_success
+    ):
+        # The local-only snapshot is not a complete cloud inventory.
         return False
 
     data = coordinator.data
