@@ -1,6 +1,17 @@
 # X-Sense Home Security for Home Assistant
 
-![GitHub Release](https://img.shields.io/github/release/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![GitHub issues](https://img.shields.io/github/issues/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![GitHub Stars](https://img.shields.io/github/stars/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![GitHub Last Commit](https://img.shields.io/github/last-commit/Jarnsen/ha-xsense-component_test.svg?style=plastic) ![Documentation](https://img.shields.io/badge/docs-excellent-brightgreen.svg?style=plastic) ![HACS Status](https://img.shields.io/badge/HACS-Custom-blue.svg?style=plastic) ![Home Assistant](https://img.shields.io/badge/Home%20Assistant-%3E%3D%202025.3.0-brightgreen.svg?style=plastic) [![Discord](https://img.shields.io/discord/1118894710027731025.svg?style=plastic&logo=discord&label=Discord)](https://discord.com/invite/5phHHgGb3V) [![YouTube Video](https://img.shields.io/badge/Watch%20on-YouTube-red.svg?style=plastic&logo=youtube)](https://www.youtube.com/watch?v=3CCKK-qX-YA)
+<p align="center">
+  <img src="https://img.shields.io/github/release/Jarnsen/ha-xsense-component_test.svg?style=plastic" alt="GitHub Release">
+  <img src="https://img.shields.io/github/issues/Jarnsen/ha-xsense-component_test.svg?style=plastic" alt="GitHub issues">
+  <img src="https://img.shields.io/github/stars/Jarnsen/ha-xsense-component_test.svg?style=plastic" alt="GitHub Stars">
+  <img src="https://img.shields.io/github/last-commit/Jarnsen/ha-xsense-component_test.svg?style=plastic" alt="GitHub Last Commit">
+  <img src="https://img.shields.io/badge/docs-excellent-brightgreen.svg?style=plastic" alt="Documentation">
+  <img src="https://img.shields.io/badge/HACS-Custom-blue.svg?style=plastic" alt="HACS Status">
+  <img src="https://img.shields.io/badge/Home%20Assistant-%3E%3D%202025.3.0-brightgreen.svg?style=plastic" alt="Home Assistant">
+  <a href="https://discord.com/invite/5phHHgGb3V"><img src="https://img.shields.io/discord/1118894710027731025.svg?style=plastic&amp;logo=discord&amp;label=Discord" alt="Discord"></a>
+  <a href="https://www.youtube.com/watch?v=3CCKK-qX-YA"><img src="https://img.shields.io/badge/Watch%20on-YouTube-red.svg?style=plastic&amp;logo=youtube" alt="YouTube Video"></a>
+</p>
+
 ---
 
 <p align="center">
