@@ -31,6 +31,7 @@ from .const import (
     LOGGER,
     POLL_INTERVAL_MIN,
 )
+from .identity_store import MQTTDiscoveryValidation
 from .local_transport import local_device_key, restore_local_devices
 from .mqtt import DEFAULT_ENCODING, DEFAULT_SUBSCRIBE_QOS, XSenseMQTT
 from .python_xsense import (
@@ -571,16 +572,8 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         mqtt.on_data = None
         await mqtt.async_disconnect(disconnect_paho_client=True)
 
-    @callback
-    def async_flush_mqtt_messages(self, *, stop_receiving: bool = False) -> None:
-        """Deliver accepted MQTT events while entities and the cloud client are live."""
-        for mqtt in self.mqtt_servers.values():
-            flush = getattr(mqtt, "async_flush_messages", None)
-            if flush is not None:
-                flush(stop_receiving=stop_receiving)
-
     async def async_drain_mqtt_messages(self, *, stop_receiving: bool = False) -> None:
-        """Wait for in-flight delivery before flushing or retiring its clients."""
+        """Wait for in-flight and queued delivery without blocking the event loop."""
         drained = set()
         while pending := [mqtt for mqtt in self.mqtt_servers.values() if id(mqtt) not in drained]:
             for mqtt in pending:
@@ -1994,9 +1987,15 @@ class XSenseDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             previous_station = getattr(self, "_mqtt_rssi_write_station", None)
             self._mqtt_child_write_scope = frozenset()
             self._mqtt_rssi_write_station = station
+        previous_validation = self.__dict__.get("_mqtt_discovery_validation")
+        self._mqtt_discovery_validation = MQTTDiscoveryValidation()
         try:
             self.async_update_listeners()
         finally:
+            if previous_validation is None:
+                self.__dict__.pop("_mqtt_discovery_validation", None)
+            else:
+                self._mqtt_discovery_validation = previous_validation
             self._mqtt_write_station = previous
             if station_only:
                 self._mqtt_child_write_scope = previous_scope
@@ -2167,25 +2166,30 @@ def _mqtt_child_write_scope(station, report, *, published=False, allow_parent_av
     if is_camera_entity(station):
         return None
     if isinstance(report, dict):
-        fields = report.copy()
-        children = fields.pop("devs", {})
-        if not isinstance(children, (dict, list)):
+        children = report.get("devs", ())
+        if not isinstance(children, (dict, list)) and "devs" in report:
             return None
-        children = _merge_top_level_child_state(station, fields, children)
-        if allow_parent_availability:
-            fields.pop("online", None)
-            fields.pop("onLine", None)
-        # Only compare against the station already visible to listeners.
-        if (
-            published
-            and getattr(station, "type", None) == "SBS50"
-            and (mode := fields.get("safeMode"))
-            and mode == station.safe_mode
-        ):
-            del fields["safeMode"]
+        fields = report
+        for key, value in report.items():
+            if key != "devs" and isinstance(value, dict):
+                # Only the alternate top-level child layout needs a mutable copy.
+                fields = report.copy()
+                fields.pop("devs", None)
+                children = _merge_top_level_child_state(station, fields, children)
+                break
         # Network diagnostics do not alter child state, unlike online flags
         # and parent alarm context.
-        if not fields.keys() <= _SCOPED_STATION_FIELDS:
+        for key in fields:
+            if key == "devs" or key in _SCOPED_STATION_FIELDS:
+                continue
+            if allow_parent_availability and key in ("online", "onLine"):
+                continue
+            # Only compare against the station already visible to listeners.
+            if (
+                key == "safeMode" and published and getattr(station, "type", None) == "SBS50"
+                and (mode := fields[key]) and mode == station.safe_mode
+            ):
+                continue
             return None
         if not children and (allow_parent_availability or not _STATION_NETWORK_FIELDS.isdisjoint(fields)):
             return frozenset()

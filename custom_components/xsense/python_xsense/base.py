@@ -630,13 +630,10 @@ class XSenseBase:
         entity_def = entities.get(entity.type)
         if not entity_def:
             return None
-        action_def = next(
-            (a for a in entity_def.get('actions', []) if a.get('action') == action),
-            None,
-        )
-        if action_def is None or not _action_route_resolves(entity, action_def):
-            return None
-        return action_def
+        for action_def in entity_def.get('actions', ()):
+            if action_def.get('action') == action:
+                return action_def if _action_route_resolves(entity, action_def) else None
+        return None
 
     def has_action(self, entity: Entity, action: str):
         return self.action_definition(entity, action) is not None
@@ -686,12 +683,9 @@ def _state_child_device(station: Station, child_key, child_state):
 
 def _merge_top_level_child_state(station: Station, station_data: dict, children):
     """Move APK child-id keyed shadow records into the child update collection."""
-    if isinstance(children, list):
-        child_updates = list(children)
-    else:
-        child_updates = children
-    for key in list(station_data):
-        value = station_data[key]
+    child_updates = children
+    merged_keys = None
+    for key, value in station_data.items():
         if not isinstance(value, dict):
             continue
         getter = getattr(station, "get_device_by_identifier", None)
@@ -700,17 +694,24 @@ def _merge_top_level_child_state(station: Station, station_data: dict, children)
             device = station.get_device_by_sn(key)
         if device is None:
             continue
+        if merged_keys is None:
+            merged_keys = []
+        merged_keys.append(key)
         if isinstance(child_updates, list):
+            if child_updates is children:
+                child_updates = list(children)
             child_state = value.copy()
             child_state.setdefault("_deviceSN", key)
             child_updates.append(child_state)
-            station_data.pop(key)
             continue
         if not isinstance(child_updates, dict):
             child_updates = {}
         elif child_updates is children:
             child_updates = children.copy()
-        child_updates[key] = station_data.pop(key)
+        child_updates[key] = value
+    if merged_keys is not None:
+        for key in merged_keys:
+            del station_data[key]
     return child_updates
 
 

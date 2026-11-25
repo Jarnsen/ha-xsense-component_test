@@ -3,14 +3,67 @@
 import json
 import logging
 from threading import Event
+from types import SimpleNamespace
 from unittest.mock import Mock
+from weakref import ref
 
 import pytest
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from test_audit_repairs import make_coordinator, make_station
 
-from custom_components.xsense import entity, sensor
+from custom_components.xsense import callback_timing, entity, sensor
 from custom_components.xsense.callback_timing import CallbackTiming
+
+
+def test_fast_write_probe_needs_no_stack_buffer(monkeypatch):
+    monkeypatch.setattr(callback_timing, "Thread", Mock())
+    probe = callback_timing.StateWriteProbe()
+    clock = iter((1.0, 1.0 + callback_timing.SLOW_STATE_WRITE_SECONDS / 2))
+    monkeypatch.setattr(callback_timing, "perf_counter", lambda: next(clock))
+    try:
+        scope = probe.begin()
+        assert scope[0].stacks is None
+        assert probe.finish(scope, "battery") is None
+        assert probe._active is None
+    finally:
+        probe.close()
+
+
+def test_write_probe_releases_frames_before_next_sample(monkeypatch):
+    class Frame:
+        f_globals = {"__name__": "test_stack"}
+        f_code = SimpleNamespace(co_name="state_write")
+        f_lineno = 1
+
+    probe = callback_timing.StateWriteProbe.__new__(callback_timing.StateWriteProbe)
+    probe._thread_id = 1
+    write = callback_timing._ActiveStateWrite(0, 0)
+    probe._active = write
+    outer_frame_ref = None
+
+    def current_frames():
+        nonlocal outer_frame_ref
+        frame = Frame()
+        frame.f_back = None
+        outer_frame_ref = ref(frame)
+        for _ in range(callback_timing._MAX_STACK_FRAMES):
+            previous = frame
+            frame = Frame()
+            frame.f_back = previous
+        return {1: frame}
+
+    def stop_after_sample(_delay):
+        if not write.stacks:
+            return False
+        assert all(len(frames) == callback_timing._MAX_STACK_FRAMES for _, frames in write.stacks)
+        assert outer_frame_ref() is None
+        return len(write.stacks) == 2
+
+    probe._stop = SimpleNamespace(wait=stop_after_sample)
+    monkeypatch.setattr(callback_timing, "_current_frames", current_frames)
+    clock = iter(callback_timing._STACK_SAMPLE_AT[:2])
+    monkeypatch.setattr(callback_timing, "perf_counter", lambda: next(clock))
+    probe._sample()
 
 
 def test_slow_dispatch_breakdown_and_log_cooldown(monkeypatch, caplog):

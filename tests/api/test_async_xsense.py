@@ -3699,6 +3699,43 @@ async def test_close_closes_private_ipv4_fallback_session():
     assert client._ipv4_session is None
 
 
+def test_action_lookup_checks_first_matching_route_again_when_device_data_changes(monkeypatch):
+    first = {"action": "test", "topic": "fixture", "shadow": "fixture", "allowed": lambda device: device.enabled}
+    fallback = {"action": "test", "topic": "fixture", "shadow": "fixture"}
+    monkeypatch.setitem(base.entities, "FIXTURE", {"actions": [{"action": "other"}, first, fallback]})
+    subject = SimpleNamespace(type="FIXTURE", sn="fixture", shadow_name="fixture", enabled=False)
+    client = async_xsense.AsyncXSense()
+
+    assert client.action_definition(subject, "test") is None
+    assert client.action_definition(subject, "unknown") is None
+    subject.enabled = True
+    assert client.action_definition(subject, "test") is first
+    subject.shadow_name = subject.sn = None
+    assert client.action_definition(subject, "test") is None
+
+
+def test_flat_device_state_skips_normalization_copy_and_keeps_mapping():
+    class Report(dict):
+        def copy(self):
+            pytest.fail("flat sensor report should not require a mutable copy")
+
+    device = entity.Entity()
+    device.type = "XS0B-MR"
+    report = Report(batInfo="3", alarmStatus="1")
+    device.set_data(report)
+    assert device.data["batInfo"] == 3
+    assert device.data["alarmStatus"] is True
+    assert report == {"batInfo": "3", "alarmStatus": "1"}
+
+    nested = {"onLine": "0", "status": {"alarmStatus": "0"}, "sw": "network", "swMain": "main"}
+    device.set_data(nested)
+    assert device.online is False
+    assert device.data["alarmStatus"] is False
+    assert device.data["network_sw"] == "network"
+    assert device.data["sw"] == "main"
+    assert nested == {"onLine": "0", "status": {"alarmStatus": "0"}, "sw": "network", "swMain": "main"}
+
+
 def test_child_shadow_dictionary_is_copied_only_when_merging_top_level_records():
     parent = SimpleNamespace(get_device_by_sn=lambda serial: object() if serial == "other" else None)
     children = {"existing": {"alarmStatus": "0"}}
@@ -3712,6 +3749,26 @@ def test_child_shadow_dictionary_is_copied_only_when_merging_top_level_records()
     assert merged == {**children, "other": child_state}
     assert mixed_fields == scalar_fields
     assert list(children) == ["existing"]
+
+
+def test_child_shadow_list_is_copied_only_when_merging_top_level_records():
+    parent = SimpleNamespace(get_device_by_sn=lambda serial: object() if serial in {"a", "b"} else None)
+    original = {"deviceSN": "existing"}
+    children = [original]
+    unrelated = {"stationSN": "station", "wifiRSSI": -40, "options": {"enabled": True}}
+
+    assert base._merge_top_level_child_state(parent, unrelated, children) is children
+
+    first = {"alarmStatus": "1"}
+    second = {"alarmStatus": "0", "_deviceSN": "explicit"}
+    mixed = {**unrelated, "a": first, "b": second}
+    merged = base._merge_top_level_child_state(parent, mixed, children)
+    assert merged == [original, {"alarmStatus": "1", "_deviceSN": "a"}, second]
+    assert merged[0] is original
+    assert merged[2] is not second
+    assert first == {"alarmStatus": "1"}
+    assert children == [original]
+    assert mixed == unrelated
 
 
 def test_aws_signer_applies_global_time_offset():

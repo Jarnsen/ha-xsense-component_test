@@ -821,27 +821,6 @@ class XSenseMQTT:
             if self._message_dispatch_handle is None:
                 self._message_dispatch_handle = self.loop.call_soon(self._async_dispatch_message)
 
-    @callback
-    def async_flush_messages(self, *, stop_receiving: bool = False) -> bool:
-        """Apply already received messages before their coordinator is retired."""
-        if self._message_dispatch_idle is not None:
-            return False
-        if self._message_dispatch_handle is not None:
-            self._message_dispatch_handle.cancel()
-            self._message_dispatch_handle = None
-        while self._message_queue and not self._message_dispatch_stopped:
-            self._async_dispatch_message()
-            if self._message_dispatch_handle is not None:
-                self._message_dispatch_handle.cancel()
-                self._message_dispatch_handle = None
-        if stop_receiving:
-            self._message_dispatch_stopped = True
-            self._message_read_deferred = False
-            if self._reader_resume_handle is not None:
-                self._reader_resume_handle.cancel()
-                self._reader_resume_handle = None
-        return True
-
     async def async_drain_messages(self, *, stop_receiving: bool = False) -> None:
         """Wait for an active handler before draining, without nesting deliveries."""
         if stop_receiving:
@@ -856,7 +835,12 @@ class XSenseMQTT:
                     await asyncio.sleep(0)
                 else:
                     break
-            self.async_flush_messages(stop_receiving=stop_receiving)
+            if stop_receiving:
+                self._message_dispatch_stopped = True
+                self._message_read_deferred = False
+                if self._reader_resume_handle is not None:
+                    self._reader_resume_handle.cancel()
+                    self._reader_resume_handle = None
         finally:
             if stop_receiving:
                 self._message_stopping_drains -= 1

@@ -188,19 +188,24 @@ async def test_failed_platform_unload_preserves_entry_and_runtime(runtime):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("unload_ok", [False, True])
-async def test_received_mqtt_events_are_flushed_before_platform_teardown(runtime, unload_ok):
+async def test_received_mqtt_events_are_drained_before_platform_teardown(runtime, unload_ok):
     await xsense.async_setup_entry(runtime.hass, runtime.entry)
     order = []
-    runtime.coordinator.async_flush_mqtt_messages = Mock(side_effect=lambda: order.append("flush"))
+
+    async def drain():
+        await asyncio.sleep(0)
+        order.append("drain")
+
+    runtime.coordinator.async_drain_mqtt_messages = AsyncMock(side_effect=drain)
 
     async def unload(*_args):
-        assert order == ["flush"]
+        assert order == ["drain"]
         order.append("platforms")
         return unload_ok
 
     runtime.hass.config_entries.async_unload_platforms.side_effect = unload
     assert await xsense.async_unload_entry(runtime.hass, runtime.entry) is unload_ok
-    assert order == ["flush", "platforms"]
+    assert order == ["drain", "platforms"]
 
 
 @pytest.mark.asyncio

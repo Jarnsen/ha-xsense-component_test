@@ -711,28 +711,32 @@ async def async_setup_entry(
     """Set up the xsense binary sensor entry."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
+    def local_capability(device, key: str) -> bool:
+        return local_state_mapping(device.type, key) is not None
+
     def _entities(should_add, discovery_devices) -> list[Device]:
         devices: list[Device] = []
         for station in coordinator_stations(coordinator).values():
             devices.extend(
                 XSenseBinarySensorEntity(coordinator, station, description)
                 for description in SENSORS
-                if description.exists_fn(station) and should_add(station, description.key)
+                if should_add(station, description.key, description.exists_fn)
             )
             if should_add(station, MQTTSensor.key):
                 devices.append(XSenseMQTTConnectedEntity(coordinator, station, MQTTSensor))
 
         for dev in discovery_devices.values():
+            local_only = getattr(dev, "local_mqtt_only", False)
             devices.extend(
                 XSenseBinarySensorEntity(
                     coordinator, dev, description, station_id=device_station_id(dev)
                 )
                 for description in SENSORS
                 if (
-                    local_state_mapping(dev.type, description.key) is not None
-                    if getattr(dev, "local_mqtt_only", False)
-                    else description.exists_fn(dev)
-                ) and should_add(dev, description.key)
+                    should_add(dev, description.key, local_capability, description.key)
+                    if local_only
+                    else should_add(dev, description.key, description.exists_fn)
+                )
             )
         return devices
 
