@@ -16,6 +16,9 @@ _ONLINE_TIME_EXCLUDED_TYPES = {
     "STH0C",
 }
 _EXTENDED_OFFLINE_HOUR_TYPES = {"SWS0B", "XR0A-iR"}
+_STATE_NORMALIZATION_KEYS = frozenset({
+    "online", "onLine", "status", "isAlarm", "peak", "lightShadowBean", "skp0aShadowBean", "swMain",
+})
 
 
 def _offline_over_hours(entity_type: str | None) -> int:
@@ -55,6 +58,7 @@ class Entity:
     type = None
     _data = None
     entity_type = None
+    _sbs50_shadow_name_cache: tuple[str, str] | None = None
 
     def __init__(self, **kwargs):
         self.online = None
@@ -77,7 +81,7 @@ class Entity:
             self._online_from_explicit_flag = True
 
     def set_data(self, values: dict):
-        data = values.copy()
+        data = values.copy() if not _STATE_NORMALIZATION_KEYS.isdisjoint(values) else values
         has_online_flag = False
         for key in ("online", "onLine"):
             if key in data:
@@ -130,6 +134,15 @@ class Entity:
         """Return the AWS IoT thing name used by the X-Sense app."""
         if self.type == "SBS10":
             return self.sn
+        if self.type == "SBS50":
+            serial = self.sn
+            if type(serial) is not str:
+                return f"SBS50{serial}"
+            # Resolve the serial live; reuse only the formatting for this record.
+            cached = self._sbs50_shadow_name_cache
+            if cached is None or cached[0] != serial:
+                cached = self._sbs50_shadow_name_cache = (serial, f"SBS50{serial}")
+            return cached[1]
         if self.type in _SBS50_THING_TYPES:
             return f"SBS50{self._station_sn()}"
         if self.type in _DASHED_THING_TYPES:

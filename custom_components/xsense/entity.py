@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Mapping
+from functools import lru_cache
 from time import perf_counter
 from typing import TYPE_CHECKING, Any
 from weakref import ReferenceType, ref
@@ -37,53 +38,130 @@ if TYPE_CHECKING:
 OFFLINE_STATES = {False, "0", "false", "False", "offline", "Offline"}
 _APK_CAMERA_NON_OFFLINE_STATUSES = {11, 12}
 DEVICE_ENTITY_WITHOUT_STATION = ""
+_UNREGISTERED_DEVICE_ID = object()
+_NO_CAPABILITY_CONTEXT = object()
 
 
 def setup_dynamic_entities(
     entry,
     coordinator: XSenseDataUpdateCoordinator,
     async_add_entities,
-    entity_factory: Callable[[Callable[[Entity, str], bool], dict[str, Entity]], list[Any]],
+    entity_factory: Callable[[Callable[..., bool], Mapping[str, Entity]], list[Any]],
     *,
     include_local_only: bool = False,
 ) -> None:
     """Add current entities and any new entities discovered on later refreshes."""
     added_unique_ids: set[str] = set()
-    known_devices: dict[str, Entity] = {}
+    registered_keys: dict[str, set[str]] = {}
+    known_devices: Mapping[str, Entity] = {}
+    last_scope: frozenset[tuple] | None = None
+    scoped_serials: Collection[str] = ()
+
+    @lru_cache(maxsize=1024)
+    def discovery_unique_id(stable_id: str, key: str) -> str:
+        # Cache the string, not eligibility or whether it was added.
+        return _entity_unique_id(stable_id, key)
 
     def _new_entities() -> list[Any]:
-        nonlocal known_devices
+        nonlocal known_devices, last_scope, scoped_serials
         # Discovery runs synchronously inside MQTT delivery. Share one identity
         # index across constructors instead of scanning every device per entity.
         identity_count = len(getattr(coordinator, "_xsense_stable_device_ids", ()))
-        counts: dict[tuple, int] = {}
-        validate_current_identities(coordinator, counts=counts)
+        scope = getattr(coordinator, "_mqtt_child_write_scope", None)
+        validation = coordinator.__dict__.get("_mqtt_discovery_validation")
+        shared_ids = None
+        if validation is None:
+            counts: dict[tuple, int] = {}
+            validate_current_identities(coordinator, counts=counts)
+        else:
+            counts = validation.counts_for(coordinator, validate_current_identities)
+            if scope is None:
+                shared_ids = validation.stable_id_cache(counts)
         previous = coordinator.__dict__.get("_xsense_discovery_identity_counts")
         coordinator._xsense_discovery_identity_counts = counts
         try:
             stable_ids = {}
+            requested_ids = None
 
-            def should_add(item: Entity, key: str) -> bool:
-                if id(item) not in stable_ids:
-                    camera_identity = camera_addx_serial(item) if is_camera_entity(item) else None
-                    identity = None if camera_identity else _serial_identity(item)
-                    stable_ids[id(item)] = _stable_device_id(coordinator, item, identity)
-                return _entity_unique_id(stable_ids[id(item)], key) not in added_unique_ids
+            def resolve_id(item: Entity, *, register: bool):
+                api_id = item.entity_id
+                cached = stable_ids.get(api_id)
+                if cached is not None and cached[0] is item and (
+                    not register or cached[1] is not _UNREGISTERED_DEVICE_ID
+                ):
+                    return cached[1]
+                camera = is_camera_entity(item)
+                if (
+                    shared_ids is not None and not register and not camera
+                    and (verified := shared_ids.get(api_id)) is not None and verified[0] is item
+                ):
+                    _, saved_id, identity = verified
+                    owners = getattr(coordinator, "_xsense_stable_device_ids", None)
+                    manager = getattr(coordinator, "_xsense_identity_store", None)
+                    if (
+                        owners is not None and owners.get(identity, _UNREGISTERED_DEVICE_ID) == saved_id
+                        and not getattr(coordinator, "_shutting_down", False)
+                        and not (manager is not None and manager.closed)
+                        and _matches_serial_identity(item, identity)
+                    ):
+                        stable_ids[api_id] = verified
+                        return saved_id
+                camera_identity = camera_addx_serial(item) if camera else None
+                identity = None if camera_identity else _serial_identity(item)
+                stable_id = _stable_device_id(coordinator, item, identity, register=register)
+                resolved = None
+                if (
+                    shared_ids is not None and not register and not camera
+                    and identity is not None and stable_id is not _UNREGISTERED_DEVICE_ID
+                ):
+                    collection = "devices" if identity[0] else "stations"
+                    if counts.get((collection, identity)) == 1:
+                        resolved = shared_ids[api_id] = (item, stable_id, identity)
+                stable_ids[api_id] = resolved if resolved is not None else (item, stable_id)
+                return stable_id
 
-            devices = dict(coordinator_devices(coordinator))
-            if not include_local_only and coordinator.__dict__.get("_local_only_devices"):
-                devices = {
-                    key: item for key, item in devices.items()
-                    if not getattr(item, "local_mqtt_only", False)
-                }
-            scope = getattr(coordinator, "_mqtt_child_write_scope", None)
-            scan_devices = devices if scope is None else {
-                key: item for key, item in devices.items()
-                if known_devices.get(key) is not item
-                or is_camera_entity(item)
-                or (identity := _serial_identity(item)) is None
-                or identity in scope
-            }
+            def should_add(item: Entity, key: str, eligible=None, context=_NO_CAPABILITY_CONTEXT) -> bool:
+                nonlocal requested_ids
+                stable_id = _UNREGISTERED_DEVICE_ID
+                if eligible is not None:
+                    if (registered := registered_keys.get(key)) is not None:
+                        stable_id = resolve_id(item, register=False)
+                        if stable_id in registered:
+                            return False
+                    if not (eligible(item) if context is _NO_CAPABILITY_CONTEXT else eligible(item, context)):
+                        return False
+                if stable_id is _UNREGISTERED_DEVICE_ID:
+                    stable_id = resolve_id(item, register=True)
+                unique_id = discovery_unique_id(stable_id, key)
+                if unique_id in added_unique_ids:
+                    return False
+                if requested_ids is None:
+                    requested_ids = {}
+                requested_ids[unique_id] = (stable_id, key)
+                return True
+
+            shared_devices = validation.devices if validation is not None else None
+            devices = shared_devices
+            if devices is None:
+                live_devices = coordinator_devices(coordinator)
+                if not include_local_only and coordinator.__dict__.get("_local_only_devices"):
+                    devices = {
+                        key: item for key, item in live_devices.items()
+                        if not getattr(item, "local_mqtt_only", False)
+                    }
+                else:
+                    devices = dict(live_devices)
+            scan_devices = devices
+            if scope is not None:
+                if scope != last_scope:
+                    scoped_serials = {identity[-1] for identity in scope}
+                    last_scope = scope
+                if shared_devices is not None:
+                    scan_devices = validation.scoped_devices(
+                        known_devices, scope, scoped_serials, _scoped_discovery_devices,
+                    )
+                else:
+                    scan_devices = _scoped_discovery_devices(devices, known_devices, scope, scoped_serials)
             candidates = entity_factory(should_add, scan_devices)
             # Constructors can assign new stable IDs. Check them before adding
             # anything to HA, preserving conflict detection for the whole batch.
@@ -101,6 +179,11 @@ def setup_dynamic_entities(
             if unique_id in added_unique_ids:
                 continue
             added_unique_ids.add(unique_id)
+            # A candidate may be rejected by its factory. Skip future checks
+            # only after that exact ID makes it into the addition batch.
+            if requested_ids is not None and (requested := requested_ids.get(unique_id)) is not None:
+                stable_id, key = requested
+                registered_keys.setdefault(key, set()).add(stable_id)
             entities.append(entity)
         return entities
 
@@ -401,20 +484,30 @@ class XSenseEntity(CoordinatorEntity):
 
     def _current_entity_is_online(self) -> bool:
         """Return if the current X-Sense entity and parent station are online."""
-        entity = self._current_entity()
+        return self._entity_is_online(self._current_entity())
+
+    def _entity_is_online(self, entity: Entity | None) -> bool:
+        """Check connectivity for a freshly resolved record."""
         if entity is None or not super().available:
             return False
 
         if self._station_id:
-            stations = (self.coordinator.data or {}).get("stations", {})
+            data = self.coordinator.data
+            if not data or not (stations := data.get("stations")):
+                return False
+            lookup_id = getattr(self, "_lookup_station_id", self._station_id)
             station = _entity_by_id_or_serial(
                 stations,
-                getattr(self, "_lookup_station_id", self._station_id),
+                lookup_id,
                 self._station_serial,
                 self._parent_identity,
             )
-            if station is not None and stations.get(station.entity_id) is station:
-                self._lookup_station_id = station.entity_id
+            if (
+                station is not None
+                and (station_id := station.entity_id) != lookup_id
+                and stations.get(station_id) is station
+            ):
+                self._lookup_station_id = station_id
             return (
                 station is not None
                 and _entity_is_not_explicitly_offline(station)
@@ -502,6 +595,27 @@ def _serial_identity(entity: Entity | None) -> tuple | None:
     )
 
 
+def _identity_in_discovery_scope(entity: Entity, scope: frozenset[tuple], serials: Collection[str]) -> bool:
+    serial = _entity_serial(entity)
+    if serial is None:
+        return True
+    if serial in serials:
+        identity = _serial_identity(entity)
+        return identity is None or identity in scope
+    # Incomplete identities fall back to discovery even if the child serial differs.
+    station = getattr(entity, "station", None)
+    return station is not None and _entity_serial(station) is None
+
+
+def _scoped_discovery_devices(devices, known_devices, scope, serials):
+    return {
+        key: item for key, item in devices.items()
+        if known_devices.get(key) is not item
+        or is_camera_entity(item)
+        or _identity_in_discovery_scope(item, scope, serials)
+    }
+
+
 def _entity_unique_id(stable_id: str, key: str) -> str:
     return f"{stable_id}-{key}".replace("_", "-").lower()
 
@@ -521,7 +635,7 @@ def _local_mqtt_collision_id(identity: tuple) -> str:
     return "xsense-" + sha256(repr(identity).encode()).hexdigest()
 
 
-def _stable_device_id(coordinator, entity: Entity, identity: tuple | None):
+def _stable_device_id(coordinator, entity: Entity, identity: tuple | None, *, register: bool = True):
     """Preserve observed IDs across unambiguous physical identity rollovers."""
     manager = getattr(coordinator, "_xsense_identity_store", None)
     if getattr(coordinator, "_shutting_down", False) or (manager is not None and manager.closed):
@@ -540,6 +654,8 @@ def _stable_device_id(coordinator, entity: Entity, identity: tuple | None):
     if matches != 1:
         return entity.entity_id
     stable_ids = getattr(coordinator, "_xsense_stable_device_ids", None)
+    if not register:
+        return _UNREGISTERED_DEVICE_ID if stable_ids is None else stable_ids.get(identity, _UNREGISTERED_DEVICE_ID)
     if stable_ids is None:
         stable_ids = coordinator._xsense_stable_device_ids = {}
     if identity not in stable_ids:

@@ -1,6 +1,6 @@
 """Bounded, payload-free measurements of one synchronous MQTT delivery."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from sys import _current_frames
 from threading import Event, Thread, get_ident
@@ -15,7 +15,7 @@ _MAX_STACK_FRAMES = 12
 class _ActiveStateWrite:
     started: float
     cpu_started: float
-    stacks: list[tuple[float, list[str]]] = field(default_factory=list)
+    stacks: list[tuple[float, list[str]]] | None = None
 
 
 class StateWriteProbe:
@@ -50,7 +50,7 @@ class StateWriteProbe:
             return None
         stacks = [
             {"elapsed_seconds": round(elapsed, 6), "frames": frames}
-            for elapsed, frames in write.stacks if elapsed <= wall and frames
+            for elapsed, frames in (write.stacks or ()) if elapsed <= wall and frames
         ]
         return {
             "sensor_type": key,
@@ -71,7 +71,9 @@ class StateWriteProbe:
                     return
                 continue
             elapsed = now - write.started
-            if len(write.stacks) >= len(_STACK_SAMPLE_AT) or elapsed < _STACK_SAMPLE_AT[len(write.stacks)]:
+            stacks = write.stacks
+            count = len(stacks) if stacks is not None else 0
+            if count >= len(_STACK_SAMPLE_AT) or elapsed < _STACK_SAMPLE_AT[count]:
                 continue
             frames = []
             frame = _current_frames().get(self._thread_id)
@@ -86,8 +88,14 @@ class StateWriteProbe:
                 ) and name.isidentifier() and len(name) <= 100:
                     frames.append(f"{module}.{name}:{frame.f_lineno}")
                 frame = frame.f_back
+            # Do not keep a live frame (and its locals) between samples.
+            del frame
             if self._active is write:
-                write.stacks.append((elapsed, frames))
+                sample = (elapsed, frames)
+                if stacks is None:
+                    write.stacks = [sample]
+                else:
+                    stacks.append(sample)
 
 
 @dataclass

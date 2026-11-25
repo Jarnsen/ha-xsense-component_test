@@ -408,6 +408,31 @@ def test_repeated_sbs50_mode_does_not_broaden_child_report():
     assert _mqtt_child_write_scope(station, report) is None
 
 
+@pytest.mark.parametrize("child_payload,expected_scope", [
+    ({"0": {"alarmStatus": "1"}}, "child"),
+    ([{"_deviceSN": "SN-0", "alarmStatus": "1"}], "child"),
+    ({}, "station"),
+    (None, "global"),
+])
+def test_flat_child_scope_reads_the_report_without_copying(child_payload, expected_scope):
+    class Report(dict):
+        def copy(self):
+            pytest.fail("the flat shadow report should not need a mutable copy")
+
+    station = station_with_children()
+    report = Report(
+        stationSN=station.sn, safeMode=station.safe_mode, onLine="1",
+        wifiRSSI=-42, devs=child_payload,
+    )
+    scopes = {"child": frozenset({_serial_identity(station.devices["0"])}),
+              "station": frozenset(), "global": None}
+    assert _mqtt_child_write_scope(
+        station, report, published=True, allow_parent_availability=True,
+    ) == scopes[expected_scope]
+    assert report["devs"] is child_payload
+    assert list(report) == ["stationSN", "safeMode", "onLine", "wifiRSSI", "devs"]
+
+
 @pytest.mark.parametrize("key", ["online", "onLine"])
 def test_repeated_explicit_online_report_can_refresh_restored_children(key):
     station = station_with_children()

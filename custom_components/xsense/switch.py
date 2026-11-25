@@ -139,14 +139,18 @@ def has_data(key: str) -> Callable[[Entity], bool]:
     return lambda entity: key in entity.data
 
 
-def has_shadow_data(key: str) -> Callable[[Entity], bool]:
+def has_shadow_data(key: str, *, exclude_model: str | None = None) -> Callable[[Entity], bool]:
     """Return if a non-camera setting can be written through an app shadow."""
-    return lambda entity: key in entity.data and _has_shadow_write_route(entity)
+    return lambda entity: (
+        (exclude_model is None or entity.type != exclude_model)
+        and key in entity.data
+        and _has_shadow_write_route(entity)
+    )
 
 
 def has_led_light(entity: Entity) -> bool:
     """Return if an X-Sense entity should expose the LED light switch."""
-    return _has_shadow_write_route(entity) and "ledLight" in entity.data
+    return "ledLight" in entity.data and _has_shadow_write_route(entity)
 
 
 def _has_shadow_write_route(entity: Entity) -> bool:
@@ -360,8 +364,8 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         translation_key="alarm_enabled",
         icon="mdi:bell-check",
         exists_fn=lambda entity: (
-            _has_shadow_write_route(entity)
-            and ("alarmEnable" in entity.data or "alarmEnabled" in entity.data)
+            ("alarmEnable" in entity.data or "alarmEnabled" in entity.data)
+            and _has_shadow_write_route(entity)
         ),
         value_fn=lambda entity: boolean_state(
             entity.data.get("alarmEnable", entity.data.get("alarmEnabled"))
@@ -374,8 +378,8 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         translation_key="continued_alarm",
         icon="mdi:bell-plus",
         exists_fn=lambda entity: (
-            _has_shadow_write_route(entity)
-            and ("continueAlarm" in entity.data or "continuedAlarm" in entity.data)
+            ("continueAlarm" in entity.data or "continuedAlarm" in entity.data)
+            and _has_shadow_write_route(entity)
         ),
         value_fn=lambda entity: boolean_state(
             entity.data.get("continueAlarm", entity.data.get("continuedAlarm"))
@@ -387,9 +391,9 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         translation_key="mail_notice",
         icon="mdi:mailbox-up",
         exists_fn=lambda entity: (
-            _has_shadow_write_route(entity)
-            and getattr(entity, "entity_type", None) == EntityType.MAILBOX
+            getattr(entity, "entity_type", None) == EntityType.MAILBOX
             and "mailNotice" in entity.data
+            and _has_shadow_write_route(entity)
         ),
         value_fn=data_bool("mailNotice"),
     ),
@@ -457,7 +461,7 @@ SWITCHES: tuple[XSenseSwitchEntityDescription, ...] = (
         data_key="warnIsOpen",
         translation_key="warning_enabled",
         icon="mdi:alert",
-        exists_fn=lambda entity: entity.type != "XCG0A-iA" and has_shadow_data("warnIsOpen")(entity),
+        exists_fn=has_shadow_data("warnIsOpen", exclude_model="XCG0A-iA"),
         value_fn=data_bool("warnIsOpen"),
     ),
     XSenseSwitchEntityDescription(
@@ -801,6 +805,8 @@ async def async_setup_entry(
             "async_set_light_group_power",
         )
 
+    non_camera_descriptions = tuple(description for description in SWITCHES if description.addx_key is None)
+
     def _entities(should_add, discovery_devices) -> list[Device]:
         devices: list[Device] = []
         seen_entity_ids: set[str] = set()
@@ -808,8 +814,8 @@ async def async_setup_entry(
             seen_entity_ids.add(station.entity_id)
             devices.extend(
                 XSenseSwitchEntity(coordinator, station, description)
-                for description in SWITCHES
-                if description.exists_fn(station) and should_add(station, description.key)
+                for description in (SWITCHES if is_camera_entity(station) else non_camera_descriptions)
+                if should_add(station, description.key, description.exists_fn)
             )
         for dev in discovery_devices.values():
             if dev.entity_id in seen_entity_ids:
@@ -818,8 +824,8 @@ async def async_setup_entry(
                 XSenseSwitchEntity(
                     coordinator, dev, description, station_id=device_station_id(dev)
                 )
-                for description in SWITCHES
-                if description.exists_fn(dev) and should_add(dev, description.key)
+                for description in (SWITCHES if is_camera_entity(dev) else non_camera_descriptions)
+                if should_add(dev, description.key, description.exists_fn)
             )
         return devices
 

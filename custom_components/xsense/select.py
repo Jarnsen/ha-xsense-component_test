@@ -52,11 +52,13 @@ def has_supported_data(*keys: str, support_key: str) -> Callable[[Entity], bool]
     )
 
 
-def has_shadow_select(key: str) -> Callable[[Entity], bool]:
+def has_shadow_select(key: str, *, entity_type: EntityType | None = None) -> Callable[[Entity], bool]:
     """Return if a non-camera X-Sense shadow exposes a writable select field."""
+    default_on_sbs50 = key in {"alarmTone", "ledBrt"}
     return lambda entity: (
-        not is_camera_entity(entity)
-        and (key in entity.data or _sbs50_default_select(entity, key))
+        (entity_type is None or getattr(entity, "entity_type", None) == entity_type)
+        and (key in entity.data or (default_on_sbs50 and entity.type == "SBS50"))
+        and not is_camera_entity(entity)
         and _has_shadow_write_route(entity)
     )
 
@@ -69,11 +71,6 @@ def has_radon_server_setting(entity: Entity) -> bool:
         and bool(getattr(station, "entity_id", None))
         and bool(getattr(station, "sn", None))
     )
-
-
-def _sbs50_default_select(entity: Entity, key: str) -> bool:
-    """Return whether the APK exposes this SBS50 select before first shadow data."""
-    return entity.type == "SBS50" and key in {"alarmTone", "ledBrt"}
 
 
 def _has_shadow_write_route(entity: Entity) -> bool:
@@ -243,10 +240,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
             "720",
         ),
         icon="mdi:mailbox-clock-outline",
-        exists_fn=lambda entity: (
-            getattr(entity, "entity_type", None) == EntityType.MAILBOX
-            and has_shadow_select("reportInterval")(entity)
-        ),
+        exists_fn=has_shadow_select("reportInterval", entity_type=EntityType.MAILBOX),
     ),
     XSenseSelectEntityDescription(
         key="temperature_unit",
@@ -286,10 +280,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         translation_key="light_motion_on_time",
         fixed_options=("30", "60", "180", "300", "600", "900"),
         icon="mdi:timer-outline",
-        exists_fn=lambda entity: (
-            getattr(entity, "entity_type", None) == EntityType.LIGHT
-            and has_shadow_select("pirTime")(entity)
-        ),
+        exists_fn=has_shadow_select("pirTime", entity_type=EntityType.LIGHT),
         light_on_event="1",
     ),
     XSenseSelectEntityDescription(
@@ -298,10 +289,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         translation_key="light_scene",
         fixed_options=("1", "2", "3"),
         icon="mdi:lightbulb-group",
-        exists_fn=lambda entity: (
-            getattr(entity, "entity_type", None) == EntityType.LIGHT
-            and has_shadow_select("lightScene")(entity)
-        ),
+        exists_fn=has_shadow_select("lightScene", entity_type=EntityType.LIGHT),
     ),
     XSenseSelectEntityDescription(
         key="light_app_on_time",
@@ -309,10 +297,7 @@ SELECTS: tuple[XSenseSelectEntityDescription, ...] = (
         translation_key="light_app_on_time",
         fixed_options=("30", "60", "180", "300", "600", "900"),
         icon="mdi:timer-outline",
-        exists_fn=lambda entity: (
-            getattr(entity, "entity_type", None) == EntityType.LIGHT
-            and has_shadow_select("appTime")(entity)
-        ),
+        exists_fn=has_shadow_select("appTime", entity_type=EntityType.LIGHT),
         light_on_event="2",
     ),
     XSenseSelectEntityDescription(
@@ -446,6 +431,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up X-Sense select entities."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    non_camera_descriptions = tuple(description for description in SELECTS if description.addx_key is None)
 
     def _entities(should_add, discovery_devices) -> list[Device]:
         devices: list[Device] = []
@@ -454,8 +440,8 @@ async def async_setup_entry(
             seen_entity_ids.add(station.entity_id)
             devices.extend(
                 XSenseSelectEntity(coordinator, station, description)
-                for description in SELECTS
-                if description.exists_fn(station) and should_add(station, description.key)
+                for description in (SELECTS if is_camera_entity(station) else non_camera_descriptions)
+                if should_add(station, description.key, description.exists_fn)
             )
         for dev in discovery_devices.values():
             if dev.entity_id in seen_entity_ids:
@@ -464,8 +450,8 @@ async def async_setup_entry(
                 XSenseSelectEntity(
                     coordinator, dev, description, station_id=device_station_id(dev)
                 )
-                for description in SELECTS
-                if description.exists_fn(dev) and should_add(dev, description.key)
+                for description in (SELECTS if is_camera_entity(dev) else non_camera_descriptions)
+                if should_add(dev, description.key, description.exists_fn)
             )
         return devices
 

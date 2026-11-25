@@ -142,8 +142,7 @@ async def async_setup_entry(
             devices.extend(
                 XSenseButtonEntity(coordinator, station, description)
                 for description in BUTTONS
-                if description.exists_fn(station, coordinator.xsense)
-                and should_add(station, description.key)
+                if should_add(station, description.key, description.exists_fn, coordinator.xsense)
             )
         for dev in discovery_devices.values():
             devices.extend(
@@ -151,8 +150,7 @@ async def async_setup_entry(
                     coordinator, dev, description, station_id=device_station_id(dev)
                 )
                 for description in BUTTONS
-                if description.exists_fn(dev, coordinator.xsense)
-                and should_add(dev, description.key)
+                if should_add(dev, description.key, description.exists_fn, coordinator.xsense)
             )
         return devices
 

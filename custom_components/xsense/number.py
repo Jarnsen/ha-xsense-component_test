@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from math import isfinite
 
 from homeassistant import config_entries
 from homeassistant.components.number import NumberEntity, NumberEntityDescription
@@ -62,16 +63,20 @@ def has_shadow_volume(key: str) -> Callable[[Entity], bool]:
     """Return if a non-camera X-Sense shadow exposes a writable volume field."""
 
     def exists(entity: Entity) -> bool:
-        return not (is_camera_entity(entity) or key not in entity.data or not _has_shadow_write_route(entity))
+        return key in entity.data and not is_camera_entity(entity) and _has_shadow_write_route(entity)
 
     return exists
 
 
-def has_shadow_number(key: str) -> Callable[[Entity], bool]:
+def has_shadow_number(
+    key: str, *, entity_type: EntityType | None = None, exclude_model: str | None = None,
+) -> Callable[[Entity], bool]:
     """Return if a non-camera X-Sense shadow exposes a writable numeric field."""
     return lambda entity: (
-        not is_camera_entity(entity)
+        (entity_type is None or getattr(entity, "entity_type", None) == entity_type)
+        and (exclude_model is None or entity.type != exclude_model)
         and key in entity.data
+        and not is_camera_entity(entity)
         and _has_shadow_write_route(entity)
     )
 
@@ -126,6 +131,17 @@ class XSenseNumberEntityDescription(NumberEntityDescription):
     shadow_setting: bool = False
     light_on_event: str | None = None
     entity_category: EntityCategory | None = EntityCategory.CONFIG
+
+
+def _range_capability(array_key: str, min_key: str | None = None, max_key: str | None = None):
+    return lambda entity: _has_shadow_range_number(entity, array_key, min_key, max_key)
+
+
+_TEMPERATURE_RANGE = _range_capability("tRange", "tempRangeMin", "tempRangeMax")
+_HUMIDITY_RANGE = _range_capability("hRange", "humRangeMin", "humRangeMax")
+_TEMPERATURE_COMFORT = _range_capability("tComfort")
+_HUMIDITY_COMFORT = _range_capability("hComfort")
+_PAIRED_CAPABILITIES = frozenset({_TEMPERATURE_RANGE, _HUMIDITY_RANGE, _TEMPERATURE_COMFORT, _HUMIDITY_COMFORT})
 
 
 NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
@@ -261,10 +277,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_min_value=10,
         native_max_value=100,
         native_step=1,
-        exists_fn=lambda entity: (
-            getattr(entity, "entity_type", None) == EntityType.LIGHT
-            and has_shadow_number("triggerBrightness")(entity)
-        ),
+        exists_fn=has_shadow_number("triggerBrightness", entity_type=EntityType.LIGHT),
         light_on_event="0",
     ),
     XSenseNumberEntityDescription(
@@ -276,10 +289,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_min_value=10,
         native_max_value=100,
         native_step=1,
-        exists_fn=lambda entity: (
-            getattr(entity, "entity_type", None) == EntityType.LIGHT
-            and has_shadow_number("awaitBrightness")(entity)
-        ),
+        exists_fn=has_shadow_number("awaitBrightness", entity_type=EntityType.LIGHT),
         light_on_event="0",
     ),
     XSenseNumberEntityDescription(
@@ -290,7 +300,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_min_value=1,
         native_max_value=60,
         native_step=1,
-        exists_fn=lambda entity: entity.type != "XCG0A-iA" and has_shadow_number("warnPeriod")(entity),
+        exists_fn=has_shadow_number("warnPeriod", exclude_model="XCG0A-iA"),
     ),
     XSenseNumberEntityDescription(
         key="temperature_min",
@@ -303,9 +313,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_step=0.1,
         shadow_array_key="tRange",
         shadow_array_index=0,
-        exists_fn=lambda entity: _has_shadow_range_number(
-            entity, "tRange", "tempRangeMin", "tempRangeMax"
-        ),
+        exists_fn=_TEMPERATURE_RANGE,
     ),
     XSenseNumberEntityDescription(
         key="temperature_max",
@@ -318,9 +326,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_step=0.1,
         shadow_array_key="tRange",
         shadow_array_index=1,
-        exists_fn=lambda entity: _has_shadow_range_number(
-            entity, "tRange", "tempRangeMin", "tempRangeMax"
-        ),
+        exists_fn=_TEMPERATURE_RANGE,
     ),
     XSenseNumberEntityDescription(
         key="humidity_min",
@@ -333,9 +339,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_step=1,
         shadow_array_key="hRange",
         shadow_array_index=0,
-        exists_fn=lambda entity: _has_shadow_range_number(
-            entity, "hRange", "humRangeMin", "humRangeMax"
-        ),
+        exists_fn=_HUMIDITY_RANGE,
     ),
     XSenseNumberEntityDescription(
         key="humidity_max",
@@ -348,9 +352,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         native_step=1,
         shadow_array_key="hRange",
         shadow_array_index=1,
-        exists_fn=lambda entity: _has_shadow_range_number(
-            entity, "hRange", "humRangeMin", "humRangeMax"
-        ),
+        exists_fn=_HUMIDITY_RANGE,
     ),
     XSenseNumberEntityDescription(
         key="temperature_comfort_min",
@@ -365,7 +367,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         shadow_array_index=0,
         shadow_array_defaults=(20, 26),
         shadow_array_comfort_type="1",
-        exists_fn=lambda entity: _has_shadow_range_number(entity, "tComfort"),
+        exists_fn=_TEMPERATURE_COMFORT,
     ),
     XSenseNumberEntityDescription(
         key="temperature_comfort_max",
@@ -380,7 +382,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         shadow_array_index=1,
         shadow_array_defaults=(20, 26),
         shadow_array_comfort_type="1",
-        exists_fn=lambda entity: _has_shadow_range_number(entity, "tComfort"),
+        exists_fn=_TEMPERATURE_COMFORT,
     ),
     XSenseNumberEntityDescription(
         key="humidity_comfort_min",
@@ -395,7 +397,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         shadow_array_index=0,
         shadow_array_defaults=(30, 60),
         shadow_array_comfort_type="1",
-        exists_fn=lambda entity: _has_shadow_range_number(entity, "hComfort"),
+        exists_fn=_HUMIDITY_COMFORT,
     ),
     XSenseNumberEntityDescription(
         key="humidity_comfort_max",
@@ -410,7 +412,7 @@ NUMBERS: tuple[XSenseNumberEntityDescription, ...] = (
         shadow_array_index=1,
         shadow_array_defaults=(30, 60),
         shadow_array_comfort_type="1",
-        exists_fn=lambda entity: _has_shadow_range_number(entity, "hComfort"),
+        exists_fn=_HUMIDITY_COMFORT,
     ),
     XSenseNumberEntityDescription(
         key="camera_alarm_volume",
@@ -524,27 +526,43 @@ async def async_setup_entry(
 ) -> None:
     """Set up X-Sense number entities."""
     coordinator: XSenseDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    non_camera_descriptions = tuple(description for description in NUMBERS if description.addx_key is None)
 
     def _entities(should_add, discovery_devices) -> list[Device]:
         devices: list[Device] = []
         seen_entity_ids: set[str] = set()
+        last_pair = None
+        pair_available = False
+
+        def paired_eligibility(record, predicate):
+            nonlocal last_pair, pair_available
+            if predicate is not last_pair:
+                pair_available = predicate(record)
+                last_pair = predicate
+            return pair_available
+
+        def add_numbers(record: Entity, *, child: bool = False) -> None:
+            nonlocal last_pair
+            # Only the endpoints of this record's current scan share a result.
+            last_pair = None
+            descriptions = NUMBERS if is_camera_entity(record) else non_camera_descriptions
+            for description in descriptions:
+                predicate = description.exists_fn
+                if description.shadow_array_key is not None and predicate in _PAIRED_CAPABILITIES:
+                    add = should_add(record, description.key, paired_eligibility, predicate)
+                else:
+                    add = should_add(record, description.key, predicate)
+                if add:
+                    station_id = device_station_id(record) if child else None
+                    devices.append(XSenseNumberEntity(coordinator, record, description, station_id=station_id))
+
         for station in coordinator_stations(coordinator).values():
             seen_entity_ids.add(station.entity_id)
-            devices.extend(
-                XSenseNumberEntity(coordinator, station, description)
-                for description in NUMBERS
-                if description.exists_fn(station) and should_add(station, description.key)
-            )
+            add_numbers(station)
         for dev in discovery_devices.values():
             if dev.entity_id in seen_entity_ids:
                 continue
-            devices.extend(
-                XSenseNumberEntity(
-                    coordinator, dev, description, station_id=device_station_id(dev)
-                )
-                for description in NUMBERS
-                if description.exists_fn(dev) and should_add(dev, description.key)
-            )
+            add_numbers(dev, child=True)
         return devices
 
     setup_dynamic_entities(entry, coordinator, async_add_entities, _entities)
@@ -581,7 +599,7 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         entity = self._current_entity()
         return (
             entity is not None
-            and self._current_entity_is_online()
+            and self._entity_is_online(entity)
             and self.entity_description.exists_fn(entity)
         )
 
@@ -591,10 +609,9 @@ class XSenseNumberEntity(XSenseEntity, NumberEntity):
         entity = self._current_entity()
         if entity is None:
             return None
-        value = entity.data.get(self.entity_description.data_key)
         if self.entity_description.shadow_array_key:
-            value = _shadow_array_value(entity, self.entity_description)
-        return safe_float(value)
+            return _shadow_array_value(entity, self.entity_description)
+        return safe_float(entity.data.get(self.entity_description.data_key))
 
     @property
     def extra_state_attributes(self) -> dict | None:
@@ -718,18 +735,34 @@ def _has_shadow_range_number(
     max_key: str | None = None,
 ) -> bool:
     """Return if the app exposes a paired range setting for this entity."""
-    if is_camera_entity(entity) or not _has_shadow_write_route(entity):
-        return False
-    if _number_pair(entity.data.get(array_key)) is not None:
-        return True
-    if array_key in {"tComfort", "hComfort"} and "comfortType" in entity.data:
-        return True
-    return bool(
+    data = entity.data
+    pair = data.get(array_key)
+    has_fallback = (array_key in {"tComfort", "hComfort"} and "comfortType" in data) or bool(
         min_key
         and max_key
-        and entity.data.get(min_key) is not None
-        and entity.data.get(max_key) is not None
+        and data.get(min_key) is not None
+        and data.get(max_key) is not None
     )
+    return (
+        (pair is not None or has_fallback)
+        and not is_camera_entity(entity)
+        and _has_shadow_write_route(entity)
+        and (
+            has_fallback
+            or (
+                isinstance(pair, (list, tuple))
+                and len(pair) >= 2
+                and (
+                    _is_finite_float_pair(pair[0], pair[1])
+                    or (safe_float(pair[0]) is not None and safe_float(pair[1]) is not None)
+                )
+            )
+        )
+    )
+
+
+def _is_finite_float_pair(first, second) -> bool:
+    return type(first) is float and type(second) is float and isfinite(first) and isfinite(second)
 
 
 def _number_pair(value) -> list[float] | None:
@@ -760,10 +793,20 @@ def _shadow_array_values(entity: Entity, description) -> list[float] | None:
 
 def _shadow_array_value(entity: Entity, description) -> float | None:
     """Return the current value for one side of a range-backed setting."""
-    values = _shadow_array_values(entity, description)
-    if values is None or description.shadow_array_index is None:
+    index = description.shadow_array_index
+    if index is None:
         return None
-    return values[description.shadow_array_index]
+    raw = entity.data.get(description.shadow_array_key)
+    # MQTT normalization already converted the live pair. State reads do not need a copy.
+    if (
+        index in (0, 1)
+        and isinstance(raw, (list, tuple))
+        and len(raw) >= 2
+        and _is_finite_float_pair(raw[0], raw[1])
+    ):
+        return raw[index]
+    values = _shadow_array_values(entity, description)
+    return safe_float(values[index]) if values is not None else None
 
 
 def _updated_shadow_array_values(

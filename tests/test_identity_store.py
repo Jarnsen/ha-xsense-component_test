@@ -7,6 +7,8 @@ from types import SimpleNamespace as NS
 from unittest.mock import AsyncMock
 
 import pytest
+from test_audit_repairs import make_coordinator
+from test_mqtt_listener_fanout import station_with_children
 
 from custom_components.xsense import entity as entity_module
 from custom_components.xsense import identity_store as storage
@@ -16,6 +18,7 @@ from custom_components.xsense.entity import (
     _stable_device_id,
     setup_dynamic_entities,
 )
+from custom_components.xsense.python_xsense.entity_map import EntityType
 
 
 def device(identifier="old", *, serial="SERIAL", model="MODEL", house="house", parent=None):
@@ -575,6 +578,340 @@ def test_serial_fallback_stops_at_second_matching_identity():
             pytest.fail("Lookup continued after ambiguity was established")
 
     assert _entity_by_id_or_serial(AmbiguousRecords(), "old", "SERIAL", _serial_identity(original)) is None
+
+
+def test_discovery_counts_duplicate_identities_separately_by_collection():
+    parent = device("station")
+    identity = _serial_identity(parent)
+    current = coordinator(parent)
+    current.data["stations"]["duplicate"] = device("duplicate")
+    current.data["devices"] = {"other": device("other")}
+    counts = {}
+    storage.validate_current_identities(current, counts=counts)
+    assert counts == {("stations", identity): 2, ("devices", identity): 1}
+
+
+def mqtt_discovery_listeners(station):
+    current = make_coordinator(station)
+    current.data["devices"] = dict(station.devices)
+    listeners, scans = [], []
+    current.async_add_listener = lambda cb: listeners.append(cb) or (lambda: None)
+
+    def observe(_should_add, devices):
+        scans.append((current._xsense_discovery_identity_counts, devices))
+        return []
+
+    for _ in range(2):
+        setup_dynamic_entities(NS(async_on_unload=lambda _: None), current, lambda _: None, observe)
+    scans.clear()
+    return current, listeners, scans
+
+
+def test_mqtt_discovery_shares_validation_only_inside_one_notification():
+    station = station_with_children()
+    current, listeners, scans = mqtt_discovery_listeners(station)
+    current.async_update_listeners = lambda: [listener() for listener in listeners]
+    current._async_notify_mqtt_station(station)
+    current._async_notify_mqtt_station(station)
+    assert len(scans) == 4
+    assert scans[0][0] is scans[1][0]
+    assert scans[2][0] is scans[3][0]
+    assert scans[0][0] is not scans[2][0]
+
+    current.async_update_listeners()
+    assert scans[4][0] is not scans[5][0]
+    assert scans[4][0] is not scans[3][0]
+
+
+def mqtt_stable_id_listeners(station, before_second=None):
+    current = make_coordinator(station)
+    current.data["devices"] = dict(station.devices)
+    listeners, added = [], []
+    current.async_add_listener = lambda cb: listeners.append(cb) or (lambda: None)
+
+    def observe(should_add, devices, *, before=None):
+        if before is not None:
+            before(current)
+        device = devices["0"]
+        if not should_add(device, "probe", lambda _: True):
+            return []
+        return [NS(unique_id=entity_module._entity_unique_id(resolve(current, device), "probe"))]
+
+    setup_dynamic_entities(NS(async_on_unload=lambda _: None), current, added.extend, observe)
+    setup_dynamic_entities(
+        NS(async_on_unload=lambda _: None), current, added.extend,
+        lambda should_add, devices: observe(should_add, devices, before=before_second),
+    )
+    return current, listeners, added
+
+
+@pytest.mark.parametrize("mode", ["broad", "local", "scoped"])
+def test_mqtt_discovery_shares_only_verified_read_only_stable_lookups(monkeypatch, mode):
+    station = station_with_children()
+    current, listeners, added = mqtt_stable_id_listeners(station)
+    before = list(added)
+    reads = 1 if mode == "broad" else 2
+    if mode == "local":
+        current._local_only_devices = {"0": station.devices["0"]}
+    elif mode == "scoped":
+        current._mqtt_child_write_scope = frozenset({_serial_identity(station.devices["0"])})
+    actual = entity_module._stable_device_id
+    lookups = []
+
+    def observe(coordinator, device, identity, *, register=True):
+        assert not register
+        lookups.append(device)
+        return actual(coordinator, device, identity, register=register)
+
+    monkeypatch.setattr(entity_module, "_stable_device_id", observe)
+    current.async_update_listeners = lambda: [listener() for listener in listeners]
+    current._async_notify_mqtt_station(station)
+    assert lookups == [station.devices["0"]] * reads
+    current._async_notify_mqtt_station(station)
+    assert lookups == [station.devices["0"]] * (reads * 2)
+    current.async_update_listeners()
+    assert lookups == [station.devices["0"]] * (reads * 2 + 2)
+    assert added == before
+
+
+@pytest.mark.parametrize("during_factory", [False, True])
+def test_mqtt_discovery_stable_lookup_sees_owner_change(during_factory):
+    station = station_with_children()
+    owner = _serial_identity(station.devices["0"])
+    armed = False
+
+    def change_owner(current):
+        if armed:
+            current._xsense_stable_device_ids[owner] = "new-id"
+
+    current, listeners, added = mqtt_stable_id_listeners(station, change_owner if during_factory else None)
+    armed = True
+
+    def notify():
+        listeners[0]()
+        if not during_factory:
+            change_owner(current)
+        listeners[1]()
+
+    current.async_update_listeners = notify
+    current._async_notify_mqtt_station(station)
+    assert [item.unique_id for item in added] == ["0-probe", "0-probe", "new-id-probe"]
+
+
+def test_mqtt_discovery_stable_lookup_does_not_hide_replacement_conflict(caplog):
+    station = station_with_children()
+    current, listeners, added = mqtt_stable_id_listeners(station)
+    replacement = station_with_children().devices["0"]
+    replacement.sn = "REPLACEMENT"
+
+    def notify():
+        listeners[0]()
+        current.data["devices"]["0"] = replacement
+        listeners[1]()
+
+    current.async_update_listeners = notify
+    current._async_notify_mqtt_station(station)
+    assert [item.unique_id for item in added] == ["0-probe", "0-probe"]
+    assert "conflicting physical device identifiers" in caplog.text
+
+
+@pytest.mark.parametrize("scoped", [False, True])
+def test_mqtt_discovery_shares_read_only_inventory_only_in_notification(scoped):
+    station = station_with_children()
+    current, listeners, scans = mqtt_discovery_listeners(station)
+    if scoped:
+        current._mqtt_child_write_scope = frozenset({_serial_identity(station.devices["0"])})
+    snapshots = []
+
+    def notify():
+        for listener in listeners:
+            listener()
+            snapshots.append(current._mqtt_discovery_validation.devices)
+
+    current.async_update_listeners = notify
+    current._async_notify_mqtt_station(station)
+    assert snapshots[0] is not None
+    assert snapshots[0] is snapshots[1]
+    with pytest.raises(TypeError):
+        snapshots[0]["0"] = station.devices["1"]
+    current._async_notify_mqtt_station(station)
+    assert snapshots[2] is snapshots[3]
+    assert snapshots[2] is not snapshots[0]
+    assert scans[2][1] is scans[3][1]
+    if not scoped:
+        assert scans[0][1] is snapshots[0]
+    with pytest.raises(TypeError):
+        scans[2][1]["0"] = station.devices["1"]
+    current.async_update_listeners = lambda: [listener() for listener in listeners]
+    current.async_update_listeners()
+    assert scans[4][1] is not scans[5][1]
+
+
+@pytest.mark.parametrize("swap_keys", [False, True])
+@pytest.mark.parametrize("scoped", [False, True])
+def test_mqtt_discovery_rebuilds_snapshot_for_changed_inventory_key(swap_keys, scoped):
+    station = station_with_children()
+    current, listeners, scans = mqtt_discovery_listeners(station)
+    original = current.data["devices"]["0"]
+    other = current.data["devices"]["1"]
+    if scoped:
+        current._mqtt_child_write_scope = frozenset({_serial_identity(original)})
+    new_key = "1" if swap_keys else "reindexed"
+
+    def notify():
+        listeners[0]()
+        current.data["devices"] = {new_key: original, "0" if swap_keys else "1": other}
+        listeners[1]()
+
+    current.async_update_listeners = notify
+    current._async_notify_mqtt_station(station)
+    assert scans[0][1]["0"] is scans[1][1][new_key] is original
+    if swap_keys:
+        assert scans[1][1]["0"] is other
+    else:
+        assert "0" not in scans[1][1]
+
+
+def test_broad_mqtt_discovery_rebuilds_ordered_snapshot():
+    station = station_with_children()
+    current, listeners, scans = mqtt_discovery_listeners(station)
+    original = current.data["devices"]
+
+    def notify():
+        listeners[0]()
+        current.data["devices"] = dict(reversed(tuple(original.items())))
+        listeners[1]()
+
+    current.async_update_listeners = notify
+    current._async_notify_mqtt_station(station)
+    assert list(scans[0][1]) == list(original)
+    assert list(scans[1][1]) == list(reversed(original))
+
+
+def test_mqtt_discovery_shares_scope_only_for_matching_platform_history():
+    station = station_with_children()
+    current, listeners, scans = mqtt_discovery_listeners(station)
+    def notify_both():
+        for listener in listeners:
+            listener()
+
+    current.async_update_listeners = notify_both
+    current._mqtt_child_write_scope = frozenset({_serial_identity(station.devices["0"])})
+    current._async_notify_mqtt_station(station)
+    current._async_notify_mqtt_station(station)
+    assert scans[-2][1] is scans[-1][1]
+    assert list(scans[-1][1]) == ["0"]
+
+    replacement = station_with_children().devices["1"]
+    replacement.sn = "REPLACEMENT"
+    current.data["devices"]["1"] = replacement
+    current.async_update_listeners = listeners[0]
+    current._async_notify_mqtt_station(station)
+    current.async_update_listeners = notify_both
+    current._async_notify_mqtt_station(station)
+    assert list(scans[-2][1]) == ["0"]
+    assert scans[-1][1]["1"] is replacement
+
+    def notify_different_scopes():
+        listeners[0]()
+        current._mqtt_child_write_scope = frozenset({_serial_identity(replacement)})
+        listeners[1]()
+
+    current.async_update_listeners = notify_different_scopes
+    current._async_notify_mqtt_station(station)
+    assert list(scans[-2][1]) == ["0"]
+    assert list(scans[-1][1]) == ["1"]
+
+
+def test_mqtt_discovery_rechecks_camera_classification_between_platforms():
+    station = station_with_children()
+    current, listeners, scans = mqtt_discovery_listeners(station)
+    current.async_update_listeners = lambda: [listener() for listener in listeners]
+    current._mqtt_child_write_scope = frozenset({_serial_identity(station.devices["0"])})
+    current._async_notify_mqtt_station(station)
+    current._async_notify_mqtt_station(station)
+    assert scans[-2][1] is scans[-1][1]
+
+    def notify():
+        listeners[0]()
+        current.data["devices"]["1"].entity_type = EntityType.CAMERA
+        listeners[1]()
+
+    current.async_update_listeners = notify
+    current._async_notify_mqtt_station(station)
+    assert list(scans[-2][1]) == ["0"]
+    assert list(scans[-1][1]) == ["0", "1"]
+
+
+def test_mqtt_discovery_nested_notification_restores_validation_on_error():
+    station = station_with_children()
+    current, listeners, scans = mqtt_discovery_listeners(station)
+
+    def notify():
+        listeners[0]()
+        current.async_update_listeners = listeners[1]
+        try:
+            current._async_notify_mqtt_station(station)
+        finally:
+            current.async_update_listeners = notify
+        listeners[1]()
+        raise RuntimeError("listener failed")
+
+    current.async_update_listeners = notify
+    with pytest.raises(RuntimeError, match="listener failed"):
+        current._async_notify_mqtt_station(station)
+    assert scans[0][0] is not scans[1][0]
+    assert scans[0][0] is scans[2][0]
+    assert "_mqtt_discovery_validation" not in current.__dict__
+
+
+@pytest.mark.parametrize("change", [
+    "replacement", "same_identity_replacement", "in_place", "api_id", "owners", "local_only", "incomplete",
+])
+def test_mqtt_discovery_revalidates_changes_between_platforms(change, caplog):
+    station = station_with_children()
+    current, listeners, scans = mqtt_discovery_listeners(station)
+    original = station.devices["0"]
+    other = station.devices["1"]
+    if change in ("owners", "local_only"):
+        current._xsense_stable_device_ids = {_serial_identity(original): original.entity_id}
+    elif change == "api_id":
+        current._xsense_stable_device_ids = {_serial_identity(other): "reserved"}
+    elif change == "incomplete":
+        original.sn = None
+
+    def notify():
+        listeners[0]()
+        if change in ("replacement", "same_identity_replacement"):
+            replacement = station_with_children().devices["0"]
+            if change == "replacement":
+                replacement.sn = "REPLACEMENT"
+            current.data["devices"]["0"] = replacement
+        elif change == "in_place":
+            original.sn = "IN-PLACE"
+        elif change == "api_id":
+            original.entity_id = "reserved"
+        elif change == "owners":
+            current._xsense_stable_device_ids.clear()
+            current._xsense_stable_device_ids[_serial_identity(other)] = original.entity_id
+        elif change == "local_only":
+            current._local_only_devices = {original.entity_id: original}
+        elif change == "incomplete":
+            original.sn = "AVAILABLE"
+        listeners[1]()
+
+    current.async_update_listeners = notify
+    current._async_notify_mqtt_station(station)
+    if change in ("api_id", "owners"):
+        assert len(scans) == 1
+        assert "conflicting physical device identifiers" in caplog.text
+    else:
+        assert len(scans) == 2
+        assert scans[0][0] is not scans[1][0]
+        item = scans[1][1]["0"]
+        assert scans[1][0][("devices", _serial_identity(item))] == 1
+        if change == "same_identity_replacement":
+            assert item is not original
 
 
 @pytest.mark.asyncio

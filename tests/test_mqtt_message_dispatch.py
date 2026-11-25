@@ -153,17 +153,23 @@ async def test_real_sustained_batches_preserve_all_messages_and_protocol_ack():
 
 
 @pytest.mark.asyncio
-async def test_non_stopping_flush_keeps_failed_unload_runtime_usable():
+async def test_non_stopping_drain_yields_and_keeps_failed_unload_runtime_usable():
     mqtt = make_client()
     delivered = []
-    mqtt.on_data = lambda topic, payload: delivered.append(payload)
+
+    def receive(_topic, payload):
+        delivered.append(payload)
+        if payload == b"first":
+            mqtt.loop.call_soon(delivered.append, b"other-work")
+
+    mqtt.on_data = receive
     for payload in (b"first", b"second"):
         mqtt._async_mqtt_on_message(None, None, NS(topic="test", payload=payload))
-    mqtt.async_flush_messages()
-    assert delivered == [b"first", b"second"]
+    await mqtt.async_drain_messages()
+    assert delivered == [b"first", b"other-work", b"second"]
     mqtt._async_mqtt_on_message(None, None, NS(topic="test", payload=b"third"))
     await asyncio.sleep(0)
-    assert delivered == [b"first", b"second", b"third"]
+    assert delivered == [b"first", b"other-work", b"second", b"third"]
     assert mqtt._message_dispatch_handle is None
 
 

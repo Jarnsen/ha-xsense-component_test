@@ -1051,10 +1051,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     drain = getattr(current, "async_drain_mqtt_messages", None)
     if drain is not None:
         await drain()
-    else:
-        flush = getattr(current, "async_flush_mqtt_messages", None)
-        if flush is not None:
-            flush()
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
