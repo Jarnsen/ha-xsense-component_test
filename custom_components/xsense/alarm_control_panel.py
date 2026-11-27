@@ -17,6 +17,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_platform
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.translation import async_get_translations
@@ -192,12 +193,12 @@ class XSenseAlarmControlPanel(
         self._station_id = station.entity_id
         self._entry_id = getattr(getattr(coordinator, "entry", None), "entry_id", "")
         self._attr_unique_id = f"{station.sn}_alarm"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, station.entity_id)},
-            "name": _device_info_str(station.name),
-            "manufacturer": MANUFACTURER,
-            "model": _device_info_str(station.type),
-        }
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, station.entity_id)},
+            name=_device_info_str(station.name),
+            manufacturer=MANUFACTURER,
+            model=_device_info_str(station.type),
+        )
         self._bound_station = station
         self._safemode: str | None = None
         self._active_normal_arm_mode: str | None = None
