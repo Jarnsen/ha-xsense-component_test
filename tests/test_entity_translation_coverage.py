@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from homeassistant.helpers.entity import UNDEFINED
+from homeassistant.helpers.typing import UNDEFINED
 
 from custom_components.xsense import (
     binary_sensor,

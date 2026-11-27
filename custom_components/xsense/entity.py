@@ -329,22 +329,18 @@ class XSenseEntity(CoordinatorEntity):
 
         self._attr_unique_id = _entity_unique_id(stable_id, self.entity_description.key)
 
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, stable_id)},
-            manufacturer=MANUFACTURER,
-            model=_device_info_str(entity.type),
-            name=_device_info_str(entity.name),
-        )
+        self._device_info_fields = {
+            "identifiers": {(DOMAIN, stable_id)},
+            "manufacturer": MANUFACTURER,
+            "model": _device_info_str(entity.type),
+            "name": _device_info_str(entity.name),
+        }
         if sw_version := _software_version(entity.data.get("sw")):
-            self._attr_device_info["sw_version"] = sw_version
+            self._device_info_fields["sw_version"] = sw_version
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device metadata with a late-bound registered parent link."""
-        # DeviceInfo stopped exposing dict.copy() in newer Home Assistant
-        # releases. Reconstruct a mutable mapping so this remains compatible
-        # with both its old TypedDict and newer runtime representation.
-        info = dict(self._attr_device_info)
         if self._parent_device_stable_id:
             parent_info = _parent_device_info(
                 self.coordinator,
@@ -352,8 +348,10 @@ class XSenseEntity(CoordinatorEntity):
             )
             if parent_info is not None:
                 parent_field, parent_value = parent_info
-                info[parent_field] = parent_value
-        return info
+                return DeviceInfo(
+                    **self._device_info_fields, **{parent_field: parent_value}
+                )
+        return DeviceInfo(**self._device_info_fields)
 
     def _current_entity(self) -> Entity | None:
         """Return the current coordinator entity for this Home Assistant entity."""
